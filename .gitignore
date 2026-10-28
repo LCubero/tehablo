@@ -1,0 +1,15 @@
+# Secrets
+.env
+
+# Python
+.venv*/
+__pycache__/
+*.pyc
+
+# Generated audio
+pocket-out/
+*.mp3
+!voices/*.mp3
+
+# Downloaded reference voices (re-create with scripts/get_voices.py)
+voices/*.wav
