@@ -91,4 +91,15 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 ## Registros resueltos
 <!-- doc-role:resolved-records -->
 
-No se han resuelto registros específicos del proyecto.
+### RH-W-0006: Restaurar y verificar el entorno nativo de Fedora
+
+- **Origen:** solicitud de revisar y hacer funcionar el proyecto tras pasar de Windows a Fedora, con autorización explícita para instalar y comprobar el entorno y la caché de modelos.
+- **Prioridad:** P2; el entorno de Windows carecía de `.venv-pocket/bin/python` y no podía arrancar en Linux (código 127).
+- **Dependencias:** ninguna.
+- **Estado:** `completed`.
+- **Trabajo completado:** conservar el entorno Windows como `.venv-pocket-windows`, crear el entorno nativo CPU, comprobar dependencias, suites y síntesis/salida real, y documentar instalación y límites sin cambiar el código del producto.
+- **Trabajo restante:** `none`.
+- **Evidencia:** Python 3.12.15, pocket-tts 4.0.1 y Torch 2.15.0+cpu; 57 dependencias compatibles. Cinco suites Python y 12 pruebas Node correctas. Las sondas con `spanish`/`lola` entregaron audio a 24 kHz y callbacks de salida no nulos sin avisos; `ServerClient` completó arranque, reproducción, pausa, continuación, parada y cierre, también con el modelo en caché. Versiones, comandos reproducibles y límites en [Desarrollo](../desarrollo.md#verificación-en-fedora).
+- **Exclusiones:** escucha humana/calidad, interfaz completa de Pi, TUI, `spanish_24l`, nuevas funciones y cambios de los trabajos `RH-W-0001` a `RH-W-0005`.
+- **Decisión:** restauración local autorizada y verificada; no se requirió corregir código ni fijar nuevas versiones de dependencias.
+- **Condición del siguiente avance:** ninguna dentro de esta restauración acotada; cualquier ampliación requiere autorización propia.

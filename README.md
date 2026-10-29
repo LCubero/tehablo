@@ -1,6 +1,6 @@
 # tehablo
 
-Convierte texto en voz en español, en tu equipo y gratis. Usa **Pocket TTS** (Kyutai), que funciona solo con CPU: no necesita GPU, nube ni cuenta. Probado en Windows; debería funcionar en Linux y macOS.
+Convierte texto en voz en español, en tu equipo y gratis. Usa **Pocket TTS** (Kyutai), que funciona solo con CPU: no necesita GPU, nube ni cuenta. Probado en Windows y, para servidor y transporte de la extensión, en Fedora con salida de audio real. macOS no se ha verificado.
 
 El uso principal es **leer en voz alta las respuestas de [Pi](#uso-en-pi)**. La TUI y la consola sirven para probar voces, modelo y velocidad.
 
@@ -74,10 +74,22 @@ uv pip install --python .venv-pocket\Scripts\python.exe -r requirements.txt `
 uv venv .venv-pocket --python 3.12
 uv pip install --python .venv-pocket/bin/python -r requirements.txt \
   --extra-index-url https://download.pytorch.org/whl/cpu --index-strategy unsafe-best-match
-sudo apt install libportaudio2   # solo Linux, para el audio
 ```
 
-El entorno `.venv-pocket` no se puede copiar entre sistemas operativos: créalo en cada equipo. Ejecuta los comandos desde la raíz del repositorio.
+En Linux, instala PortAudio si falta, usando solo el comando de tu distribución (no hace falta en macOS):
+```bash
+sudo dnf install portaudio      # Fedora
+sudo apt install libportaudio2  # Debian / Ubuntu
+```
+
+El entorno `.venv-pocket` no se puede copiar entre sistemas operativos: créalo en cada equipo. Si vienes de Windows y solo existe `.venv-pocket/Scripts/python.exe`, conserva ese entorno con otro nombre antes de crear el de Linux; la extensión necesita `.venv-pocket/bin/python`. Ejecuta los comandos desde la raíz del repositorio.
+
+Comprobación básica en Linux (importaciones y Torch sin CUDA; no prueba el audio):
+```bash
+.venv-pocket/bin/python -c 'import pocket_tts, sounddevice, torch; print(torch.__version__); assert torch.version.cuda is None'
+```
+
+La combinación comprobada en Fedora y los límites de la prueba están en [Desarrollo](docs/desarrollo.md#verificación-en-fedora).
 
 ## Uso en Pi
 

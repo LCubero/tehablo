@@ -145,6 +145,39 @@ La extensión de Pi tiene sus pruebas con `node:test` (Node 24, sin dependencias
 node --test pi-extension/tehablo-tts/test/tts.test.ts pi-extension/tehablo-tts/test/lifecycle.test.ts pi-extension/tehablo-tts/test/controls.test.ts
 ```
 
+### Verificación en Fedora
+
+Se restauró un entorno nativo conservando el anterior como `.venv-pocket-windows`.
+Se comprobaron Python 3.12.15, pocket-tts 4.0.1, Torch 2.15.0+cpu,
+sounddevice 0.5.6 y Node 25.9.0, con kernel `7.2.13-200.fc44.x86_64`.
+Las 57 dependencias resultaron compatibles; esto no garantiza futuras versiones
+sin fijar de `requirements.txt` ni una instalación limpia en cualquier equipo.
+
+Para repetir las suites sin modelo ni audio desde la raíz:
+
+```bash
+.venv-pocket/bin/python tests/test_tech.py
+.venv-pocket/bin/python tests/test_numbers.py
+.venv-pocket/bin/python tests/test_lexicon.py
+.venv-pocket/bin/python tests/test_speed.py
+.venv-pocket/bin/python tests/test_server.py
+node --test pi-extension/tehablo-tts/test/*.test.ts
+```
+
+Todas pasaron (servidor: 8 pruebas; Node: 12). Además, sondas reales con `spanish`
+y `lola` generaron audio finito a 24 kHz; la salida predeterminada recibió 57599
+fotogramas no nulos sin avisos en los callbacks. El transporte `ServerClient`
+sin modificar eligió `.venv-pocket/bin/python` y completó arranque, reproducción,
+pausa, continuación, parada y cierre del proceso propio. Una repetición con
+`HF_HUB_OFFLINE=1` reutilizó el modelo en caché y entregó 67199 fotogramas no nulos;
+esa variable no equivale a aislamiento de red completo.
+
+Estas sondas no midieron audibilidad ni calidad mediante escucha o captura del
+sonido del sistema. No verificaron la interfaz completa de Pi, la TUI ni
+`spanish_24l`. Las suites anteriores no sustituyen esas comprobaciones reales.
+
+### Pruebas de integración TUI
+
 Las demás son scripts de integración de Textual, no pruebas de pytest. **Reproducen audio
 por los altavoces** y requieren el entorno instalado, un dispositivo de salida
 y los modelos/voces disponibles (la primera carga puede descargarlos).
@@ -177,7 +210,8 @@ solo no acredita estos resultados.
 | *"We could not download the weights for the model with voice cloning"* | Falta el token de Hugging Face | [Activar la clonación](../README.md#activar-la-clonación-de-voces-token-de-hugging-face) |
 | Aviso de *symlinks* en Windows | La caché de Hugging Face no puede crear enlaces simbólicos | Inofensivo; solo usa algo más de disco. Se evita activando el Modo de desarrollador de Windows |
 | No se puede pegar un texto largo en `src/tehablo_tts.py` | Límite de la consola de Windows | Usa `/leer archivo.txt` o la TUI |
-| Sin sonido en Linux | Falta PortAudio | `sudo apt install libportaudio2` |
+| Error al cargar PortAudio en Linux | Puede faltar la biblioteca del sistema | Fedora: `sudo dnf install portaudio`; Debian/Ubuntu: `sudo apt install libportaudio2` (solo el de tu distribución) |
+| Sin sonido, pero PortAudio carga | Puede ser el dispositivo seleccionado, el volumen o la ruta de salida del sistema | Revisa la salida predeterminada y el volumen; instalar PortAudio no resuelve todas las causas |
 | Al cambiar de modelo había que pulsar Reproducir dos veces | El primer clic se descartaba mientras cargaba el modelo | **Corregido:** ahora queda en espera y suena en cuanto el modelo está listo |
 | La primera ejecución tarda más de un minuto | Descarga del modelo | Solo pasa la primera vez |
 | Las cifras como `15.000` sonaban incoherentes | Pocket TTS no convierte números a palabras | **Corregido:** `src/tehablo_numbers.py` los convierte antes de leer (solo con modelos en español) |

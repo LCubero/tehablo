@@ -16,7 +16,7 @@
 - Pruebas unitarias sin modelo (`tests/test_numbers.py`, `tests/test_lexicon.py`, `tests/test_speed.py`) y scripts de integración de la TUI que reproducen audio.
 - Extensión de Pi `pi-extension/tehablo-tts/` y servidor local `src/tehablo_server.py`: leen las respuestas del agente en modo manual o automático; se carga en este proyecto con `.pi/settings.json`.
 - Lectura simplificada de texto técnico (`src/tehablo_tech.py`): URLs, rutas, archivos, identificadores y hashes; más de 40 términos de Git y desarrollo en `pronunciaciones.json`.
-- Probado solo en Windows.
+- Probado en Windows y, en Fedora, el servidor y el transporte de la extensión con síntesis CPU `spanish`/`lola`, controles y callbacks de audio reales. No acredita escucha/calidad, interfaz completa de Pi, TUI ni `spanish_24l`; [versiones y comprobaciones](../desarrollo.md#verificación-en-fedora).
 - Harness de IA instalado (perfil `pi`, modo integrado); `python .repo-harness/check.py` lo comprueba.
 
 Este archivo proyecta solo hechos verificados del proyecto: registros activos, bloqueos, IDs completados recientemente y la siguiente condición accionable. El propietario canónico es [roadmap.md](roadmap.md).
@@ -25,6 +25,7 @@ Este archivo proyecta solo hechos verificados del proyecto: registros activos, b
 
 <!-- doc-role:recent-work -->
 
+- `RH-W-0006` (`completed`): entorno CPU nativo de Fedora restaurado y verificado, conservando el entorno de Windows; sin trabajo restante dentro de ese alcance.
 - Se creó el harness mínimo de IA del repositorio y su documentación visible de continuidad.
 - Se documentó el flujo de procesamiento y el consumo de recursos medido (`docs/como-funciona.md`).
 - Se añadió el selector de velocidad que conserva el tono.

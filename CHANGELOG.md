@@ -6,6 +6,8 @@ Este archivo registra los cambios completados en orden cronológico.
 
 ## 2026-10-29
 
+- Se restauró el entorno CPU nativo de Fedora conservando el de Windows y se verificaron síntesis, salida de audio y transporte de la extensión; se documentaron instalación y límites (`RH-W-0006`).
+
 - Se creó el harness mínimo de IA del repositorio y su documentación visible de continuidad.
 - Se actualizó el README con los archivos del harness y se corrigió la afirmación de que no había commits.
 - Se completaron el propósito del proyecto en `REPO-HARNESS.md` y el estado verificado en `docs/repo-harness/current-state.md`.
