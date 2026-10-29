@@ -10,3 +10,4 @@ Este archivo registra los cambios completados en orden cronológico.
 - Se actualizó el README con los archivos del harness y se corrigió la afirmación de que no había commits.
 - Se completaron el propósito del proyecto en `REPO-HARNESS.md` y el estado verificado en `docs/repo-harness/current-state.md`.
 - Se añadió la licencia MIT del proyecto (`LICENSE`).
+- Se simplificó el README a lo esencial y se movieron archivos, pruebas, problemas conocidos, licencias y alternativas a `docs/desarrollo.md`.

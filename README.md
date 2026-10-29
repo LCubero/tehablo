@@ -1,89 +1,63 @@
 # tehablo
 
-Síntesis de voz (texto a voz) en español, local y gratuita, con **Pocket TTS**: un modelo que funciona solo con CPU en Windows, Linux y macOS.
+Convierte texto en voz en español, en tu equipo y gratis. Usa **Pocket TTS** (Kyutai), que funciona solo con CPU: no necesita GPU, nube ni cuenta. Probado en Windows; debería funcionar en Linux y macOS.
 
-## Índice
-
-- [Cómo funciona tehablo y qué recursos usa (RAM, CPU, GPU, internet)](docs/como-funciona.md)
-- [Pocket TTS: referencia, voces, pronunciación y mejoras posibles](docs/pocket-tts.md)
-- [Voces gratuitas en español para clonar](docs/voces-gratuitas.md)
-- [Catálogo maestro de recursos gratuitos para TTS en español](docs/catalogo-gratuito.md)
-- [Cómo contribuir](CONTRIBUTING.md) y [guía del harness de IA](docs/repo-harness/usage.md)
-
-1. [Resumen](#resumen)
-2. [Alternativas locales evaluadas](#alternativas-locales-evaluadas)
-3. [Pocket TTS: qué es](#pocket-tts-qué-es)
+1. [Cómo funciona](#cómo-funciona)
+2. [Qué usa](#qué-usa)
+3. [Cuánto gasta](#cuánto-gasta)
 4. [Instalación](#instalación)
 5. [Uso: TUI](#uso-tui)
 6. [Uso: consola simple](#uso-consola-simple)
 7. [Voces](#voces)
-8. [Activar la clonación de voces (token de Hugging Face)](#activar-la-clonación-de-voces-token-de-hugging-face)
-9. [Licencias y atribución](#licencias-y-atribución)
-10. [Archivos del proyecto](#archivos-del-proyecto)
-11. [Pruebas](#pruebas)
-12. [Problemas conocidos](#problemas-conocidos)
+8. [Qué se puede agregar, modificar o aprovechar](#qué-se-puede-agregar-modificar-o-aprovechar)
+9. [Más documentación](#más-documentación)
 
 ---
 
-## Resumen
+## Cómo funciona
 
-| Pregunta | Respuesta |
-|---|---|
-| ¿Qué motor usa? | **Pocket TTS** (Kyutai), local y gratuito, solo con CPU. |
-| ¿Habla español? | Sí: modelos `spanish` y `spanish_24l`. |
-| ¿Puedo usar distintas voces? | Sí: catálogo incluido y clonación desde un `.wav` (requiere token de Hugging Face). |
-| ¿Funciona en Windows, Linux y macOS? | Sí (Python + PyTorch para CPU). Probado solo en Windows. |
+```text
+Texto → 1. términos en inglés → 2. números a palabras → 3. Pocket TTS → 4. velocidad → 5. altavoz
+        "Python" → "páiton"     "15.000" → "quince mil"   genera audio    sin cambiar     suena mientras
+                                                          a trozos        el tono         genera lo siguiente
+```
 
----
+- Los pasos 1, 2 y 4 son código propio y casi no gastan. El paso 3 es el pesado.
+- El audio empieza a sonar enseguida (en menos de 1 s), sin esperar a que termine todo el texto.
+- Internet solo hace falta la primera vez, para descargar los modelos.
 
-## Alternativas locales evaluadas
+Detalle completo: [docs/como-funciona.md](docs/como-funciona.md).
 
-Equipo de referencia: Ryzen 5 5600X, 32 GB de RAM, RTX 2080 Super con 8 GB.
+## Qué usa
 
-| Motor | Necesita | Voces | Licencia | Nota |
-|---|---|---|---|---|
-| **Pocket TTS** (Kyutai) | **Solo CPU** | Catálogo + clonación | Código MIT, pesos CC BY 4.0 | **Elegido** |
-| Piper (`es_AR-daniela`, `es_ES`, `es_MX`) | Solo CPU | 8 voces fijas en español | Varía según la voz | Muy ligero, algo robótico |
-| Kokoro-82M | Solo CPU | 3 voces en español | Apache 2.0 | Sin acentos latinoamericanos |
-| Chatterbox Multilingual | GPU de 4 a 6 GB, o CPU lento | Clonación | MIT | Alta calidad |
-| Qwen3-TTS VoiceDesign | GPU de unos 6 GB | Voces creadas por descripción + clonación | Apache 2.0 | Crea voces a partir de una descripción. Sin probar en una 2080 (no soporta `bf16`) |
-| VoxCPM2 | GPU de 6 a 8 GB | Voces por descripción + clonación | Apache 2.0 | Sin probar |
-| XTTS-v2 / F5-TTS | CPU o GPU | Clonación | ❌ No comercial | Descartados por la licencia |
+| Pieza | Para qué | Licencia |
+|---|---|---|
+| **Pocket TTS** (Kyutai) | Modelo de IA que genera la voz | Código MIT, pesos CC BY 4.0 |
+| **PyTorch** solo CPU | Ejecuta el modelo | BSD |
+| **Textual** | Interfaz de la TUI | MIT |
+| **sounddevice** | Salida al altavoz | MIT |
+| **audiotsm** | Velocidad sin cambiar el tono | MIT |
+| **numpy / scipy** | Cálculo y guardado de audio `.wav` | BSD |
 
----
+## Cuánto gasta
 
-## Pocket TTS: qué es
+Medido en un Ryzen 5 5600X con 32 GB de RAM y Windows, con un texto de unos 36 s de audio.
 
-- Modelo de texto a voz de **Kyutai**, de unos 100 millones de parámetros, pensado para **CPU**.
-- Idiomas: inglés, francés, alemán, portugués, italiano, **español** y neerlandés.
-- Modelos de español: `spanish` (rápido) y `spanish_24l` (más calidad, más lento).
-- **Clona voces** a partir de un `.wav` de 10 a 30 s.
-- Genera el audio en streaming, así que empieza a sonar enseguida.
-- Repositorio: <https://github.com/kyutai-labs/pocket-tts> · Modelo: <https://huggingface.co/kyutai/pocket-tts> · Voces: <https://huggingface.co/kyutai/tts-voices>
+| | `spanish` (rápido) | `spanish_24l` (más calidad) |
+|---|---|---|
+| RAM | ~870 MB (pico ~1 GB al cargar) | ~1,8 GB (pico ~2,3 GB) |
+| CPU | ~1,8 núcleos (~15 %) | ~1,2 núcleos (~10 %) |
+| Velocidad | 3,7 veces más rápido que tiempo real | 1,2 veces |
+| GPU | No la usa | No la usa |
 
-**Rendimiento medido en este equipo (CPU):**
-
-| Modelo | Audio | Tiempo de generación | Velocidad |
-|---|---|---|---|
-| `spanish` | 10,2 s | 2,9 s | 3,6 veces más rápido que tiempo real |
-| `spanish_24l` | 9,3 s | 9,1 s | 1,0 veces (casi tiempo real) |
-| `spanish`, texto de 1.556 caracteres | 100 s | 100 s, reproduciendo mientras genera | — |
-
-La primera ejecución descarga el modelo. Después carga en 1 o 2 segundos.
-
-**Cómo se reparte Pocket TTS:** el **código** está en GitHub y se instala con `pip`. Los **pesos** del modelo están en Hugging Face y se descargan la primera vez que se usa. Hay dos versiones de los pesos:
-- **Sin clonación:** descarga libre. Basta para usar las voces del catálogo.
-- **Con clonación:** protegida. Necesita aceptar condiciones y un token (ver [Activar la clonación](#activar-la-clonación-de-voces-token-de-hugging-face)).
-
----
+En disco: unos 813 MB el entorno de Python y 1,2 GB los modelos descargados.
 
 ## Instalación
 
-Requisitos: Python 3.10 a 3.14 y [`uv`](https://docs.astral.sh/uv/). Se usa PyTorch **solo CPU** (unos 200 MB, frente a los 3 GB de la versión con CUDA).
+Requisitos: Python 3.10 a 3.14 y [`uv`](https://docs.astral.sh/uv/).
 
 **Windows (PowerShell):**
 ```powershell
-cd E:\code\02-Proyectos\tehablo
 uv venv .venv-pocket --python 3.12
 uv pip install --python .venv-pocket\Scripts\python.exe -r requirements.txt `
   --extra-index-url https://download.pytorch.org/whl/cpu --index-strategy unsafe-best-match
@@ -94,13 +68,10 @@ uv pip install --python .venv-pocket\Scripts\python.exe -r requirements.txt `
 uv venv .venv-pocket --python 3.12
 uv pip install --python .venv-pocket/bin/python -r requirements.txt \
   --extra-index-url https://download.pytorch.org/whl/cpu --index-strategy unsafe-best-match
-# Solo en Linux, para el audio:
-sudo apt install libportaudio2
+sudo apt install libportaudio2   # solo Linux, para el audio
 ```
 
-El entorno `.venv-pocket` **no se puede copiar** entre sistemas operativos: hay que crearlo de nuevo en cada equipo.
-
----
+El entorno `.venv-pocket` no se puede copiar entre sistemas operativos: créalo en cada equipo. Ejecuta los comandos desde la raíz del repositorio.
 
 ## Uso: TUI
 
@@ -109,274 +80,61 @@ El entorno `.venv-pocket` **no se puede copiar** entre sistemas operativos: hay 
 .venv-pocket/bin/python src/tehablo_tui.py            # Linux / macOS
 ```
 
-1. Espera a que el registro de abajo diga *"Modelo 'spanish' listo"*.
-2. Escribe o pega texto en el cuadro grande. Admite textos largos.
-3. Elige la **voz** (primer desplegable), el **modelo** (segundo) y la **velocidad** (tercero: de 0,75x a 1,5x; 1x es la normal).
-4. Pulsa **F5** o **Reproducir**.
+Escribe o pega el texto, elige **voz**, **modelo** (`spanish` o `spanish_24l`) y **velocidad** (0,75x a 1,5x), y pulsa **F5**.
 
-La velocidad cambia el ritmo sin cambiar el tono de la voz (no suena aguda ni grave) y se aplica mientras se genera. Se elige antes de pulsar F5; el audio guardado con F7 conserva la velocidad elegida.
-
-| Tecla / botón | Acción |
+| Tecla | Acción |
 |---|---|
-| **F5** / Reproducir | Genera y reproduce el texto |
-| **F6** / Detener | Corta la generación y la reproducción |
-| **F7** / Guardar | Guarda el **último** audio en `pocket-out/<voz>-<fecha-hora>.wav`. Si se detuvo a mitad, guarda la parte que sonó |
-| **F8** | Recarga la lista de voces (después de añadir archivos a `voices/`) |
+| **F5** | Generar y reproducir |
+| **F6** | Detener |
+| **F7** | Guardar el último audio en `pocket-out/` (con la velocidad elegida) |
+| **F8** | Recargar la lista de voces |
 | **Ctrl+Q** | Salir |
 
-En el desplegable, las voces aparecen como `[archivo] …` (de la carpeta `voices/`, por clonación) o `[catalogo] …` (incluidas en Pocket TTS).
-
----
-
 ## Uso: consola simple
-
-Alternativa sin interfaz: [`src/tehablo_tts.py`](src/tehablo_tts.py).
 
 ```powershell
 .\.venv-pocket\Scripts\python src/tehablo_tts.py [--voice lola] [--language spanish]
 ```
 
-| Comando | Acción |
-|---|---|
-| *(texto)* + Enter | Genera y reproduce |
-| `/leer archivo.txt` | Lee un archivo de texto (útil para textos largos) |
-| `/multi` | Pegar varias líneas; termina con una línea vacía |
-| `/voz <nombre\|archivo>` | Cambia de voz (nombre del catálogo, `.wav` para clonar o `.safetensors`) |
-| `/voces` | Lista las voces del catálogo |
-| `/modelo <idioma>` | Recarga el modelo (`spanish`, `spanish_24l`, …) |
-| `/guardar [nombre]` | Guarda el último audio en `pocket-out/` |
-| `/salir` | Termina |
-
-### Números
-
-Con los modelos `spanish` y `spanish_24l`, la TUI y la consola convierten los números a palabras antes de leerlos, porque Pocket TTS no sabe leer cifras. Ejemplos: `15.000` → *quince mil*, `25,5` → *veinticinco coma cinco*, `30%` → *treinta por ciento*, `14:30` → *catorce y treinta*, `29/10/2026` → *veintinueve de octubre de dos mil veintiséis*, `₡15.000` → *quince mil colones*, `$20` → *veinte dólares*. El punto separa miles y la coma marca decimales. Detalles y límites: [docs/pocket-tts.md](docs/pocket-tts.md#números-fechas-siglas-y-símbolos).
-
-La consola de Windows puede cortar las líneas muy largas al pegarlas. En ese caso, usa `/leer` o la TUI.
-
-Texto de prueba largo: [`samples/prueba-larga.txt`](samples/prueba-larga.txt). Ejemplo: `/leer samples/prueba-larga.txt`. Las rutas de `/leer` se resuelven desde el directorio de trabajo actual.
-
----
-
-### Términos en inglés
-
-El modelo lee todo con reglas del español, así que "Python" suena "pi-ton". Con los modelos `spanish` y `spanish_24l`, y con cualquier voz, la TUI y la consola cambian antes de leer cada término de [`pronunciaciones.json`](pronunciaciones.json) por cómo suena: `Python` → *páiton*, `GitHub` → *guítjab*, `WhatsApp` → *guatsáp*, `API` → *a pe i*. Trae unos 135 términos de programación, marcas y palabras comunes.
-
-Para añadir o corregir uno, edita el archivo y guárdalo; se recarga solo en la siguiente lectura:
-
-```json
-{
-  "Python": "páiton",
-  "Kotlin": "cótlin"
-}
-```
-
-- Escribe la pronunciación con ortografía española y pon tilde en la sílaba fuerte.
-- Las siglas se deletrean: `"SQL": "es ku el"`.
-- No distingue mayúsculas, solo cambia palabras completas (`Pythonista` no se toca) y también cubre el plural con `s`.
-- Si el archivo tiene un error, la TUI muestra un aviso y sigue usando la versión anterior.
+Escribe texto y pulsa Enter. Comandos: `/leer archivo.txt`, `/multi`, `/voz <nombre|archivo>`, `/voces`, `/modelo <idioma>`, `/guardar [nombre]`, `/salir`. Para textos largos, usa `/leer` o la TUI.
 
 ## Voces
 
-### Catálogo incluido (funciona sin token)
-
-| Voces | Origen | Licencia |
+| Tipo | Cuáles | ¿Necesita token? |
 |---|---|---|
-| `lola` | Common Voice (es). **Única voz nativa en español** | Probablemente CC0 (sin verificar) |
-| `rafael` | Voz por defecto del portugués | Sin verificar |
-| `eve`, `anna`, `vera`, `fantine`, `charles`, `paul`, `eponine`, `azelma`, `george`, `mary`, `jane`, `michael` | Corpus VCTK (inglés británico) | CC BY 4.0 |
-| `marius`, `javert` | Donaciones de voz a Kyutai | CC0 |
-| `cosette` | Expresso | ⚠️ **Solo uso no comercial** |
-| `alba`, `jean`, `giovanni`, `estelle`, `juergen`, `daan`, `bill_boerst`, `peter_yearsley`, `stuart_bell`, `caro_davy` | Varios | Sin verificar |
+| **Catálogo** incluido | `lola` (única nativa en español), `rafael` y unas 25 más con timbre de otros idiomas | No |
+| **Descargadas** en `voices/` | Argentina, Chile y Colombia, mujer y hombre (`scripts/get_voices.py`) | Sí |
+| **Propias** | Cualquier `.wav`, `.mp3` o `.flac` limpio de 10 a 30 s en `voices/` (F8 para recargar) | Sí |
 
-Las voces que no son españolas hablan español con su timbre original y probablemente con algo de acento extranjero.
+> ⚠️ Clona solo voces que tengas permiso para usar. `cosette` del catálogo es solo para uso no comercial.
 
-### Voces en español para clonar (`voices/`, requieren token)
+Listado y licencias: [docs/pocket-tts.md](docs/pocket-tts.md#7-catálogo-de-voces-predefinidas). Más fuentes: [docs/voces-gratuitas.md](docs/voces-gratuitas.md).
 
-[`scripts/get_voices.py`](scripts/get_voices.py) descarga fragmentos breves de hablantes nativos desde los corpus de Google para el español latinoamericano (a través de la API de filas de Hugging Face, sin bajar los datasets completos, que ocupan más de 1 GB) y los une en un `.wav` de unos 15 a 25 s por hablante.
+### Activar la clonación de voces (token de Hugging Face)
 
-```powershell
-.\.venv-pocket\Scripts\python scripts/get_voices.py                # 3 hablantes por país y género
-.\.venv-pocket\Scripts\python scripts/get_voices.py --speakers 5   # más voces
-```
+1. Crea una cuenta gratuita en <https://huggingface.co> y acepta las condiciones en <https://huggingface.co/kyutai/pocket-tts>.
+2. Crea un token **Read** en <https://huggingface.co/settings/tokens>.
+3. Ejecuta `.\.venv-pocket\Scripts\hf auth login` y pega el token, o añade `HF_TOKEN=hf_...` a `.env`.
 
-| País | Corpus | Mujer | Hombre |
-|---|---|---|---|
-| Argentina | OpenSLR 61 | 3 | 3 |
-| Chile | OpenSLR 71 | 3 | 3 |
-| Colombia | OpenSLR 72 | 3 | 3 |
+Solo hace falta para la primera descarga; después funciona sin internet.
 
-Los nombres de los archivos siguen el patrón `<país>-<mujer|hombre>-<id_hablante>.wav`. Los créditos quedan en `voices/ATTRIBUTION.txt`.
+## Qué se puede agregar, modificar o aprovechar
 
-### Añadir voces propias
+**Sin tocar código:**
+- **Pronunciación de términos en inglés:** edita [`pronunciaciones.json`](pronunciaciones.json) (`"Python": "páiton"`). Se recarga solo.
+- **Voces nuevas:** copia grabaciones en `voices/`, o descarga más con `scripts/get_voices.py --speakers 5`.
+- **Calidad:** prueba `spanish_24l`, o una referencia de voz más limpia.
 
-Copia un `.wav`, `.mp3` o `.flac` **limpio** (sin ruido ni música) de 10 a 30 s en `voices/` y pulsa **F8** en la TUI. El modelo copia también la calidad de la grabación.
+**Con código, ideas documentadas:**
+- Cuantización para gastar menos RAM, unidades y siglas en el conversor de números, pausas exactas, servidor o API local.
+- Lista completa con esfuerzo estimado: [docs/pocket-tts.md](docs/pocket-tts.md#12-catálogo-de-mejoras-posibles).
+- Otros motores y recursos gratuitos: [docs/catalogo-gratuito.md](docs/catalogo-gratuito.md).
 
-> ⚠️ Clona solo voces que tengas permiso para usar: la tuya, la de alguien que lo autorice o datasets con licencia abierta. Las condiciones de Pocket TTS prohíben *"voice impersonation or cloning without explicit and lawful consent"*.
+## Más documentación
 
-### Más fuentes gratuitas de voces en español
+- [Cómo funciona y qué recursos usa](docs/como-funciona.md)
+- [Pocket TTS: referencia, voces, pronunciación y mejoras](docs/pocket-tts.md)
+- [Desarrollo: archivos, pruebas, problemas conocidos y licencias](docs/desarrollo.md)
+- [Cómo contribuir](CONTRIBUTING.md) · [Guía del harness de IA](docs/repo-harness/usage.md)
 
-| Fuente | Contenido | Licencia |
-|---|---|---|
-| OpenSLR 73/74/75 | Perú, Puerto Rico, Venezuela (corpus de Google) | CC BY-SA 4.0 |
-| CML-TTS (OpenSLR 146) | Narración de audiolibros en español | CC BY 4.0 |
-| Mozilla Common Voice (es) | Miles de hablantes de muchos países | CC0 |
-| Kyutai voice-donations | 228 voces donadas, pocas o ninguna en español | CC0 |
-
----
-
-## Activar la clonación de voces (token de Hugging Face)
-
-Sin este paso, las voces de `voices/` dan el error *"We could not download the weights for the model with voice cloning"*. Las del catálogo funcionan igual.
-
-1. Crea una cuenta gratuita en <https://huggingface.co>.
-2. Acepta las condiciones en <https://huggingface.co/kyutai/pocket-tts>.
-3. Crea un token de tipo **Read** en <https://huggingface.co/settings/tokens>.
-4. Elige **una** de estas dos formas de dárselo al programa:
-
-| Forma | Cómo | Ámbito |
-|---|---|---|
-| **Comando (recomendado)** | `.\.venv-pocket\Scripts\hf auth login` y pega el token | Todo el equipo; queda fuera del proyecto |
-| **`.env`** | Añade `HF_TOKEN=hf_...` a `.env` | Solo este proyecto; `src/tehablo_tui.py` y `src/tehablo_tts.py` leen `.env` al arrancar |
-
-El token solo hace falta para la **primera descarga**. Después, los pesos quedan en la caché y todo funciona sin internet.
-
----
-
-## Licencias y atribución
-
-El código de tehablo se distribuye bajo la licencia [MIT](LICENSE). Los componentes de terceros conservan sus propias licencias:
-
-| Componente | Licencia | Obligación |
-|---|---|---|
-| Código de Pocket TTS | MIT | — |
-| Pesos de Pocket TTS | CC BY 4.0 | Citar a Kyutai |
-| Voces VCTK del catálogo | CC BY 4.0 | Citar VCTK |
-| Voces `voices/` (corpus de Google, OpenSLR) | CC BY-SA 4.0 | Citar la fuente; las obras derivadas, con la misma licencia |
-| `cosette` (Expresso) | CC BY-NC 4.0 | Solo uso no comercial |
-
-Atribución sugerida: *"Voz sintetizada con Kyutai Pocket TTS (CC BY 4.0). Voz de referencia: <corpus> (<licencia>)."*
-
----
-
-## Archivos del proyecto
-
-```text
-tehablo/
-├── README.md
-├── LICENSE
-├── CHANGELOG.md
-├── CONTRIBUTING.md
-├── REPO-HARNESS.md               # reglas para agentes de IA
-├── AGENTS.md                     # puntero a REPO-HARNESS.md
-├── requirements.txt
-├── pronunciaciones.json
-├── .gitignore
-├── .gitattributes
-├── .env                      # local, nunca versionar
-├── .repo-harness/            # manifest, checker, skills, prompts y reglas
-├── .pi/                      # proyección de skills y prompts para Pi
-├── src/
-│   ├── tehablo_tui.py
-│   ├── tehablo_tts.py
-│   ├── tehablo_numbers.py
-│   ├── tehablo_lexicon.py
-│   └── tehablo_speed.py
-├── scripts/
-│   └── get_voices.py
-├── tests/
-│   ├── test_numbers.py
-│   ├── test_lexicon.py
-│   ├── test_speed.py
-│   ├── test_tui_speed.py
-│   ├── test_tui_smoke.py
-│   └── test_tui_spanish_24l.py
-├── samples/
-│   └── prueba-larga.txt
-├── docs/
-│   ├── como-funciona.md
-│   ├── pocket-tts.md
-│   ├── voces-gratuitas.md
-│   ├── catalogo-gratuito.md
-│   └── repo-harness/         # estado, decisiones, hoja de ruta y uso del harness
-├── voices/
-├── pocket-out/               # audio generado
-└── .venv-pocket/
-```
-
-| Ruta | Propósito | ¿Versionar en Git? |
-|---|---|---|
-| `README.md`, `requirements.txt`, `.gitignore` | Guía, dependencias y exclusiones | Sí |
-| `src/tehablo_tui.py` | Interfaz Textual | Sí |
-| `src/tehablo_tts.py` | Consola simple | Sí |
-| `src/tehablo_numbers.py` | Conversión de números a palabras en español | Sí |
-| `src/tehablo_lexicon.py`, `pronunciaciones.json` | Pronunciación de términos en inglés | Sí |
-| `src/tehablo_speed.py` | Velocidad de la voz sin cambiar el tono (WSOLA con `audiotsm`) | Sí |
-| `scripts/get_voices.py` | Descarga selectiva de voces | Sí |
-| `tests/` | Pruebas ejecutables sin pytest | Sí |
-| `samples/prueba-larga.txt` | Texto largo para `/leer` | Sí |
-| `docs/` | Investigación y referencias | Sí |
-| `LICENSE` | Licencia MIT del proyecto | Sí |
-| `CHANGELOG.md`, `CONTRIBUTING.md` | Historial de cambios y cómo contribuir | Sí |
-| `REPO-HARNESS.md`, `AGENTS.md` | Reglas para agentes de IA y su puntero | Sí |
-| `.repo-harness/`, `.pi/prompts/`, `.pi/skills/repo-harness-*` | Harness de IA generado; `python .repo-harness/check.py` comprueba que esté al día | Sí |
-| `.gitattributes` | Fija finales de línea LF en los archivos generados del harness | Sí |
-| `docs/repo-harness/` | Estado actual, decisiones, hoja de ruta y uso del harness | Sí |
-| `voices/ATTRIBUTION.txt` | Atribución de las referencias descargadas | Sí |
-| `voices/*.wav` | Referencias recreables con `scripts/get_voices.py` | No, ignoradas |
-| `pocket-out/`, `*.mp3` | Audio generado | No, ignorados; excepción: referencias `voices/*.mp3` |
-| `.env` | Secretos locales | No, ignorado |
-| `.venv*/`, `__pycache__/` | Entornos y caché Python | No, ignorados |
-
-La tabla indica qué se debe versionar.
-Ejecute los comandos desde la raíz del repositorio. Las aplicaciones y los scripts
-usan siempre la raíz para `.env`, `voices/` y `pocket-out/`, independientemente
-del directorio de trabajo. `/leer` conserva las rutas relativas al directorio actual.
-
-## Pruebas
-
-`tests/test_numbers.py`, `tests/test_lexicon.py` y `tests/test_speed.py` comprueban la conversión de números, el diccionario de pronunciación y el cambio de velocidad sin modelo ni audio; terminan con código 0 si todos los casos pasan:
-
-```powershell
-.venv-pocket/Scripts/python tests/test_numbers.py
-.venv-pocket/Scripts/python tests/test_lexicon.py
-.venv-pocket/Scripts/python tests/test_speed.py
-```
-
-Las demás son scripts de integración de Textual, no pruebas de pytest. **Reproducen audio
-por los altavoces** y requieren el entorno instalado, un dispositivo de salida
-y los modelos/voces disponibles (la primera carga puede descargarlos).
-
-```powershell
-.venv-pocket/Scripts/python tests/test_tui_smoke.py
-.venv-pocket/Scripts/python tests/test_tui_spanish_24l.py
-.venv-pocket/Scripts/python tests/test_tui_speed.py
-```
-
-En Linux/macOS, use `.venv-pocket/bin/python` en todos los comandos.
-
-- `tests/test_tui_smoke.py`: carga `spanish`, selecciona `rafael`, genera y guarda
-  en `pocket-out/`. El registro debe incluir `listo:` y el guardado.
-- `tests/test_tui_spanish_24l.py`: cambia a `spanish_24l`, pulsa F5 durante la carga
-  y comprueba en el registro la reproducción pendiente y el rechazo de un segundo
-  F5. Debe aparecer una sola línea `listo:` de audio y `model_name: spanish_24l`.
-- `tests/test_tui_speed.py`: genera la misma frase a 1x y a 1,5x desde el selector
-  de velocidad; termina con código 0 si el audio a 1,5x dura alrededor de 1,5 veces menos.
-
-Los scripts imprimen los registros para inspección; su código de salida por sí
-solo no acredita estos resultados.
-
----
-
-## Problemas conocidos
-
-| Síntoma | Causa | Solución |
-|---|---|---|
-| *"We could not download the weights for the model with voice cloning"* | Falta el token de Hugging Face | [Activar la clonación](#activar-la-clonación-de-voces-token-de-hugging-face) |
-| Aviso de *symlinks* en Windows | La caché de Hugging Face no puede crear enlaces simbólicos | Inofensivo; solo usa algo más de disco. Se evita activando el Modo de desarrollador de Windows |
-| No se puede pegar un texto largo en `src/tehablo_tts.py` | Límite de la consola de Windows | Usa `/leer archivo.txt` o la TUI |
-| Sin sonido en Linux | Falta PortAudio | `sudo apt install libportaudio2` |
-| Al cambiar de modelo había que pulsar Reproducir dos veces | El primer clic se descartaba mientras cargaba el modelo | **Corregido:** ahora queda en espera y suena en cuanto el modelo está listo |
-| La primera ejecución tarda más de un minuto | Descarga del modelo | Solo pasa la primera vez |
-| Las cifras como `15.000` sonaban incoherentes | Pocket TTS no convierte números a palabras | **Corregido:** `src/tehablo_numbers.py` los convierte antes de leer (solo con modelos en español) |
-| Términos en inglés (`Python`, `YouTube`) leídos como español | El modelo usa reglas del español | **Corregido** para los términos de `pronunciaciones.json`; añade los que falten |
-| Acento extranjero en español | Voz del catálogo no hispana | Usa `lola` o voces de `voices/` |
+Licencia del proyecto: [MIT](LICENSE).
