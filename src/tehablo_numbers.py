@@ -121,6 +121,19 @@ def _date(m: re.Match) -> str:
     return f"{number_to_words(day)} de {_MONTHS[month - 1]} de {_integer(m.group(3))}"
 
 
+def _score(m: re.Match) -> str:
+    # A score must stand alone, not be a segment of a path or URL token.
+    start, end = m.start(), m.end()
+    while start > 0 and not m.string[start - 1].isspace():
+        start -= 1
+    while end < len(m.string) and not m.string[end].isspace():
+        end += 1
+    surroundings = m.string[start:m.start()] + m.string[m.end():end]
+    if any(char in surroundings for char in ('/', '\\', ':')):
+        return m.group(0)
+    return f"{_integer(m.group(1))} de {_integer(m.group(2))}"
+
+
 def _time(m: re.Match) -> str:
     hour = number_to_words(int(m.group(1)))
     if hour.endswith("uno"):
@@ -155,6 +168,7 @@ def normalize_numbers(text: str) -> str:
     if not re.search(r"\d", text):
         return text
     text = re.sub(r"(?<!\d)(\d{1,2})/(\d{1,2})/(\d{4}|\d{2})(?!\d)", _date, text)
+    text = re.sub(r"(?<![\w/.,:+-])(\d+)/(\d+)(?![\w/]|[.,]\d)", _score, text)
     text = re.sub(r"(?<![\d:])([01]?\d|2[0-3]):([0-5]\d)(?![\d:])", _time, text)
     text = re.sub(rf"([₡$])\s?({_NUM})", _currency, text)
     text = re.sub(rf"({_NUM})\s?%", lambda m: f"{_number(m.group(1))} por ciento", text)

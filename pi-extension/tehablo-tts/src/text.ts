@@ -5,7 +5,13 @@ export function cleanText(raw: string, limit = 3000): string {
     .replace(/<[^>]*>/g, ' ')
     .replace(/^\s*[-=*_]{3,}\s*$/gm, '')
     .replace(/^\s*(?:#{1,6}\s+|>\s*|[-*+]\s+|\d+[.)]\s+)/gm, '')
-    .replace(/[`*_~]/g, '')
+    .replace(/^[ \t]*\|[^\n]*$/gm, row => {
+      const cells = row.trim().replace(/^\||\|$/g, '').split(/(?<!\\)\|/)
+        .map(cell => cell.replace(/\\\|/g, ' ').trim()).filter(Boolean);
+      return cells.every(cell => /^:?-{3,}:?$/.test(cell)) ? '' : cells.join(', ');
+    })
+    .replace(/(?<![\p{L}\p{N}_])(__|_)(\S(?:[^\n]*?\S)??)\1(?![\p{L}\p{N}_])/gu, '$2')
+    .replace(/[`*~]/g, '')
     .replace(/\n\s*\n/g, '\n').trim().replace(/\n+/g, '. ')
     .replace(/\s+/g, ' ').replace(/([.!?])\s*\./g, '$1')
     .trim().slice(0, limit).trim();

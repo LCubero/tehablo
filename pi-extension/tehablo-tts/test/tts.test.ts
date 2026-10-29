@@ -34,6 +34,22 @@ test('clean Markdown, code, links, empty and length',()=>{
   assert.equal(cleanText('```solo código```'),'');
   assert.ok(cleanText('a '.repeat(4000)).length<=3000);
 });
+test('table rows become sentences without alignment rows or empty cells',()=>{
+  assert.equal(cleanText('| Texto | Se lee |\n|---|---|\n| `test` | "testtech" |'),
+    'Texto, Se lee. test, "testtech"');
+  assert.equal(cleanText('| A | B |\n| :--- | ---: |\n| uno | | dos |\n| a\\|b | c |'),
+    'A, B. uno, dos. a b, c');
+});
+test('underscore emphasis is removed but intra-word underscores survive',()=>{
+  assert.equal(cleanText('_italic_ __bold__ _a_ __b__ test_tech snake_case_name `test_tech` **clara** ~~fin~~'),
+    'italic bold a b test_tech snake_case_name test_tech clara fin');
+  assert.equal(cleanText('| Texto | Se lee |\n|---|---|\n| `test_tech` | "testtech" |'),
+    'Texto, Se lee. test_tech, "testtech"');
+});
+test('separators headings and lists retain cleaning with a table',()=>{
+  assert.equal(cleanText('# Hola\n---\n- uno\n| A | B |\n|---|---|\n| dos | tres |\n> fin'),
+    'Hola. uno. A, B. dos, tres. fin');
+});
 test('bare URLs survive cleaning; Markdown labels and code rules remain',()=>{
   assert.equal(cleanText('Ver https://github.com/LCubero/tehablo. y www.example.org'),
     'Ver https://github.com/LCubero/tehablo. y www.example.org');
