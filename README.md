@@ -159,7 +159,7 @@ Solo hace falta para la primera descarga; después funciona sin internet.
 
 **Sin tocar código:**
 - **Pronunciación de términos en inglés:** edita [`pronunciaciones.json`](pronunciaciones.json) (`"Python": "páiton"`). Incluye Git y Pi (`feat`, `master`, `origin`, `pi-tts`); se recarga solo. Cómo escribir cada entrada: [docs/pronunciacion.md](docs/pronunciacion.md).
-- **Texto técnico en español:** las URLs se leen como «enlace a dominio», las rutas solo por su último segmento y los archivos con su extensión. Identificadores como `RH-W-0001` se deletrean y los hashes se resumen como «un hash», antes de aplicar el diccionario y los números.
+- **Texto técnico en español:** las URLs se leen como «enlace a dominio», las rutas solo por su último segmento y los archivos con su extensión; una barra entre palabras se lee «eslash» (`on/off`). Identificadores como `RH-W-0001` se deletrean y los hashes de commit se omiten. Los separadores (`+++`, `===`) no se leen, y las flechas `→` y los paréntesis se convierten en una pausa corta. Todo esto ocurre antes de aplicar el diccionario y los números.
 - **Voces nuevas:** copia grabaciones en `voices/`, o descarga más con `scripts/get_voices.py --speakers 5`.
 - **Calidad:** prueba `spanish_24l`, o una referencia de voz más limpia.
 

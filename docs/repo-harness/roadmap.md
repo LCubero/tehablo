@@ -38,15 +38,14 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 - **Dependencias:** ninguna.
 - **Estado:** `deferred`.
 - **Trabajo restante:**
-  - Revisar cómo se leen los hashes de commit, usando `commit 22774ca` como caso reportado.
   - Decidir si las extensiones de archivo de `src/tehablo_tech.py` (`html` → `hache te eme ele`, `css` → `ce ese ese`) pasan también al inglés.
   - Confirmar mediante escucha el resultado de cada ajuste.
-- **Trabajo completado (2026-10-30):** `API` → `ei pi ai` y `CPU` → `ci pi iu`; se quitó `APIs`; 15 siglas pasaron del deletreo español al inglés (`USB`, `PDF` y `CD` se mantienen); se añadieron 115 términos de desarrollo, Git, GitHub, CI/CD y gestión (291 entradas). Pruebas: `tests/test_lexicon.py` (43/43) y `tests/test_server.py`.
+- **Trabajo completado (2026-10-30):** `API` → `ei pi ai` y `CPU` → `ci pi iu`; se quitó `APIs`; 15 siglas pasaron del deletreo español al inglés (`USB`, `PDF` y `CD` se mantienen); se añadieron 115 términos de desarrollo, Git, GitHub, CI/CD y gestión (291 entradas). Pruebas: `tests/test_lexicon.py` (43/43) y `tests/test_server.py`. Después de la prueba de escucha: `merge` → `mérch`; los hashes de commit se omiten, los separadores (`+++`) no se leen, `→` y los paréntesis son una pausa corta y la barra entre palabras se lee «eslash», conservando la regla de rutas (`src/tehablo_tech.py`, `tests/test_tech.py` 53/53).
 - **Adiciones:** método común para escribir pronunciaciones: [guía de pronunciación](../pronunciacion.md), basada en la skill `wk-en-pronun-tico-ld9` de la persona responsable y adaptada para un modelo de voz (minúsculas con tilde, sin guiones ni mayúsculas).
 - **Exclusiones:** ninguna sigla cambia sin decisión de la persona responsable; no se implementa tratamiento de precios.
 - **Evidencia:** observación directa de la persona responsable: «como los codigos de los commits (commit 22774ca), CPU no lo deletrió en ingles». El 2026-10-30 indicó «API: ei pi ai» y «CPU:  ci pi iu», y pidió «investigar como es para leer como se pronuncia».
 - **Decisión:** la persona responsable indicó «pero eso lo hacemos despues»; el 2026-10-30 eligió las pronunciaciones de `API` y `CPU` y el método de la guía, y después autorizó aplicar las siglas en inglés y los términos propuestos, incluidos los de Git y GitHub («cuando digo programacion son los relacionados al desarrollo»).
-- **Condición del siguiente avance:** autorización explícita para retomarlo y elección de la lectura deseada del hash.
+- **Condición del siguiente avance:** escucha de la persona responsable y su decisión sobre las extensiones de archivo.
 
 ### RH-W-0003: Revisar consumo, carga a demanda y espera de arranque
 

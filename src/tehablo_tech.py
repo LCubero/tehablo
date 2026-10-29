@@ -1,7 +1,12 @@
 """Simplify technical text before the Spanish lexicon and number normalizer.
 
 This is speech preparation, not a URL/path validator. Paths lose directories,
-URLs lose everything but the host, and hashes intentionally lose their value.
+URLs lose everything but the host; mixed lowercase hexadecimal commit hashes
+(7-40 characters) are omitted. Runs of three or more separator characters are
+omitted, preserving C++. Arrows and parentheses become short comma pauses,
+with redundant commas cleaned up. Non-path word slashes become "eslash";
+numeric slashes stay intact for number normalization. Paths are recognized by
+an extension, an explicit path prefix, a trailing slash, or backslashes.
 Hyphens stay intact so configurable lexicon terms such as pi-tts still match.
 """
 import re
@@ -36,11 +41,15 @@ def _plain(text: str) -> str:
         core = token.rstrip('.:')
         if not re.search(r'[/\\]', core) or re.fullmatch(r'[0-9/\\]+', core):
             return token
-        parts = re.split(r'[/\\]', core)
-        if len(parts) < 2 or not parts[-1]:
-            return token
-        return parts[-1] + token[len(core):]
+        parts = re.split(r'[/\\]', core.rstrip('/\\'))
+        is_path = (core.startswith(('/', './', '../', '~/'))
+                   or core.endswith('/') or '\\' in core
+                   or re.search(r'\.[\w-]+$', parts[-1]))
+        if is_path:
+            return parts[-1] + token[len(core):]
+        return re.sub(r'(?<=\w)/(?=\w)', ' eslash ', token)
 
+    text = re.sub(r'[+\-=*_~#]{3,}', ' ', text)
     text = TOKEN.sub(path, text)
     text = FILE.sub(lambda m: re.sub(r'[_-]', ' ', m[1]) + ' punto '
                     + EXTENSIONS[m[2].lower()], text)
@@ -54,13 +63,13 @@ def _plain(text: str) -> str:
                          if group.isalpha() else group for group in groups)
 
     text = IDENTIFIER.sub(identifier, text)
-    text = HASH.sub(lambda m: 'un hash' if re.search('[a-f]', m[0])
+    text = HASH.sub(lambda m: '' if re.search('[a-f]', m[0])
                     and re.search('[0-9]', m[0]) else m[0], text)
     return re.sub(r'(?<=\w)_(?=\w)', ' ', text)
 
 
 def normalize_technical(text: str) -> str:
-    """Read URLs, basenames, file extensions, IDs and hashes in simplified Spanish."""
+    """Prepare technical text, omitting noise and inserting natural pauses."""
     # Process URL-free spans separately: a host like www.example.py is not a file.
     pieces = []
     end = 0
@@ -79,4 +88,13 @@ def normalize_technical(text: str) -> str:
             pieces.append(raw)
         end = match.end()
     pieces.append(_plain(text[end:]))
-    return ''.join(pieces)
+    text = ''.join(pieces)
+    text = re.sub(r'[→()]', ', ', text)
+    text = re.sub(r'\s+,', ',', text)
+    text = re.sub(r',\s+', ', ', text)
+    text = re.sub(r',(?:\s*,)+\s*', ', ', text)
+    text = re.sub(r',\s*([.;:!?])', r'\1', text)
+    text = re.sub(r'([.;:!?])\s*,\s*', r'\1 ', text)
+    text = re.sub(r'([.;:!?])(?:\s*\.)+', r'\1', text)
+    text = re.sub(r'^[\s.,;:]+(?=\S)|,\s*$', '', text.strip())
+    return re.sub(r'\s{2,}', ' ', text).strip()

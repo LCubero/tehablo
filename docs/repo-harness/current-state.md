@@ -39,7 +39,7 @@ Este archivo proyecta solo hechos verificados del proyecto: registros activos, b
 
 - Registrar todo pendiente no trivial en [roadmap.md](roadmap.md), sin mantener un segundo backlog aquí.
 - `RH-W-0001` (`deferred`, P2): endurecer el servidor local de voz.
-- `RH-W-0002` (`deferred`, P3): pronunciaciones en inglés aplicadas; quedan la lectura de hashes de commit, las extensiones de archivo y la confirmación por escucha ([guía de pronunciación](../pronunciacion.md)).
+- `RH-W-0002` (`deferred`, P3): pronunciaciones en inglés y limpieza de símbolos aplicadas (hashes omitidos, separadores, flechas, paréntesis y barras); quedan las extensiones de archivo y la confirmación por escucha ([guía de pronunciación](../pronunciacion.md)).
 - `RH-W-0003` (`deferred`, P2): revisar consumo, carga a demanda o residente, esperas de arranque y medición opcional por equipo.
 - `RH-W-0004` (`deferred`, P3): revisar interfaz, TUI, menús, comandos y ajustes, modo automático persistente y acceso sin mouse.
 - `RH-W-0005` (`deferred`, P3): probar otras voces existentes y fuentes gratuitas de Hugging Face y otros sitios, verificando compatibilidad y condiciones de uso.
