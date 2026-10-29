@@ -96,7 +96,7 @@ La combinación comprobada en Fedora y los límites de la prueba están en [Desa
 La extensión [`pi-extension/tehablo-tts/`](pi-extension/tehablo-tts/) lee las respuestas finales del agente con la voz local. Se carga sola al abrir Pi dentro de este repositorio (`.pi/settings.json`), después de aceptar la confianza del proyecto y ejecutar `/reload`. Para usarla en otros proyectos, añade la ruta absoluta de esa carpeta a `extensions` en tu configuración de Pi.
 
 - **Manual (por defecto):** cada respuesta muestra `[ ▶ Escuchar ]`. Mientras suena aparecen **⏸ Pausar** / **▶ Continuar** y **■ Detener**.
-- **Volumen y velocidad:** junto a Escuchar/Pausar aparecen **Vol − / Vol +** (10–150 %, pasos de 10 %, inicial 100 %) y **Vel − / Vel +** (0.75, 0.9, 1, 1.1, 1.25 y 1.5x), con el valor actual entre botones. Solo clics, sin atajos de teclado. El volumen cambia incluso el audio en reproducción; la velocidad afecta a los siguientes trozos generados, no al audio ya almacenado. Los límites se mantienen sin error.
+- **Volumen y velocidad:** junto a Escuchar/Pausar aparecen **Vol − / Vol +** (10–150 %, pasos de 10 %, inicial 100 %) y **Vel − / Vel +** (1.00x, 1.10x, 1.15x, 1.25x y 1.50x; `/tts speed` sigue aceptando 0.75–1.5), con el valor actual entre botones. Solo clics, sin atajos de teclado. El volumen cambia incluso el audio en reproducción; la velocidad afecta a los siguientes trozos generados, no al audio ya almacenado. Los límites se mantienen sin error.
 - **Automático:** `/tts auto on` lee cada respuesta al terminar; `/tts auto off` vuelve al modo manual.
 
 | Comando | Acción |

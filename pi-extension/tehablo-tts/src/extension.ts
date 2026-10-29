@@ -9,7 +9,8 @@ const help = '/tts on|off · auto on|off · play [n] · pause · resume · stop 
 export function createExtension(pi: ExtensionAPI, client = new ServerClient()) {
   let enabled = true, auto = false, epoch = 0;
   let volume = 1, speed = 1;
-  const speeds = [.75, .9, 1, 1.1, 1.25, 1.5];
+  const speeds = [1, 1.1, 1.15, 1.25, 1.5];
+  const speedLabel = (value: number) => `${value.toFixed(2)}x`;
   let context: ExtensionContext | undefined;
   let playback = {state: 'idle', id: null as string | null};
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -25,10 +26,10 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient()) {
     const direction = kind.endsWith('+') ? 1 : -1;
     const field = kind.startsWith('volume') ? 'volume' : 'speed';
     const value = field === 'volume' ? Math.max(1, Math.min(15, Math.round(volume * 10) + direction)) / 10
-      : direction > 0 ? (speeds.find(v => v > speed) ?? speeds.at(-1)!)
-        : (speeds.findLast(v => v < speed) ?? speeds[0]);
+      : direction > 0 ? (speeds.find(v => v > speed) ?? speed)
+        : (speeds.findLast(v => v < speed) ?? speed);
     sync(await client.action('/config', {[field]: value}));
-    ctx.ui.notify(field === 'volume' ? `Volumen: ${Math.round(volume * 100)} %` : `Velocidad: ${speed}x`, 'info');
+    ctx.ui.notify(field === 'volume' ? `Volumen: ${Math.round(volume * 100)} %` : `Velocidad: ${speedLabel(speed)}`, 'info');
   };
   const update = (state: string, id: string | null) => {
     if (state !== playback.state || id !== playback.id) { playback = {state, id}; refresh(); }
@@ -87,7 +88,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient()) {
       {text: `${Math.round(volume * 100)} %`, action: '', gap: ' '},
       {text: '[ Vol + ]', action: 'volume+', gap: '  '},
       {text: '[ Vel − ]', action: 'speed-', gap: ' '},
-      {text: `${speed}x`, action: '', gap: ' '},
+      {text: speedLabel(speed), action: '', gap: ' '},
       {text: '[ Vel + ]', action: 'speed+', gap: ''},
     ];
     const label = () => context?.mode === 'tui' && enabled && entry.data && cards(context).some(c => c.messageId === entry.data!.messageId)

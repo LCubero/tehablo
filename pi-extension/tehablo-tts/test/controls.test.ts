@@ -17,19 +17,21 @@ test('volume and speed buttons, gaps, limits and command synchronization',async(
  const s=setup();
  const press=async(label:string)=>{const line=s.card.render(200)[0];await click(s.card,Array.from(line.slice(0,line.indexOf(label))).length+2);};
  try {
-  assert.match(s.card.render(200)[0],/\[ Vol − \] 100 % \[ Vol \+ \].*\[ Vel − \] 1x \[ Vel \+ \]/);
+  assert.match(s.card.render(200)[0],/\[ Vol − \] 100 % \[ Vol \+ \].*\[ Vel − \] 1\.00x \[ Vel \+ \]/);
   await press('[ Vol − ]');assert.deepEqual(s.configs.at(-1),{volume:.9});assert.ok(s.notices.includes('Volumen: 90 %'));
   await press('[ Vol + ]');assert.deepEqual(s.configs.at(-1),{volume:1});
-  await press('[ Vel − ]');assert.deepEqual(s.configs.at(-1),{speed:.9});
-  await press('[ Vel + ]');assert.deepEqual(s.configs.at(-1),{speed:1});
+  await press('[ Vel + ]');assert.deepEqual(s.configs.at(-1),{speed:1.1});assert.ok(s.notices.includes('Velocidad: 1.10x'));
+  await press('[ Vel + ]');assert.deepEqual(s.configs.at(-1),{speed:1.15});
+  await press('[ Vel − ]');await press('[ Vel − ]');assert.deepEqual(s.configs.at(-1),{speed:1});
   const n=s.configs.length;
-  for(const value of ['100 %','1x']){const line=s.card.render(200)[0];await click(s.card,Array.from(line.slice(0,line.indexOf(value))).length);}
+  for(const value of ['100 %','1.00x']){const line=s.card.render(200)[0];await click(s.card,Array.from(line.slice(0,line.indexOf(value))).length);}
   assert.equal(s.configs.length,n);
   for(let i=0;i<20;i++)await press('[ Vol − ]');assert.equal(s.configs.at(-1).volume,.1);
   for(let i=0;i<20;i++)await press('[ Vol + ]');assert.equal(s.configs.at(-1).volume,1.5);
-  for(let i=0;i<8;i++)await press('[ Vel − ]');assert.equal(s.configs.at(-1).speed,.75);
+  for(let i=0;i<8;i++)await press('[ Vel − ]');assert.equal(s.configs.at(-1).speed,1);
   for(let i=0;i<8;i++)await press('[ Vel + ]');assert.equal(s.configs.at(-1).speed,1.5);
-  await s.command('speed 1.25');assert.match(s.card.render(200)[0],/1.25x/);
+  await s.command('speed 1.25');assert.match(s.card.render(200)[0],/1\.25x/);
+  await s.command('speed 0.9');await press('[ Vel − ]');assert.equal(s.configs.at(-1).speed,.9);await press('[ Vel + ]');assert.equal(s.configs.at(-1).speed,1);
   await click(s.card,2);assert.ok(s.calls.includes('/speak'));
  }finally{await s.close();}
 });
