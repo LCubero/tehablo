@@ -371,6 +371,8 @@ La segmentación intenta límites de oración (`.!?`, incluidos patrones de punt
 
 **VERIFICADO consultando GitHub:** [PR #375](https://github.com/kyutai-labs/pocket-tts/pull/375) estaba **abierto, sin fusionar**. Propone JSON `{palabra: reescritura}`, coincidencia de palabras completas sin distinguir mayúsculas, entradas multipalabra, prioridad a la coincidencia más larga y una única pasada. Añade `pronunciations=` a `generate_audio` / `generate_audio_stream` y `--pronunciations lexicon.json` a `generate`; **no conecta `serve`**.
 
+**Implementado en tehablo:** [`src/tehablo_lexicon.py`](../src/tehablo_lexicon.py) sigue el mismo formato que el PR #375 (JSON `{"término": "reescritura"}`, palabras completas, sin distinguir mayúsculas, coincidencia más larga primero, una sola pasada) y añade el plural con `s` (`routers` → `ráuters`). La TUI y la consola lo aplican antes de convertir números, con cualquier voz, cuando el modelo es `spanish` o `spanish_24l`. El diccionario es [`pronunciaciones.json`](../pronunciaciones.json), en la raíz, y se recarga solo al guardarlo; si tiene un error, se conserva la versión anterior y se muestra un aviso. Las reescrituras usan ortografía española con tilde en la sílaba fuerte (`páiton`, `guítjab`) y las siglas se deletrean (`a pe i`). Pruebas: `tests/test_lexicon.py`.
+
 **No uses esos argumentos como si existieran en 4.0.1.** Mientras no se incorpore una versión compatible, un preprocesador propio puede aplicar la misma idea sin modificar Pocket TTS. No se ha implementado aquí ni se presupone que el PR haya sido aprobado.
 
 Ejemplo de diccionario **conceptual, no validado acústicamente**:
@@ -475,7 +477,7 @@ Buenas prácticas: documentar autorización del hablante, fuente exacta, licenci
 | Menos cortes finales | Ajustar EOS/cuadros con batería corta y larga | Bajo | No | **Oficial**; ajuste concreto no probado |
 | Menos omisiones largas | Puntuación, límites de fragmento y revisión de uniones | Medio | No | **Oficial** para chunking; política propia no probada |
 | Números/fechas/monedas/siglas | Preprocesamiento contextual; posible num2words | Medio | No | **Números, fechas, horas, ₡/$ y % implementados** en `src/tehablo_numbers.py`; siglas y unidades pendientes |
-| Diccionario inglés→reescritura | JSON antes de llamar al modelo, con excepciones | Medio | No | **Idea no probada** en tehablo |
+| Diccionario inglés→reescritura | JSON antes de llamar al modelo, con excepciones | Medio | No | **Implementado** en `src/tehablo_lexicon.py` + `pronunciaciones.json` |
 | Diccionario en API/CLI nativa | Seguir `pronunciations=` / `--pronunciations` | Medio | Sí, si se adopta ese parche antes de publicarse | **PR abierto #375**, no disponible localmente |
 | Inglés auténtico por tramos | Parser externo, modelo inglés y español, estados separados y concatenación | Alto | No | **Idea no probada** |
 | Pausas de duración exacta | Dividir y añadir silencio PCM externamente | Medio | No | **Idea no probada** aquí; workaround comunitario |

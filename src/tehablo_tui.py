@@ -34,12 +34,14 @@ import numpy as np
 import scipy.io.wavfile
 import sounddevice as sd
 from pocket_tts import TTSModel
+from rich.markup import escape
 from pocket_tts.utils.utils import _ORIGINS_OF_PREDEFINED_VOICES
 from textual import work
 from textual.app import App, ComposeResult
 from textual.containers import Horizontal
 from textual.widgets import Button, Footer, Header, RichLog, Select, TextArea
 
+from tehablo_lexicon import Lexicon
 from tehablo_numbers import normalize_numbers
 
 VOICES_DIR = ROOT / "voices"
@@ -84,6 +86,7 @@ class TehabloApp(App):
         self.model: TTSModel | None = None
         self.model_name = ""
         self.voice_states: dict[str, object] = {}
+        self.lexicon = Lexicon(ROOT / "pronunciaciones.json")
         self.last_audio: np.ndarray | None = None
         self.stop_event = threading.Event()
         self.busy = threading.Lock()
@@ -190,7 +193,9 @@ class TehabloApp(App):
                     self.log_msg(f"Preparando voz '{Path(voice).stem}'...")
                     self.voice_states[voice] = self.model.get_state_for_audio_prompt(voice, truncate=True)
                 if self.model_name.startswith("spanish"):
-                    text = normalize_numbers(text)
+                    text = normalize_numbers(self.lexicon.apply(text))
+                    if self.lexicon.error:
+                        self.log_msg(f"[yellow]{escape(self.lexicon.error)}[/yellow]")
                 sr = self.model.sample_rate
                 chunks: list[np.ndarray] = []
                 start = time.perf_counter()

@@ -153,6 +153,24 @@ Texto de prueba largo: [`samples/prueba-larga.txt`](samples/prueba-larga.txt). E
 
 ---
 
+### Términos en inglés
+
+El modelo lee todo con reglas del español, así que "Python" suena "pi-ton". Con los modelos `spanish` y `spanish_24l`, y con cualquier voz, la TUI y la consola cambian antes de leer cada término de [`pronunciaciones.json`](pronunciaciones.json) por cómo suena: `Python` → *páiton*, `GitHub` → *guítjab*, `WhatsApp` → *guatsáp*, `API` → *a pe i*. Trae unos 135 términos de programación, marcas y palabras comunes.
+
+Para añadir o corregir uno, edita el archivo y guárdalo; se recarga solo en la siguiente lectura:
+
+```json
+{
+  "Python": "páiton",
+  "Kotlin": "cótlin"
+}
+```
+
+- Escribe la pronunciación con ortografía española y pon tilde en la sílaba fuerte.
+- Las siglas se deletrean: `"SQL": "es ku el"`.
+- No distingue mayúsculas, solo cambia palabras completas (`Pythonista` no se toca) y también cubre el plural con `s`.
+- Si el archivo tiene un error, la TUI muestra un aviso y sigue usando la versión anterior.
+
 ## Voces
 
 ### Catálogo incluido (funciona sin token)
@@ -240,16 +258,19 @@ Atribución sugerida: *"Voz sintetizada con Kyutai Pocket TTS (CC BY 4.0). Voz d
 tehablo/
 ├── README.md
 ├── requirements.txt
+├── pronunciaciones.json
 ├── .gitignore
 ├── .env                      # local, nunca versionar
 ├── src/
 │   ├── tehablo_tui.py
 │   ├── tehablo_tts.py
-│   └── tehablo_numbers.py
+│   ├── tehablo_numbers.py
+│   └── tehablo_lexicon.py
 ├── scripts/
 │   └── get_voices.py
 ├── tests/
 │   ├── test_numbers.py
+│   ├── test_lexicon.py
 │   ├── test_tui_smoke.py
 │   └── test_tui_spanish_24l.py
 ├── samples/
@@ -269,6 +290,7 @@ tehablo/
 | `src/tehablo_tui.py` | Interfaz Textual | Sí |
 | `src/tehablo_tts.py` | Consola simple | Sí |
 | `src/tehablo_numbers.py` | Conversión de números a palabras en español | Sí |
+| `src/tehablo_lexicon.py`, `pronunciaciones.json` | Pronunciación de términos en inglés | Sí |
 | `scripts/get_voices.py` | Descarga selectiva de voces | Sí |
 | `tests/` | Pruebas ejecutables sin pytest | Sí |
 | `samples/prueba-larga.txt` | Texto largo para `/leer` | Sí |
@@ -286,10 +308,11 @@ del directorio de trabajo. `/leer` conserva las rutas relativas al directorio ac
 
 ## Pruebas
 
-`tests/test_numbers.py` comprueba la conversión de números a palabras sin modelo ni audio; termina con código 0 si todos los casos pasan:
+`tests/test_numbers.py` y `tests/test_lexicon.py` comprueban la conversión de números y el diccionario de pronunciación sin modelo ni audio; terminan con código 0 si todos los casos pasan:
 
 ```powershell
 .venv-pocket/Scripts/python tests/test_numbers.py
+.venv-pocket/Scripts/python tests/test_lexicon.py
 ```
 
 Las demás son scripts de integración de Textual, no pruebas de pytest. **Reproducen audio
@@ -325,4 +348,5 @@ solo no acredita estos resultados.
 | Al cambiar de modelo había que pulsar Reproducir dos veces | El primer clic se descartaba mientras cargaba el modelo | **Corregido:** ahora queda en espera y suena en cuanto el modelo está listo |
 | La primera ejecución tarda más de un minuto | Descarga del modelo | Solo pasa la primera vez |
 | Las cifras como `15.000` sonaban incoherentes | Pocket TTS no convierte números a palabras | **Corregido:** `src/tehablo_numbers.py` los convierte antes de leer (solo con modelos en español) |
+| Términos en inglés (`Python`, `YouTube`) leídos como español | El modelo usa reglas del español | **Corregido** para los términos de `pronunciaciones.json`; añade los que falten |
 | Acento extranjero en español | Voz del catálogo no hispana | Usa `lola` o voces de `voices/` |

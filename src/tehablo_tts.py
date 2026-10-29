@@ -33,6 +33,7 @@ import sounddevice as sd
 from pocket_tts import TTSModel
 from pocket_tts.utils.utils import _ORIGINS_OF_PREDEFINED_VOICES
 
+from tehablo_lexicon import Lexicon
 from tehablo_numbers import normalize_numbers
 
 VOICES = sorted(_ORIGINS_OF_PREDEFINED_VOICES)
@@ -54,6 +55,7 @@ Ctrl+C durante la reproduccion la corta."""
 class App:
     def __init__(self, language: str, voice: str):
         self.voice_cache: dict[str, object] = {}
+        self.lexicon = Lexicon(ROOT / "pronunciaciones.json")
         self.last_audio: np.ndarray | None = None
         self.load_model(language)
         self.set_voice(voice)
@@ -74,7 +76,9 @@ class App:
 
     def speak(self, text: str) -> None:
         if self.language.startswith("spanish"):
-            text = normalize_numbers(text)
+            text = normalize_numbers(self.lexicon.apply(text))
+            if self.lexicon.error:
+                print(f"Aviso: {self.lexicon.error}")
         sr = self.model.sample_rate
         chunks: list[np.ndarray] = []
         start = time.perf_counter()
