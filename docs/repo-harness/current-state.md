@@ -6,7 +6,7 @@
 
 <!-- doc-role:verified-state -->
 
-`tehablo` sintetiza voz en español de forma local con Pocket TTS, solo con CPU. Según el historial de Git (7 commits) y el README:
+`tehablo` sintetiza voz en español de forma local con Pocket TTS, solo con CPU. Según el código, el historial de Git y el README:
 
 - TUI en Textual (`src/tehablo_tui.py`) y consola simple (`src/tehablo_tts.py`).
 - Conversión de números a palabras en español (`src/tehablo_numbers.py`).
@@ -36,10 +36,11 @@ Este archivo proyecta solo hechos verificados del proyecto: registros activos, b
 <!-- doc-role:pending-work -->
 
 - Registrar todo pendiente no trivial en [roadmap.md](roadmap.md), sin mantener un segundo backlog aquí.
-- `RH-W-0001` (`proposed`, P2): endurecer el servidor local de voz.
+- `RH-W-0001` (`deferred`, P2): endurecer el servidor local de voz.
+- `RH-W-0002` (`deferred`, P3): ajustar la lectura de hashes de commit y el deletreo de CPU en inglés.
 
 ## Siguiente paso
 
 <!-- doc-role:next-step -->
 
-La integración con Pi está en `master`. Siguiente trabajo propuesto: `RH-W-0001` en [roadmap.md](roadmap.md), endurecer el servidor local de voz.
+La integración con Pi está en `master`. Los dos trabajos de [roadmap.md](roadmap.md) están aplazados por decisión de la persona responsable; retomarlos requiere su autorización explícita.

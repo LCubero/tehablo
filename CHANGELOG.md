@@ -14,3 +14,4 @@ Este archivo registra los cambios completados en orden cronológico.
 - Se añadió la extensión de Pi `tehablo-tts` y el servidor local `src/tehablo_server.py` para leer en voz alta las respuestas del agente, en modo manual (Escuchar, Pausar, Continuar, Detener) o automático (`/tts auto on`).
 - Los controles de Pi muestran solo los botones, sin el comando numerado.
 - Se amplió la pronunciación de Git y Pi y se simplificó la lectura de URLs, rutas, archivos, identificadores y hashes en español; Pi conserva las URLs sueltas para leer su dominio.
+- Se documentó el aplazamiento del endurecimiento del servidor (`RH-W-0001`) y los ajustes pendientes de pronunciación de hashes de commit y CPU reportados en la prueba de audio (`RH-W-0002`), sin modificar su comportamiento.

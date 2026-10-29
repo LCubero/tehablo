@@ -22,13 +22,29 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 - **Origen:** revisión de código de Gentle AI de la integración con Pi (lineage `review-37a6239aeea8d19d`), aprobada con avisos no bloqueantes.
 - **Prioridad:** P2. Solo escucha en `127.0.0.1`, pero cualquier proceso local o página web abierta puede llamarlo.
 - **Dependencias:** ninguna.
-- **Estado:** `proposed`.
+- **Estado:** `deferred`.
 - **Trabajo restante:**
   - Rechazar peticiones `POST` sin `Content-Type: application/json` o con cabecera `Origin` (`src/tehablo_server.py`).
   - Si el modelo no carga, informar el error en `/health` y `/status` en lugar de quedar en `loading`.
   - Revisar los tiempos de espera de la extensión (2 s por petición, ~7,5 s al arrancar el servidor) en equipos lentos.
 - **Evidencia:** avisos R1-001, R3-001, R3-002, R4-001 y R4-002 de esa revisión.
-- **Condición del siguiente avance:** decisión de la persona responsable de priorizarlo.
+- **Decisión:** la persona responsable lo aplazó explícitamente tras revisar la propuesta; no se autorizó su implementación.
+- **Condición del siguiente avance:** autorización explícita de la persona responsable para retomarlo.
+
+### RH-W-0002: Ajustar la lectura de hashes de commit y CPU
+
+- **Origen:** prueba de audio realizada por la persona responsable con las respuestas de Pi.
+- **Prioridad:** P3; ajuste de pronunciación, sin impedir la síntesis de voz.
+- **Dependencias:** ninguna.
+- **Estado:** `deferred`.
+- **Trabajo restante:**
+  - Revisar cómo se leen los hashes de commit, usando `commit 22774ca` como caso reportado.
+  - Cambiar la pronunciación de `CPU` al deletreo en inglés; actualmente `pronunciaciones.json` contiene `ce pe u`.
+  - Confirmar mediante escucha el resultado de ambos ajustes.
+- **Exclusiones:** no se solicitó cambiar GPU, USB u otras siglas, ni implementar tratamiento de precios.
+- **Evidencia:** observación directa de la persona responsable: «como los codigos de los commits (commit 22774ca), CPU no lo deletrió en ingles».
+- **Decisión:** la persona responsable indicó «pero eso lo hacemos despues»; no se implementan estos ajustes en esta sesión.
+- **Condición del siguiente avance:** autorización explícita para retomarlo y elección de la lectura deseada del hash.
 
 ## Registros resueltos
 <!-- doc-role:resolved-records -->
