@@ -3,3 +3,4 @@
 pocket-tts>=4.0
 sounddevice>=0.5
 textual>=8.0
+audiotsm>=0.1.2

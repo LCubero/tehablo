@@ -109,8 +109,10 @@ El entorno `.venv-pocket` **no se puede copiar** entre sistemas operativos: hay 
 
 1. Espera a que el registro de abajo diga *"Modelo 'spanish' listo"*.
 2. Escribe o pega texto en el cuadro grande. Admite textos largos.
-3. Elige la **voz** (primer desplegable) y el **modelo** (segundo desplegable).
+3. Elige la **voz** (primer desplegable), el **modelo** (segundo) y la **velocidad** (tercero: de 0,75x a 1,5x; 1x es la normal).
 4. Pulsa **F5** o **Reproducir**.
+
+La velocidad cambia el ritmo sin cambiar el tono de la voz (no suena aguda ni grave) y se aplica mientras se genera. Se elige antes de pulsar F5; el audio guardado con F7 conserva la velocidad elegida.
 
 | Tecla / botón | Acción |
 |---|---|
@@ -265,12 +267,15 @@ tehablo/
 │   ├── tehablo_tui.py
 │   ├── tehablo_tts.py
 │   ├── tehablo_numbers.py
-│   └── tehablo_lexicon.py
+│   ├── tehablo_lexicon.py
+│   └── tehablo_speed.py
 ├── scripts/
 │   └── get_voices.py
 ├── tests/
 │   ├── test_numbers.py
 │   ├── test_lexicon.py
+│   ├── test_speed.py
+│   ├── test_tui_speed.py
 │   ├── test_tui_smoke.py
 │   └── test_tui_spanish_24l.py
 ├── samples/
@@ -291,6 +296,7 @@ tehablo/
 | `src/tehablo_tts.py` | Consola simple | Sí |
 | `src/tehablo_numbers.py` | Conversión de números a palabras en español | Sí |
 | `src/tehablo_lexicon.py`, `pronunciaciones.json` | Pronunciación de términos en inglés | Sí |
+| `src/tehablo_speed.py` | Velocidad de la voz sin cambiar el tono (WSOLA con `audiotsm`) | Sí |
 | `scripts/get_voices.py` | Descarga selectiva de voces | Sí |
 | `tests/` | Pruebas ejecutables sin pytest | Sí |
 | `samples/prueba-larga.txt` | Texto largo para `/leer` | Sí |
@@ -308,11 +314,12 @@ del directorio de trabajo. `/leer` conserva las rutas relativas al directorio ac
 
 ## Pruebas
 
-`tests/test_numbers.py` y `tests/test_lexicon.py` comprueban la conversión de números y el diccionario de pronunciación sin modelo ni audio; terminan con código 0 si todos los casos pasan:
+`tests/test_numbers.py`, `tests/test_lexicon.py` y `tests/test_speed.py` comprueban la conversión de números, el diccionario de pronunciación y el cambio de velocidad sin modelo ni audio; terminan con código 0 si todos los casos pasan:
 
 ```powershell
 .venv-pocket/Scripts/python tests/test_numbers.py
 .venv-pocket/Scripts/python tests/test_lexicon.py
+.venv-pocket/Scripts/python tests/test_speed.py
 ```
 
 Las demás son scripts de integración de Textual, no pruebas de pytest. **Reproducen audio
@@ -322,15 +329,18 @@ y los modelos/voces disponibles (la primera carga puede descargarlos).
 ```powershell
 .venv-pocket/Scripts/python tests/test_tui_smoke.py
 .venv-pocket/Scripts/python tests/test_tui_spanish_24l.py
+.venv-pocket/Scripts/python tests/test_tui_speed.py
 ```
 
-En Linux/macOS, use `.venv-pocket/bin/python` en ambos comandos.
+En Linux/macOS, use `.venv-pocket/bin/python` en todos los comandos.
 
 - `tests/test_tui_smoke.py`: carga `spanish`, selecciona `rafael`, genera y guarda
   en `pocket-out/`. El registro debe incluir `listo:` y el guardado.
 - `tests/test_tui_spanish_24l.py`: cambia a `spanish_24l`, pulsa F5 durante la carga
   y comprueba en el registro la reproducción pendiente y el rechazo de un segundo
   F5. Debe aparecer una sola línea `listo:` de audio y `model_name: spanish_24l`.
+- `tests/test_tui_speed.py`: genera la misma frase a 1x y a 1,5x desde el selector
+  de velocidad; termina con código 0 si el audio a 1,5x dura alrededor de 1,5 veces menos.
 
 Los scripts imprimen los registros para inspección; su código de salida por sí
 solo no acredita estos resultados.

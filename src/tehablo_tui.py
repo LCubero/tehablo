@@ -43,6 +43,7 @@ from textual.widgets import Button, Footer, Header, RichLog, Select, TextArea
 
 from tehablo_lexicon import Lexicon
 from tehablo_numbers import normalize_numbers
+from tehablo_speed import SPEEDS, SpeedStream
 
 VOICES_DIR = ROOT / "voices"
 OUT_DIR = ROOT / "pocket-out"
@@ -69,6 +70,7 @@ class TehabloApp(App):
     #controls { height: auto; }
     #voice { width: 2fr; }
     #model { width: 1fr; }
+    #speed { width: 18; }
     Button { margin: 0 1; }
     #text { height: 1fr; }
     #log { height: 10; border: round $accent; }
@@ -98,6 +100,9 @@ class TehabloApp(App):
         with Horizontal(id="controls"):
             yield Select(list_voices(), value="lola", allow_blank=False, id="voice", prompt="Voz")
             yield Select([(m, m) for m in MODELS], value="spanish", allow_blank=False, id="model")
+            yield Select(
+                [(f"Velocidad {s:g}x", s) for s in SPEEDS], value=1.0, allow_blank=False, id="speed"
+            )
             yield Button("Reproducir (F5)", id="play", variant="success")
             yield Button("Detener (F6)", id="stop", variant="error")
             yield Button("Guardar (F7)", id="save")
@@ -151,7 +156,8 @@ class TehabloApp(App):
         if self.loading:
             self.log_msg("Cargando el modelo; se reproducira en cuanto termine.")
         self.speaking = True
-        self.speak(text, str(self.query_one("#voice", Select).value))
+        speed = float(self.query_one("#speed", Select).value)
+        self.speak(text, str(self.query_one("#voice", Select).value), speed)
 
     def action_stop(self) -> None:
         self.stop_event.set()
@@ -176,13 +182,13 @@ class TehabloApp(App):
         self.log_msg(f"Guardado: {path}")
 
     @work(thread=True, exclusive=True, group="speak")
-    def speak(self, text: str, voice: str) -> None:
+    def speak(self, text: str, voice: str, speed: float = 1.0) -> None:
         try:
-            self._speak(text, voice)
+            self._speak(text, voice, speed)
         finally:
             self.speaking = False
 
-    def _speak(self, text: str, voice: str) -> None:
+    def _speak(self, text: str, voice: str, speed: float) -> None:
         with self.busy:
             if self.model is None:
                 self.log_msg("El modelo aun no esta cargado.")
@@ -198,17 +204,25 @@ class TehabloApp(App):
                         self.log_msg(f"[yellow]{escape(self.lexicon.error)}[/yellow]")
                 sr = self.model.sample_rate
                 chunks: list[np.ndarray] = []
+                stretch = SpeedStream(speed)
                 start = time.perf_counter()
-                self.log_msg(f"Generando {len(text)} caracteres...")
+                self.log_msg(f"Generando {len(text)} caracteres a velocidad {speed:g}x...")
                 with sd.OutputStream(samplerate=sr, channels=1, dtype="float32") as out:
                     for chunk in self.model.generate_audio_stream(
                         self.voice_states[voice], text, stop=self.stop_event
                     ):
                         if self.stop_event.is_set():
                             break
-                        data = chunk.detach().cpu().numpy().astype(np.float32).reshape(-1, 1)
-                        chunks.append(data)
-                        out.write(data)
+                        audio = chunk.detach().cpu().numpy().astype(np.float32).reshape(-1)
+                        data = stretch.process(audio).reshape(-1, 1)
+                        if data.size:
+                            chunks.append(data)
+                            out.write(data)
+                    if not self.stop_event.is_set():
+                        tail = stretch.flush().reshape(-1, 1)
+                        if tail.size:
+                            chunks.append(tail)
+                            out.write(tail)
             except Exception as exc:
                 self.log_msg(f"[red]Error: {exc}[/red]")
                 return
