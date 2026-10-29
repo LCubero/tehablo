@@ -4,6 +4,10 @@
 
 Este archivo registra los cambios completados en orden cronológico.
 
+## 2026-10-30
+
+- Se añadió la guía para escribir pronunciaciones en inglés (`docs/pronunciacion.md`) y se registraron las pronunciaciones decididas de `API` y `CPU` (`RH-W-0002`), los ajustes de comandos, modo automático y acceso sin mouse (`RH-W-0004`), y los trabajos propuestos de GPU opcional, instalación local y Docker/VPS (`RH-W-0007` a `RH-W-0009`), sin cambiar el comportamiento.
+
 ## 2026-10-29
 
 - Se restauró el entorno CPU nativo de Fedora conservando el de Windows y se verificaron síntesis, salida de audio y transporte de la extensión; se documentaron instalación y límites (`RH-W-0006`).

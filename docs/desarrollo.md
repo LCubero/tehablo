@@ -85,6 +85,7 @@ tehablo/
 ├── docs/
 │   ├── como-funciona.md
 │   ├── pocket-tts.md
+│   ├── pronunciacion.md
 │   ├── voces-gratuitas.md
 │   ├── catalogo-gratuito.md
 │   ├── desarrollo.md

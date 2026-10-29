@@ -39,11 +39,13 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 - **Estado:** `deferred`.
 - **Trabajo restante:**
   - Revisar cómo se leen los hashes de commit, usando `commit 22774ca` como caso reportado.
-  - Cambiar la pronunciación de `CPU` al deletreo en inglés; actualmente `pronunciaciones.json` contiene `ce pe u`.
-  - Confirmar mediante escucha el resultado de ambos ajustes.
-- **Exclusiones:** no se solicitó cambiar GPU, USB u otras siglas, ni implementar tratamiento de precios.
-- **Evidencia:** observación directa de la persona responsable: «como los codigos de los commits (commit 22774ca), CPU no lo deletrió en ingles».
-- **Decisión:** la persona responsable indicó «pero eso lo hacemos despues»; no se implementan estos ajustes en esta sesión.
+  - Aplicar en `pronunciaciones.json` las pronunciaciones decididas: `API` → `ei pi ai` (hoy `a pe i`) y `CPU` → `ci pi iu` (hoy `ce pe u`); comprobar si la entrada `APIs` sobra porque el plural se añade solo.
+  - Decidir con la persona responsable qué siglas deletreadas con letras del español pasan al inglés, según la lista «Por decidir» de la [guía de pronunciación](../pronunciacion.md).
+  - Confirmar mediante escucha el resultado de cada ajuste.
+- **Adiciones:** método común para escribir pronunciaciones: [guía de pronunciación](../pronunciacion.md), basada en la skill `wk-en-pronun-tico-ld9` de la persona responsable y adaptada para un modelo de voz (minúsculas con tilde, sin guiones ni mayúsculas).
+- **Exclusiones:** ninguna sigla cambia sin decisión de la persona responsable; no se implementa tratamiento de precios.
+- **Evidencia:** observación directa de la persona responsable: «como los codigos de los commits (commit 22774ca), CPU no lo deletrió en ingles». El 2026-10-30 indicó «API: ei pi ai» y «CPU:  ci pi iu», y pidió «investigar como es para leer como se pronuncia».
+- **Decisión:** la persona responsable indicó «pero eso lo hacemos despues»; el 2026-10-30 eligió las pronunciaciones de `API` y `CPU` y el método de la guía, sin autorizar todavía el cambio de `pronunciaciones.json`.
 - **Condición del siguiente avance:** autorización explícita para retomarlo y elección de la lectura deseada del hash.
 
 ### RH-W-0003: Revisar consumo, carga a demanda y espera de arranque
@@ -67,8 +69,13 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 - **Prioridad:** P3; mejoras de uso cuyo alcance está por concretar.
 - **Dependencias:** coordinar las opciones de recursos con las decisiones de `RH-W-0003`, si se exponen en la interfaz.
 - **Estado:** `deferred`.
-- **Trabajo restante:** revisar la interfaz de Pi y la TUI existente, concretar los problemas de uso y acordar qué menús, opciones y ajustes se quieren mejorar antes de diseñar o implementar.
-- **Evidencia:** solicitud de la persona responsable en esta sesión; no se realizó una evaluación de interfaz.
+- **Trabajo restante:**
+  - Revisar la interfaz de Pi y la TUI existente, concretar los problemas de uso y acordar qué menús, opciones y ajustes se quieren mejorar antes de diseñar o implementar.
+  - Revisar, agregar o modificar los comandos (`/tts` y sus opciones) y los ajustes.
+  - Modo automático persistente: con `/tts auto on` debe leer cada respuesta hasta que se desactive; hoy `session_start` lo reinicia a `auto = false` (`pi-extension/tehablo-tts/src/extension.ts`). El modo y sus ajustes viven en la extensión; falta elegir dónde se guardan.
+  - Modo sin mouse: los botones Escuchar, Pausar y Detener de Pi solo responden al clic; añadir acceso por teclado.
+  - Decidir dónde se exponen estas opciones: atajos principales, un menú interno de la TUI por hacer o comandos.
+- **Evidencia:** solicitud de la persona responsable; el 2026-10-30 pidió «los comandos hay que revisarlos agregar modificar, settigs, etc», «Modo automático» y «Modo sin mouse», y aclaró que el modo automático «lee automaticamente sin tener que dar play en escuchar, cada respuesta, hasta que se desactive el modo». No se realizó una evaluación de interfaz.
 - **Decisión:** registrar para después; no se ha elegido un rediseño ni se añaden funciones por el «etc» de la solicitud.
 - **Condición del siguiente avance:** autorización para revisar la interfaz y concretar el alcance con la persona responsable.
 
@@ -87,6 +94,46 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 - **Evidencia:** solicitud de la persona responsable; existe un catálogo previo en `docs/voces-gratuitas.md`, pero esta sesión no probó ni descargó voces nuevas.
 - **Decisión:** registrar para después; no se autoriza con esta anotación una descarga, incorporación ni publicación de grabaciones.
 - **Condición del siguiente avance:** autorización para una prueba acotada de voces, con fuentes y condiciones de uso verificadas.
+
+### RH-W-0007: Modo GPU opcional
+
+- **Origen:** solicitud de la persona responsable del 2026-10-30: «Agregar opción de usar gpu».
+- **Prioridad:** P3; mejora futura de rendimiento y memoria, sin afectar el uso con CPU.
+- **Dependencias:** coordinar con `RH-W-0003`, porque una de las metas es liberar RAM.
+- **Estado:** `proposed`.
+- **Trabajo restante:**
+  - Investigar si Pocket TTS funciona con CUDA u otra GPU y qué mejora real ofrece en velocidad y RAM.
+  - Si es viable, diseñar una opción para activar o cambiar a modo GPU, manteniendo CPU como modo predeterminado.
+  - Actualizar la documentación que hoy describe el proyecto como solo CPU (`README.md`, `requirements.txt`, propósito en `REPO-HARNESS.md`).
+- **Exclusiones:** no se abandona ni se degrada el modo solo CPU.
+- **Evidencia:** el proyecto instala Torch CPU (`requirements.txt`) y el README indica que no usa GPU; no se ha comprobado el soporte de GPU de Pocket TTS.
+- **Decisión:** la persona responsable indicó «a futuro es una opcion extra, activar gpu o cambiar a modo gpu para mejor rendimiento o liberar la ram» y «no estamos dejando el modo solo cpu».
+- **Condición del siguiente avance:** autorización para la investigación acotada del soporte de GPU.
+
+### RH-W-0008: Instalación local fácil
+
+- **Origen:** solicitud de la persona responsable del 2026-10-30: «hay que hacerlo facil de instalar en loca, en vps, etc y seguro».
+- **Prioridad:** P2; hoy la instalación requiere varios pasos manuales por sistema operativo.
+- **Dependencias:** ninguna.
+- **Estado:** `proposed`.
+- **Trabajo restante:** revisar los pasos actuales de instalación en Windows y Linux, proponer una forma más simple (por ejemplo, un instalador o script) y verificarla en un entorno limpio.
+- **Evidencia:** pasos de instalación actuales en `README.md` y [Desarrollo](../desarrollo.md); no se evaluaron alternativas.
+- **Decisión:** registrar para después; no se eligió herramienta ni formato de instalación.
+- **Condición del siguiente avance:** autorización para revisar la instalación y proponer la alternativa.
+
+### RH-W-0009: Versión Docker y despliegue seguro en VPS
+
+- **Origen:** solicitud de la persona responsable del 2026-10-30: «La versión docker» y facilitar la instalación «en vps, etc y seguro».
+- **Prioridad:** P2; amplía dónde puede ejecutarse, pero exponerlo en red cambia el modelo de seguridad.
+- **Dependencias:** `RH-W-0001` (el servidor no tiene autenticación) y `RH-W-0008`.
+- **Estado:** `proposed`.
+- **Trabajo restante:**
+  - Diseñar cómo llega el audio a quien lo pide: hoy el servidor lo reproduce en el altavoz de su propio equipo (`sounddevice`), que no existe en un contenedor o VPS.
+  - Definir autenticación y exposición de red antes de escuchar fuera de `127.0.0.1`.
+  - Preparar la imagen Docker para uso local y, después, el despliegue en VPS.
+- **Evidencia:** `src/tehablo_server.py` escucha solo en `127.0.0.1`, sin autenticación, y reproduce el audio localmente.
+- **Decisión:** registrar para después, separado de la instalación local; no se eligió diseño.
+- **Condición del siguiente avance:** autorización para diseñar la versión Docker, con `RH-W-0001` resuelto antes de exponer el servidor en red.
 
 ## Registros resueltos
 <!-- doc-role:resolved-records -->

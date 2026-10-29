@@ -25,6 +25,7 @@ Este archivo proyecta solo hechos verificados del proyecto: registros activos, b
 
 <!-- doc-role:recent-work -->
 
+- Guía para escribir pronunciaciones en inglés ([docs/pronunciacion.md](../pronunciacion.md)).
 - `RH-W-0006` (`completed`): entorno CPU nativo de Fedora restaurado y verificado, conservando el entorno de Windows; sin trabajo restante dentro de ese alcance.
 - Se creó el harness mínimo de IA del repositorio y su documentación visible de continuidad.
 - Se documentó el flujo de procesamiento y el consumo de recursos medido (`docs/como-funciona.md`).
@@ -38,13 +39,16 @@ Este archivo proyecta solo hechos verificados del proyecto: registros activos, b
 
 - Registrar todo pendiente no trivial en [roadmap.md](roadmap.md), sin mantener un segundo backlog aquí.
 - `RH-W-0001` (`deferred`, P2): endurecer el servidor local de voz.
-- `RH-W-0002` (`deferred`, P3): ajustar la lectura de hashes de commit y el deletreo de CPU en inglés.
+- `RH-W-0002` (`deferred`, P3): ajustar la lectura de hashes de commit y aplicar las pronunciaciones decididas (`API` → `ei pi ai`, `CPU` → `ci pi iu`) según la [guía de pronunciación](../pronunciacion.md).
 - `RH-W-0003` (`deferred`, P2): revisar consumo, carga a demanda o residente, esperas de arranque y medición opcional por equipo.
-- `RH-W-0004` (`deferred`, P3): revisar interfaz, TUI, menús y opciones; alcance por concretar.
+- `RH-W-0004` (`deferred`, P3): revisar interfaz, TUI, menús, comandos y ajustes, modo automático persistente y acceso sin mouse.
 - `RH-W-0005` (`deferred`, P3): probar otras voces existentes y fuentes gratuitas de Hugging Face y otros sitios, verificando compatibilidad y condiciones de uso.
+- `RH-W-0007` (`proposed`, P3): modo GPU opcional, manteniendo CPU como predeterminado.
+- `RH-W-0008` (`proposed`, P2): instalación local fácil.
+- `RH-W-0009` (`proposed`, P2): versión Docker y despliegue seguro en VPS; depende de `RH-W-0001` y `RH-W-0008`.
 
 ## Siguiente paso
 
 <!-- doc-role:next-step -->
 
-La integración con Pi está en `master`. Los trabajos de [roadmap.md](roadmap.md) están aplazados por decisión de la persona responsable; retomarlos requiere su autorización explícita.
+La integración con Pi está en `master`. Los trabajos de [roadmap.md](roadmap.md) están aplazados o propuestos por decisión de la persona responsable; retomarlos requiere su autorización explícita.
