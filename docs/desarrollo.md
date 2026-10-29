@@ -62,6 +62,7 @@ tehablo/
 ├── src/
 │   ├── tehablo_tui.py
 │   ├── tehablo_tts.py
+│   ├── tehablo_tech.py
 │   ├── tehablo_numbers.py
 │   ├── tehablo_lexicon.py
 │   ├── tehablo_speed.py
@@ -71,6 +72,7 @@ tehablo/
 ├── scripts/
 │   └── get_voices.py
 ├── tests/
+│   ├── test_tech.py
 │   ├── test_numbers.py
 │   ├── test_lexicon.py
 │   ├── test_speed.py
@@ -97,6 +99,8 @@ tehablo/
 | `README.md`, `requirements.txt`, `.gitignore` | Guía, dependencias y exclusiones | Sí |
 | `src/tehablo_tui.py` | Interfaz Textual | Sí |
 | `src/tehablo_tts.py` | Consola simple | Sí |
+| `src/tehablo_tech.py` | Lectura simplificada de URLs, rutas, archivos, identificadores y hashes antes del diccionario y los números | Sí |
+| `tests/test_tech.py` | Casos de texto técnico sin modelo ni audio | Sí |
 | `src/tehablo_numbers.py` | Conversión de números a palabras en español | Sí |
 | `src/tehablo_lexicon.py`, `pronunciaciones.json` | Pronunciación de términos en inglés | Sí |
 | `src/tehablo_speed.py` | Velocidad de la voz sin cambiar el tono (WSOLA con `audiotsm`) | Sí |
@@ -125,9 +129,10 @@ del directorio de trabajo. `/leer` conserva las rutas relativas al directorio ac
 
 ## Pruebas
 
-`tests/test_numbers.py`, `tests/test_lexicon.py`, `tests/test_speed.py` y `tests/test_server.py` comprueban la conversión de números, el diccionario de pronunciación, el cambio de velocidad y el servidor HTTP sin modelo ni audio; terminan con código 0 si todos los casos pasan:
+`tests/test_tech.py`, `tests/test_numbers.py`, `tests/test_lexicon.py`, `tests/test_speed.py` y `tests/test_server.py` comprueban el texto técnico, la conversión de números, el diccionario de pronunciación, el cambio de velocidad y el servidor HTTP sin modelo ni audio; terminan con código 0 si todos los casos pasan:
 
 ```powershell
+.venv-pocket/Scripts/python tests/test_tech.py
 .venv-pocket/Scripts/python tests/test_numbers.py
 .venv-pocket/Scripts/python tests/test_lexicon.py
 .venv-pocket/Scripts/python tests/test_speed.py

@@ -35,6 +35,7 @@ from pocket_tts.utils.utils import _ORIGINS_OF_PREDEFINED_VOICES
 
 from tehablo_lexicon import Lexicon
 from tehablo_numbers import normalize_numbers
+from tehablo_tech import normalize_technical
 
 VOICES = sorted(_ORIGINS_OF_PREDEFINED_VOICES)
 OUT_DIR = ROOT / "pocket-out"
@@ -76,7 +77,7 @@ class App:
 
     def speak(self, text: str) -> None:
         if self.language.startswith("spanish"):
-            text = normalize_numbers(self.lexicon.apply(text))
+            text = normalize_numbers(self.lexicon.apply(normalize_technical(text)))
             if self.lexicon.error:
                 print(f"Aviso: {self.lexicon.error}")
         sr = self.model.sample_rate

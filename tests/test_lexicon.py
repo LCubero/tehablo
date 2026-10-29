@@ -98,6 +98,13 @@ def main() -> int:
 
     shipped_path = ROOT / "pronunciaciones.json"
     shipped = Lexicon(shipped_path)
+    for source, expected in [
+        ('Pi y pi-tts', 'pai y pai te te ese'),
+        ('feat master origin', 'fit máster óriyin'),
+        ('commits branchs branches', 'comíts bránchs branches'),
+        ('PR TTS README', 'pe erre te te ese rídmi'),
+    ]:
+        check(f'new shipped terms: {source}', shipped.apply(source), expected)
     text = shipped.apply(
         "Programo en Python y JavaScript, lo subo a GitHub y lo comparto por WhatsApp, "
         "YouTube y email desde el Wi-Fi."

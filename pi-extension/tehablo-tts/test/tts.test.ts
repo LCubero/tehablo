@@ -34,6 +34,11 @@ test('clean Markdown, code, links, empty and length',()=>{
   assert.equal(cleanText('```solo código```'),'');
   assert.ok(cleanText('a '.repeat(4000)).length<=3000);
 });
+test('bare URLs survive cleaning; Markdown labels and code rules remain',()=>{
+  assert.equal(cleanText('Ver https://github.com/LCubero/tehablo. y www.example.org'),
+    'Ver https://github.com/LCubero/tehablo. y www.example.org');
+  assert.equal(cleanText('[guía](https://example.org) ```https://hidden.org``` <b>fin</b>'), 'guía fin');
+});
 test('manual controls and numbered/latest playback; off hides controls',async()=>{
   const s=setup(); await s.finish(); await s.finish('Segunda');
   assert.equal(s.cards().length,2); assert.equal(s.calls.length,0);

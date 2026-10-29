@@ -13,6 +13,7 @@ import numpy as np
 
 from tehablo_lexicon import Lexicon
 from tehablo_numbers import normalize_numbers
+from tehablo_tech import normalize_technical
 from tehablo_speed import SpeedStream
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -68,6 +69,12 @@ class SpeechService:
         self.paused = False
         self.worker = threading.Thread(target=self.run, name='speech-worker', daemon=True)
         self.worker.start()
+
+    def normalize_text(self, text, model):
+        """Prepare Spanish speech in technical → lexicon → numbers order."""
+        if model in MODELS:
+            return normalize_numbers(self.lexicon.apply(normalize_technical(text)))
+        return text
 
     def voices(self):
         local = sorted(p for p in VOICES_DIR.iterdir()
@@ -225,9 +232,7 @@ class SpeechService:
                 try:
                     if sink is None:
                         sink = self.audio_factory(synth.sample_rate, self.callback)
-                    text = self.lexicon.apply(text)
-                    if name in MODELS:
-                        text = normalize_numbers(text)
+                    text = self.normalize_text(text, name)
                     stretch = SpeedStream(speed)
                     for chunk in synth.stream(text, self.resolve_voice(voice), cancel):
                         if cancel.is_set():

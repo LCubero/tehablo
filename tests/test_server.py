@@ -102,6 +102,40 @@ class ServerTests(unittest.TestCase):
         self.wait(lambda: len(self.synth.calls) == 2)
         self.assertEqual(self.request('/status')[1]['id'], 'next')
 
+    def test_technical_lexicon_numbers_order(self):
+        self.ready()
+        self.request('/speak', {'id': 'tech', 'text': 'Mira src/tehablo_server.py y RH-W-0001'})
+        self.wait(lambda: bool(self.synth.calls))
+        self.assertEqual(self.synth.calls[0][0],
+                         'Mira tehablo sérver punto pai y erre hache, doble ve, cero cero cero uno')
+
+    def test_pipeline_samples_and_model_guard(self):
+        samples = [
+            ('https://github.com/LCubero/tehablo.', 'enlace a guítjab punto com.'),
+            ('www.example.org/a', 'enlace a example punto org'),
+            ('src/tehablo_server.py', 'tehablo sérver punto pai'),
+            ('docs/repo-harness/roadmap.md', 'roadmap punto eme de'),
+            ('.pi/settings.json', 'settings punto yéison'),
+            (r'E:\code\x', 'x'),
+            ('README.md', 'rídmi punto eme de'),
+            ('RH-W-0001', 'erre hache, doble ve, cero cero cero uno'),
+            ('ABC-12', 'a be ce, doce'),
+            ('T1 y S3', 'te, uno y ese, tres'),
+            ('abc1234', 'un hash'),
+            ('feat/pi-tts', 'pai te te ese'),
+            ('tehablo_server', 'tehablo sérver'),
+            ('15.000', 'quince mil'),
+            ('3.5', 'tres punto cinco'),
+            ('29/10/2026', 'veintinueve de octubre de dos mil veintiséis'),
+        ]
+        for source, expected in samples:
+            with self.subTest(source=source):
+                got = self.server.service.normalize_text(source, 'spanish')
+                self.assertEqual(got, expected)
+                self.assertEqual(self.server.service.normalize_text(source, 'spanish_24l'), expected)
+                self.assertEqual(self.server.service.normalize_text(source, 'english'), source)
+                print('PIPELINE ' + json.dumps([source, got], ensure_ascii=True))
+
     def test_controls(self):
         self.ready()
         self.request('/speak', {'id': 'a', 'text': 'hola'})

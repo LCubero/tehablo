@@ -43,6 +43,7 @@ from textual.widgets import Button, Footer, Header, RichLog, Select, TextArea
 
 from tehablo_lexicon import Lexicon
 from tehablo_numbers import normalize_numbers
+from tehablo_tech import normalize_technical
 from tehablo_speed import SPEEDS, SpeedStream
 
 VOICES_DIR = ROOT / "voices"
@@ -199,7 +200,7 @@ class TehabloApp(App):
                     self.log_msg(f"Preparando voz '{Path(voice).stem}'...")
                     self.voice_states[voice] = self.model.get_state_for_audio_prompt(voice, truncate=True)
                 if self.model_name.startswith("spanish"):
-                    text = normalize_numbers(self.lexicon.apply(text))
+                    text = normalize_numbers(self.lexicon.apply(normalize_technical(text)))
                     if self.lexicon.error:
                         self.log_msg(f"[yellow]{escape(self.lexicon.error)}[/yellow]")
                 sr = self.model.sample_rate

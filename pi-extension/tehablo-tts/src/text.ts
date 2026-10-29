@@ -2,7 +2,7 @@ export function cleanText(raw: string, limit = 3000): string {
   return raw.replace(/(```|~~~)[\s\S]*?(?:\1|$)/g, ' ')
     .replace(/!\[([^\]]*)\]\([^)]*\)/g, '$1')
     .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
-    .replace(/https?:\/\/\S+|<[^>]*>/g, ' ')
+    .replace(/<[^>]*>/g, ' ')
     .replace(/^\s*[-=*_]{3,}\s*$/gm, '')
     .replace(/^\s*(?:#{1,6}\s+|>\s*|[-*+]\s+|\d+[.)]\s+)/gm, '')
     .replace(/[`*_~]/g, '')
