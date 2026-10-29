@@ -38,9 +38,12 @@ Este archivo proyecta solo hechos verificados del proyecto: registros activos, b
 - Registrar todo pendiente no trivial en [roadmap.md](roadmap.md), sin mantener un segundo backlog aquí.
 - `RH-W-0001` (`deferred`, P2): endurecer el servidor local de voz.
 - `RH-W-0002` (`deferred`, P3): ajustar la lectura de hashes de commit y el deletreo de CPU en inglés.
+- `RH-W-0003` (`deferred`, P2): revisar consumo, carga a demanda o residente, esperas de arranque y medición opcional por equipo.
+- `RH-W-0004` (`deferred`, P3): revisar interfaz, TUI, menús y opciones; alcance por concretar.
+- `RH-W-0005` (`deferred`, P3): probar otras voces existentes y fuentes gratuitas de Hugging Face y otros sitios, verificando compatibilidad y condiciones de uso.
 
 ## Siguiente paso
 
 <!-- doc-role:next-step -->
 
-La integración con Pi está en `master`. Los dos trabajos de [roadmap.md](roadmap.md) están aplazados por decisión de la persona responsable; retomarlos requiere su autorización explícita.
+La integración con Pi está en `master`. Los trabajos de [roadmap.md](roadmap.md) están aplazados por decisión de la persona responsable; retomarlos requiere su autorización explícita.

@@ -26,7 +26,7 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 - **Trabajo restante:**
   - Rechazar peticiones `POST` sin `Content-Type: application/json` o con cabecera `Origin` (`src/tehablo_server.py`).
   - Si el modelo no carga, informar el error en `/health` y `/status` en lugar de quedar en `loading`.
-  - Revisar los tiempos de espera de la extensión (2 s por petición, ~7,5 s al arrancar el servidor) en equipos lentos.
+  - Revisar los tiempos de espera de la extensión (2 s por petición, ~7,5 s de pausas entre intentos al arrancar, más la duración de las peticiones) en equipos lentos, coordinado con `RH-W-0003`.
 - **Evidencia:** avisos R1-001, R3-001, R3-002, R4-001 y R4-002 de esa revisión.
 - **Decisión:** la persona responsable lo aplazó explícitamente tras revisar la propuesta; no se autorizó su implementación.
 - **Condición del siguiente avance:** autorización explícita de la persona responsable para retomarlo.
@@ -45,6 +45,48 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 - **Evidencia:** observación directa de la persona responsable: «como los codigos de los commits (commit 22774ca), CPU no lo deletrió en ingles».
 - **Decisión:** la persona responsable indicó «pero eso lo hacemos despues»; no se implementan estos ajustes en esta sesión.
 - **Condición del siguiente avance:** autorización explícita para retomarlo y elección de la lectura deseada del hash.
+
+### RH-W-0003: Revisar consumo, carga a demanda y espera de arranque
+
+- **Origen:** consulta sobre los recursos utilizados después de escuchar una respuesta de Pi.
+- **Prioridad:** P2; evaluar el equilibrio entre memoria ocupada y latencia de la siguiente reproducción.
+- **Dependencias:** coordinar la revisión de tiempos de espera con `RH-W-0001`.
+- **Estado:** `deferred`.
+- **Evidencia:** el código de `src/tehablo_server.py` conserva el modelo y la salida de audio abiertos al terminar o detener; pausar no cancela la generación. No se midió el consumo residual en esta sesión.
+- **Trabajo restante:**
+  - Detallar y medir CPU, RAM y estado de la salida de audio al generar, pausar, detener y quedar inactivo; identificar optimizaciones justificadas por esas mediciones.
+  - Evaluar ajustes para elegir entre carga a demanda y modelo siempre residente en memoria; definir qué evento libera el modelo y qué sucede con la siguiente petición.
+  - Revisar si conviene cambiar o quitar las esperas actuales de arranque, distinguiendo servidor accesible de modelo listo y evitando esperas indefinidas ante errores.
+  - Evaluar una medición opcional del arranque y de la carga del modelo para estimar las necesidades de cada equipo; no se ha elegido calibración automática ni valores nuevos.
+- **Decisión:** solicitud para detallar y revisar después; las alternativas no están aprobadas como diseño definitivo ni implementadas.
+- **Condición del siguiente avance:** autorización para realizar la investigación y medición acotadas antes de elegir el comportamiento y los ajustes.
+
+### RH-W-0004: Revisar interfaz, TUI, menús y opciones
+
+- **Origen:** solicitud de trabajar después en la interfaz y el modo TUI, incluidos menús y opciones.
+- **Prioridad:** P3; mejoras de uso cuyo alcance está por concretar.
+- **Dependencias:** coordinar las opciones de recursos con las decisiones de `RH-W-0003`, si se exponen en la interfaz.
+- **Estado:** `deferred`.
+- **Trabajo restante:** revisar la interfaz de Pi y la TUI existente, concretar los problemas de uso y acordar qué menús, opciones y ajustes se quieren mejorar antes de diseñar o implementar.
+- **Evidencia:** solicitud de la persona responsable en esta sesión; no se realizó una evaluación de interfaz.
+- **Decisión:** registrar para después; no se ha elegido un rediseño ni se añaden funciones por el «etc» de la solicitud.
+- **Condición del siguiente avance:** autorización para revisar la interfaz y concretar el alcance con la persona responsable.
+
+### RH-W-0005: Probar voces existentes y ampliar fuentes gratuitas compatibles
+
+- **Origen:** solicitud de añadir a los pendientes las pruebas de otras voces, incluidas las de Hugging Face y otras fuentes gratuitas que funcionen con el proyecto.
+- **Prioridad:** P3; ampliar y validar las alternativas a la voz utilizada en la prueba actual.
+- **Dependencias:** ninguna; usar como punto de partida el [catálogo de voces gratuitas](../voces-gratuitas.md), sin asumir que todas sus fuentes son compatibles o ya están probadas.
+- **Estado:** `deferred`.
+- **Trabajo restante:**
+  - Probar las demás voces disponibles en el proyecto, no solo Lola.
+  - Probar referencias de voz de Hugging Face y evaluar otras fuentes gratuitas.
+  - Verificar compatibilidad real con Pocket TTS y el flujo local del proyecto antes de añadirlas como opciones utilizables.
+  - Comparar mediante escucha su inteligibilidad, naturalidad y pronunciación en español con un mismo texto de prueba.
+  - Registrar cuáles funcionan y cuáles no, su origen, licencia y condiciones de uso; distinguir descarga gratuita de permiso de uso y redistribución, respetando el consentimiento de voz.
+- **Evidencia:** solicitud de la persona responsable; existe un catálogo previo en `docs/voces-gratuitas.md`, pero esta sesión no probó ni descargó voces nuevas.
+- **Decisión:** registrar para después; no se autoriza con esta anotación una descarga, incorporación ni publicación de grabaciones.
+- **Condición del siguiente avance:** autorización para una prueba acotada de voces, con fuentes y condiciones de uso verificadas.
 
 ## Registros resueltos
 <!-- doc-role:resolved-records -->
