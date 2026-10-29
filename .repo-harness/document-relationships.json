@@ -1,0 +1,10 @@
+{
+  "edges": [
+    {
+      "relation": "lifecycle-projection",
+      "source": "docs/repo-harness/roadmap.md",
+      "target": "docs/repo-harness/current-state.md"
+    }
+  ],
+  "version": 1
+}

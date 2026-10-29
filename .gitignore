@@ -13,3 +13,8 @@ pocket-out/
 
 # Downloaded reference voices (re-create with scripts/get_voices.py)
 voices/*.wav
+.codegraph/
+/.repo-harness/tmp/
+/.repo-harness/archive/
+/.repo-harness/state/
+/.repo-harness/memory-bk/

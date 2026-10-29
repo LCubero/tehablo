@@ -1,0 +1,69 @@
+{
+  "canonicalCommands": {
+    "documentation": {
+      "prompts": ".repo-harness/prompts/documentation.md"
+    },
+    "repo-harness-help": {
+      "prompts": ".repo-harness/prompts/repo-harness-help.md"
+    },
+    "session-start": {
+      "prompts": ".repo-harness/prompts/session-start.md"
+    },
+    "session-stop": {
+      "prompts": ".repo-harness/prompts/session-stop.md"
+    }
+  },
+  "canonicalReferences": [
+    ".repo-harness/skills/repo-harness-session-start/references/checkpoint.md",
+    ".repo-harness/skills/repo-harness-session-start/references/reconciliation.md",
+    ".repo-harness/skills/repo-harness-session-start/references/synchronization.md",
+    ".repo-harness/skills/repo-harness-session-stop/references/checkpoint.md",
+    ".repo-harness/skills/repo-harness-session-stop/references/git-commit.md",
+    ".repo-harness/skills/repo-harness-session-stop/references/git-transport.md"
+  ],
+  "canonicalSkills": {
+    "repo-harness-documentation": ".repo-harness/skills/repo-harness-documentation/SKILL.md",
+    "repo-harness-session-start": ".repo-harness/skills/repo-harness-session-start/SKILL.md",
+    "repo-harness-session-stop": ".repo-harness/skills/repo-harness-session-stop/SKILL.md"
+  },
+  "generator": {
+    "name": "repo-harness-builder",
+    "version": "3.0"
+  },
+  "integrationMode": "integrated",
+  "language": {
+    "conversation": "espanol",
+    "documentation": [
+      "es"
+    ]
+  },
+  "localState": {
+    "archive": {
+      "class": "recoverable",
+      "path": ".repo-harness/archive/"
+    },
+    "memory-bk": {
+      "class": "continuity-backup",
+      "path": ".repo-harness/memory-bk/"
+    },
+    "state": {
+      "class": "operational",
+      "path": ".repo-harness/state/"
+    },
+    "tmp": {
+      "class": "disposable",
+      "path": ".repo-harness/tmp/"
+    }
+  },
+  "project": {
+    "id": "tehablo",
+    "ignoreCodegraph": true,
+    "rulebook": "REPO-HARNESS.md"
+  },
+  "runtimes": [
+    "pi"
+  ],
+  "schemaVersion": "3.0",
+  "skillLicense": "MIT",
+  "writeSemantics": "additive-create-with-bounded-root-append"
+}

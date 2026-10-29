@@ -8,6 +8,7 @@ Síntesis de voz (texto a voz) en español, local y gratuita, con **Pocket TTS**
 - [Pocket TTS: referencia, voces, pronunciación y mejoras posibles](docs/pocket-tts.md)
 - [Voces gratuitas en español para clonar](docs/voces-gratuitas.md)
 - [Catálogo maestro de recursos gratuitos para TTS en español](docs/catalogo-gratuito.md)
+- [Cómo contribuir](CONTRIBUTING.md) y [guía del harness de IA](docs/repo-harness/usage.md)
 
 1. [Resumen](#resumen)
 2. [Alternativas locales evaluadas](#alternativas-locales-evaluadas)
@@ -260,10 +261,17 @@ Atribución sugerida: *"Voz sintetizada con Kyutai Pocket TTS (CC BY 4.0). Voz d
 ```text
 tehablo/
 ├── README.md
+├── CHANGELOG.md
+├── CONTRIBUTING.md
+├── REPO-HARNESS.md               # reglas para agentes de IA
+├── AGENTS.md                     # puntero a REPO-HARNESS.md
 ├── requirements.txt
 ├── pronunciaciones.json
 ├── .gitignore
+├── .gitattributes
 ├── .env                      # local, nunca versionar
+├── .repo-harness/            # manifest, checker, skills, prompts y reglas
+├── .pi/                      # proyección de skills y prompts para Pi
 ├── src/
 │   ├── tehablo_tui.py
 │   ├── tehablo_tts.py
@@ -285,7 +293,8 @@ tehablo/
 │   ├── como-funciona.md
 │   ├── pocket-tts.md
 │   ├── voces-gratuitas.md
-│   └── catalogo-gratuito.md
+│   ├── catalogo-gratuito.md
+│   └── repo-harness/         # estado, decisiones, hoja de ruta y uso del harness
 ├── voices/
 ├── pocket-out/               # audio generado
 └── .venv-pocket/
@@ -303,13 +312,18 @@ tehablo/
 | `tests/` | Pruebas ejecutables sin pytest | Sí |
 | `samples/prueba-larga.txt` | Texto largo para `/leer` | Sí |
 | `docs/` | Investigación y referencias | Sí |
+| `CHANGELOG.md`, `CONTRIBUTING.md` | Historial de cambios y cómo contribuir | Sí |
+| `REPO-HARNESS.md`, `AGENTS.md` | Reglas para agentes de IA y su puntero | Sí |
+| `.repo-harness/`, `.pi/prompts/`, `.pi/skills/repo-harness-*` | Harness de IA generado; `python .repo-harness/check.py` comprueba que esté al día | Sí |
+| `.gitattributes` | Fija finales de línea LF en los archivos generados del harness | Sí |
+| `docs/repo-harness/` | Estado actual, decisiones, hoja de ruta y uso del harness | Sí |
 | `voices/ATTRIBUTION.txt` | Atribución de las referencias descargadas | Sí |
 | `voices/*.wav` | Referencias recreables con `scripts/get_voices.py` | No, ignoradas |
 | `pocket-out/`, `*.mp3` | Audio generado | No, ignorados; excepción: referencias `voices/*.mp3` |
 | `.env` | Secretos locales | No, ignorado |
 | `.venv*/`, `__pycache__/` | Entornos y caché Python | No, ignorados |
 
-La tabla indica qué se debe versionar; todavía no se ha creado ningún commit.
+La tabla indica qué se debe versionar.
 Ejecute los comandos desde la raíz del repositorio. Las aplicaciones y los scripts
 usan siempre la raíz para `.env`, `voices/` y `pocket-out/`, independientemente
 del directorio de trabajo. `/leer` conserva las rutas relativas al directorio actual.
