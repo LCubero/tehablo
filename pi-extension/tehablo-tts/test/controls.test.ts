@@ -19,7 +19,7 @@ test('active states, pause/resume/stop clicks and command fallbacks',async()=>{
   try {
     assert.match(s.card.render(150)[0],/Escuchar/);
     await s.command('play 1'); await tick();
-    assert.match(s.card.render(150)[0],/Pausar.*Detener.*\/tts pause · \/tts stop/);
+    assert.match(s.card.render(150)[0],/Pausar.*Detener/);assert.doesNotMatch(s.card.render(150)[0],/\/tts/);
     const before=s.calls.length;
     await click(s.card,12);await click(s.card,100);assert.equal(s.calls.length,before);
     await click(s.card,2);assert.ok(s.calls.includes('/pause'));assert.match(s.card.render(150)[0],/Continuar/);

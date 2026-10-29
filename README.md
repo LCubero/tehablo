@@ -80,7 +80,7 @@ El entorno `.venv-pocket` no se puede copiar entre sistemas operativos: créalo 
 
 La extensión [`pi-extension/tehablo-tts/`](pi-extension/tehablo-tts/) lee las respuestas finales del agente con la voz local. Se carga sola al abrir Pi dentro de este repositorio (`.pi/settings.json`), después de aceptar la confianza del proyecto y ejecutar `/reload`. Para usarla en otros proyectos, añade la ruta absoluta de esa carpeta a `extensions` en tu configuración de Pi.
 
-- **Manual (por defecto):** cada respuesta muestra `[ ▶ Escuchar ]  /tts play <n>`. Mientras suena aparecen **⏸ Pausar** / **▶ Continuar** y **■ Detener**.
+- **Manual (por defecto):** cada respuesta muestra `[ ▶ Escuchar ]`. Mientras suena aparecen **⏸ Pausar** / **▶ Continuar** y **■ Detener**.
 - **Automático:** `/tts auto on` lee cada respuesta al terminar; `/tts auto off` vuelve al modo manual.
 
 | Comando | Acción |

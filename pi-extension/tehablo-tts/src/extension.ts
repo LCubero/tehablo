@@ -64,7 +64,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient()) {
       ? [{label: playback.state === 'paused' ? '▶ Continuar' : '⏸ Pausar', action: playback.state === 'paused' ? 'resume' : 'pause'}, {label: '■ Detener', action: 'stop'}]
       : [{label: '▶ Escuchar', action: 'play'}];
     const label = () => context?.mode === 'tui' && enabled && entry.data && cards(context).some(c => c.messageId === entry.data!.messageId)
-      ? controls().map(c => `[ ${c.label} ]`).join('  ') + '  ' + controls().map(c => `/tts ${c.action}${c.action === 'play' ? ` ${entry.data!.number}` : ''}`).join(' · ') : '';
+      ? controls().map(c => `[ ${c.label} ]`).join('  ') : '';
     return {
       render: (width: number) => label() && width > 0 ? [theme.fg('accent', Array.from(label()).slice(0, width).join(''))] : [],
       invalidate() {},
