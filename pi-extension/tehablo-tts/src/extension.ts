@@ -9,6 +9,36 @@ const help = '/tts on|off · auto on|off · play [n] · pause · resume · stop 
 export function createExtension(pi: ExtensionAPI, client = new ServerClient()) {
   let enabled = true, auto = false, epoch = 0;
   let context: ExtensionContext | undefined;
+  let playback = {state: 'idle', id: null as string | null};
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let pollEpoch = 0, started = false;
+  const refresh = () => context?.ui.setStatus(ENTRY, enabled ? (auto ? 'TTS auto' : 'TTS manual') : undefined);
+  const update = (state: string, id: string | null) => {
+    if (state !== playback.state || id !== playback.id) { playback = {state, id}; refresh(); }
+  };
+  const cancelPoll = () => { pollEpoch++; if (timer) clearTimeout(timer); timer = undefined; };
+  const resetPlayback = () => { cancelPoll(); started = false; update('idle', null); };
+  const poll = () => {
+    cancelPoll();
+    if (!started || playback.state === 'idle') return;
+    const generation = pollEpoch;
+    timer = setTimeout(async () => {
+      timer = undefined;
+      try {
+        const status = await client.request('/status');
+        if (generation !== pollEpoch) return;
+        update(status.state, status.id);
+      } catch { /* Transient status failures must never escape into Pi. */ }
+      if (generation === pollEpoch) poll();
+    }, 500);
+    timer.unref?.();
+  };
+  const action = async (kind: string) => {
+    if (kind === 'stop') { epoch++; resetPlayback(); }
+    const generation = epoch;
+    const result = await client.action('/' + kind, {});
+    if (generation === epoch && kind !== 'stop' && started) { update(result?.state ?? (kind === 'pause' ? 'paused' : 'playing'), playback.id); poll(); }
+  };
   const cards = (ctx: ExtensionContext): Card[] => ctx.sessionManager.getBranch()
     .filter((e: any) => e.type === 'custom' && e.customType === ENTRY).map((e: any) => e.data);
   const safe = async (ctx: ExtensionContext, operation: () => Promise<unknown> | unknown) => {
@@ -24,34 +54,49 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient()) {
     await client.ensure();
     if (generation !== epoch || !enabled) return;
     await client.request('/speak', {id: card!.messageId, text});
+    if (generation !== epoch) return;
+    started = true;
+    update('generating', card!.messageId);
+    poll();
   };
   pi.registerEntryRenderer<Card>(ENTRY, (entry, _options, theme) => {
+    const controls = () => playback.id === entry.data?.messageId && playback.state !== 'idle'
+      ? [{label: playback.state === 'paused' ? '▶ Continuar' : '⏸ Pausar', action: playback.state === 'paused' ? 'resume' : 'pause'}, {label: '■ Detener', action: 'stop'}]
+      : [{label: '▶ Escuchar', action: 'play'}];
     const label = () => context?.mode === 'tui' && enabled && entry.data && cards(context).some(c => c.messageId === entry.data!.messageId)
-      ? `[ ▶ Escuchar ]  /tts play ${entry.data.number}` : '';
+      ? controls().map(c => `[ ${c.label} ]`).join('  ') + '  ' + controls().map(c => `/tts ${c.action}${c.action === 'play' ? ` ${entry.data!.number}` : ''}`).join(' · ') : '';
     return {
       render: (width: number) => label() && width > 0 ? [theme.fg('accent', Array.from(label()).slice(0, width).join(''))] : [],
       invalidate() {},
       handleMouse(event: {type: string; button: string; x: number; y: number}) {
-        if (label() && event.type === 'click' && event.button === 'left' && event.y === 0 && event.x >= 0 && event.x < 14 && context) {
-          void safe(context, () => speak(context!, String(entry.data!.number)));
-          return {handled: true, render: true};
+        if (label() && event.type === 'click' && event.button === 'left' && event.y === 0 && event.x >= 0 && context) {
+          let start = 0;
+          for (const control of controls()) {
+            const end = start + Array.from(`[ ${control.label} ]`).length;
+            if (event.x >= start && event.x < end) {
+              void safe(context, () => control.action === 'play' ? speak(context!, String(entry.data!.number)) : action(control.action));
+              return {handled: true, render: true};
+            }
+            start = end + 2;
+          }
         }
       },
     };
   });
   pi.on('session_start', (_event, ctx) => {
     if (ctx.mode !== 'tui') return;
+    resetPlayback();
     enabled = true; auto = false; epoch++; context = ctx;
     client.beginSession();
   });
   pi.on('agent_start', (_event, ctx) => {
     if (ctx.mode !== 'tui') return;
-    epoch++;
+    epoch++; resetPlayback();
     void safe(ctx, () => client.stop());
   });
   pi.on('session_shutdown', async (_event, ctx) => {
     if (ctx.mode !== 'tui') return;
-    epoch++; context = undefined;
+    epoch++; resetPlayback(); context = undefined;
     await safe(ctx, () => client.shutdown());
   });
   pi.on('agent_settled', (event, ctx) => {
@@ -76,14 +121,13 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient()) {
         const info = (text: string) => ctx.ui.notify(text, 'info');
         const applied = (h: any) => info(`Modelo: ${h.model} · voz: ${h.voice} · velocidad: ${h.speed}`);
         switch (command) {
-          case 'on': enabled = true; info('TTS activado.'); return;
-          case 'off': enabled = false; epoch++; await client.stop(); info('TTS desactivado.'); return;
+          case 'on': enabled = true; refresh(); info('TTS activado.'); return;
+          case 'off': enabled = false; epoch++; resetPlayback(); refresh(); await client.stop(); info('TTS desactivado.'); return;
           case 'auto':
             if (!['on', 'off'].includes(value)) { ctx.ui.notify('Uso: /tts auto on|off', 'warning'); return; }
-            auto = value === 'on'; epoch++; info(`Lectura automática: ${auto ? 'sí' : 'no'}`); return;
+            auto = value === 'on'; epoch++; refresh(); info(`Lectura automática: ${auto ? 'sí' : 'no'}`); return;
           case 'play': await speak(ctx, value); return;
-          case 'stop': epoch++; await client.action('/stop', {}); return;
-          case 'pause': case 'resume': await client.action('/' + command, {}); return;
+          case 'stop': case 'pause': case 'resume': await action(command); return;
           case 'voice':
             if (!value) { const data = await client.action('/voices'); info(`Voces: ${data.voices.join(', ')}`); return; }
             applied(await client.action('/config', {voice: value})); return;
