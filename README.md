@@ -19,13 +19,16 @@ El uso principal es **leer en voz alta las respuestas de [Pi](#uso-en-pi)**. La 
 
 ## Cómo funciona
 
-```text
-Texto → 1. términos en inglés → 2. números a palabras → 3. Pocket TTS → 4. velocidad → 5. altavoz
-        "Python" → "páiton"     "15.000" → "quince mil"   genera audio    sin cambiar     suena mientras
-                                                          a trozos        el tono         genera lo siguiente
-```
+| Paso | Qué hace | Ejemplo |
+|---|---|---|
+| 1. Texto técnico | Simplifica URLs, rutas, archivos e identificadores | `src/tehablo_server.py` → *tehablo sérver punto pai* |
+| 2. Términos en inglés | Los cambia por cómo suenan ([`pronunciaciones.json`](pronunciaciones.json)) | `Python` → *páiton* |
+| 3. Números | Los convierte a palabras | `15.000` → *quince mil* |
+| 4. Pocket TTS | Genera la voz a trozos | — |
+| 5. Velocidad | Cambia el ritmo sin cambiar el tono | — |
+| 6. Altavoz | Suena mientras se genera lo siguiente | — |
 
-- Los pasos 1, 2 y 4 son código propio y casi no gastan. El paso 3 es el pesado.
+- La preparación del texto y la velocidad son código propio y casi no gastan. Pocket TTS es el paso pesado.
 - El audio empieza a sonar enseguida (en menos de 1 s), sin esperar a que termine todo el texto.
 - Internet solo hace falta la primera vez, para descargar los modelos.
 
@@ -143,7 +146,8 @@ Solo hace falta para la primera descarga; después funciona sin internet.
 ## Qué se puede agregar, modificar o aprovechar
 
 **Sin tocar código:**
-- **Pronunciación de términos en inglés:** edita [`pronunciaciones.json`](pronunciaciones.json) (`"Python": "páiton"`). Se recarga solo.
+- **Pronunciación de términos en inglés:** edita [`pronunciaciones.json`](pronunciaciones.json) (`"Python": "páiton"`). Incluye Git y Pi (`feat`, `master`, `origin`, `pi-tts`); se recarga solo.
+- **Texto técnico en español:** las URLs se leen como «enlace a dominio», las rutas solo por su último segmento y los archivos con su extensión. Identificadores como `RH-W-0001` se deletrean y los hashes se resumen como «un hash», antes de aplicar el diccionario y los números.
 - **Voces nuevas:** copia grabaciones en `voices/`, o descarga más con `scripts/get_voices.py --speakers 5`.
 - **Calidad:** prueba `spanish_24l`, o una referencia de voz más limpia.
 

@@ -18,6 +18,9 @@ Todo se ejecuta **en el equipo local**: sin API, sin nube, sin cuenta, sin coste
 Texto escrito
    │
    ▼
+0. Texto técnico         src/tehablo_tech.py                             "src/tehablo_server.py" → "tehablo sérver punto pai"
+   │
+   ▼
 1. Diccionario de inglés   pronunciaciones.json + src/tehablo_lexicon.py   "Python" → "páiton"
    │
    ▼
@@ -33,8 +36,8 @@ Texto escrito
 5. Altavoz                 sounddevice                                     suena mientras se genera lo siguiente
 ```
 
-- Los pasos 1 y 2 solo se aplican con los modelos `spanish` y `spanish_24l`.
-- Los pasos 1, 2 y 4 son código propio y casi no consumen recursos.
+- Los pasos 0, 1 y 2 solo se aplican con los modelos `spanish` y `spanish_24l`.
+- Los pasos 0, 1, 2 y 4 son código propio y casi no consumen recursos.
 - El paso 3 es la parte pesada.
 
 ---
