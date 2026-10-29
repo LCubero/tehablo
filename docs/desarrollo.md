@@ -115,7 +115,7 @@ tehablo/
 | `CHANGELOG.md`, `CONTRIBUTING.md` | Historial de cambios y cómo contribuir | Sí |
 | `REPO-HARNESS.md`, `AGENTS.md` | Reglas para agentes de IA y su puntero | Sí |
 | `.repo-harness/`, `.pi/prompts/`, `.pi/skills/repo-harness-*` | Harness de IA generado; `python .repo-harness/check.py` comprueba que esté al día | Sí |
-| `.gitattributes` | Fija finales de línea LF en los archivos generados del harness | Sí |
+| `.gitattributes` | Fija finales de línea LF en todos los archivos de texto, en Windows y Linux | Sí |
 | `docs/repo-harness/` | Estado actual, decisiones, hoja de ruta y uso del harness | Sí |
 | `voices/ATTRIBUTION.txt` | Atribución de las referencias descargadas | Sí |
 | `voices/*.wav` | Referencias recreables con `scripts/get_voices.py` | No, ignoradas |
