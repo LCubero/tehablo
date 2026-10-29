@@ -4,6 +4,7 @@ Síntesis de voz (texto a voz) en español, local y gratuita, con **Pocket TTS**
 
 ## Índice
 
+- [Cómo funciona tehablo y qué recursos usa (RAM, CPU, GPU, internet)](docs/como-funciona.md)
 - [Pocket TTS: referencia, voces, pronunciación y mejoras posibles](docs/pocket-tts.md)
 - [Voces gratuitas en español para clonar](docs/voces-gratuitas.md)
 - [Catálogo maestro de recursos gratuitos para TTS en español](docs/catalogo-gratuito.md)
@@ -281,6 +282,7 @@ tehablo/
 ├── samples/
 │   └── prueba-larga.txt
 ├── docs/
+│   ├── como-funciona.md
 │   ├── pocket-tts.md
 │   ├── voces-gratuitas.md
 │   └── catalogo-gratuito.md
