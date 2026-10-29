@@ -99,10 +99,20 @@ def main() -> int:
     shipped_path = ROOT / "pronunciaciones.json"
     shipped = Lexicon(shipped_path)
     for source, expected in [
-        ('Pi y pi-tts', 'pai y pai te te ese'),
+        ('Pi y pi-tts', 'pai y pai ti ti es'),
         ('feat master origin', 'fit máster óriyin'),
         ('commits branchs branches', 'comíts bránchs branches'),
-        ('PR TTS README', 'pe erre te te ese rídmi'),
+        ('PR TTS README', 'pi ar ti ti es rídmi'),
+        ('API APIs CPU', 'ei pi ai ei pi ais ci pi iu'),
+        ('HTML CSS SQL URL GPU CLI', 'eich ti em el si es es es kiu el iu ar el yi pi iu si el ai'),
+        ('USB PDF CD', 'u ese be pe de efe ce de'),
+        ('HTTPS SSH localhost', 'eich ti ti pi es es es eich lócal joust'),
+        ('array string null async await', 'arréi estring nal eisínc euéit'),
+        ('YAML Markdown PostgreSQL MySQL', 'yámel márkdaun póustgres mái es kiu el'),
+        ('GPT ChatGPT Linux', 'yi pi ti chat yi pi ti línux'),
+        ('amend revert worktree submodule', 'eménd rivért uórktri sabmódiul'),
+        ('Actions pipeline runner reviews', 'ácshons páiplain ráner riviús'),
+        ('dependencies deployment changelog', 'dipéndensis diplóiment chéinchlog'),
     ]:
         check(f'new shipped terms: {source}', shipped.apply(source), expected)
     text = shipped.apply(

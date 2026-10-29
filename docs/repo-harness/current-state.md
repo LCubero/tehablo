@@ -15,7 +15,7 @@
 - Descarga selectiva de voces en español para clonar (`scripts/get_voices.py`).
 - Pruebas unitarias sin modelo (`tests/test_numbers.py`, `tests/test_lexicon.py`, `tests/test_speed.py`) y scripts de integración de la TUI que reproducen audio.
 - Extensión de Pi `pi-extension/tehablo-tts/` y servidor local `src/tehablo_server.py`: leen las respuestas del agente en modo manual o automático; se carga en este proyecto con `.pi/settings.json`.
-- Lectura simplificada de texto técnico (`src/tehablo_tech.py`): URLs, rutas, archivos, identificadores y hashes; más de 40 términos de Git y desarrollo en `pronunciaciones.json`.
+- Lectura simplificada de texto técnico (`src/tehablo_tech.py`): URLs, rutas, archivos, identificadores y hashes; `pronunciaciones.json` tiene 291 términos de desarrollo, Git, GitHub y uso general, con siglas técnicas deletreadas en inglés.
 - Probado en Windows y, en Fedora, el servidor y el transporte de la extensión con síntesis CPU `spanish`/`lola`, controles y callbacks de audio reales. No acredita escucha/calidad, interfaz completa de Pi, TUI ni `spanish_24l`; [versiones y comprobaciones](../desarrollo.md#verificación-en-fedora).
 - Harness de IA instalado (perfil `pi`, modo integrado); `python .repo-harness/check.py` lo comprueba.
 
@@ -39,7 +39,7 @@ Este archivo proyecta solo hechos verificados del proyecto: registros activos, b
 
 - Registrar todo pendiente no trivial en [roadmap.md](roadmap.md), sin mantener un segundo backlog aquí.
 - `RH-W-0001` (`deferred`, P2): endurecer el servidor local de voz.
-- `RH-W-0002` (`deferred`, P3): ajustar la lectura de hashes de commit y aplicar las pronunciaciones decididas (`API` → `ei pi ai`, `CPU` → `ci pi iu`) según la [guía de pronunciación](../pronunciacion.md).
+- `RH-W-0002` (`deferred`, P3): pronunciaciones en inglés aplicadas; quedan la lectura de hashes de commit, las extensiones de archivo y la confirmación por escucha ([guía de pronunciación](../pronunciacion.md)).
 - `RH-W-0003` (`deferred`, P2): revisar consumo, carga a demanda o residente, esperas de arranque y medición opcional por equipo.
 - `RH-W-0004` (`deferred`, P3): revisar interfaz, TUI, menús, comandos y ajustes, modo automático persistente y acceso sin mouse.
 - `RH-W-0005` (`deferred`, P3): probar otras voces existentes y fuentes gratuitas de Hugging Face y otros sitios, verificando compatibilidad y condiciones de uso.

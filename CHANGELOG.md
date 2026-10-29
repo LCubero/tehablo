@@ -6,6 +6,7 @@ Este archivo registra los cambios completados en orden cronológico.
 
 ## 2026-10-30
 
+- Las siglas técnicas de `pronunciaciones.json` se deletrean en inglés (`API` → `ei pi ai`, `CPU` → `ci pi iu`, `HTML`, `URL`, `GPU` y otras; `USB`, `PDF` y `CD` siguen en español) y se añadieron 115 términos de desarrollo, Git, GitHub, CI/CD y gestión (`RH-W-0002`).
 - Se añadió la guía para escribir pronunciaciones en inglés (`docs/pronunciacion.md`) y se registraron las pronunciaciones decididas de `API` y `CPU` (`RH-W-0002`), los ajustes de comandos, modo automático y acceso sin mouse (`RH-W-0004`), y los trabajos propuestos de GPU opcional, instalación local y Docker/VPS (`RH-W-0007` a `RH-W-0009`), sin cambiar el comportamiento.
 
 ## 2026-10-29

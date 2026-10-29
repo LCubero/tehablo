@@ -48,8 +48,11 @@ No fuerces palabras simples ni términos que en español ya se dicen bien.
 
 ## Decisiones y pendientes
 
-- **Decidido por la persona responsable (2026-10-30):** `API` → `ei pi ai` y `CPU` → `ci pi iu`. El cambio en `pronunciaciones.json` pertenece a `RH-W-0002` de la [hoja de ruta](repo-harness/roadmap.md) y todavía no está aplicado.
-- **Por decidir:** estas entradas deletrean con letras del español. Algunas se dicen así en español (`USB`, `PDF`, `CD`) y otras quizá deban ir en inglés: `PHP`, `HTML`, `CSS`, `XML`, `APIs`, `npm`, `URL`, `GPU`, `SSD`, `HDMI`, `PR`, `TTS`, `pi-tts`, `CI`, `CLI`. Si `API` pasa a `ei pi ai`, la entrada `APIs` sobra (el plural sale solo).
+- **Aplicado (2026-10-30, decisión de la persona responsable):** `API` → `ei pi ai`, `CPU` → `ci pi iu`; se quitó `APIs` porque el plural sale solo (`ei pi ais`).
+- **Aplicado:** pasaron al inglés `PHP`, `HTML`, `CSS`, `SQL`, `XML`, `npm`, `URL`, `GPU`, `SSD`, `HDMI`, `PR`, `TTS`, `pi-tts`, `CI` y `CLI`; se añadieron términos comunes de desarrollo, Git, GitHub, CI/CD y gestión de proyectos.
+- **Se mantienen en español** porque así se dicen: `USB`, `PDF`, `CD`.
+- **Se omiten** términos que el español ya lee bien (`token`, `Bash`, `Vim`, `log`) y los que coinciden con palabras españolas comunes: el diccionario cambia la palabra en cualquier texto.
+- **Pendiente:** las extensiones de archivo de [`src/tehablo_tech.py`](../src/tehablo_tech.py) siguen con letras del español (`html` → `hache te eme ele`). Ninguna entrada se ha confirmado todavía escuchándola (`RH-W-0002` de la [hoja de ruta](repo-harness/roadmap.md)).
 
 ## Fuentes
 
