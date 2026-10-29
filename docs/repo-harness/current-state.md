@@ -34,9 +34,10 @@ Este archivo proyecta solo hechos verificados del proyecto: registros activos, b
 <!-- doc-role:pending-work -->
 
 - Registrar todo pendiente no trivial en [roadmap.md](roadmap.md), sin mantener un segundo backlog aquí.
+- `RH-W-0001` (`proposed`, P2): endurecer el servidor local de voz.
 
 ## Siguiente paso
 
 <!-- doc-role:next-step -->
 
-Confirmar en Git los archivos del harness y la documentación actualizada. Después, registrar en [roadmap.md](roadmap.md) el siguiente trabajo no trivial que se decida.
+La integración con Pi está en `master`. Siguiente trabajo propuesto: `RH-W-0001` en [roadmap.md](roadmap.md), endurecer el servidor local de voz.

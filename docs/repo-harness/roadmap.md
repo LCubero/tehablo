@@ -17,7 +17,18 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 ## Registros activos
 <!-- doc-role:active-records -->
 
-No se han agregado registros específicos del proyecto.
+### RH-W-0001: Endurecer el servidor local de voz
+
+- **Origen:** revisión de código de Gentle AI de la integración con Pi (lineage `review-37a6239aeea8d19d`), aprobada con avisos no bloqueantes.
+- **Prioridad:** P2. Solo escucha en `127.0.0.1`, pero cualquier proceso local o página web abierta puede llamarlo.
+- **Dependencias:** ninguna.
+- **Estado:** `proposed`.
+- **Trabajo restante:**
+  - Rechazar peticiones `POST` sin `Content-Type: application/json` o con cabecera `Origin` (`src/tehablo_server.py`).
+  - Si el modelo no carga, informar el error en `/health` y `/status` en lugar de quedar en `loading`.
+  - Revisar los tiempos de espera de la extensión (2 s por petición, ~7,5 s al arrancar el servidor) en equipos lentos.
+- **Evidencia:** avisos R1-001, R3-001, R3-002, R4-001 y R4-002 de esa revisión.
+- **Condición del siguiente avance:** decisión de la persona responsable de priorizarlo.
 
 ## Registros resueltos
 <!-- doc-role:resolved-records -->
