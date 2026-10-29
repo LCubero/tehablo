@@ -54,7 +54,7 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 - **Dependencias:** coordinar la revisión de tiempos de espera con `RH-W-0001`.
 - **Estado:** `deferred`.
 - **Evidencia:** el código de `src/tehablo_server.py` conserva el modelo y la salida de audio abiertos al terminar o detener; pausar no cancela la generación. No se midió el consumo residual. Las [mediciones offline de Fedora](../como-funciona.md#fedora) verifican solo síntesis directa, carga desde caché y recursos del proceso.
-- **Trabajo completado (2026-10-29):** medición acotada offline de `spanish` y `spanish_24l` con `lola`, tres repeticiones por modelo; resultados, metodología y evidencia JSON documentados junto a Windows. No se entregaron mediciones de pausa, parada, reposo o dispositivo de audio, optimizaciones ni ajustes nuevos.
+- **Trabajo completado (2026-10-29):** medición acotada offline de `spanish` y `spanish_24l` con `lola`, tres repeticiones por modelo; resultados, metodología y evidencia JSON documentados. No se entregaron mediciones de pausa, parada, reposo o dispositivo de audio, optimizaciones ni ajustes nuevos.
 - **Trabajo restante:**
   - Detallar y medir CPU, RAM y estado de la salida de audio al generar, pausar, detener y quedar inactivo; identificar optimizaciones justificadas por esas mediciones.
   - Evaluar ajustes para elegir entre carga a demanda y modelo siempre residente en memoria; definir qué evento libera el modelo y qué sucede con la siguiente petición.

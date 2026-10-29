@@ -123,8 +123,6 @@ No es una prueba de reproducción ni de latencia audible: el primer fragmento es
 solo la primera entrega del generador. Tampoco mide pausa, parada, reposo ni el
 dispositivo de audio; no entrega optimizaciones ni ajustes nuevos de recursos
 ([alcance pendiente de RH-W-0003](repo-harness/roadmap.md#rh-w-0003-revisar-consumo-carga-a-demanda-y-espera-de-arranque)).
-No permite afirmar que Fedora sea más rápido: el texto exacto, las versiones y
-el método originales de Windows no están disponibles para una comparación controlada.
 
 ### Método reproducible en Fedora
 
@@ -156,8 +154,6 @@ HF_HUB_OFFLINE=1 .venv-pocket/bin/python scripts/measure_tts.py \
 - El JSON conserva versiones, equipo, hash del texto y cada repetición. El script
   fuerza el modo offline de Hugging Face y falla si faltan archivos; no descarga.
   Este modo no constituye aislamiento de red a nivel del sistema operativo.
-- No se conserva el texto exacto, script ni versiones del ensayo de Windows:
-  ambos ensayos sirven de referencia, **no como comparación controlada entre SO**.
 
 ## Lo que no usa
 
