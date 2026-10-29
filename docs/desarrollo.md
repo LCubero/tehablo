@@ -64,13 +64,17 @@ tehablo/
 │   ├── tehablo_tts.py
 │   ├── tehablo_numbers.py
 │   ├── tehablo_lexicon.py
-│   └── tehablo_speed.py
+│   ├── tehablo_speed.py
+│   └── tehablo_server.py
+├── pi-extension/
+│   └── tehablo-tts/          # extensión de Pi (TypeScript)
 ├── scripts/
 │   └── get_voices.py
 ├── tests/
 │   ├── test_numbers.py
 │   ├── test_lexicon.py
 │   ├── test_speed.py
+│   ├── test_server.py
 │   ├── test_tui_speed.py
 │   ├── test_tui_smoke.py
 │   └── test_tui_spanish_24l.py
@@ -96,6 +100,8 @@ tehablo/
 | `src/tehablo_numbers.py` | Conversión de números a palabras en español | Sí |
 | `src/tehablo_lexicon.py`, `pronunciaciones.json` | Pronunciación de términos en inglés | Sí |
 | `src/tehablo_speed.py` | Velocidad de la voz sin cambiar el tono (WSOLA con `audiotsm`) | Sí |
+| `src/tehablo_server.py` | Servidor HTTP local (`127.0.0.1:8765`) que usa la extensión de Pi | Sí |
+| `pi-extension/tehablo-tts/`, `.pi/settings.json` | Extensión de Pi y su carga en este proyecto | Sí |
 | `scripts/get_voices.py` | Descarga selectiva de voces | Sí |
 | `tests/` | Pruebas ejecutables sin pytest | Sí |
 | `samples/prueba-larga.txt` | Texto largo para `/leer` | Sí |
@@ -119,12 +125,19 @@ del directorio de trabajo. `/leer` conserva las rutas relativas al directorio ac
 
 ## Pruebas
 
-`tests/test_numbers.py`, `tests/test_lexicon.py` y `tests/test_speed.py` comprueban la conversión de números, el diccionario de pronunciación y el cambio de velocidad sin modelo ni audio; terminan con código 0 si todos los casos pasan:
+`tests/test_numbers.py`, `tests/test_lexicon.py`, `tests/test_speed.py` y `tests/test_server.py` comprueban la conversión de números, el diccionario de pronunciación, el cambio de velocidad y el servidor HTTP sin modelo ni audio; terminan con código 0 si todos los casos pasan:
 
 ```powershell
 .venv-pocket/Scripts/python tests/test_numbers.py
 .venv-pocket/Scripts/python tests/test_lexicon.py
 .venv-pocket/Scripts/python tests/test_speed.py
+.venv-pocket/Scripts/python tests/test_server.py
+```
+
+La extensión de Pi tiene sus pruebas con `node:test` (Node 24, sin dependencias):
+
+```powershell
+node --test pi-extension/tehablo-tts/test/tts.test.ts pi-extension/tehablo-tts/test/lifecycle.test.ts pi-extension/tehablo-tts/test/controls.test.ts
 ```
 
 Las demás son scripts de integración de Textual, no pruebas de pytest. **Reproducen audio

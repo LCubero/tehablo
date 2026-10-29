@@ -11,3 +11,4 @@ Este archivo registra los cambios completados en orden cronológico.
 - Se completaron el propósito del proyecto en `REPO-HARNESS.md` y el estado verificado en `docs/repo-harness/current-state.md`.
 - Se añadió la licencia MIT del proyecto (`LICENSE`).
 - Se simplificó el README a lo esencial y se movieron archivos, pruebas, problemas conocidos, licencias y alternativas a `docs/desarrollo.md`.
+- Se añadió la extensión de Pi `tehablo-tts` y el servidor local `src/tehablo_server.py` para leer en voz alta las respuestas del agente, en modo manual (Escuchar, Pausar, Continuar, Detener) o automático (`/tts auto on`).

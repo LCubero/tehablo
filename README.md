@@ -2,15 +2,18 @@
 
 Convierte texto en voz en español, en tu equipo y gratis. Usa **Pocket TTS** (Kyutai), que funciona solo con CPU: no necesita GPU, nube ni cuenta. Probado en Windows; debería funcionar en Linux y macOS.
 
+El uso principal es **leer en voz alta las respuestas de [Pi](#uso-en-pi)**. La TUI y la consola sirven para probar voces, modelo y velocidad.
+
 1. [Cómo funciona](#cómo-funciona)
 2. [Qué usa](#qué-usa)
 3. [Cuánto gasta](#cuánto-gasta)
 4. [Instalación](#instalación)
-5. [Uso: TUI](#uso-tui)
-6. [Uso: consola simple](#uso-consola-simple)
-7. [Voces](#voces)
-8. [Qué se puede agregar, modificar o aprovechar](#qué-se-puede-agregar-modificar-o-aprovechar)
-9. [Más documentación](#más-documentación)
+5. [Uso en Pi](#uso-en-pi)
+6. [Uso: TUI](#uso-tui)
+7. [Uso: consola simple](#uso-consola-simple)
+8. [Voces](#voces)
+9. [Qué se puede agregar, modificar o aprovechar](#qué-se-puede-agregar-modificar-o-aprovechar)
+10. [Más documentación](#más-documentación)
 
 ---
 
@@ -72,6 +75,25 @@ sudo apt install libportaudio2   # solo Linux, para el audio
 ```
 
 El entorno `.venv-pocket` no se puede copiar entre sistemas operativos: créalo en cada equipo. Ejecuta los comandos desde la raíz del repositorio.
+
+## Uso en Pi
+
+La extensión [`pi-extension/tehablo-tts/`](pi-extension/tehablo-tts/) lee las respuestas finales del agente con la voz local. Se carga sola al abrir Pi dentro de este repositorio (`.pi/settings.json`), después de aceptar la confianza del proyecto y ejecutar `/reload`. Para usarla en otros proyectos, añade la ruta absoluta de esa carpeta a `extensions` en tu configuración de Pi.
+
+- **Manual (por defecto):** cada respuesta muestra `[ ▶ Escuchar ]  /tts play <n>`. Mientras suena aparecen **⏸ Pausar** / **▶ Continuar** y **■ Detener**.
+- **Automático:** `/tts auto on` lee cada respuesta al terminar; `/tts auto off` vuelve al modo manual.
+
+| Comando | Acción |
+|---|---|
+| `/tts` | Estado y ayuda |
+| `/tts on` / `/tts off` | Activa o desactiva los controles |
+| `/tts play [n]` | Lee la respuesta `n` (o la última) |
+| `/tts pause` / `/tts resume` / `/tts stop` | Controla la lectura |
+| `/tts voice [nombre]` | Lista o cambia la voz |
+| `/tts model [spanish\|spanish_24l]` | Cambia el modelo |
+| `/tts speed [0.75-1.5]` | Cambia la velocidad |
+
+La extensión arranca sola el servidor local [`src/tehablo_server.py`](src/tehablo_server.py) (`127.0.0.1:8765`, se cambia con `TEHABLO_PORT`) y lo apaga al cerrar Pi. Necesita el entorno `.venv-pocket` instalado. Los ajustes duran solo la sesión.
 
 ## Uso: TUI
 

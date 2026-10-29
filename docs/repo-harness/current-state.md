@@ -14,6 +14,7 @@
 - Selector de velocidad que conserva el tono (`src/tehablo_speed.py`).
 - Descarga selectiva de voces en español para clonar (`scripts/get_voices.py`).
 - Pruebas unitarias sin modelo (`tests/test_numbers.py`, `tests/test_lexicon.py`, `tests/test_speed.py`) y scripts de integración de la TUI que reproducen audio.
+- Extensión de Pi `pi-extension/tehablo-tts/` y servidor local `src/tehablo_server.py`: leen las respuestas del agente en modo manual o automático; se carga en este proyecto con `.pi/settings.json`.
 - Probado solo en Windows.
 - Harness de IA instalado (perfil `pi`, modo integrado); `python .repo-harness/check.py` lo comprueba.
 
@@ -26,6 +27,7 @@ Este archivo proyecta solo hechos verificados del proyecto: registros activos, b
 - Se creó el harness mínimo de IA del repositorio y su documentación visible de continuidad.
 - Se documentó el flujo de procesamiento y el consumo de recursos medido (`docs/como-funciona.md`).
 - Se añadió el selector de velocidad que conserva el tono.
+- Se añadió la lectura en voz alta de las respuestas de Pi (extensión `tehablo-tts`).
 
 ## Trabajo pendiente
 
