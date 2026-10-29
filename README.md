@@ -1,6 +1,6 @@
 # tehablo
 
-Convierte texto en voz en español, en tu equipo y gratis. Usa **Pocket TTS** (Kyutai), que funciona solo con CPU: no necesita GPU, nube ni cuenta. Probado en Windows y, para servidor y transporte de la extensión, en Fedora con salida de audio real. macOS no se ha verificado.
+Convierte texto en voz en español, en tu equipo y gratis. Usa **Pocket TTS** (Kyutai), que funciona solo con CPU: no necesita GPU, nube ni cuenta. Probado en Windows y en Linux (Fedora), con salida de audio real y [mediciones de consumo](#cuánto-gasta) en ambos. macOS no se ha verificado.
 
 El uso principal es **leer en voz alta las respuestas de [Pi](#uso-en-pi)**. La TUI y la consola sirven para probar voces, modelo y velocidad.
 
@@ -47,7 +47,9 @@ Detalle completo: [docs/como-funciona.md](docs/como-funciona.md).
 
 ## Cuánto gasta
 
-Medido en un Ryzen 5 5600X con 32 GB de RAM y Windows, con un texto de unos 36 s de audio.
+Mismo equipo: Ryzen 5 5600X (12 hilos) con 32 GB de RAM, voz `lola` y un texto de unos 36 s de audio.
+
+**Windows:**
 
 | | `spanish` (rápido) | `spanish_24l` (más calidad) |
 |---|---|---|
@@ -56,7 +58,19 @@ Medido en un Ryzen 5 5600X con 32 GB de RAM y Windows, con un texto de unos 36 s
 | Velocidad | 3,7 veces más rápido que tiempo real | 1,2 veces |
 | GPU | No la usa | No la usa |
 
-En disco: unos 813 MB el entorno de Python y 1,2 GB los modelos descargados.
+**Linux (Fedora 44):** mediana de tres repeticiones, sin reproducir audio.
+
+| | `spanish` (rápido) | `spanish_24l` (más calidad) |
+|---|---|---|
+| RAM | ~930 MiB (pico ~1 GiB) | ~1,8 GiB (pico ~2,3 GiB) |
+| CPU | ~1,7 núcleos (~14 %) | ~1,2 núcleos (~10 %) |
+| Velocidad | 4,3 veces más rápido que tiempo real | 1,3 veces |
+| Primer trozo de audio | ~0,12 s | ~0,44 s |
+| GPU | No la usa | No la usa |
+
+En disco: unos 813 MB el entorno de Python y 1,2 GB los modelos descargados (medido en Windows).
+
+Método, valores exactos y cómo repetir la medición: [docs/como-funciona.md](docs/como-funciona.md#consumo-medido).
 
 ## Instalación
 

@@ -6,7 +6,7 @@ Este archivo registra los cambios completados en orden cronológico.
 
 ## 2026-10-29
 
-- Se documentaron [mediciones offline de Fedora](docs/como-funciona.md#fedora) para `spanish` y `spanish_24l`, con texto y script reproducibles, evidencia JSON y límites de la medición; resultado acotado de `RH-W-0003`, sin cerrar su investigación pendiente.
+- Se documentaron [mediciones offline de Fedora](docs/como-funciona.md#fedora) para `spanish` y `spanish_24l`, con texto y script reproducibles, evidencia JSON y límites de la medición, con un resumen en el README; resultado acotado de `RH-W-0003`, sin cerrar su investigación pendiente.
 
 - Los controles de Pi muestran botones de volumen (10 % a 150 %) y velocidad (1.00x, 1.10x, 1.15x, 1.25x y 1.50x) junto a Escuchar; el volumen cambia al instante y la velocidad desde el siguiente fragmento generado. Sin atajos de teclado (`RH-W-0004`).
 - `reload` se lee `rilóud`; en Pi las tablas markdown se leen fila por fila sin las barras, los guiones bajos dentro de palabras se conservan (`test_tech` → «test tech») y los puntajes `53/53` se leen «53 de 53» (`RH-W-0002`).
