@@ -40,11 +40,11 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 - **Trabajo restante:**
   - Decidir si las extensiones de archivo de `src/tehablo_tech.py` (`html` → `hache te eme ele`, `css` → `ce ese ese`) pasan también al inglés.
   - Confirmar mediante escucha el resultado de cada ajuste.
-- **Trabajo completado (2026-10-30):** `API` → `ei pi ai` y `CPU` → `ci pi iu`; se quitó `APIs`; 15 siglas pasaron del deletreo español al inglés (`USB`, `PDF` y `CD` se mantienen); se añadieron 115 términos de desarrollo, Git, GitHub, CI/CD y gestión (291 entradas). Pruebas: `tests/test_lexicon.py` (43/43) y `tests/test_server.py`. Después de la prueba de escucha: `merge` → `mérch`; los hashes de commit se omiten, los separadores (`+++`) no se leen, `→` y los paréntesis son una pausa corta y la barra entre palabras se lee «eslash», conservando la regla de rutas (`src/tehablo_tech.py`, `tests/test_tech.py` 53/53).
+- **Trabajo completado (2026-10-29):** `API` → `ei pi ai` y `CPU` → `ci pi iu`; se quitó `APIs`; 15 siglas pasaron del deletreo español al inglés (`USB`, `PDF` y `CD` se mantienen); se añadieron 115 términos de desarrollo, Git, GitHub, CI/CD y gestión (291 entradas). Pruebas: `tests/test_lexicon.py` (43/43) y `tests/test_server.py`. Después de la prueba de escucha: `merge` → `mérch`; los hashes de commit se omiten, los separadores (`+++`) no se leen, `→` y los paréntesis son una pausa corta y la barra entre palabras se lee «eslash», conservando la regla de rutas (`src/tehablo_tech.py`, `tests/test_tech.py` 53/53).
 - **Adiciones:** método común para escribir pronunciaciones: [guía de pronunciación](../pronunciacion.md), basada en la skill `wk-en-pronun-tico-ld9` de la persona responsable y adaptada para un modelo de voz (minúsculas con tilde, sin guiones ni mayúsculas).
 - **Exclusiones:** ninguna sigla cambia sin decisión de la persona responsable; no se implementa tratamiento de precios.
-- **Evidencia:** observación directa de la persona responsable: «como los codigos de los commits (commit 22774ca), CPU no lo deletrió en ingles». El 2026-10-30 indicó «API: ei pi ai» y «CPU:  ci pi iu», y pidió «investigar como es para leer como se pronuncia».
-- **Decisión:** la persona responsable indicó «pero eso lo hacemos despues»; el 2026-10-30 eligió las pronunciaciones de `API` y `CPU` y el método de la guía, y después autorizó aplicar las siglas en inglés y los términos propuestos, incluidos los de Git y GitHub («cuando digo programacion son los relacionados al desarrollo»).
+- **Evidencia:** observación directa de la persona responsable: «como los codigos de los commits (commit 22774ca), CPU no lo deletrió en ingles». El 2026-10-29 indicó «API: ei pi ai» y «CPU:  ci pi iu», y pidió «investigar como es para leer como se pronuncia».
+- **Decisión:** la persona responsable indicó «pero eso lo hacemos despues»; el 2026-10-29 eligió las pronunciaciones de `API` y `CPU` y el método de la guía, y después autorizó aplicar las siglas en inglés y los términos propuestos, incluidos los de Git y GitHub («cuando digo programacion son los relacionados al desarrollo»).
 - **Condición del siguiente avance:** escucha de la persona responsable y su decisión sobre las extensiones de archivo.
 
 ### RH-W-0003: Revisar consumo, carga a demanda y espera de arranque
@@ -74,7 +74,7 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
   - Modo automático persistente: con `/tts auto on` debe leer cada respuesta hasta que se desactive; hoy `session_start` lo reinicia a `auto = false` (`pi-extension/tehablo-tts/src/extension.ts`). El modo y sus ajustes viven en la extensión; falta elegir dónde se guardan.
   - Modo sin mouse: los botones Escuchar, Pausar y Detener de Pi solo responden al clic; añadir acceso por teclado.
   - Decidir dónde se exponen estas opciones: atajos principales, un menú interno de la TUI por hacer o comandos.
-- **Evidencia:** solicitud de la persona responsable; el 2026-10-30 pidió «los comandos hay que revisarlos agregar modificar, settigs, etc», «Modo automático» y «Modo sin mouse», y aclaró que el modo automático «lee automaticamente sin tener que dar play en escuchar, cada respuesta, hasta que se desactive el modo». No se realizó una evaluación de interfaz.
+- **Evidencia:** solicitud de la persona responsable; el 2026-10-29 pidió «los comandos hay que revisarlos agregar modificar, settigs, etc», «Modo automático» y «Modo sin mouse», y aclaró que el modo automático «lee automaticamente sin tener que dar play en escuchar, cada respuesta, hasta que se desactive el modo». No se realizó una evaluación de interfaz.
 - **Decisión:** registrar para después; no se ha elegido un rediseño ni se añaden funciones por el «etc» de la solicitud.
 - **Condición del siguiente avance:** autorización para revisar la interfaz y concretar el alcance con la persona responsable.
 
@@ -96,7 +96,7 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 
 ### RH-W-0007: Modo GPU opcional
 
-- **Origen:** solicitud de la persona responsable del 2026-10-30: «Agregar opción de usar gpu».
+- **Origen:** solicitud de la persona responsable del 2026-10-29: «Agregar opción de usar gpu».
 - **Prioridad:** P3; mejora futura de rendimiento y memoria, sin afectar el uso con CPU.
 - **Dependencias:** coordinar con `RH-W-0003`, porque una de las metas es liberar RAM.
 - **Estado:** `proposed`.
@@ -111,7 +111,7 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 
 ### RH-W-0008: Instalación local fácil
 
-- **Origen:** solicitud de la persona responsable del 2026-10-30: «hay que hacerlo facil de instalar en loca, en vps, etc y seguro».
+- **Origen:** solicitud de la persona responsable del 2026-10-29: «hay que hacerlo facil de instalar en loca, en vps, etc y seguro».
 - **Prioridad:** P2; hoy la instalación requiere varios pasos manuales por sistema operativo.
 - **Dependencias:** ninguna.
 - **Estado:** `proposed`.
@@ -122,7 +122,7 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 
 ### RH-W-0009: Versión Docker y despliegue seguro en VPS
 
-- **Origen:** solicitud de la persona responsable del 2026-10-30: «La versión docker» y facilitar la instalación «en vps, etc y seguro».
+- **Origen:** solicitud de la persona responsable del 2026-10-29: «La versión docker» y facilitar la instalación «en vps, etc y seguro».
 - **Prioridad:** P2; amplía dónde puede ejecutarse, pero exponerlo en red cambia el modelo de seguridad.
 - **Dependencias:** `RH-W-0001` (el servidor no tiene autenticación) y `RH-W-0008`.
 - **Estado:** `proposed`.

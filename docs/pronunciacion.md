@@ -48,7 +48,7 @@ No fuerces palabras simples ni términos que en español ya se dicen bien.
 
 ## Decisiones y pendientes
 
-- **Aplicado (2026-10-30, decisión de la persona responsable):** `API` → `ei pi ai`, `CPU` → `ci pi iu`; se quitó `APIs` porque el plural sale solo (`ei pi ais`).
+- **Aplicado (2026-10-29, decisión de la persona responsable):** `API` → `ei pi ai`, `CPU` → `ci pi iu`; se quitó `APIs` porque el plural sale solo (`ei pi ais`).
 - **Aplicado:** pasaron al inglés `PHP`, `HTML`, `CSS`, `SQL`, `XML`, `npm`, `URL`, `GPU`, `SSD`, `HDMI`, `PR`, `TTS`, `pi-tts`, `CI` y `CLI`; se añadieron términos comunes de desarrollo, Git, GitHub, CI/CD y gestión de proyectos.
 - **Se mantienen en español** porque así se dicen: `USB`, `PDF`, `CD`.
 - **Se omiten** términos que el español ya lee bien (`token`, `Bash`, `Vim`, `log`) y los que coinciden con palabras españolas comunes: el diccionario cambia la palabra en cualquier texto.
