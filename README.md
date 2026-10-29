@@ -244,6 +244,8 @@ El token solo hace falta para la **primera descarga**. Después, los pesos queda
 
 ## Licencias y atribución
 
+El código de tehablo se distribuye bajo la licencia [MIT](LICENSE). Los componentes de terceros conservan sus propias licencias:
+
 | Componente | Licencia | Obligación |
 |---|---|---|
 | Código de Pocket TTS | MIT | — |
@@ -261,6 +263,7 @@ Atribución sugerida: *"Voz sintetizada con Kyutai Pocket TTS (CC BY 4.0). Voz d
 ```text
 tehablo/
 ├── README.md
+├── LICENSE
 ├── CHANGELOG.md
 ├── CONTRIBUTING.md
 ├── REPO-HARNESS.md               # reglas para agentes de IA
@@ -312,6 +315,7 @@ tehablo/
 | `tests/` | Pruebas ejecutables sin pytest | Sí |
 | `samples/prueba-larga.txt` | Texto largo para `/leer` | Sí |
 | `docs/` | Investigación y referencias | Sí |
+| `LICENSE` | Licencia MIT del proyecto | Sí |
 | `CHANGELOG.md`, `CONTRIBUTING.md` | Historial de cambios y cómo contribuir | Sí |
 | `REPO-HARNESS.md`, `AGENTS.md` | Reglas para agentes de IA y su puntero | Sí |
 | `.repo-harness/`, `.pi/prompts/`, `.pi/skills/repo-harness-*` | Harness de IA generado; `python .repo-harness/check.py` comprueba que esté al día | Sí |

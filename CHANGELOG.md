@@ -9,3 +9,4 @@ Este archivo registra los cambios completados en orden cronológico.
 - Se creó el harness mínimo de IA del repositorio y su documentación visible de continuidad.
 - Se actualizó el README con los archivos del harness y se corrigió la afirmación de que no había commits.
 - Se completaron el propósito del proyecto en `REPO-HARNESS.md` y el estado verificado en `docs/repo-harness/current-state.md`.
+- Se añadió la licencia MIT del proyecto (`LICENSE`).
