@@ -25,6 +25,7 @@ Este archivo proyecta solo hechos verificados del proyecto: registros activos, b
 
 <!-- doc-role:recent-work -->
 
+- Mediciones offline de síntesis CPU en Fedora con `spanish` y `spanish_24l`, tres repeticiones por modelo y evidencia conservada junto a Windows ([resultados y límites](../como-funciona.md#fedora)); resultado acotado de `RH-W-0003`, que sigue `deferred`.
 - Botones de volumen (10 % a 150 %) y velocidad (1.00x a 1.50x) junto a Escuchar en Pi, solo con clic (`RH-W-0004`).
 - Lectura más natural: siglas en inglés, 291 términos de desarrollo, separadores y hashes omitidos, pausas en flechas y paréntesis, tablas leídas por filas y puntajes «N de M» (`RH-W-0002`).
 - Guía para escribir pronunciaciones en inglés ([docs/pronunciacion.md](../pronunciacion.md)).
@@ -42,7 +43,7 @@ Este archivo proyecta solo hechos verificados del proyecto: registros activos, b
 - Registrar todo pendiente no trivial en [roadmap.md](roadmap.md), sin mantener un segundo backlog aquí.
 - `RH-W-0001` (`deferred`, P2): endurecer el servidor local de voz.
 - `RH-W-0002` (`deferred`, P3): pronunciaciones en inglés y limpieza de símbolos aplicadas (hashes omitidos, separadores, flechas, paréntesis y barras); quedan las extensiones de archivo y la confirmación por escucha ([guía de pronunciación](../pronunciacion.md)).
-- `RH-W-0003` (`deferred`, P2): revisar consumo, carga a demanda o residente, esperas de arranque y medición opcional por equipo.
+- `RH-W-0003` (`deferred`, P2): síntesis offline medida; quedan consumo al pausar, detener y quedar inactivo, salida de audio, carga a demanda o residente, esperas de arranque y medición opcional por equipo. Sin optimizaciones ni ajustes nuevos.
 - `RH-W-0004` (`deferred`, P3): revisar interfaz, TUI, menús, comandos y ajustes, modo automático persistente y acceso sin mouse.
 - `RH-W-0005` (`deferred`, P3): probar otras voces existentes y fuentes gratuitas de Hugging Face y otros sitios, verificando compatibilidad y condiciones de uso.
 - `RH-W-0007` (`proposed`, P3): modo GPU opcional, manteniendo CPU como predeterminado.

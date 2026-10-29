@@ -1,0 +1,60 @@
+[
+  {
+    "timestamp": "2026-10-29T15:29:36.451126-06:00",
+    "platform": "Linux-7.2.13-200.fc44.x86_64-x86_64-with-glibc2.43",
+    "distribution": "Fedora Linux 44 (KDE Plasma Desktop Edition)",
+    "cpu": "AMD Ryzen 5 5600X 6-Core Processor",
+    "logical_cpus": 12,
+    "mem_total_kib": 32753144,
+    "python": "3.12.15",
+    "versions": {"pocket-tts": "4.0.1", "torch": "2.15.0+cpu", "numpy": "2.5.4"},
+    "torch_threads": 1,
+    "torch_interop_threads": 6,
+    "model": "spanish",
+    "voice": "lola",
+    "seed": 1234,
+    "text_file": "samples/benchmark.txt",
+    "characters": 600,
+    "text_sha256": "601849c5ec5ae2209ec595ee45bef62f8974cceaadda4d7937539d8bad4ecb2b",
+    "sample_rate": 24000,
+    "load_s": 0.5757272060000105,
+    "rss_after_load_mib": 816.07421875,
+    "peak_after_load_mib": 1024.00390625,
+    "voice_prepare_s": 0.0006869360004202463,
+    "runs": [
+      {"run": 1, "wall_s": 8.542224311999234, "cpu_s": 14.768670529, "average_cores": 1.7289022144097173, "machine_cpu_percent": 14.407518453414312, "first_chunk_s": 0.13522877499963215, "audio_s": 36.8, "realtime_multiple": 4.3080114330768815, "chunks": 460, "samples": 883200, "rss_after_mib": 925.62109375, "process_peak_mib": 1024.00390625},
+      {"run": 2, "wall_s": 8.645585681999364, "cpu_s": 14.813451599000004, "average_cores": 1.713412155505267, "machine_cpu_percent": 14.27843462921056, "first_chunk_s": 0.1211535090005782, "audio_s": 36.8, "realtime_multiple": 4.256507465609859, "chunks": 460, "samples": 883200, "rss_after_mib": 931.01953125, "process_peak_mib": 1024.00390625},
+      {"run": 3, "wall_s": 8.877400408999165, "cpu_s": 15.230085906999996, "average_cores": 1.7156020011850552, "machine_cpu_percent": 14.296683343208795, "first_chunk_s": 0.12126448099843401, "audio_s": 36.8, "realtime_multiple": 4.145357684068777, "chunks": 460, "samples": 883200, "rss_after_mib": 906.95703125, "process_peak_mib": 1024.00390625}
+    ],
+    "method": "Fresh process; cached offline weights; direct synthesis, no preprocessing, playback or speed transform. Run 1 includes warmup; runs 2-3 reuse the model. RSS from /proc, peak from ru_maxrss, CPU from process_time. OS file cache not cleared."
+  },
+  {
+    "timestamp": "2026-10-29T15:37:46.744745-06:00",
+    "platform": "Linux-7.2.13-200.fc44.x86_64-x86_64-with-glibc2.43",
+    "distribution": "Fedora Linux 44 (KDE Plasma Desktop Edition)",
+    "cpu": "AMD Ryzen 5 5600X 6-Core Processor",
+    "logical_cpus": 12,
+    "mem_total_kib": 32753144,
+    "python": "3.12.15",
+    "versions": {"pocket-tts": "4.0.1", "torch": "2.15.0+cpu", "numpy": "2.5.4"},
+    "torch_threads": 1,
+    "torch_interop_threads": 6,
+    "model": "spanish_24l",
+    "voice": "lola",
+    "seed": 1234,
+    "text_file": "samples/benchmark.txt",
+    "characters": 600,
+    "text_sha256": "601849c5ec5ae2209ec595ee45bef62f8974cceaadda4d7937539d8bad4ecb2b",
+    "sample_rate": 24000,
+    "load_s": 1.6705151579990343,
+    "rss_after_load_mib": 1681.42578125,
+    "peak_after_load_mib": 2321.42578125,
+    "voice_prepare_s": 0.0014477839995379327,
+    "runs": [
+      {"run": 1, "wall_s": 28.04385557600108, "cpu_s": 34.257199313, "average_cores": 1.2215581135111848, "machine_cpu_percent": 10.17965094592654, "first_chunk_s": 0.46572804500101483, "audio_s": 35.68, "realtime_multiple": 1.2722929592653323, "chunks": 446, "samples": 856320, "rss_after_mib": 1803.87109375, "process_peak_mib": 2321.42578125},
+      {"run": 2, "wall_s": 28.313929283998732, "cpu_s": 34.524863278000005, "average_cores": 1.2193596632845765, "machine_cpu_percent": 10.16133052737147, "first_chunk_s": 0.4276481179986149, "audio_s": 35.68, "realtime_multiple": 1.2601571347486593, "chunks": 446, "samples": 856320, "rss_after_mib": 1806.6171875, "process_peak_mib": 2321.42578125},
+      {"run": 3, "wall_s": 28.59772284600149, "cpu_s": 34.881309998000006, "average_cores": 1.2197233390167317, "machine_cpu_percent": 10.164361158472763, "first_chunk_s": 0.44079709600009664, "audio_s": 35.68, "realtime_multiple": 1.2476517865473598, "chunks": 446, "samples": 856320, "rss_after_mib": 1806.6171875, "process_peak_mib": 2321.42578125}
+    ],
+    "method": "Fresh process; cached offline weights; direct synthesis, no preprocessing, playback or speed transform. Run 1 includes warmup; runs 2-3 reuse the model. RSS from /proc, peak from ru_maxrss, CPU from process_time. OS file cache not cleared."
+  }
+]

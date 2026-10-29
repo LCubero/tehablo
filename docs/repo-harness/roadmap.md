@@ -53,13 +53,14 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 - **Prioridad:** P2; evaluar el equilibrio entre memoria ocupada y latencia de la siguiente reproducción.
 - **Dependencias:** coordinar la revisión de tiempos de espera con `RH-W-0001`.
 - **Estado:** `deferred`.
-- **Evidencia:** el código de `src/tehablo_server.py` conserva el modelo y la salida de audio abiertos al terminar o detener; pausar no cancela la generación. No se midió el consumo residual en esta sesión.
+- **Evidencia:** el código de `src/tehablo_server.py` conserva el modelo y la salida de audio abiertos al terminar o detener; pausar no cancela la generación. No se midió el consumo residual. Las [mediciones offline de Fedora](../como-funciona.md#fedora) verifican solo síntesis directa, carga desde caché y recursos del proceso.
+- **Trabajo completado (2026-10-29):** medición acotada offline de `spanish` y `spanish_24l` con `lola`, tres repeticiones por modelo; resultados, metodología y evidencia JSON documentados junto a Windows. No se entregaron mediciones de pausa, parada, reposo o dispositivo de audio, optimizaciones ni ajustes nuevos.
 - **Trabajo restante:**
   - Detallar y medir CPU, RAM y estado de la salida de audio al generar, pausar, detener y quedar inactivo; identificar optimizaciones justificadas por esas mediciones.
   - Evaluar ajustes para elegir entre carga a demanda y modelo siempre residente en memoria; definir qué evento libera el modelo y qué sucede con la siguiente petición.
   - Revisar si conviene cambiar o quitar las esperas actuales de arranque, distinguiendo servidor accesible de modelo listo y evitando esperas indefinidas ante errores.
   - Evaluar una medición opcional del arranque y de la carga del modelo para estimar las necesidades de cada equipo; no se ha elegido calibración automática ni valores nuevos.
-- **Decisión:** solicitud para detallar y revisar después; las alternativas no están aprobadas como diseño definitivo ni implementadas.
+- **Decisión:** solicitud para detallar y revisar después; posteriormente se autorizó la medición offline acotada en Fedora y la descarga faltante de `spanish_24l`. Esa parte está completada, pero el trabajo amplio sigue `deferred`: las alternativas no están aprobadas como diseño definitivo ni implementadas.
 - **Condición del siguiente avance:** autorización para realizar la investigación y medición acotadas antes de elegir el comportamiento y los ajustes.
 
 ### RH-W-0004: Revisar interfaz, TUI, menús y opciones

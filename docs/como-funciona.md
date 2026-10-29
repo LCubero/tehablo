@@ -57,6 +57,8 @@ Texto escrito
 
 ## Consumo medido
 
+### Windows
+
 Medido el 2026-10-29 en el equipo de referencia: Ryzen 5 5600X (12 hilos), 32 GB de RAM y Windows. Texto de 600 caracteres, unos 36 s de audio, voz `lola`.
 
 | Recurso | `spanish` (rápido) | `spanish_24l` (más calidad) |
@@ -82,6 +84,80 @@ Otros datos:
 - Los pasos 1 y 2 tardan milisegundos.
 
 ---
+
+### Fedora
+
+Medido el **2026-10-29 (fecha local del equipo, UTC−06:00)**: Ryzen 5 5600X,
+12 hilos lógicos, 32 GB de RAM, Fedora 44, kernel 7.2.13-200.fc44.x86_64.
+Python 3.12.15, pocket-tts 4.0.1 y Torch 2.15.0+cpu; ambos modelos usaron
+1 hilo intraop y 6 interop de Torch. Voz `lola`, 600 caracteres, 24 kHz.
+
+Hechos verificados en [la evidencia original de ambos modelos](measurements/fedora-2026-10-29.json).
+Los valores de generación son **mediana (mínimo–máximo) de tres repeticiones**,
+incluida la primera con calentamiento; carga y preparación de voz son una
+observación por proceso, no medianas.
+
+| Medida | `spanish` | `spanish_24l` |
+|---|---|---|
+| Audio generado por repetición | 36,80 s; 883200 muestras | 35,68 s; 856320 muestras |
+| Generación, s | 8,646 (8,542–8,877) | 28,314 (28,044–28,598) |
+| Velocidad, × tiempo real | 4,257 (4,145–4,308) | 1,260 (1,248–1,272) |
+| Primer fragmento, s | 0,121 (0,121–0,135) | 0,441 (0,428–0,466) |
+| CPU media, núcleos equivalentes | 1,716 (1,713–1,729) | 1,220 (1,219–1,222) |
+| CPU, % de los 12 hilos | 14,30 (14,28–14,41) | 10,16 (10,16–10,18) |
+| RAM residente tras generar, MiB | 925,62 (906,96–931,02) | 1806,62 (1803,87–1806,62) |
+| Pico acumulado del proceso, MiB | 1024,00 (1024,00–1024,00) | 2321,43 (2321,43–2321,43) |
+| Carga desde caché, s | 0,576 | 1,671 |
+| Preparación de voz, s | 0,000687 | 0,001448 |
+| RAM residente tras cargar, MiB | 816,07 | 1681,43 |
+
+La carga excluye los imports de Python; la generación excluye carga y preparación
+de voz. La descarga inicial autorizada de los archivos faltantes de `spanish_24l`
+se completó antes del ensayo y no está incluida. No se vació la caché del SO.
+El servidor de la extensión que ya existía no se detuvo: la memoria
+registrada corresponde **solo al proceso de medición**, no al consumo total del
+equipo. El pico incluye imports, carga y generación; la RAM residente es una
+lectura al final de cada fase, no el máximo durante ella.
+
+No es una prueba de reproducción ni de latencia audible: el primer fragmento es
+solo la primera entrega del generador. Tampoco mide pausa, parada, reposo ni el
+dispositivo de audio; no entrega optimizaciones ni ajustes nuevos de recursos
+([alcance pendiente de RH-W-0003](repo-harness/roadmap.md#rh-w-0003-revisar-consumo-carga-a-demanda-y-espera-de-arranque)).
+No permite afirmar que Fedora sea más rápido: el texto exacto, las versiones y
+el método originales de Windows no están disponibles para una comparación controlada.
+
+### Método reproducible en Fedora
+
+El [script de medición](../scripts/measure_tts.py) y el
+[texto fijo](../samples/benchmark.txt) permiten repetir el ensayo.
+
+Desde la raíz del repositorio, con los pesos y la voz ya disponibles en caché:
+
+```bash
+HF_HUB_OFFLINE=1 .venv-pocket/bin/python scripts/measure_tts.py \
+  --model spanish --text samples/benchmark.txt \
+  --output .repo-harness/tmp/fedora-measurements/spanish.json
+HF_HUB_OFFLINE=1 .venv-pocket/bin/python scripts/measure_tts.py \
+  --model spanish_24l --text samples/benchmark.txt \
+  --output .repo-harness/tmp/fedora-measurements/spanish_24l.json
+```
+
+- Cada comando carga un modelo en un proceso nuevo y genera tres veces el mismo
+  texto de 600 caracteres con `lola`, semilla 1234 y velocidad sin modificar.
+  `--runs` permite entre 1 y 10 repeticiones; `--help` describe las opciones.
+- La primera generación incluye el calentamiento; las siguientes reutilizan el
+  modelo. La carga parte de archivos en caché, sin vaciar la caché del sistema.
+- El tiempo al primer fragmento **no es latencia audible**: no se reproduce audio.
+  Se mide síntesis directa, sin interfaz, preprocesamiento ni ajuste de velocidad.
+- RAM residente: `/proc/self/statm`; pico del proceso: `ru_maxrss`, incluidos
+  imports, carga y generación. Se expresan en MiB (1024² bytes), no en MB decimales.
+  CPU media: segundos de CPU / segundos transcurridos; el porcentaje del equipo
+  divide además por los procesadores lógicos.
+- El JSON conserva versiones, equipo, hash del texto y cada repetición. El script
+  fuerza el modo offline de Hugging Face y falla si faltan archivos; no descarga.
+  Este modo no constituye aislamiento de red a nivel del sistema operativo.
+- No se conserva el texto exacto, script ni versiones del ensayo de Windows:
+  ambos ensayos sirven de referencia, **no como comparación controlada entre SO**.
 
 ## Lo que no usa
 
