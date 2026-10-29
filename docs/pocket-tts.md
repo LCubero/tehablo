@@ -394,7 +394,9 @@ El mantenedor pide preprocesar números y fechas en [#174](https://github.com/ky
 | URL, emojis, Markdown | Eliminar, describir o convertir selectivamente según el uso, conservando el original. |
 | Versiones, teléfonos, identificadores | No tratarlos siempre como números cardinales; pueden requerir lectura por dígitos. |
 
-[`num2words`](https://github.com/savoirfairelinux/num2words) tiene soporte español, confirmado en su README (`es`, `es_CO`, `es_CR`, `es_GT`, `es_VE`); su `COPYING` es **LGPL 2.1**. Puede ayudar con cardinales y monedas, pero no sustituye un analizador contextual de fechas, siglas o unidades. Integración y resultado **no probados**. FrontPocket y las conversaciones de #174 sirven como ejemplos comunitarios de preprocesamiento, no como una API estándar del modelo.
+[`num2words`](https://github.com/savoirfairelinux/num2words) tiene soporte español, confirmado en su README (`es`, `es_CO`, `es_CR`, `es_GT`, `es_VE`); su `COPYING` es **LGPL 2.1**. Puede ayudar con cardinales y monedas, pero no sustituye un analizador contextual de fechas, siglas o unidades. Integración y resultado **no probados**.
+
+**Implementado en tehablo:** [`src/tehablo_numbers.py`](../src/tehablo_numbers.py) es un conversor propio, sin dependencias, que la TUI y la consola aplican antes de sintetizar cuando el modelo es `spanish` o `spanish_24l`. Cubre cardinales (`15.000` → «quince mil»), decimales (`25,5` → «veinticinco coma cinco», `3.5` → «tres punto cinco»), porcentajes, horas `HH:MM`, fechas `día/mes/año`, `₡` y `$`, negativos, teléfonos con guion (`8888-1234` → dos grupos) y lectura por dígitos para enteros de 13 o más cifras o con ceros iniciales. Convención: `.` separa miles y `,` marca decimales. No trata unidades (`km`), `€`, ordinales ni concordancia femenina («veintiuna personas» sale «veintiuno personas»). Pruebas: `tests/test_numbers.py`. FrontPocket y las conversaciones de #174 sirven como ejemplos comunitarios de preprocesamiento, no como una API estándar del modelo.
 
 ### Pausas y emociones
 
@@ -472,7 +474,7 @@ Buenas prácticas: documentar autorización del hablante, fuente exacta, licenci
 | Evitar recargar en cada frase | Mantener modelo/estado en memoria o `serve` | Bajo | No | **Oficial** |
 | Menos cortes finales | Ajustar EOS/cuadros con batería corta y larga | Bajo | No | **Oficial**; ajuste concreto no probado |
 | Menos omisiones largas | Puntuación, límites de fragmento y revisión de uniones | Medio | No | **Oficial** para chunking; política propia no probada |
-| Números/fechas/monedas/siglas | Preprocesamiento contextual; posible num2words | Medio | No | **Idea no probada**; recomendación oficial de normalizar |
+| Números/fechas/monedas/siglas | Preprocesamiento contextual; posible num2words | Medio | No | **Números, fechas, horas, ₡/$ y % implementados** en `src/tehablo_numbers.py`; siglas y unidades pendientes |
 | Diccionario inglés→reescritura | JSON antes de llamar al modelo, con excepciones | Medio | No | **Idea no probada** en tehablo |
 | Diccionario en API/CLI nativa | Seguir `pronunciations=` / `--pronunciations` | Medio | Sí, si se adopta ese parche antes de publicarse | **PR abierto #375**, no disponible localmente |
 | Inglés auténtico por tramos | Parser externo, modelo inglés y español, estados separados y concatenación | Alto | No | **Idea no probada** |

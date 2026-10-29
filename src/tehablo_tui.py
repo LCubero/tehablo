@@ -40,6 +40,8 @@ from textual.app import App, ComposeResult
 from textual.containers import Horizontal
 from textual.widgets import Button, Footer, Header, RichLog, Select, TextArea
 
+from tehablo_numbers import normalize_numbers
+
 VOICES_DIR = ROOT / "voices"
 OUT_DIR = ROOT / "pocket-out"
 AUDIO_EXT = {".wav", ".mp3", ".flac", ".safetensors"}
@@ -187,6 +189,8 @@ class TehabloApp(App):
                 if voice not in self.voice_states:
                     self.log_msg(f"Preparando voz '{Path(voice).stem}'...")
                     self.voice_states[voice] = self.model.get_state_for_audio_prompt(voice, truncate=True)
+                if self.model_name.startswith("spanish"):
+                    text = normalize_numbers(text)
                 sr = self.model.sample_rate
                 chunks: list[np.ndarray] = []
                 start = time.perf_counter()

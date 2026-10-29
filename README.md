@@ -143,6 +143,10 @@ Alternativa sin interfaz: [`src/tehablo_tts.py`](src/tehablo_tts.py).
 | `/guardar [nombre]` | Guarda el último audio en `pocket-out/` |
 | `/salir` | Termina |
 
+### Números
+
+Con los modelos `spanish` y `spanish_24l`, la TUI y la consola convierten los números a palabras antes de leerlos, porque Pocket TTS no sabe leer cifras. Ejemplos: `15.000` → *quince mil*, `25,5` → *veinticinco coma cinco*, `30%` → *treinta por ciento*, `14:30` → *catorce y treinta*, `29/10/2026` → *veintinueve de octubre de dos mil veintiséis*, `₡15.000` → *quince mil colones*, `$20` → *veinte dólares*. El punto separa miles y la coma marca decimales. Detalles y límites: [docs/pocket-tts.md](docs/pocket-tts.md#números-fechas-siglas-y-símbolos).
+
 La consola de Windows puede cortar las líneas muy largas al pegarlas. En ese caso, usa `/leer` o la TUI.
 
 Texto de prueba largo: [`samples/prueba-larga.txt`](samples/prueba-larga.txt). Ejemplo: `/leer samples/prueba-larga.txt`. Las rutas de `/leer` se resuelven desde el directorio de trabajo actual.
@@ -240,10 +244,12 @@ tehablo/
 ├── .env                      # local, nunca versionar
 ├── src/
 │   ├── tehablo_tui.py
-│   └── tehablo_tts.py
+│   ├── tehablo_tts.py
+│   └── tehablo_numbers.py
 ├── scripts/
 │   └── get_voices.py
 ├── tests/
+│   ├── test_numbers.py
 │   ├── test_tui_smoke.py
 │   └── test_tui_spanish_24l.py
 ├── samples/
@@ -262,6 +268,7 @@ tehablo/
 | `README.md`, `requirements.txt`, `.gitignore` | Guía, dependencias y exclusiones | Sí |
 | `src/tehablo_tui.py` | Interfaz Textual | Sí |
 | `src/tehablo_tts.py` | Consola simple | Sí |
+| `src/tehablo_numbers.py` | Conversión de números a palabras en español | Sí |
 | `scripts/get_voices.py` | Descarga selectiva de voces | Sí |
 | `tests/` | Pruebas ejecutables sin pytest | Sí |
 | `samples/prueba-larga.txt` | Texto largo para `/leer` | Sí |
@@ -279,7 +286,13 @@ del directorio de trabajo. `/leer` conserva las rutas relativas al directorio ac
 
 ## Pruebas
 
-Son scripts de integración de Textual, no pruebas de pytest. **Reproducen audio
+`tests/test_numbers.py` comprueba la conversión de números a palabras sin modelo ni audio; termina con código 0 si todos los casos pasan:
+
+```powershell
+.venv-pocket/Scripts/python tests/test_numbers.py
+```
+
+Las demás son scripts de integración de Textual, no pruebas de pytest. **Reproducen audio
 por los altavoces** y requieren el entorno instalado, un dispositivo de salida
 y los modelos/voces disponibles (la primera carga puede descargarlos).
 
@@ -311,4 +324,5 @@ solo no acredita estos resultados.
 | Sin sonido en Linux | Falta PortAudio | `sudo apt install libportaudio2` |
 | Al cambiar de modelo había que pulsar Reproducir dos veces | El primer clic se descartaba mientras cargaba el modelo | **Corregido:** ahora queda en espera y suena en cuanto el modelo está listo |
 | La primera ejecución tarda más de un minuto | Descarga del modelo | Solo pasa la primera vez |
+| Las cifras como `15.000` sonaban incoherentes | Pocket TTS no convierte números a palabras | **Corregido:** `src/tehablo_numbers.py` los convierte antes de leer (solo con modelos en español) |
 | Acento extranjero en español | Voz del catálogo no hispana | Usa `lola` o voces de `voices/` |

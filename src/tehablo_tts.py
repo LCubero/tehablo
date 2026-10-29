@@ -33,6 +33,8 @@ import sounddevice as sd
 from pocket_tts import TTSModel
 from pocket_tts.utils.utils import _ORIGINS_OF_PREDEFINED_VOICES
 
+from tehablo_numbers import normalize_numbers
+
 VOICES = sorted(_ORIGINS_OF_PREDEFINED_VOICES)
 OUT_DIR = ROOT / "pocket-out"
 
@@ -71,6 +73,8 @@ class App:
         self.voice = voice
 
     def speak(self, text: str) -> None:
+        if self.language.startswith("spanish"):
+            text = normalize_numbers(text)
         sr = self.model.sample_rate
         chunks: list[np.ndarray] = []
         start = time.perf_counter()
