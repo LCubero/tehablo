@@ -53,22 +53,25 @@ Mismo equipo: Ryzen 5 5600X (12 hilos) con 32 GB de RAM, voz `lola` y un texto d
 
 | | `spanish` (rápido) | `spanish_24l` (más calidad) |
 |---|---|---|
-| RAM | ~870 MB (pico ~1 GB al cargar) | ~1,8 GB (pico ~2,3 GB) |
+| RAM | ~870 MB (pico ~1 GB) | ~1,8 GB (pico ~2,3 GB) |
 | CPU | ~1,8 núcleos (~15 %) | ~1,2 núcleos (~10 %) |
 | Velocidad | 3,7 veces más rápido que tiempo real | 1,2 veces |
+| Primer audio | ~0,16 s | ~0,55 s |
 | GPU | No la usa | No la usa |
 
-**Linux (Fedora 44):** mediana de tres repeticiones, sin reproducir audio.
+En disco: unos 813 MB el entorno de Python y 1,2 GB los modelos descargados.
+
+**Linux (Fedora 44):**
 
 | | `spanish` (rápido) | `spanish_24l` (más calidad) |
 |---|---|---|
-| RAM | ~930 MiB (pico ~1 GiB) | ~1,8 GiB (pico ~2,3 GiB) |
+| RAM | ~970 MB (pico ~1,1 GB) | ~1,9 GB (pico ~2,4 GB) |
 | CPU | ~1,7 núcleos (~14 %) | ~1,2 núcleos (~10 %) |
 | Velocidad | 4,3 veces más rápido que tiempo real | 1,3 veces |
-| Primer trozo de audio | ~0,12 s | ~0,44 s |
+| Primer audio | ~0,12 s | ~0,44 s |
 | GPU | No la usa | No la usa |
 
-En disco: unos 813 MB el entorno de Python y 1,2 GB los modelos descargados (medido en Windows).
+En disco: unos 1087 MB el entorno de Python y 0,9 GB los modelos descargados.
 
 Método, valores exactos y cómo repetir la medición: [docs/como-funciona.md](docs/como-funciona.md#consumo-medido).
 

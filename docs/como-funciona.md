@@ -111,6 +111,11 @@ observación por proceso, no medianas.
 | Preparación de voz, s | 0,000687 | 0,001448 |
 | RAM residente tras cargar, MiB | 816,07 | 1681,43 |
 
+| Elemento | Tamaño | Ubicación |
+|---|---|---|
+| Entorno Python | 1087 MB | `.venv-pocket/` |
+| Modelos descargados | 0,9 GB (`spanish`, `spanish_24l` y voces) | `~/.cache/huggingface/hub` |
+
 La carga excluye los imports de Python; la generación excluye carga y preparación
 de voz. La descarga inicial autorizada de los archivos faltantes de `spanish_24l`
 se completó antes del ensayo y no está incluida. No se vació la caché del SO.
