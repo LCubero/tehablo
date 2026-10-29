@@ -6,8 +6,6 @@ Este archivo registra los cambios completados en orden cronológico.
 
 ## 2026-10-29
 
-- Se amplió la pronunciación de Git y Pi y se simplificó la lectura de URLs, rutas, archivos, identificadores y hashes en español; Pi conserva las URLs sueltas para leer su dominio.
-
 - Se creó el harness mínimo de IA del repositorio y su documentación visible de continuidad.
 - Se actualizó el README con los archivos del harness y se corrigió la afirmación de que no había commits.
 - Se completaron el propósito del proyecto en `REPO-HARNESS.md` y el estado verificado en `docs/repo-harness/current-state.md`.
@@ -15,3 +13,4 @@ Este archivo registra los cambios completados en orden cronológico.
 - Se simplificó el README a lo esencial y se movieron archivos, pruebas, problemas conocidos, licencias y alternativas a `docs/desarrollo.md`.
 - Se añadió la extensión de Pi `tehablo-tts` y el servidor local `src/tehablo_server.py` para leer en voz alta las respuestas del agente, en modo manual (Escuchar, Pausar, Continuar, Detener) o automático (`/tts auto on`).
 - Los controles de Pi muestran solo los botones, sin el comando numerado.
+- Se amplió la pronunciación de Git y Pi y se simplificó la lectura de URLs, rutas, archivos, identificadores y hashes en español; Pi conserva las URLs sueltas para leer su dominio.
