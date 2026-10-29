@@ -105,6 +105,7 @@ def main() -> int:
         ('PR TTS README', 'pi ar ti ti es rídmi'),
         ('API APIs CPU', 'ei pi ai ei pi ais ci pi iu'),
         ('merge', 'mérch'),
+        ('reload', 'rilóud'),
         ('HTML CSS SQL URL GPU CLI', 'eich ti em el si es es es kiu el iu ar el yi pi iu si el ai'),
         ('USB PDF CD', 'u ese be pe de efe ce de'),
         ('HTTPS SSH localhost', 'eich ti ti pi es es es eich lócal joust'),
