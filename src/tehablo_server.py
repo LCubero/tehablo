@@ -54,6 +54,7 @@ class SpeechService:
         self.audio_factory = audio_factory
         self.catalog = list(catalog)
         self.model_name, self.voice, self.speed = model, voice, speed
+        self.volume = 1.0
         self.validate({'model': model, 'voice': voice, 'speed': speed})
         self.lexicon = Lexicon(ROOT / 'pronunciaciones.json')
         self.ready = False
@@ -95,7 +96,7 @@ class SpeechService:
         return str(path)
 
     def validate(self, body):
-        if set(body) - {'model', 'voice', 'speed'}:
+        if set(body) - {'model', 'voice', 'speed', 'volume'}:
             raise ValueError('unknown config field')
         if 'model' in body and (not isinstance(body['model'], str) or body['model'] not in MODELS):
             raise ValueError('model must be spanish or spanish_24l')
@@ -106,10 +107,15 @@ class SpeechService:
             if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or not .75 <= value <= 1.5:
                 raise ValueError('speed must be between 0.75 and 1.5')
 
+        if 'volume' in body:
+            value = body['volume']
+            if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or not .1 <= value <= 1.5:
+                raise ValueError('volume must be between 0.1 and 1.5')
+
     def health(self):
         with self.condition:
             return {'ok': True, 'ready': self.ready, 'model': self.model_name,
-                    'voice': self.voice, 'speed': float(self.speed)}
+                    'voice': self.voice, 'speed': float(self.speed), 'volume': self.volume}
 
     def status(self):
         with self.condition:
@@ -162,6 +168,7 @@ class SpeechService:
                 self.state = 'loading'
             self.voice = body.get('voice', self.voice)
             self.speed = float(body.get('speed', self.speed))
+            self.volume = float(body.get('volume', self.volume))
             self.condition.notify_all()
             return self.health()
 
@@ -174,7 +181,8 @@ class SpeechService:
             while self.buffer and written < frames:
                 chunk = self.buffer[0]
                 count = min(frames - written, len(chunk) - self.offset)
-                outdata[written:written + count, 0] = chunk[self.offset:self.offset + count]
+                outdata[written:written + count, 0] = np.clip(
+                    chunk[self.offset:self.offset + count] * self.volume, -1, 1)
                 written += count
                 self.offset += count
                 if self.offset == len(chunk):
@@ -233,10 +241,18 @@ class SpeechService:
                     if sink is None:
                         sink = self.audio_factory(synth.sample_rate, self.callback)
                     text = self.normalize_text(text, name)
+                    with self.condition:
+                        speed = self.speed
                     stretch = SpeedStream(speed)
                     for chunk in synth.stream(text, self.resolve_voice(voice), cancel):
                         if cancel.is_set():
                             break
+                        with self.condition:
+                            current_speed = self.speed
+                        if current_speed != speed:
+                            self.append(stretch.flush(), cancel)
+                            speed = current_speed
+                            stretch = SpeedStream(speed)
                         self.append(stretch.process(chunk), cancel)
                     if not cancel.is_set():
                         self.append(stretch.flush(), cancel)

@@ -72,7 +72,8 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
   - Revisar la interfaz de Pi y la TUI existente, concretar los problemas de uso y acordar qué menús, opciones y ajustes se quieren mejorar antes de diseñar o implementar.
   - Revisar, agregar o modificar los comandos (`/tts` y sus opciones) y los ajustes.
   - Modo automático persistente: con `/tts auto on` debe leer cada respuesta hasta que se desactive; hoy `session_start` lo reinicia a `auto = false` (`pi-extension/tehablo-tts/src/extension.ts`). El modo y sus ajustes viven en la extensión; falta elegir dónde se guardan.
-  - Modo sin mouse: los botones Escuchar, Pausar y Detener de Pi solo responden al clic; añadir acceso por teclado.
+  - Modo sin mouse: los botones Escuchar, Pausar, Detener, volumen y velocidad de Pi solo responden al clic; añadir acceso por teclado cuando la persona responsable lo pida («no quiero atajos de teclado aun»).
+- **Trabajo completado (2026-10-29):** botones `[ Vol − ]`/`[ Vol + ]` (10 % a 150 %, en vivo) y `[ Vel − ]`/`[ Vel + ]` (0.75x a 1.5x, desde el siguiente fragmento) junto a Escuchar; `/config` acepta `volume` (`src/tehablo_server.py`, `pi-extension/tehablo-tts/src/extension.ts`).
   - Decidir dónde se exponen estas opciones: atajos principales, un menú interno de la TUI por hacer o comandos.
 - **Evidencia:** solicitud de la persona responsable; el 2026-10-29 pidió «los comandos hay que revisarlos agregar modificar, settigs, etc», «Modo automático» y «Modo sin mouse», y aclaró que el modo automático «lee automaticamente sin tener que dar play en escuchar, cada respuesta, hasta que se desactive el modo». No se realizó una evaluación de interfaz.
 - **Decisión:** registrar para después; no se ha elegido un rediseño ni se añaden funciones por el «etc» de la solicitud.

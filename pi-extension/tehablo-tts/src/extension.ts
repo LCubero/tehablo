@@ -8,11 +8,28 @@ const help = '/tts on|off · auto on|off · play [n] · pause · resume · stop 
 
 export function createExtension(pi: ExtensionAPI, client = new ServerClient()) {
   let enabled = true, auto = false, epoch = 0;
+  let volume = 1, speed = 1;
+  const speeds = [.75, .9, 1, 1.1, 1.25, 1.5];
   let context: ExtensionContext | undefined;
   let playback = {state: 'idle', id: null as string | null};
   let timer: ReturnType<typeof setTimeout> | undefined;
   let pollEpoch = 0, started = false;
   const refresh = () => context?.ui.setStatus(ENTRY, enabled ? (auto ? 'TTS auto' : 'TTS manual') : undefined);
+  const sync = (health: any) => {
+    if (typeof health?.volume === 'number') volume = health.volume;
+    if (typeof health?.speed === 'number') speed = health.speed;
+    refresh();
+  };
+  const setting = async (ctx: ExtensionContext, kind: string) => {
+    sync(await client.action('/health'));
+    const direction = kind.endsWith('+') ? 1 : -1;
+    const field = kind.startsWith('volume') ? 'volume' : 'speed';
+    const value = field === 'volume' ? Math.max(1, Math.min(15, Math.round(volume * 10) + direction)) / 10
+      : direction > 0 ? (speeds.find(v => v > speed) ?? speeds.at(-1)!)
+        : (speeds.findLast(v => v < speed) ?? speeds[0]);
+    sync(await client.action('/config', {[field]: value}));
+    ctx.ui.notify(field === 'volume' ? `Volumen: ${Math.round(volume * 100)} %` : `Velocidad: ${speed}x`, 'info');
+  };
   const update = (state: string, id: string | null) => {
     if (state !== playback.state || id !== playback.id) { playback = {state, id}; refresh(); }
   };
@@ -52,6 +69,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient()) {
     if (!text) { ctx.ui.notify('Respuesta no encontrada.', 'warning'); return; }
     const generation = epoch;
     await client.ensure();
+    sync(await client.request('/health'));
     if (generation !== epoch || !enabled) return;
     await client.request('/speak', {id: card!.messageId, text});
     if (generation !== epoch) return;
@@ -63,21 +81,30 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient()) {
     const controls = () => playback.id === entry.data?.messageId && playback.state !== 'idle'
       ? [{label: playback.state === 'paused' ? '▶ Continuar' : '⏸ Pausar', action: playback.state === 'paused' ? 'resume' : 'pause'}, {label: '■ Detener', action: 'stop'}]
       : [{label: '▶ Escuchar', action: 'play'}];
+    const segments = () => [
+      ...controls().map(c => ({text: `[ ${c.label} ]`, action: c.action, gap: '  '})),
+      {text: '[ Vol − ]', action: 'volume-', gap: ' '},
+      {text: `${Math.round(volume * 100)} %`, action: '', gap: ' '},
+      {text: '[ Vol + ]', action: 'volume+', gap: '  '},
+      {text: '[ Vel − ]', action: 'speed-', gap: ' '},
+      {text: `${speed}x`, action: '', gap: ' '},
+      {text: '[ Vel + ]', action: 'speed+', gap: ''},
+    ];
     const label = () => context?.mode === 'tui' && enabled && entry.data && cards(context).some(c => c.messageId === entry.data!.messageId)
-      ? controls().map(c => `[ ${c.label} ]`).join('  ') : '';
+      ? segments().map(c => c.text + c.gap).join('') : '';
     return {
       render: (width: number) => label() && width > 0 ? [theme.fg('accent', Array.from(label()).slice(0, width).join(''))] : [],
       invalidate() {},
       handleMouse(event: {type: string; button: string; x: number; y: number}) {
         if (label() && event.type === 'click' && event.button === 'left' && event.y === 0 && event.x >= 0 && context) {
           let start = 0;
-          for (const control of controls()) {
-            const end = start + Array.from(`[ ${control.label} ]`).length;
-            if (event.x >= start && event.x < end) {
-              void safe(context, () => control.action === 'play' ? speak(context!, String(entry.data!.number)) : action(control.action));
+          for (const control of segments()) {
+            const end = start + Array.from(control.text).length;
+            if (control.action && event.x >= start && event.x < end) {
+              void safe(context, () => control.action === 'play' ? speak(context!, String(entry.data!.number)) : /^(volume|speed)/.test(control.action) ? setting(context!, control.action) : action(control.action));
               return {handled: true, render: true};
             }
-            start = end + 2;
+            start = end + control.gap.length;
           }
         }
       },
@@ -86,7 +113,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient()) {
   pi.on('session_start', (_event, ctx) => {
     if (ctx.mode !== 'tui') return;
     resetPlayback();
-    enabled = true; auto = false; epoch++; context = ctx;
+    enabled = true; auto = false; volume = 1; speed = 1; epoch++; context = ctx;
     client.beginSession();
   });
   pi.on('agent_start', (_event, ctx) => {
@@ -119,7 +146,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient()) {
         const [command = '', ...rest] = args.trim().split(/\s+/);
         const value = rest.join(' ');
         const info = (text: string) => ctx.ui.notify(text, 'info');
-        const applied = (h: any) => info(`Modelo: ${h.model} · voz: ${h.voice} · velocidad: ${h.speed}`);
+        const applied = (h: any) => { sync(h); info(`Modelo: ${h.model} · voz: ${h.voice} · velocidad: ${h.speed} · volumen: ${Math.round(volume * 100)} %`); };
         switch (command) {
           case 'on': enabled = true; refresh(); info('TTS activado.'); return;
           case 'off': enabled = false; epoch++; resetPlayback(); refresh(); await client.stop(); info('TTS desactivado.'); return;
@@ -137,8 +164,9 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient()) {
             }
         }
         const health = await client.action('/health');
+        sync(health);
         const status = await client.action('/status');
-        info(`TTS: ${enabled ? 'activado' : 'desactivado'} · automático: ${auto ? 'sí' : 'no'}\nServidor: ${status.state} · listo: ${health.ready ? 'sí' : 'no'}\nModelo: ${health.model} · voz: ${health.voice} · velocidad: ${health.speed}\n${help}`);
+        info(`TTS: ${enabled ? 'activado' : 'desactivado'} · automático: ${auto ? 'sí' : 'no'}\nServidor: ${status.state} · listo: ${health.ready ? 'sí' : 'no'}\nModelo: ${health.model} · voz: ${health.voice} · velocidad: ${health.speed} · volumen: ${Math.round(volume * 100)} %\n${help}`);
       });
     },
   });

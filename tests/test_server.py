@@ -136,6 +136,56 @@ class ServerTests(unittest.TestCase):
                 self.assertEqual(self.server.service.normalize_text(source, 'english'), source)
                 print('PIPELINE ' + json.dumps([source, got], ensure_ascii=True))
 
+    def test_volume_validation_and_live_gain(self):
+        before = self.request('/health')[1]
+        self.assertEqual(before['volume'], 1.0)
+        for value in (0, 1.6, True, '1', float('nan'), float('inf')):
+            self.assertEqual(self.request('/config', {'volume': value}),
+                             (400, {'error': 'volume must be between 0.1 and 1.5'}))
+            self.assertEqual(self.request('/health')[1], before)
+        service = self.server.service
+        # The loading worker cannot consume these samples: gain is output-time only.
+        with service.condition:
+            service.buffer.append(np.array([.8, -.8, .4, -.4], dtype=np.float32))
+        self.assertEqual(self.request('/config', {'volume': 1.5})[1]['volume'], 1.5)
+        output = np.zeros((2, 1), dtype=np.float32)
+        service.callback(output, 2, None, None)
+        np.testing.assert_allclose(output[:, 0], [1, -1])
+        self.request('/config', {'volume': .1})
+        service.callback(output, 2, None, None)
+        np.testing.assert_allclose(output[:, 0], [.04, -.04])
+
+    def test_speed_changes_between_generated_chunks(self):
+        from unittest.mock import patch
+        events = []
+        service = self.server.service
+
+        class Stretch:
+            def __init__(self, speed):
+                self.speed = speed
+                events.append(('new', speed))
+
+            def process(self, chunk):
+                events.append(('process', self.speed))
+                return chunk
+
+            def flush(self):
+                events.append(('flush', self.speed))
+                return np.zeros(0, dtype=np.float32)
+
+        def stream(text, voice, stop):
+            yield np.array([.2], dtype=np.float32)
+            self.request('/config', {'speed': 1.25})
+            yield np.array([.3], dtype=np.float32)
+
+        self.synth.stream = stream
+        with patch('tehablo_server.SpeedStream', Stretch):
+            self.ready()
+            self.request('/speak', {'id': 'speed', 'text': 'hola'})
+            self.wait(lambda: service.done)
+        self.assertEqual(events, [('new', 1.0), ('process', 1.0), ('flush', 1.0),
+                                  ('new', 1.25), ('process', 1.25), ('flush', 1.25)])
+
     def test_controls(self):
         self.ready()
         self.request('/speak', {'id': 'a', 'text': 'hola'})
@@ -161,13 +211,13 @@ class ServerTests(unittest.TestCase):
         self.wait(lambda: self.request('/status')[1]['state'] == 'playing')
         output = np.zeros((100, 1), dtype=np.float32)
         callbacks[0](output, 100, None, None)
-        np.testing.assert_array_equal(output[:, 0], np.arange(100))
+        np.testing.assert_array_equal(output[:, 0], np.clip(np.arange(100), -1, 1))
         self.request('/pause', {})
         callbacks[0](output, 100, None, None)
         np.testing.assert_array_equal(output, 0)
         self.request('/resume', {})
         callbacks[0](output, 100, None, None)
-        np.testing.assert_array_equal(output[:, 0], np.arange(100, 200))
+        np.testing.assert_array_equal(output[:, 0], np.ones(100))
         self.request('/stop', {})
         callbacks[0](output, 100, None, None)
         np.testing.assert_array_equal(output, 0)
