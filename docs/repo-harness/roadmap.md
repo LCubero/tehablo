@@ -327,6 +327,32 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 - **Decisión:** registrar para después; no se eligieron herramientas.
 - **Condición del siguiente avance:** autorización para una revisión acotada que proponga prioridades.
 
+### RH-W-0024: Botón para iniciar el TTS antes de reproducir
+
+- **Origen:** solicitud de la persona responsable del 2026-10-30: «quiero un botón de iniciar el tts antes de reproducir, para no confundir, como tiene delay, hay que ver eso».
+- **Prioridad:** P3; claridad de uso, sin pérdida de función.
+- **Dependencias:** coordinar con `RH-W-0003` (esperas de arranque, carga a demanda o residente) y `RH-W-0004` (botones de Pi).
+- **Estado:** `proposed`.
+- **Trabajo restante:**
+  - Revisar el retraso actual y decidir cómo se ve: un botón para iniciar el servidor y cargar el modelo antes de Escuchar, y un estado visible de «cargando» y «listo».
+  - Decidir si el botón se muestra en Pi, en la TUI o en ambas, y qué pasa si se pulsa Escuchar antes de terminar la carga.
+- **Evidencia:** en Pi, el servidor arranca solo al pulsar Escuchar (`ensure()` en `pi-extension/tehablo-tts/src/server.ts`, llamado desde `speak` en `extension.ts`), con hasta 30 intentos de `/health` cada 250 ms; mientras el modelo carga, `src/tehablo_server.py` informa el estado `loading`.
+- **Decisión:** registrar para después; no se eligió diseño.
+- **Condición del siguiente avance:** autorización para revisar el retraso y proponer el diseño del botón.
+
+### RH-W-0025: Versión lite de mínimo consumo
+
+- **Origen:** solicitud de la persona responsable del 2026-10-30: «Hay que dejar versión lite mínimo consumo de tehablo».
+- **Prioridad:** P2; permite usarlo en equipos con pocos recursos y se relaciona con la portabilidad (`RH-W-0011`).
+- **Dependencias:** se apoya en las mediciones de `RH-W-0003`; coordinar con `RH-W-0008` (instalación) y `RH-W-0011`.
+- **Estado:** `proposed`.
+- **Trabajo restante:**
+  - Definir qué es «lite»: qué se incluye, qué se deja fuera y cuál es el consumo objetivo de RAM y CPU.
+  - Comparar opciones a partir de mediciones (modelo `spanish`, carga a demanda, liberar el modelo en reposo, menos dependencias) antes de elegir.
+- **Evidencia:** las [mediciones del README](../../README.md#cuánto-gasta) dan unos 870 MB de RAM con `spanish` en Windows y 1,8 GB con `spanish_24l`; el servidor conserva el modelo en memoria al terminar (`RH-W-0003`).
+- **Decisión:** registrar para después; no se eligió alcance ni diseño.
+- **Condición del siguiente avance:** autorización para definir el alcance de la versión lite.
+
 ## Registros resueltos
 <!-- doc-role:resolved-records -->
 
