@@ -54,7 +54,7 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 - **Prioridad:** P2; evaluar el equilibrio entre memoria ocupada y latencia de la siguiente reproducción.
 - **Dependencias:** coordinar la revisión de tiempos de espera con `RH-W-0001`.
 - **Estado:** `deferred`.
-- **Evidencia:** el código de `src/tehablo_server.py` conserva el modelo y la salida de audio abiertos al terminar o detener; pausar no cancela la generación. No se midió el consumo residual. Las [mediciones offline de Fedora](../como-funciona.md#fedora) verifican solo síntesis directa, carga desde caché y recursos del proceso.
+- **Evidencia:** el código de `src/tehablo_server.py` conserva el modelo y la salida de audio abiertos al terminar o detener; pausar no cancela la generación. No se midió el consumo residual. Las [mediciones offline de Fedora](../como-funciona.md#fedora) verifican solo síntesis directa, carga desde caché y recursos del proceso. El 2026-10-30, en Windows, `scripts/measure_tts.py` no arranca (`ModuleNotFoundError: No module named 'resource'`, módulo solo de Unix), por eso fallan 9 pruebas de `tests/test_measure_tts.py`; las demás suites Python y las 23 pruebas de la extensión pasan.
 - **Trabajo completado (2026-10-29):** medición acotada offline de `spanish` y `spanish_24l` con `lola`, tres repeticiones por modelo; resultados, metodología y evidencia JSON documentados. No se entregaron mediciones de pausa, parada, reposo o dispositivo de audio, optimizaciones ni ajustes nuevos.
 - **Trabajo restante:**
   - Detallar y medir CPU, RAM y estado de la salida de audio al generar, pausar, detener y quedar inactivo; identificar optimizaciones justificadas por esas mediciones.
