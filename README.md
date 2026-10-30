@@ -1,5 +1,7 @@
 # tehablo
 
+> **En desarrollo.** El proyecto todavía está en desarrollo y puede cambiar. Lo que falta está en la [hoja de ruta](docs/repo-harness/roadmap.md).
+
 Convierte texto en voz en español, en tu equipo y gratis. Usa **Pocket TTS** (Kyutai), que funciona solo con CPU: no necesita GPU, nube ni cuenta. Probado en Windows y en Linux (Fedora), con salida de audio real y [mediciones de consumo](#cuánto-gasta) en ambos. macOS no se ha verificado.
 
 El uso principal es **leer en voz alta las respuestas de [Pi](#uso-en-pi)**. La TUI y la consola sirven para probar voces, modelo y velocidad.
@@ -191,6 +193,7 @@ Solo hace falta para la primera descarga; después funciona sin internet.
 - [Cómo funciona y qué recursos usa](docs/como-funciona.md)
 - [Pocket TTS: referencia, voces, pronunciación y mejoras](docs/pocket-tts.md)
 - [Desarrollo: archivos, pruebas, problemas conocidos y licencias](docs/desarrollo.md)
+- [Hoja de ruta: trabajo pendiente y prioridades](docs/repo-harness/roadmap.md)
 - [Cómo contribuir](CONTRIBUTING.md) · [Guía del harness de IA](docs/repo-harness/usage.md)
 
 Licencia del proyecto: [MIT](LICENSE).

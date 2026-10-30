@@ -4,6 +4,8 @@
 
 Use las tres skills generadas como un ciclo: recupere contexto, mantenga vigente la documentación durable y deje una transferencia verificada.
 
+El harness se generó con [repo-harness-builder](https://github.com/LCubero/repo-harness-builder).
+
 ## Flujo diario
 <!-- doc-role:daily-workflow -->
 1. Inicie o reanude con `repo-harness-session-start` e indique el objetivo. Recupera contexto pertinente del backup local válido más reciente en `.repo-harness/memory-bk/` y de Engram cuando está disponible, lo reconcilia con evidencia actual e inspecciona Git en solo lectura. Una pregunta de comprobación remota aplica solo cuando sincronizar es pertinente y seguro. `conversationLanguage`: `english` o `espanol` establece el idioma de respuesta del agente, no el de la documentación. `responseStructure`: `standard` o `adhd-friendly`; este último presenta primero la respuesta, en bloques pequeños, con una pregunta a la vez. `explanationStyle`: `standard` o `plain-language`; este último usa palabras sencillas, frases cortas y términos definidos. Para guardar preferencias, pida explícitamente: «Guarde español como mi idioma de conversación en las preferencias del repositorio.» O edite `.repo-harness/state/preferences/user-preferences.json` a mano. El agente nunca las guarda por iniciativa propia. El archivo se lee al iniciar la próxima sesión. El [contrato de respuesta](../../.repo-harness/rules/response-contract.md) es propietario de la precedencia.
