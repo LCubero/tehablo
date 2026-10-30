@@ -115,6 +115,11 @@ def main() -> int:
         ('amend revert worktree submodule', 'eménd rivért uórktri sabmódiul'),
         ('Actions pipeline runner reviews', 'ácshons páiplain ráner riviús'),
         ('dependencies deployment changelog', 'dipéndensis diplóiment chéinchlog'),
+        ('speed close gitattributes boot root', 'espid clous guitátribiuts but rut'),
+        ('cause consumer Why It Matters', 'cos consiúmer uái it máters'),
+        ('Possible Improvement builder Applied', 'pósibol imprúvment bílder apláid'),
+        ('Engram harness CRLF', 'éngram járnes si ar el ef'),
+        ('modo dual', 'modo dual'),
     ]:
         check(f'new shipped terms: {source}', shipped.apply(source), expected)
     text = shipped.apply(
