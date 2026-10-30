@@ -96,7 +96,7 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 - **Trabajo completado (2026-10-30):** `install.sh` (Linux/macOS) e `install.ps1` (Windows) en la raíz: comprueban `uv`, crean o reutilizan el entorno (`.venv-pocket`, o `.venv-pocket-linux`/`-macos`/`-windows` si `.venv-pocket` es de otro sistema), instalan las dependencias con el índice CPU de PyTorch y comprueban las importaciones; si falta PortAudio en Linux indican el comando de la distribución. Verificado en Fedora en un clon limpio: instalación 17 s, segunda ejecución 4 s, rama de dual boot y aviso sin `uv` (exit 1, sin crear entorno); `shellcheck` sin avisos. El [README](../../README.md#instalación) los pone primero y conserva la instalación manual.
 - **Trabajo restante:**
   - Probar `install.ps1` en Windows (no hay PowerShell en Fedora para comprobarlo).
-- **Exclusiones:** sin instalador gráfico, paquete ni descarga previa de modelos (se descargan en el primer uso); VPS y Docker siguen en `RH-W-0009`.
+- **Exclusiones:** sin instalador gráfico (la persona responsable, 2026-10-30: «instalador grafico no creo hacerlo o quiza hasta al final de todo»), paquete ni descarga previa de modelos (se descargan en el primer uso); VPS y Docker siguen en `RH-W-0009`.
 - **Evidencia:** pasos manuales en `README.md` antes de este cambio; `requirements.txt` sin versiones fijas (`>=`).
 - **Decisión:** 2026-10-30, por decisión delegada de la persona responsable («tu decidelo, revisa y recuerda sin sobreingenieria»): un script por sistema, sin herramientas nuevas.
 - **Condición del siguiente avance:** ejecutar `install.ps1` en Windows.
