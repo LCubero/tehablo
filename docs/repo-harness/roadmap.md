@@ -94,6 +94,7 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
   - Probar referencias de voz de Hugging Face y evaluar otras fuentes gratuitas.
   - Verificar compatibilidad real con Pocket TTS y el flujo local del proyecto antes de añadirlas como opciones utilizables.
   - Comparar mediante escucha su inteligibilidad, naturalidad y pronunciación en español con un mismo texto de prueba.
+  - Revisar todas las opciones expresivas de cada modelo y voz, como hace ElevenLabs (tono, énfasis, ánimo o emoción), y cuáles admite Pocket TTS u otros modelos (solicitud del 2026-10-30: «hay que revisar todas las opciones que tengan los modelos o voces, como lo hace elevenlabs que tiene para darle diferentes tonos, enfasis, animos, etc»).
   - Registrar cuáles funcionan y cuáles no, su origen, licencia y condiciones de uso; distinguir descarga gratuita de permiso de uso y redistribución, respetando el consentimiento de voz.
 - **Evidencia:** solicitud de la persona responsable; existe un catálogo previo en `docs/voces-gratuitas.md`, pero esta sesión no probó ni descargó voces nuevas.
 - **Decisión:** registrar para después; no se autoriza con esta anotación una descarga, incorporación ni publicación de grabaciones.
@@ -241,6 +242,20 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 - **Evidencia:** `src/tehablo_server.py` abre una sola salida con `sd.OutputStream` sobre el dispositivo predeterminado de ese momento y la conserva abierta; la TUI y la consola abren una salida por reproducción. No se ha probado un cambio de dispositivo.
 - **Decisión:** registrar para después; no se eligió comportamiento.
 - **Condición del siguiente avance:** autorización para la prueba acotada en Windows y Linux.
+
+### RH-W-0018: Roles de voz
+
+- **Origen:** solicitud de la persona responsable del 2026-10-30: «la posibilidad de darle roles a las voces (locutor, comentarista, podcast, profesor, gracioso, jugueton, directo, tecnico, cariñoso, motivador, adhd friendly, entre muchos mas) con cositas extras como frases o muletillas o cosas que lo hagan mas real y natural dependiendo del rol».
+- **Prioridad:** P3; mejora de calidad de uso y naturalidad.
+- **Dependencias:** las opciones expresivas que se encuentren en `RH-W-0005`; coordinar dónde se elige el rol con `RH-W-0004`.
+- **Estado:** `proposed`.
+- **Trabajo restante:**
+  - Definir qué es un rol: voz, velocidad, opciones expresivas del modelo y cambios del texto (frases, muletillas, saludos o cierres).
+  - Proponer un conjunto inicial de roles y cómo se elige, sin cambiar el contenido ni el significado de lo que se lee.
+  - Probar mediante escucha que cada rol suena más natural.
+- **Evidencia:** hoy solo se eligen voz, modelo, velocidad y volumen; no existe ningún ajuste de rol ni de estilo.
+- **Decisión:** registrar para después; no se eligió diseño.
+- **Condición del siguiente avance:** avance de `RH-W-0005` sobre las opciones expresivas y autorización para diseñar los roles.
 
 ## Registros resueltos
 <!-- doc-role:resolved-records -->

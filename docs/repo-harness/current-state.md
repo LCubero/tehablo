@@ -58,6 +58,7 @@ Este archivo proyecta solo hechos verificados del proyecto: registros activos, b
 - `RH-W-0015` (`proposed`, P3): añadir palabras a `pronunciaciones.json` desde la TUI o la extensión de Pi.
 - `RH-W-0016` (`proposed`, P3): ajuste para sugerir, no sugerir o añadir automáticamente pronunciaciones de términos nuevos en inglés.
 - `RH-W-0017` (`proposed`, P2): cambio de dispositivo de audio (seguir al predeterminado, elegir uno y recuperarse si desaparece).
+- `RH-W-0018` (`proposed`, P3): roles de voz (locutor, profesor, motivador y otros) con frases y muletillas propias.
 
 ## Siguiente paso
 
