@@ -25,6 +25,7 @@ Este archivo proyecta solo hechos verificados del proyecto: registros activos, b
 
 <!-- doc-role:recent-work -->
 
+- Barra de Pi con `[ ⏻ Iniciar ]`, `[ Cargando… ]`, reproducción con iconos y Vol/Vel tras `[ ⋯ ]`; comprobada en Pi por la persona responsable (`RH-W-0024`, `completed`).
 - 17 pronunciaciones nuevas en inglés (`speed`, `close`, `CRLF` deletreado y otras; `dual` se lee en español) y registro de los trabajos `RH-W-0010` a `RH-W-0015` (`RH-W-0002`).
 - Mediciones offline de síntesis CPU en Fedora con `spanish` y `spanish_24l`, tres repeticiones por modelo y evidencia JSON ([resultados y límites](../como-funciona.md#fedora)); resultado acotado de `RH-W-0003`, que sigue `deferred`.
 - Botones de volumen (10 % a 150 %) y velocidad (1.00x a 1.50x) junto a Escuchar en Pi, solo con clic (`RH-W-0004`).
@@ -64,7 +65,6 @@ Este archivo proyecta solo hechos verificados del proyecto: registros activos, b
 - `RH-W-0021` (`proposed`, P3): leer frases en inglés con un modelo inglés.
 - `RH-W-0022` (`proposed`, P3): opciones de lectura (bloques de código, pausas, aviso al terminar, retroceder o repetir, historial).
 - `RH-W-0023` (`proposed`, P2): revisión de seguridad, buenas prácticas (linter, CI, dependencias fijadas), control (límites) y rendimiento (medición de regresiones).
-- `RH-W-0024` (`active`, P3): barra de Pi con Iniciar, Cargando y Escuchar, reproducción con iconos y Vol/Vel tras `[ ⋯ ]` implementada y probada; falta la comprobación visual en Pi.
 - `RH-W-0025` (`proposed`, P2): versión lite de mínimo consumo.
 
 ## Siguiente paso
