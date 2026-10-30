@@ -15,7 +15,7 @@
 - Descarga selectiva de voces en español para clonar (`scripts/get_voices.py`).
 - Pruebas unitarias sin modelo (`tests/test_numbers.py`, `tests/test_lexicon.py`, `tests/test_speed.py`) y scripts de integración de la TUI que reproducen audio.
 - Extensión de Pi `pi-extension/tehablo-tts/` y servidor local `src/tehablo_server.py`: leen las respuestas del agente en modo manual o automático; se carga en este proyecto con `.pi/settings.json`.
-- Lectura simplificada de texto técnico (`src/tehablo_tech.py`): URLs, rutas, archivos, identificadores y hashes; `pronunciaciones.json` tiene 309 términos de desarrollo, Git, GitHub y uso general, con siglas técnicas deletreadas en inglés.
+- Lectura simplificada de texto técnico (`src/tehablo_tech.py`): URLs, rutas, archivos, identificadores y hashes; `pronunciaciones.json` tiene 313 términos de desarrollo, Git, GitHub y uso general, con siglas técnicas deletreadas en inglés.
 - Probado en Windows y, en Fedora, el servidor y el transporte de la extensión con síntesis CPU `spanish`/`lola`, controles y callbacks de audio reales. No acredita escucha/calidad, interfaz completa de Pi, TUI ni `spanish_24l`; [versiones y comprobaciones](../desarrollo.md#verificación-en-fedora).
 - Harness de IA instalado (perfil `pi`, modo integrado); `python .repo-harness/check.py` lo comprueba.
 
@@ -56,6 +56,7 @@ Este archivo proyecta solo hechos verificados del proyecto: registros activos, b
 - `RH-W-0013` (`proposed`, P2): manejo de errores y logs.
 - `RH-W-0014` (`proposed`, P3): evaluar una API y la integración con CLIProxyAPI.
 - `RH-W-0015` (`proposed`, P3): añadir palabras a `pronunciaciones.json` desde la TUI o la extensión de Pi.
+- `RH-W-0016` (`proposed`, P3): ajuste para sugerir, no sugerir o añadir automáticamente pronunciaciones de términos nuevos en inglés.
 
 ## Siguiente paso
 
