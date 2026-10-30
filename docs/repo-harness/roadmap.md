@@ -320,7 +320,7 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 
 ### RH-W-0025: Versión lite de mínimo consumo
 
-- **Origen:** solicitud de la persona responsable del 2026-10-30: «Hay que dejar versión lite mínimo consumo de tehablo».
+- **Origen:** solicitud de la persona responsable del 2026-10-30: «Hay que dejar versión lite mínimo consumo de tehablo». Definición del mismo día: «lite es que gaste lo minimo, con el modelo que funcione bien y agste menos, y con las funciones minimas, pero eso te dije que para el final».
 - **Prioridad:** P2; permite usarlo en equipos con pocos recursos y se relaciona con la portabilidad (`RH-W-0011`).
 - **Dependencias:** requiere las mediciones de `RH-W-0003`; coordinar con `RH-W-0008` (instalación) y `RH-W-0011`.
 - **Estado:** `active`.
@@ -331,7 +331,7 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 - **Trabajo completado (2026-10-30):** cuantización predeterminada en Linux (`quantize_default` en `src/tehablo_tts.py`, usada por el servidor, la TUI y la consola), sin cuantizar en Windows; `TEHABLO_QUANTIZE=0` o `1` la cambia. En Fedora genera ~1,7× más rápido con `spanish` y ~1,9× con `spanish_24l` (que además usa ~260 MiB menos tras cargar); en una prueba a ciegas la persona responsable no distinguió el audio ([resultados](../como-funciona.md#arranque-reposo-y-cuantización-en-fedora-2026-10-30)). Pruebas en `tests/test_quantize.py`.
 - **Riesgo conocido:** al cuantizar, Torch 2.15 avisa que `torch.quantize_per_tensor` y funciones afines quedarán obsoletas y se quitarán en una versión futura; `requirements.txt` no fija la versión de torch (`>=`). Si una actualización rompe la carga cuantizada, `TEHABLO_QUANTIZE=0` la desactiva sin cambiar código.
 - **Decisión:** 2026-10-30, por decisión delegada de la persona responsable («decidelo tu ... sin sobreingenieria»): adoptar la cuantización donde se midió más rápida; no se eligió aún el resto del alcance «lite».
-- **Condición del siguiente avance:** mediciones de Windows y Fedora listas (`RH-W-0003`, `completed`); cuantización adoptada en Linux; falta autorización para definir el resto del alcance. Puede bastar con un modo de bajo consumo en la misma versión (cuantización, liberar el modelo en reposo) o con el binario `pocket-tts` de Kyutai, que no necesita Python ni PyTorch (no comprobado con los modelos en español).
+- **Condición del siguiente avance:** mediciones de Windows y Fedora listas (`RH-W-0003`, `completed`); cuantización adoptada en Linux; el resto queda para el final del plan, por decisión de la persona responsable, después de la instalación (`RH-W-0008`) y del endurecimiento (`RH-W-0001`, `RH-W-0013`). Puede bastar con un modo de bajo consumo en la misma versión (cuantización, liberar el modelo en reposo) o con el binario `pocket-tts` de Kyutai, que no necesita Python ni PyTorch (no comprobado con los modelos en español).
 
 ## Registros resueltos
 <!-- doc-role:resolved-records -->

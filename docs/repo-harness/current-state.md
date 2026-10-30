@@ -67,10 +67,10 @@ Este archivo proyecta solo hechos verificados del proyecto: registros activos, b
 - `RH-W-0021` (`deferred`, P3): leer frases en inglés con un modelo inglés.
 - `RH-W-0022` (`proposed`, P3): opciones de lectura (bloques de código, pausas, aviso al terminar, retroceder o repetir, historial).
 - `RH-W-0023` (`proposed`, P2): revisión de seguridad, buenas prácticas (linter, CI, dependencias fijadas), control (límites) y rendimiento (medición de regresiones).
-- `RH-W-0025` (`active`, P2): versión lite de mínimo consumo; cuantización predeterminada en Linux entregada; falta definir el resto del alcance.
+- `RH-W-0025` (`active`, P2): versión lite de mínimo consumo; cuantización predeterminada en Linux entregada; el resto queda para el final del plan.
 
 ## Siguiente paso
 
 <!-- doc-role:next-step -->
 
-Plan aprobado el 2026-10-30: (0) base confiable, completada; (1) medir con `RH-W-0003`, completado; (2) decidir la versión lite (`RH-W-0025`) y la instalación (`RH-W-0008`) con esos datos; (3) endurecer el servidor y los errores (`RH-W-0001`, `RH-W-0013`). La investigación y los deseos grandes quedan `deferred` hasta entonces.
+Plan aprobado el 2026-10-30: (0) base confiable, completada; (1) medir con `RH-W-0003`, completado; (2) endurecer el servidor y los errores (`RH-W-0001`, `RH-W-0013`) y la instalación (`RH-W-0008`); (3) al final, la versión lite (`RH-W-0025`): mínimo consumo, el modelo que funcione bien gastando menos y las funciones mínimas (cambio de orden pedido por la persona responsable el 2026-10-30). La investigación y los deseos grandes quedan `deferred` hasta entonces.
