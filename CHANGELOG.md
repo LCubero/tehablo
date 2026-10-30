@@ -7,6 +7,7 @@ Este archivo registra los cambios completados en orden cronológico.
 ## 2026-10-30
 
 - El harness se actualizó a repo-harness 3.2.0: la preferencia de idioma guardada manda en la conversación (una orden técnica en inglés no la cambia) y las fechas usan la preferencia `timeZone` (`America/Costa_Rica`), nunca UTC.
+- El README avisa que el proyecto sigue en desarrollo y enlaza la [hoja de ruta](docs/repo-harness/roadmap.md); la [guía del harness](docs/repo-harness/usage.md) enlaza [repo-harness-builder](https://github.com/LCubero/repo-harness-builder).
 
 ## 2026-10-29
 
