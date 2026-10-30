@@ -254,6 +254,12 @@ class ServerTests(unittest.TestCase):
         self.assertIn('error', json.loads(response.read()))
         conn.close()
 
+    def test_busy_port_reports_address_in_use(self):
+        # A failed bind closes the server before create_server attaches the service.
+        with self.assertRaises(OSError):
+            create_server(port=self.server.server_address[1], synthesizer_factory=lambda model: self.synth,
+                          audio_factory=Sink, catalog=['lola'])
+
     def test_shutdown(self):
         self.assertEqual(self.request('/shutdown', {})[1], {'ok': True})
         self.thread.join(3)

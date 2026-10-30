@@ -281,7 +281,9 @@ class SpeechHTTPServer(ThreadingHTTPServer):
     daemon_threads = True
 
     def server_close(self):
-        self.service.close()
+        # A failed bind closes the server before create_server attaches the service.
+        if hasattr(self, 'service'):
+            self.service.close()
         super().server_close()
 
 
