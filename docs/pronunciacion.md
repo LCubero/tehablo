@@ -50,7 +50,7 @@ No fuerces palabras simples ni términos que en español ya se dicen bien.
 
 - **Aplicado (2026-10-29, decisión de la persona responsable):** `API` → `ei pi ai`, `CPU` → `ci pi iu`; se quitó `APIs` porque el plural sale solo (`ei pi ais`).
 - **Aplicado:** pasaron al inglés `PHP`, `HTML`, `CSS`, `SQL`, `XML`, `npm`, `URL`, `GPU`, `SSD`, `HDMI`, `PR`, `TTS`, `pi-tts`, `CI` y `CLI`; se añadieron términos comunes de desarrollo, Git, GitHub, CI/CD y gestión de proyectos.
-- **Aplicado (2026-10-30, decisión de la persona responsable):** `speed` → `espid`, `close` → `clous`, `CRLF` → `si ar el ef` y otros 14 términos de desarrollo y del harness.
+- **Aplicado (2026-10-29, decisión de la persona responsable):** `speed` → `espid`, `close` → `clous`, `CRLF` → `si ar el ef` y otros 14 términos de desarrollo y del harness.
 - **Se mantienen en español** porque así se dicen: `USB`, `PDF`, `CD`; también `dual`, que es palabra española («dual que suene dual y ya»).
 - **Se omiten** términos que el español ya lee bien (`token`, `Bash`, `Vim`, `log`) y los que coinciden con palabras españolas comunes: el diccionario cambia la palabra en cualquier texto.
 - **Pendiente:** las extensiones de archivo de [`src/tehablo_tech.py`](../src/tehablo_tech.py) siguen con letras del español (`html` → `hache te eme ele`). Ninguna entrada se ha confirmado todavía escuchándola (`RH-W-0002` de la [hoja de ruta](repo-harness/roadmap.md)).

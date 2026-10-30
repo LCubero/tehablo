@@ -40,10 +40,10 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 - **Trabajo restante:**
   - Decidir si las extensiones de archivo de `src/tehablo_tech.py` (`html` → `hache te eme ele`, `css` → `ce ese ese`) pasan también al inglés.
   - Confirmar mediante escucha el resultado de cada ajuste.
-  - Algunas palabras en inglés aún suenan mal tras la prueba del 2026-10-30. La pronunciación depende del modelo: probar modelos, documentar y comprobar antes de corregir más entradas («eso lo ahcemos cuando toque»).
-- **Trabajo completado (2026-10-29):** `API` → `ei pi ai` y `CPU` → `ci pi iu`; se quitó `APIs`; 15 siglas pasaron del deletreo español al inglés (`USB`, `PDF` y `CD` se mantienen); se añadieron 115 términos de desarrollo, Git, GitHub, CI/CD y gestión (291 entradas). Pruebas: `tests/test_lexicon.py` (43/43) y `tests/test_server.py`. Después de la prueba de escucha: `merge` → `mérch`; los hashes de commit se omiten, los separadores (`+++`) no se leen, `→` y los paréntesis son una pausa corta y la barra entre palabras se lee «eslash», conservando la regla de rutas (`src/tehablo_tech.py`, `tests/test_tech.py` 53/53). También: `reload` → `rilóud`; tablas markdown leídas fila por fila y guiones bajos internos conservados (`pi-extension/tehablo-tts/src/text.ts`); puntajes `N/M` leídos «N de M» (`src/tehablo_numbers.py`). El 2026-10-30 se añadieron 17 términos aprobados: `speed` → `espid`, `close` → `clous`, `gitattributes` → `guitátribiuts`, `boot` → `but`, `root` → `rut`, `cause` → `cos`, `consumer` → `consiúmer`, `Why` → `uái`, `It` → `it`, `matter` → `máter`, `Possible` → `pósibol`, `Improvement` → `imprúvment`, `builder` → `bílder`, `Applied` → `apláid`, `Engram` → `éngram`, `harness` → `járnes` y `CRLF` → `si ar el ef`; después, `find` → `faind` y `per-OS` → `per ou es` (`OS` suelto no entra porque «os» es palabra española), `number` → `námber` y `technical` → `téknikal` (313 entradas; `tests/test_lexicon.py` 53/53). Entonación de pregunta: tras escuchar muestras con y sin `¿` («la 5 sonó bien»), cada pregunta sin `¿` lo recibe al inicio de su oración (`src/tehablo_tech.py`, `tests/test_tech.py` 59/59); también se omiten emojis y se lee `°C` como «grados celsius».
+  - Algunas palabras en inglés aún suenan mal tras la prueba del 2026-10-29. La pronunciación depende del modelo: probar modelos, documentar y comprobar antes de corregir más entradas («eso lo ahcemos cuando toque»).
+- **Trabajo completado (2026-10-29):** `API` → `ei pi ai` y `CPU` → `ci pi iu`; se quitó `APIs`; 15 siglas pasaron del deletreo español al inglés (`USB`, `PDF` y `CD` se mantienen); se añadieron 115 términos de desarrollo, Git, GitHub, CI/CD y gestión (291 entradas). Pruebas: `tests/test_lexicon.py` (43/43) y `tests/test_server.py`. Después de la prueba de escucha: `merge` → `mérch`; los hashes de commit se omiten, los separadores (`+++`) no se leen, `→` y los paréntesis son una pausa corta y la barra entre palabras se lee «eslash», conservando la regla de rutas (`src/tehablo_tech.py`, `tests/test_tech.py` 53/53). También: `reload` → `rilóud`; tablas markdown leídas fila por fila y guiones bajos internos conservados (`pi-extension/tehablo-tts/src/text.ts`); puntajes `N/M` leídos «N de M» (`src/tehablo_numbers.py`). El 2026-10-29 se añadieron 17 términos aprobados: `speed` → `espid`, `close` → `clous`, `gitattributes` → `guitátribiuts`, `boot` → `but`, `root` → `rut`, `cause` → `cos`, `consumer` → `consiúmer`, `Why` → `uái`, `It` → `it`, `matter` → `máter`, `Possible` → `pósibol`, `Improvement` → `imprúvment`, `builder` → `bílder`, `Applied` → `apláid`, `Engram` → `éngram`, `harness` → `járnes` y `CRLF` → `si ar el ef`; después, `find` → `faind` y `per-OS` → `per ou es` (`OS` suelto no entra porque «os» es palabra española), `number` → `námber` y `technical` → `téknikal` (313 entradas; `tests/test_lexicon.py` 53/53). Entonación de pregunta: tras escuchar muestras con y sin `¿` («la 5 sonó bien»), cada pregunta sin `¿` lo recibe al inicio de su oración (`src/tehablo_tech.py`, `tests/test_tech.py` 59/59); también se omiten emojis y se lee `°C` como «grados celsius».
 - **Adiciones:** método común para escribir pronunciaciones: [guía de pronunciación](../pronunciacion.md), basada en la skill `wk-en-pronun-tico-ld9` de la persona responsable y adaptada para un modelo de voz (minúsculas con tilde, sin guiones ni mayúsculas).
-- **Exclusiones:** ninguna sigla cambia sin decisión de la persona responsable; no se implementa tratamiento de precios; `dual` no entra al diccionario porque también es palabra española («dual que suene dual y ya», 2026-10-30).
+- **Exclusiones:** ninguna sigla cambia sin decisión de la persona responsable; no se implementa tratamiento de precios; `dual` no entra al diccionario porque también es palabra española («dual que suene dual y ya», 2026-10-29).
 - **Evidencia:** observación directa de la persona responsable: «como los codigos de los commits (commit 22774ca), CPU no lo deletrió en ingles». El 2026-10-29 indicó «API: ei pi ai» y «CPU:  ci pi iu», y pidió «investigar como es para leer como se pronuncia».
 - **Decisión:** la persona responsable indicó «pero eso lo hacemos despues»; el 2026-10-29 eligió las pronunciaciones de `API` y `CPU` y el método de la guía, y después autorizó aplicar las siglas en inglés y los términos propuestos, incluidos los de Git y GitHub («cuando digo programacion son los relacionados al desarrollo»).
 - **Condición del siguiente avance:** escucha de la persona responsable y su decisión sobre las extensiones de archivo.
@@ -79,7 +79,7 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
   - Robustez de los botones ante muchos clics seguidos: hoy los pedidos `/config` no se serializan y un clic rápido puede perderse o pisar a otro; detallar el comportamiento esperado (cola, descarte o espera) antes de cambiarlo («hay que detallar cosas depues para que no se daño por muchos clics»).
   - La TUI conserva sus velocidades propias (0.75x a 1.5x en `src/tehablo_speed.py`); decidir si se alinean con los botones de Pi.
   - Decidir dónde se exponen estas opciones: atajos principales, un menú interno de la TUI por hacer o comandos.
-  - Propuestas aprobadas para registrar el 2026-10-30: resaltar en la TUI la frase que se está leyendo, con opción on/off; recordar voz, velocidad, volumen y modo entre sesiones; botón de reproducir junto a cada voz para escucharla antes de elegirla («con un play a la par o algo simple»).
+  - Propuestas aprobadas para registrar el 2026-10-29: resaltar en la TUI la frase que se está leyendo, con opción on/off; recordar voz, velocidad, volumen y modo entre sesiones; botón de reproducir junto a cada voz para escucharla antes de elegirla («con un play a la par o algo simple»).
 - **Evidencia:** solicitud de la persona responsable; el 2026-10-29 pidió «los comandos hay que revisarlos agregar modificar, settigs, etc», «Modo automático» y «Modo sin mouse», y aclaró que el modo automático «lee automaticamente sin tener que dar play en escuchar, cada respuesta, hasta que se desactive el modo». No se realizó una evaluación de interfaz.
 - **Decisión:** registrar para después; no se ha elegido un rediseño ni se añaden funciones por el «etc» de la solicitud.
 - **Condición del siguiente avance:** autorización para revisar la interfaz y concretar el alcance con la persona responsable.
@@ -95,7 +95,7 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
   - Probar referencias de voz de Hugging Face y evaluar otras fuentes gratuitas.
   - Verificar compatibilidad real con Pocket TTS y el flujo local del proyecto antes de añadirlas como opciones utilizables.
   - Comparar mediante escucha su inteligibilidad, naturalidad y pronunciación en español con un mismo texto de prueba.
-  - Revisar todas las opciones expresivas de cada modelo y voz, como hace ElevenLabs (tono, énfasis, ánimo o emoción), y cuáles admite Pocket TTS u otros modelos (solicitud del 2026-10-30: «hay que revisar todas las opciones que tengan los modelos o voces, como lo hace elevenlabs que tiene para darle diferentes tonos, enfasis, animos, etc»).
+  - Revisar todas las opciones expresivas de cada modelo y voz, como hace ElevenLabs (tono, énfasis, ánimo o emoción), y cuáles admite Pocket TTS u otros modelos (solicitud del 2026-10-29: «hay que revisar todas las opciones que tengan los modelos o voces, como lo hace elevenlabs que tiene para darle diferentes tonos, enfasis, animos, etc»).
   - Registrar cuáles funcionan y cuáles no, su origen, licencia y condiciones de uso; distinguir descarga gratuita de permiso de uso y redistribución, respetando el consentimiento de voz.
 - **Evidencia:** solicitud de la persona responsable; existe un catálogo previo en `docs/voces-gratuitas.md`, pero esta sesión no probó ni descargó voces nuevas.
 - **Decisión:** registrar para después; no se autoriza con esta anotación una descarga, incorporación ni publicación de grabaciones.
@@ -137,13 +137,13 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
   - Diseñar cómo llega el audio a quien lo pide: hoy el servidor lo reproduce en el altavoz de su propio equipo (`sounddevice`), que no existe en un contenedor o VPS.
   - Definir autenticación y exposición de red antes de escuchar fuera de `127.0.0.1`.
   - Preparar la imagen Docker para uso local y, después, el despliegue en VPS.
-- **Evidencia:** `src/tehablo_server.py` escucha solo en `127.0.0.1`, sin autenticación, y reproduce el audio localmente. El 2026-10-30 la persona responsable volvió a pedir «imagenes de docker»; las arquitecturas de las imágenes se coordinan con `RH-W-0011`.
+- **Evidencia:** `src/tehablo_server.py` escucha solo en `127.0.0.1`, sin autenticación, y reproduce el audio localmente. El 2026-10-29 la persona responsable volvió a pedir «imagenes de docker»; las arquitecturas de las imágenes se coordinan con `RH-W-0011`.
 - **Decisión:** registrar para después, separado de la instalación local; no se eligió diseño.
 - **Condición del siguiente avance:** autorización para diseñar la versión Docker, con `RH-W-0001` resuelto antes de exponer el servidor en red.
 
 ### RH-W-0010: Elegir si se usa el diccionario de pronunciación en inglés
 
-- **Origen:** solicitud de la persona responsable del 2026-10-30: «quiero hacer Que se pueda escoger entre usar el diccionario de pronunciación d terminos en inglés o no».
+- **Origen:** solicitud de la persona responsable del 2026-10-29: «quiero hacer Que se pueda escoger entre usar el diccionario de pronunciación d terminos en inglés o no».
 - **Prioridad:** P3; opción de uso, sin impedir la síntesis de voz.
 - **Dependencias:** coordinar dónde se expone la opción con `RH-W-0004`.
 - **Estado:** `proposed`.
@@ -156,7 +156,7 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 
 ### RH-W-0011: Comprobar la portabilidad en arquitecturas y entornos
 
-- **Origen:** pregunta de la persona responsable del 2026-10-30: «funciona en arm64, raspberry, oracle cloud free tier, etc?» y «debe funcionar en todo, windows, linux, mac, servers, vps, vm, proxmox, wsl».
+- **Origen:** pregunta de la persona responsable del 2026-10-29: «funciona en arm64, raspberry, oracle cloud free tier, etc?» y «debe funcionar en todo, windows, linux, mac, servers, vps, vm, proxmox, wsl».
 - **Prioridad:** P2; amplía dónde se puede usar el proyecto.
 - **Dependencias:** coordinar con `RH-W-0008` (instalación) y `RH-W-0009` (imágenes Docker).
 - **Estado:** `proposed`.
@@ -170,7 +170,7 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 
 ### RH-W-0012: Motor o modelo propio, fine-tuning y mejora de lo que se usa
 
-- **Origen:** solicitud de la persona responsable del 2026-10-30: «hay que considerar crear nuestras propias cosas, si lo que usamos como el pocket tts, quiza podamos hacer el nuestro, pero eso al final con lo de obtimizar etc.» y «el fine tuning ademas crear o mejorar lo que se usa».
+- **Origen:** solicitud de la persona responsable del 2026-10-29: «hay que considerar crear nuestras propias cosas, si lo que usamos como el pocket tts, quiza podamos hacer el nuestro, pero eso al final con lo de obtimizar etc.» y «el fine tuning ademas crear o mejorar lo que se usa».
 - **Prioridad:** P3; trabajo de largo plazo, al final, junto con la optimización.
 - **Dependencias:** después de `RH-W-0003` (consumo y optimización).
 - **Estado:** `proposed`.
@@ -184,7 +184,7 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 
 ### RH-W-0013: Manejo de errores y logs
 
-- **Origen:** solicitud de la persona responsable del 2026-10-30: «manejor de rrores, logs, etc.».
+- **Origen:** solicitud de la persona responsable del 2026-10-29: «manejor de rrores, logs, etc.».
 - **Prioridad:** P2; facilita diagnosticar fallos en el servidor, la TUI y la extensión.
 - **Dependencias:** coordinar con `RH-W-0001`, que ya incluye informar en `/health` y `/status` si el modelo no carga.
 - **Estado:** `proposed`.
@@ -195,7 +195,7 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 
 ### RH-W-0014: Ofrecer una API e integrar con CLIProxyAPI
 
-- **Origen:** solicitud de la persona responsable del 2026-10-30: «ofrecer API, integracion con cliproxyapi aunq creo que no es necesario».
+- **Origen:** solicitud de la persona responsable del 2026-10-29: «ofrecer API, integracion con cliproxyapi aunq creo que no es necesario».
 - **Prioridad:** P3; la persona responsable duda de que haga falta.
 - **Dependencias:** `RH-W-0001` antes de exponer una API; coordinar con `RH-W-0009`.
 - **Estado:** `proposed`.
@@ -206,21 +206,21 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 
 ### RH-W-0015: Añadir palabras al diccionario desde la TUI o la extensión
 
-- **Origen:** solicitud de la persona responsable del 2026-10-30: «debemos hacer una forma ya sea en el menu tui de la extension para agregar palabras a ese pronunciaciones.json».
+- **Origen:** solicitud de la persona responsable del 2026-10-29: «debemos hacer una forma ya sea en el menu tui de la extension para agregar palabras a ese pronunciaciones.json».
 - **Prioridad:** P3; hoy hay que editar el JSON a mano.
 - **Dependencias:** coordinar con `RH-W-0004` (menús de la TUI y comandos de Pi) y `RH-W-0010` (activar o desactivar el diccionario).
 - **Estado:** `proposed`.
 - **Trabajo restante:**
   - Decidir dónde se añaden palabras: menú de la TUI, comando o menú de la extensión de Pi, o ambos.
   - Validar la entrada (término y pronunciación no vacíos, sin duplicados) antes de escribir `pronunciaciones.json`, y permitir probar cómo suena.
-  - Diccionario por proyecto además del global: un `pronunciaciones.json` propio de cada repositorio para sus nombres y términos (aprobado el 2026-10-30: «si tmb puede ser»); definir cuál gana si un término está en ambos.
+  - Diccionario por proyecto además del global: un `pronunciaciones.json` propio de cada repositorio para sus nombres y términos (aprobado el 2026-10-29: «si tmb puede ser»); definir cuál gana si un término está en ambos.
 - **Evidencia:** `src/tehablo_lexicon.py` recarga el archivo cuando cambia y conserva la última versión válida si el JSON es inválido; no existe forma de añadir palabras desde la interfaz.
 - **Decisión:** registrar para después; no se eligió dónde ni cómo.
 - **Condición del siguiente avance:** decisión de la persona responsable sobre dónde se añaden palabras.
 
 ### RH-W-0016: Sugerir pronunciaciones de términos nuevos en inglés
 
-- **Origen:** solicitud de la persona responsable del 2026-10-30: «al detectar palabras en ingles o terminos no estás usando lo que hicimos para pronunciar en ingles leyendo el español, me parece, o no lo sugieres» y «quiza una config que me brinde la opcion de sugerirlas o no sugerir o auto (que las agregue segun lo tque temos para eso)».
+- **Origen:** solicitud de la persona responsable del 2026-10-29: «al detectar palabras en ingles o terminos no estás usando lo que hicimos para pronunciar en ingles leyendo el español, me parece, o no lo sugieres» y «quiza una config que me brinde la opcion de sugerirlas o no sugerir o auto (que las agregue segun lo tque temos para eso)».
 - **Prioridad:** P3; hoy los términos faltantes solo se descubren al escucharlos mal (`find`, `per-OS`).
 - **Dependencias:** coordinar con `RH-W-0010` (diccionario opcional) y `RH-W-0015` (añadir palabras desde la interfaz).
 - **Estado:** `proposed`.
@@ -233,7 +233,7 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 
 ### RH-W-0017: Cambio de dispositivo de audio
 
-- **Origen:** solicitud de la persona responsable del 2026-10-30: «el cambio de dispositivos de audio en el pc, como lo maneja, que hacer, etc».
+- **Origen:** solicitud de la persona responsable del 2026-10-29: «el cambio de dispositivos de audio en el pc, como lo maneja, que hacer, etc».
 - **Prioridad:** P2; si se cambia de altavoz a audífonos o se desconecta un dispositivo, la voz puede seguir saliendo por el anterior o fallar.
 - **Dependencias:** coordinar con `RH-W-0003` (la salida de audio queda abierta) y `RH-W-0004` (dónde se elige el dispositivo).
 - **Estado:** `proposed`.
@@ -248,7 +248,7 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 
 ### RH-W-0018: Roles de voz
 
-- **Origen:** solicitud de la persona responsable del 2026-10-30: «la posibilidad de darle roles a las voces (locutor, comentarista, podcast, profesor, gracioso, jugueton, directo, tecnico, cariñoso, motivador, adhd friendly, entre muchos mas) con cositas extras como frases o muletillas o cosas que lo hagan mas real y natural dependiendo del rol».
+- **Origen:** solicitud de la persona responsable del 2026-10-29: «la posibilidad de darle roles a las voces (locutor, comentarista, podcast, profesor, gracioso, jugueton, directo, tecnico, cariñoso, motivador, adhd friendly, entre muchos mas) con cositas extras como frases o muletillas o cosas que lo hagan mas real y natural dependiendo del rol».
 - **Prioridad:** P3; mejora de calidad de uso y naturalidad.
 - **Dependencias:** las opciones expresivas que se encuentren en `RH-W-0005`; coordinar dónde se elige el rol con `RH-W-0004`.
 - **Estado:** `proposed`.
@@ -262,7 +262,7 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 
 ### RH-W-0019: Exportar audiolibros
 
-- **Origen:** propuesta del agente aprobada por la persona responsable el 2026-10-30 («este puede ser»), tomada de lectores como OpenReader y Herald.
+- **Origen:** propuesta del agente aprobada por la persona responsable el 2026-10-29 («este puede ser»), tomada de lectores como OpenReader y Herald.
 - **Prioridad:** P3; hoy solo se guarda el último audio en `.wav`.
 - **Dependencias:** ninguna.
 - **Estado:** `proposed`.
@@ -273,19 +273,19 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 
 ### RH-W-0020: Funciones de app lectora de escritorio
 
-- **Origen:** propuestas del agente del 2026-10-30 tomadas de apps similares (SayTheRest, CopySpeak, Kokoro Clipboard, PipPal, ElevenReader).
+- **Origen:** propuestas del agente del 2026-10-29 tomadas de apps similares (SayTheRest, CopySpeak, Kokoro Clipboard, PipPal, ElevenReader).
 - **Prioridad:** P3.
 - **Dependencias:** ninguna.
 - **Estado:** `excluded`.
 - **Trabajo restante:** `none`.
-- **Exclusiones:** atajo global para leer texto seleccionado, lectura del portapapeles, icono en la bandeja con ventana flotante, lectura de PDF, EPUB, DOCX y web, sonidos de fondo y un plugin para navegador web (idea de la persona responsable del 2026-10-30: «tengo otra como el 1, un plugin para navegador web»).
+- **Exclusiones:** atajo global para leer texto seleccionado, lectura del portapapeles, icono en la bandeja con ventana flotante, lectura de PDF, EPUB, DOCX y web, sonidos de fondo y un plugin para navegador web (idea de la persona responsable del 2026-10-29: «tengo otra como el 1, un plugin para navegador web»).
 - **Evidencia:** respuesta de la persona responsable: «eso aun no, es como otra app eso»; sobre los sonidos de fondo: «de momento no».
 - **Decisión:** fuera del alcance actual; puede reconsiderarse más adelante.
 - **Condición del siguiente avance:** nueva decisión explícita de la persona responsable.
 
 ### RH-W-0021: Leer frases en inglés con un modelo inglés
 
-- **Origen:** propuesta del agente aprobada por la persona responsable el 2026-10-30.
+- **Origen:** propuesta del agente aprobada por la persona responsable el 2026-10-29.
 - **Prioridad:** P3; el diccionario respela palabras sueltas, pero una frase entera en inglés suena mejor con un modelo inglés.
 - **Dependencias:** coordinar con `RH-W-0002` (pronunciación según el modelo) y `RH-W-0010` (diccionario opcional).
 - **Estado:** `proposed`.
@@ -298,7 +298,7 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 
 ### RH-W-0022: Opciones de lectura
 
-- **Origen:** propuestas del agente aprobadas por la persona responsable el 2026-10-30.
+- **Origen:** propuestas del agente aprobadas por la persona responsable el 2026-10-29.
 - **Prioridad:** P3; calidad de uso al escuchar las respuestas.
 - **Dependencias:** coordinar dónde se exponen con `RH-W-0004`.
 - **Estado:** `proposed`.
@@ -314,7 +314,7 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 
 ### RH-W-0023: Revisión de seguridad, buenas prácticas, control y rendimiento
 
-- **Origen:** solicitud de la persona responsable del 2026-10-30: «falta agregar cosas de seguridad, de buenas practicas, control, rendimiento».
+- **Origen:** solicitud de la persona responsable del 2026-10-29: «falta agregar cosas de seguridad, de buenas practicas, control, rendimiento».
 - **Prioridad:** P2; base para instalar en otros equipos, VPS y Docker (`RH-W-0008`, `RH-W-0009`, `RH-W-0011`).
 - **Dependencias:** reúne y amplía `RH-W-0001` (servidor), `RH-W-0003` (consumo) y `RH-W-0013` (errores y logs) sin reemplazarlos.
 - **Estado:** `proposed`.

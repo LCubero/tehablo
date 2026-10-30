@@ -9,4 +9,5 @@
 - La documentación del repositorio permanece como fuente visible del estado del proyecto.
 - Gentle AI y Engram son capacidades opcionales independientes; solo bloquean fallos requeridos por la operación y nunca reemplazan la evidencia actual del repositorio.
 - Las operaciones de Git, proveedor, respaldo externo y publicación quedan fuera del núcleo del harness; el backup local nativo que se escribe al cerrar la sesión forma parte de él.
+- Las fechas del proyecto (changelog, hoja de ruta, respaldos y commits) usan la hora de Costa Rica (`America/Costa_Rica`, UTC−06:00), nunca UTC ni la fecha de otro contexto (decisión de la persona responsable: «ya sabes que es fecha costa rica»).
 - El builder crea archivos ausentes y cambia un archivo existente solo mediante un plan aprobado ligado a los bytes actuales exactos de ese archivo.
