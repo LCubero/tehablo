@@ -53,7 +53,7 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 - **Origen:** consulta sobre los recursos utilizados después de escuchar una respuesta de Pi.
 - **Prioridad:** P2; evaluar el equilibrio entre memoria ocupada y latencia de la siguiente reproducción.
 - **Dependencias:** coordinar la revisión de tiempos de espera con `RH-W-0001`.
-- **Estado:** `deferred`.
+- **Estado:** `ready`.
 - **Evidencia:** el código de `src/tehablo_server.py` conserva el modelo y la salida de audio abiertos al terminar o detener; pausar no cancela la generación. No se midió el consumo residual. Las [mediciones offline de Fedora](../como-funciona.md#fedora) verifican solo síntesis directa, carga desde caché y recursos del proceso. El 2026-10-30, en Windows, `scripts/measure_tts.py` no arranca (`ModuleNotFoundError: No module named 'resource'`, módulo solo de Unix), por eso fallaban 9 pruebas de `tests/test_measure_tts.py`; se corrigió el mismo día (commit `931dcad`) y el script ya puede medir en Windows. Medición puntual del mismo día: en Windows el servidor tardó unos 5,3 s en responder a `/health` desde el arranque en frío, antes de cargar el modelo; la salida del servidor queda en `logs/tehablo-server.log`.
 - **Trabajo completado (2026-10-29):** medición acotada offline de `spanish` y `spanish_24l` con `lola`, tres repeticiones por modelo; resultados, metodología y evidencia JSON documentados. No se entregaron mediciones de pausa, parada, reposo o dispositivo de audio, optimizaciones ni ajustes nuevos.
 - **Trabajo restante:**
@@ -62,7 +62,7 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
   - Revisar si conviene cambiar o quitar las esperas actuales de arranque, distinguiendo servidor accesible de modelo listo y evitando esperas indefinidas ante errores.
   - Evaluar una medición opcional del arranque y de la carga del modelo para estimar las necesidades de cada equipo; no se ha elegido calibración automática ni valores nuevos.
 - **Decisión:** solicitud para detallar y revisar después; posteriormente se autorizó la medición offline acotada en Fedora y la descarga faltante de `spanish_24l`. Esa parte está completada, pero el trabajo amplio sigue `deferred`: las alternativas no están aprobadas como diseño definitivo ni implementadas.
-- **Condición del siguiente avance:** autorización para realizar la investigación y medición acotadas antes de elegir el comportamiento y los ajustes.
+- **Condición del siguiente avance:** listo para empezar: la persona responsable aprobó el plan el 2026-10-30 (fase 1, medir). Medir en Windows y Fedora el arranque en frío (imports y carga del modelo por separado), la RAM en reposo, en pausa y detenido, y el modelo con y sin `quantize=True` (opción de pocket-tts 4.0.1 que, según su documentación, reduce a la mitad la memoria del modelo).
 
 ### RH-W-0004: Revisar interfaz, TUI, menús y opciones
 
@@ -106,7 +106,7 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 - **Origen:** solicitud de la persona responsable del 2026-10-29: «Agregar opción de usar gpu».
 - **Prioridad:** P3; mejora futura de rendimiento y memoria, sin afectar el uso con CPU.
 - **Dependencias:** coordinar con `RH-W-0003`, porque una de las metas es liberar RAM.
-- **Estado:** `proposed`.
+- **Estado:** `deferred`.
 - **Trabajo restante:**
   - Investigar si Pocket TTS funciona con CUDA u otra GPU y qué mejora real ofrece en velocidad y RAM.
   - Si es viable, diseñar una opción para activar o cambiar a modo GPU, manteniendo CPU como modo predeterminado.
@@ -114,6 +114,7 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 - **Exclusiones:** no se abandona ni se degrada el modo solo CPU.
 - **Evidencia:** el proyecto instala Torch CPU (`requirements.txt`) y el README indica que no usa GPU; no se ha comprobado el soporte de GPU de Pocket TTS.
 - **Decisión:** la persona responsable indicó «a futuro es una opcion extra, activar gpu o cambiar a modo gpu para mejor rendimiento o liberar la ram» y «no estamos dejando el modo solo cpu».
+  2026-10-30: aplazado por decisión de prioridades (la persona responsable delegó la decisión: «decidelo tu ... sin sobreingenieria»): primero base confiable, medición (`RH-W-0003`), decisión de versión lite e instalación, y endurecimiento (`RH-W-0001`, `RH-W-0013`).
 - **Condición del siguiente avance:** autorización para la investigación acotada del soporte de GPU.
 
 ### RH-W-0008: Instalación local fácil
@@ -132,13 +133,14 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 - **Origen:** solicitud de la persona responsable del 2026-10-29: «La versión docker» y facilitar la instalación «en vps, etc y seguro».
 - **Prioridad:** P2; amplía dónde puede ejecutarse, pero exponerlo en red cambia el modelo de seguridad.
 - **Dependencias:** `RH-W-0001` (el servidor no tiene autenticación) y `RH-W-0008`.
-- **Estado:** `proposed`.
+- **Estado:** `deferred`.
 - **Trabajo restante:**
   - Diseñar cómo llega el audio a quien lo pide: hoy el servidor lo reproduce en el altavoz de su propio equipo (`sounddevice`), que no existe en un contenedor o VPS.
   - Definir autenticación y exposición de red antes de escuchar fuera de `127.0.0.1`.
   - Preparar la imagen Docker para uso local y, después, el despliegue en VPS.
 - **Evidencia:** `src/tehablo_server.py` escucha solo en `127.0.0.1`, sin autenticación, y reproduce el audio localmente. El 2026-10-29 la persona responsable volvió a pedir «imagenes de docker»; las arquitecturas de las imágenes se coordinan con `RH-W-0011`.
 - **Decisión:** registrar para después, separado de la instalación local; no se eligió diseño.
+  2026-10-30: aplazado por decisión de prioridades (la persona responsable delegó la decisión: «decidelo tu ... sin sobreingenieria»): primero base confiable, medición (`RH-W-0003`), decisión de versión lite e instalación, y endurecimiento (`RH-W-0001`, `RH-W-0013`).
 - **Condición del siguiente avance:** autorización para diseñar la versión Docker, con `RH-W-0001` resuelto antes de exponer el servidor en red.
 
 ### RH-W-0010: Elegir si se usa el diccionario de pronunciación en inglés
@@ -173,13 +175,14 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 - **Origen:** solicitud de la persona responsable del 2026-10-29: «hay que considerar crear nuestras propias cosas, si lo que usamos como el pocket tts, quiza podamos hacer el nuestro, pero eso al final con lo de obtimizar etc.» y «el fine tuning ademas crear o mejorar lo que se usa».
 - **Prioridad:** P3; trabajo de largo plazo, al final, junto con la optimización.
 - **Dependencias:** después de `RH-W-0003` (consumo y optimización).
-- **Estado:** `proposed`.
+- **Estado:** `deferred`.
 - **Trabajo restante:**
   - Evaluar fine-tuning de Pocket TTS y mejoras a lo que se usa hoy.
   - Evaluar si conviene crear un motor o modelo propio («si hacemos nuestro propio motor y modelo podemos hacer lo mejor»).
   - A futuro, poder elegir el motor (Pocket TTS, Kokoro, Piper, Qwen3-TTS u otros), junto con la elección de CPU o GPU de `RH-W-0007`.
 - **Evidencia:** opciones de fine-tuning ya documentadas en [Pocket TTS](../pocket-tts.md#entrenamiento-y-fine-tuning-sí-existen) y el [catálogo gratuito](../catalogo-gratuito.md); ninguna se probó.
 - **Decisión:** dejarlo para el final, con la optimización.
+  2026-10-30: aplazado por decisión de prioridades (la persona responsable delegó la decisión: «decidelo tu ... sin sobreingenieria»): primero base confiable, medición (`RH-W-0003`), decisión de versión lite e instalación, y endurecimiento (`RH-W-0001`, `RH-W-0013`).
 - **Condición del siguiente avance:** `RH-W-0003` avanzado y autorización para investigar.
 
 ### RH-W-0013: Manejo de errores y logs
@@ -198,10 +201,11 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 - **Origen:** solicitud de la persona responsable del 2026-10-29: «ofrecer API, integracion con cliproxyapi aunq creo que no es necesario».
 - **Prioridad:** P3; la persona responsable duda de que haga falta.
 - **Dependencias:** `RH-W-0001` antes de exponer una API; coordinar con `RH-W-0009`.
-- **Estado:** `proposed`.
+- **Estado:** `deferred`.
 - **Trabajo restante:** evaluar si hace falta una API pública (por ejemplo compatible con OpenAI) y la integración con CLIProxyAPI; decidir si se hace.
 - **Evidencia:** el servidor local ya ofrece endpoints propios en `127.0.0.1` (`src/tehablo_server.py`); Pocket TTS trae `pocket-tts serve` ([catálogo gratuito](../catalogo-gratuito.md)). No se revisó CLIProxyAPI.
 - **Decisión:** registrar como evaluación; no se decidió hacerlo.
+  2026-10-30: aplazado por decisión de prioridades (la persona responsable delegó la decisión: «decidelo tu ... sin sobreingenieria»): primero base confiable, medición (`RH-W-0003`), decisión de versión lite e instalación, y endurecimiento (`RH-W-0001`, `RH-W-0013`).
 - **Condición del siguiente avance:** decisión de la persona responsable sobre si es necesario.
 
 ### RH-W-0015: Añadir palabras al diccionario desde la TUI o la extensión
@@ -251,13 +255,14 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 - **Origen:** solicitud de la persona responsable del 2026-10-29: «la posibilidad de darle roles a las voces (locutor, comentarista, podcast, profesor, gracioso, jugueton, directo, tecnico, cariñoso, motivador, adhd friendly, entre muchos mas) con cositas extras como frases o muletillas o cosas que lo hagan mas real y natural dependiendo del rol».
 - **Prioridad:** P3; mejora de calidad de uso y naturalidad.
 - **Dependencias:** las opciones expresivas que se encuentren en `RH-W-0005`; coordinar dónde se elige el rol con `RH-W-0004`.
-- **Estado:** `proposed`.
+- **Estado:** `deferred`.
 - **Trabajo restante:**
   - Definir qué es un rol: voz, velocidad, opciones expresivas del modelo y cambios del texto (frases, muletillas, saludos o cierres).
   - Proponer un conjunto inicial de roles y cómo se elige, sin cambiar el contenido ni el significado de lo que se lee.
   - Probar mediante escucha que cada rol suena más natural.
 - **Evidencia:** hoy solo se eligen voz, modelo, velocidad y volumen; no existe ningún ajuste de rol ni de estilo.
 - **Decisión:** registrar para después; no se eligió diseño.
+  2026-10-30: aplazado por decisión de prioridades (la persona responsable delegó la decisión: «decidelo tu ... sin sobreingenieria»): primero base confiable, medición (`RH-W-0003`), decisión de versión lite e instalación, y endurecimiento (`RH-W-0001`, `RH-W-0013`).
 - **Condición del siguiente avance:** avance de `RH-W-0005` sobre las opciones expresivas y autorización para diseñar los roles.
 
 ### RH-W-0019: Exportar audiolibros
@@ -265,10 +270,11 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 - **Origen:** propuesta del agente aprobada por la persona responsable el 2026-10-29 («este puede ser»), tomada de lectores como OpenReader y Herald.
 - **Prioridad:** P3; hoy solo se guarda el último audio en `.wav`.
 - **Dependencias:** ninguna.
-- **Estado:** `proposed`.
+- **Estado:** `deferred`.
 - **Trabajo restante:** proponer formatos (MP3, M4B), división por capítulos y desde dónde se exporta; implementarlo y probarlo.
 - **Evidencia:** F7 en la TUI y `/guardar` en la consola guardan un `.wav` en `pocket-out/` (`README.md`).
 - **Decisión:** registrar para después; no se eligió formato.
+  2026-10-30: aplazado por decisión de prioridades (la persona responsable delegó la decisión: «decidelo tu ... sin sobreingenieria»): primero base confiable, medición (`RH-W-0003`), decisión de versión lite e instalación, y endurecimiento (`RH-W-0001`, `RH-W-0013`).
 - **Condición del siguiente avance:** autorización para proponer el diseño.
 
 ### RH-W-0020: Funciones de app lectora de escritorio
@@ -288,12 +294,13 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 - **Origen:** propuesta del agente aprobada por la persona responsable el 2026-10-29.
 - **Prioridad:** P3; el diccionario respela palabras sueltas, pero una frase entera en inglés suena mejor con un modelo inglés.
 - **Dependencias:** coordinar con `RH-W-0002` (pronunciación según el modelo) y `RH-W-0010` (diccionario opcional).
-- **Estado:** `proposed`.
+- **Estado:** `deferred`.
 - **Trabajo restante:**
   - Comprobar si Pocket TTS permite alternar entre el modelo español y el inglés dentro de un mismo texto, y su costo en memoria y latencia.
   - Definir cómo se detecta una frase en inglés sin confundir términos sueltos.
 - **Evidencia:** Pocket TTS ofrece modelo inglés; no se comprobó el cambio de modelo a mitad de un texto.
 - **Decisión:** registrar para después.
+  2026-10-30: aplazado por decisión de prioridades (la persona responsable delegó la decisión: «decidelo tu ... sin sobreingenieria»): primero base confiable, medición (`RH-W-0003`), decisión de versión lite e instalación, y endurecimiento (`RH-W-0001`, `RH-W-0013`).
 - **Condición del siguiente avance:** autorización para la prueba acotada.
 
 ### RH-W-0022: Opciones de lectura
@@ -331,14 +338,14 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 
 - **Origen:** solicitud de la persona responsable del 2026-10-30: «Hay que dejar versión lite mínimo consumo de tehablo».
 - **Prioridad:** P2; permite usarlo en equipos con pocos recursos y se relaciona con la portabilidad (`RH-W-0011`).
-- **Dependencias:** se apoya en las mediciones de `RH-W-0003`; coordinar con `RH-W-0008` (instalación) y `RH-W-0011`.
+- **Dependencias:** requiere las mediciones de `RH-W-0003`; coordinar con `RH-W-0008` (instalación) y `RH-W-0011`.
 - **Estado:** `proposed`.
 - **Trabajo restante:**
   - Definir qué es «lite»: qué se incluye, qué se deja fuera y cuál es el consumo objetivo de RAM y CPU.
   - Comparar opciones a partir de mediciones (modelo `spanish`, carga a demanda, liberar el modelo en reposo, menos dependencias) antes de elegir.
 - **Evidencia:** las [mediciones del README](../../README.md#cuánto-gasta) dan unos 870 MB de RAM con `spanish` en Windows y 1,8 GB con `spanish_24l`; el servidor conserva el modelo en memoria al terminar (`RH-W-0003`).
 - **Decisión:** registrar para después; no se eligió alcance ni diseño.
-- **Condición del siguiente avance:** autorización para definir el alcance de la versión lite.
+- **Condición del siguiente avance:** `RH-W-0003` con mediciones en Windows y Fedora; después, autorización para definir el alcance. Puede bastar con un modo de bajo consumo en la misma versión (cuantización, liberar el modelo en reposo) o con el binario `pocket-tts` de Kyutai, que no necesita Python ni PyTorch (no comprobado con los modelos en español).
 
 ## Registros resueltos
 <!-- doc-role:resolved-records -->

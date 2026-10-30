@@ -25,6 +25,7 @@ Este archivo proyecta solo hechos verificados del proyecto: registros activos, b
 
 <!-- doc-role:recent-work -->
 
+- Base confiable (fase 0): `scripts/measure_tts.py` funciona en Windows, la salida del servidor queda en `logs/tehablo-server.log` y se corrigieron promesas no comprobadas de la documentación; todas las pruebas pasan en Windows.
 - Barra de Pi con `[ ⏻ TTS ]`, `[ Cargando… ]`, reproducción con iconos y Vol/Vel tras `[ ⋯ ]`; comprobada en Pi por la persona responsable (`RH-W-0024`, `completed`).
 - 17 pronunciaciones nuevas en inglés (`speed`, `close`, `CRLF` deletreado y otras; `dual` se lee en español) y registro de los trabajos `RH-W-0010` a `RH-W-0015` (`RH-W-0002`).
 - Mediciones offline de síntesis CPU en Fedora con `spanish` y `spanish_24l`, tres repeticiones por modelo y evidencia JSON ([resultados y límites](../como-funciona.md#fedora)); resultado acotado de `RH-W-0003`, que sigue `deferred`.
@@ -45,30 +46,30 @@ Este archivo proyecta solo hechos verificados del proyecto: registros activos, b
 - Registrar todo pendiente no trivial en [roadmap.md](roadmap.md), sin mantener un segundo backlog aquí.
 - `RH-W-0001` (`deferred`, P2): endurecer el servidor local de voz.
 - `RH-W-0002` (`deferred`, P3): pronunciaciones en inglés y limpieza de símbolos aplicadas (hashes omitidos, separadores, flechas, paréntesis y barras); quedan las extensiones de archivo y la confirmación por escucha ([guía de pronunciación](../pronunciacion.md)).
-- `RH-W-0003` (`deferred`, P2): síntesis offline medida; quedan consumo al pausar, detener y quedar inactivo, salida de audio, carga a demanda o residente, esperas de arranque y medición opcional por equipo. Sin optimizaciones ni ajustes nuevos.
+- `RH-W-0003` (`ready`, P2, siguiente): síntesis offline medida; quedan consumo al pausar, detener y quedar inactivo, salida de audio, carga a demanda o residente, esperas de arranque y medición opcional por equipo. Sin optimizaciones ni ajustes nuevos.
 - `RH-W-0004` (`deferred`, P3): revisar interfaz, TUI, menús, comandos y ajustes, modo automático persistente y acceso sin mouse.
 - `RH-W-0005` (`deferred`, P3): probar otras voces existentes y fuentes gratuitas de Hugging Face y otros sitios, verificando compatibilidad y condiciones de uso.
-- `RH-W-0007` (`proposed`, P3): modo GPU opcional, manteniendo CPU como predeterminado.
+- `RH-W-0007` (`deferred`, P3): modo GPU opcional, manteniendo CPU como predeterminado.
 - `RH-W-0008` (`proposed`, P2): instalación local fácil.
-- `RH-W-0009` (`proposed`, P2): versión Docker y despliegue seguro en VPS; depende de `RH-W-0001` y `RH-W-0008`.
+- `RH-W-0009` (`deferred`, P2): versión Docker y despliegue seguro en VPS; depende de `RH-W-0001` y `RH-W-0008`.
 - `RH-W-0010` (`proposed`, P3): elegir si se usa el diccionario de pronunciación en inglés.
 - `RH-W-0011` (`proposed`, P2): comprobar portabilidad en arm64, Raspberry Pi, Oracle Cloud Free Tier, macOS, WSL, VM, Proxmox y VPS.
-- `RH-W-0012` (`proposed`, P3): motor o modelo propio y fine-tuning, al final con la optimización.
+- `RH-W-0012` (`deferred`, P3): motor o modelo propio y fine-tuning, al final con la optimización.
 - `RH-W-0013` (`proposed`, P2): manejo de errores y logs.
-- `RH-W-0014` (`proposed`, P3): evaluar una API y la integración con CLIProxyAPI.
+- `RH-W-0014` (`deferred`, P3): evaluar una API y la integración con CLIProxyAPI.
 - `RH-W-0015` (`proposed`, P3): añadir palabras a `pronunciaciones.json` desde la TUI o la extensión de Pi.
 - `RH-W-0016` (`proposed`, P3): ajuste para sugerir, no sugerir o añadir automáticamente pronunciaciones de términos nuevos en inglés.
 - `RH-W-0017` (`proposed`, P2): cambio de dispositivo de audio (seguir al predeterminado, elegir uno y recuperarse si desaparece).
-- `RH-W-0018` (`proposed`, P3): roles de voz (locutor, profesor, motivador y otros) con frases y muletillas propias.
-- `RH-W-0019` (`proposed`, P3): exportar audiolibros.
+- `RH-W-0018` (`deferred`, P3): roles de voz (locutor, profesor, motivador y otros) con frases y muletillas propias.
+- `RH-W-0019` (`deferred`, P3): exportar audiolibros.
 - `RH-W-0020` (`excluded`): funciones de app lectora de escritorio (atajo global, portapapeles, bandeja, documentos, sonidos de fondo, plugin de navegador).
-- `RH-W-0021` (`proposed`, P3): leer frases en inglés con un modelo inglés.
+- `RH-W-0021` (`deferred`, P3): leer frases en inglés con un modelo inglés.
 - `RH-W-0022` (`proposed`, P3): opciones de lectura (bloques de código, pausas, aviso al terminar, retroceder o repetir, historial).
 - `RH-W-0023` (`proposed`, P2): revisión de seguridad, buenas prácticas (linter, CI, dependencias fijadas), control (límites) y rendimiento (medición de regresiones).
-- `RH-W-0025` (`proposed`, P2): versión lite de mínimo consumo.
+- `RH-W-0025` (`proposed`, P2): versión lite de mínimo consumo; requiere las mediciones de `RH-W-0003`.
 
 ## Siguiente paso
 
 <!-- doc-role:next-step -->
 
-La integración con Pi está en `master`. Los trabajos de [roadmap.md](roadmap.md) están aplazados o propuestos por decisión de la persona responsable; retomarlos requiere su autorización explícita.
+Plan aprobado el 2026-10-30: (0) base confiable, completada; (1) medir con `RH-W-0003`, siguiente; (2) decidir la versión lite (`RH-W-0025`) y la instalación (`RH-W-0008`) con esos datos; (3) endurecer el servidor y los errores (`RH-W-0001`, `RH-W-0013`). La investigación y los deseos grandes quedan `deferred` hasta entonces.
