@@ -4,6 +4,10 @@
 
 Este archivo registra los cambios completados en orden cronológico.
 
+## 2026-10-30
+
+- El harness se actualizó a repo-harness 3.2.0: la preferencia de idioma guardada manda en la conversación (una orden técnica en inglés no la cambia) y las fechas usan la preferencia `timeZone` (`America/Costa_Rica`), nunca UTC.
+
 ## 2026-10-29
 
 - Las preguntas suenan a pregunta: si falta `¿`, se añade al inicio de la oración, porque el modelo solo usa entonación de pregunta con `¿` (prueba de escucha).
