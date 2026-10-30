@@ -1,4 +1,4 @@
-"""Measure cached Pocket TTS CPU synthesis offline on Linux without audio playback."""
+"""Measure cached Pocket TTS CPU synthesis offline on Linux or Windows without audio playback."""
 
 import argparse
 import hashlib
@@ -7,10 +7,74 @@ import json
 import os
 from pathlib import Path
 import platform
-import resource
 import sys
 import time
 from datetime import datetime
+
+
+def _windows_memory():
+    import ctypes
+    from ctypes import wintypes
+
+    class PROCESS_MEMORY_COUNTERS(ctypes.Structure):
+        _fields_ = [("cb", wintypes.DWORD), ("PageFaultCount", wintypes.DWORD)] + [
+            (name, ctypes.c_size_t) for name in (
+                "PeakWorkingSetSize", "WorkingSetSize", "QuotaPeakPagedPoolUsage",
+                "QuotaPagedPoolUsage", "QuotaPeakNonPagedPoolUsage",
+                "QuotaNonPagedPoolUsage", "PagefileUsage", "PeakPagefileUsage",
+            )
+        ]
+
+    kernel = ctypes.WinDLL("kernel32", use_last_error=True)
+    psapi = ctypes.WinDLL("psapi", use_last_error=True)
+    kernel.GetCurrentProcess.restype = wintypes.HANDLE
+    psapi.GetProcessMemoryInfo.argtypes = (
+        wintypes.HANDLE, ctypes.POINTER(PROCESS_MEMORY_COUNTERS), wintypes.DWORD,
+    )
+    psapi.GetProcessMemoryInfo.restype = wintypes.BOOL
+    counters = PROCESS_MEMORY_COUNTERS()
+    counters.cb = ctypes.sizeof(counters)
+    if not psapi.GetProcessMemoryInfo(kernel.GetCurrentProcess(), ctypes.byref(counters), counters.cb):
+        raise ctypes.WinError(ctypes.get_last_error())
+    return counters
+
+
+def rss_mib():
+    if sys.platform == "win32":
+        return _windows_memory().WorkingSetSize / 2**20
+    pages = int(Path("/proc/self/statm").read_text().split()[1])
+    return pages * os.sysconf("SC_PAGE_SIZE") / 2**20
+
+
+def peak_mib():
+    if sys.platform == "win32":
+        return _windows_memory().PeakWorkingSetSize / 2**20
+    import resource
+    return resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024
+
+
+def mem_total_kib():
+    if sys.platform != "win32":
+        return int(Path("/proc/meminfo").read_text().splitlines()[0].split()[1])
+    import ctypes
+    from ctypes import wintypes
+
+    class MEMORYSTATUSEX(ctypes.Structure):
+        _fields_ = [("dwLength", wintypes.DWORD), ("dwMemoryLoad", wintypes.DWORD)] + [
+            (name, ctypes.c_ulonglong) for name in (
+                "ullTotalPhys", "ullAvailPhys", "ullTotalPageFile", "ullAvailPageFile",
+                "ullTotalVirtual", "ullAvailVirtual", "ullAvailExtendedVirtual",
+            )
+        ]
+
+    kernel = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel.GlobalMemoryStatusEx.argtypes = (ctypes.POINTER(MEMORYSTATUSEX),)
+    kernel.GlobalMemoryStatusEx.restype = wintypes.BOOL
+    status = MEMORYSTATUSEX()
+    status.dwLength = ctypes.sizeof(status)
+    if not kernel.GlobalMemoryStatusEx(ctypes.byref(status)):
+        raise ctypes.WinError(ctypes.get_last_error())
+    return status.ullTotalPhys // 1024
 
 
 def main():
@@ -33,13 +97,6 @@ def main():
 
     if torch.version.cuda is not None:
         raise RuntimeError("This measurement requires the CPU-only Torch build")
-
-    def rss_mib():
-        pages = int(Path("/proc/self/statm").read_text().split()[1])
-        return pages * os.sysconf("SC_PAGE_SIZE") / 2**20
-
-    def peak_mib():
-        return resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024
 
     started = time.perf_counter()
     model = TTSModel.load_model(language=args.model)
@@ -83,14 +140,21 @@ def main():
             "process_peak_mib": peak_mib(),
         })
         print(f"{args.model}: run {index + 1}/{args.runs} completed", file=sys.stderr, flush=True)
-    cpu_name = next(line.split(":", 1)[1].strip()
-                    for line in Path("/proc/cpuinfo").read_text().splitlines()
-                    if line.startswith("model name"))
+    if sys.platform == "win32":
+        cpu_name = platform.processor()
+        distribution = platform.platform()
+        memory_method = "RSS and peak from GetProcessMemoryInfo (WorkingSetSize, PeakWorkingSetSize)"
+    else:
+        cpu_name = next(line.split(":", 1)[1].strip()
+                        for line in Path("/proc/cpuinfo").read_text().splitlines()
+                        if line.startswith("model name"))
+        distribution = platform.freedesktop_os_release()["PRETTY_NAME"]
+        memory_method = "RSS from /proc, peak from ru_maxrss"
     result = {
         "timestamp": datetime.now().astimezone().isoformat(),
-        "platform": platform.platform(), "distribution": platform.freedesktop_os_release()["PRETTY_NAME"],
+        "platform": platform.platform(), "distribution": distribution,
         "cpu": cpu_name, "logical_cpus": os.cpu_count(),
-        "mem_total_kib": int(Path("/proc/meminfo").read_text().splitlines()[0].split()[1]),
+        "mem_total_kib": mem_total_kib(),
         "python": platform.python_version(),
         "versions": {name: importlib.metadata.version(name) for name in ("pocket-tts", "torch", "numpy")},
         "torch_threads": torch.get_num_threads(), "torch_interop_threads": torch.get_num_interop_threads(),
@@ -100,7 +164,7 @@ def main():
         "sample_rate": model.sample_rate, "load_s": load_s,
         "rss_after_load_mib": loaded_rss, "peak_after_load_mib": load_peak,
         "voice_prepare_s": voice_s, "runs": runs,
-        "method": "Fresh process; cached offline weights; direct synthesis, no preprocessing, playback or speed transform. Run 1 includes warmup; runs 2-3 reuse the model. RSS from /proc, peak from ru_maxrss, CPU from process_time. OS file cache not cleared.",
+        "method": "Fresh process; cached offline weights; direct synthesis, no preprocessing, playback or speed transform. Run 1 includes warmup; runs 2-3 reuse the model. " + memory_method + ", CPU from process_time. OS file cache not cleared.",
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")

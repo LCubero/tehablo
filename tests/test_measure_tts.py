@@ -38,6 +38,21 @@ class MeasureTtsCliTests(unittest.TestCase):
             timeout=15,
         )
 
+    def test_memory_helpers_without_loading_models(self):
+        result = self.invoke_memory_helpers()
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def invoke_memory_helpers(self):
+        return subprocess.run(
+            [sys.executable, "-B", "-c",
+             "from scripts.measure_tts import rss_mib, peak_mib, mem_total_kib; "
+             "assert rss_mib() > 0; assert peak_mib() > 0; "
+             "assert mem_total_kib() > 0; "
+             "import sys; assert 'torch' not in sys.modules; "
+             "assert 'pocket_tts' not in sys.modules"],
+            cwd=ROOT, capture_output=True, text=True, timeout=15,
+        )
+
     def test_help_documents_cli_and_offline_operation(self):
         result = self.invoke("--help")
         self.assertEqual(result.returncode, 0)
