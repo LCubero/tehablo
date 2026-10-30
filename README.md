@@ -6,7 +6,8 @@ Convierte texto en voz en español, en tu equipo y gratis. Usa **Pocket TTS** (K
 
 El uso principal es **leer en voz alta las respuestas de [Pi](#uso-en-pi)**. La TUI y la consola sirven para probar voces, modelo y velocidad.
 
-[Ver el video de demostración](docs/media/tehablo-preview.webm) (1 min 40 s): tres voces de ejemplo y la lectura de una respuesta en Pi.
+[tehablo_preview.webm](https://github.com/user-attachments/assets/65c14b22-f1ed-4736-b5c8-ffaa19c254a2)
+
 
 1. [Cómo funciona](#cómo-funciona)
 2. [Qué usa](#qué-usa)
