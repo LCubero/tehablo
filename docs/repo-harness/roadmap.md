@@ -92,11 +92,14 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 - **Origen:** solicitud de la persona responsable del 2026-10-29: «hay que hacerlo facil de instalar en loca, en vps, etc y seguro».
 - **Prioridad:** P2; hoy la instalación requiere varios pasos manuales por sistema operativo.
 - **Dependencias:** ninguna.
-- **Estado:** `proposed`.
-- **Trabajo restante:** revisar los pasos actuales de instalación en Windows y Linux, proponer una forma más simple (por ejemplo, un instalador o script) y verificarla en un entorno limpio.
-- **Evidencia:** pasos de instalación actuales en `README.md` y [Desarrollo](../desarrollo.md); no se evaluaron alternativas.
-- **Decisión:** registrar para después; no se eligió herramienta ni formato de instalación.
-- **Condición del siguiente avance:** autorización para revisar la instalación y proponer la alternativa.
+- **Estado:** `active`.
+- **Trabajo completado (2026-10-30):** `install.sh` (Linux/macOS) e `install.ps1` (Windows) en la raíz: comprueban `uv`, crean o reutilizan el entorno (`.venv-pocket`, o `.venv-pocket-linux`/`-macos`/`-windows` si `.venv-pocket` es de otro sistema), instalan las dependencias con el índice CPU de PyTorch y comprueban las importaciones; si falta PortAudio en Linux indican el comando de la distribución. Verificado en Fedora en un clon limpio: instalación 17 s, segunda ejecución 4 s, rama de dual boot y aviso sin `uv` (exit 1, sin crear entorno); `shellcheck` sin avisos. El [README](../../README.md#instalación) los pone primero y conserva la instalación manual.
+- **Trabajo restante:**
+  - Probar `install.ps1` en Windows (no hay PowerShell en Fedora para comprobarlo).
+- **Exclusiones:** sin instalador gráfico, paquete ni descarga previa de modelos (se descargan en el primer uso); VPS y Docker siguen en `RH-W-0009`.
+- **Evidencia:** pasos manuales en `README.md` antes de este cambio; `requirements.txt` sin versiones fijas (`>=`).
+- **Decisión:** 2026-10-30, por decisión delegada de la persona responsable («tu decidelo, revisa y recuerda sin sobreingenieria»): un script por sistema, sin herramientas nuevas.
+- **Condición del siguiente avance:** ejecutar `install.ps1` en Windows.
 
 ### RH-W-0009: Versión Docker y despliegue seguro en VPS
 

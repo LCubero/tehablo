@@ -81,6 +81,22 @@ Método, valores exactos y cómo repetir la medición: [docs/como-funciona.md](d
 
 ## Instalación
 
+Con [`uv`](https://docs.astral.sh/uv/) instalado, ejecuta desde la raíz del repositorio:
+
+**Linux / macOS:**
+```bash
+./install.sh
+```
+
+**Windows (PowerShell):**
+```powershell
+powershell -ExecutionPolicy Bypass -File install.ps1
+```
+
+Los scripts crean o reutilizan el entorno compatible con tu sistema, instalan las dependencias y comprueban las importaciones y Torch sin CUDA; si falta PortAudio, el script de Linux indica cómo instalarlo. Los modelos se descargan en el primer uso.
+
+### Instalación manual
+
 Requisitos: Python 3.10 a 3.14 y [`uv`](https://docs.astral.sh/uv/).
 
 **Windows (PowerShell):**

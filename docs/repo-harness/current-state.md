@@ -25,6 +25,7 @@ Este archivo proyecta solo hechos verificados del proyecto: registros activos, b
 
 <!-- doc-role:recent-work -->
 
+- Instalación con un comando: `./install.sh` (verificado en Fedora en un clon limpio) e `install.ps1` (`RH-W-0008`).
 - `RH-W-0013` (`completed`): Pi avisa si una lectura falla o se pierde la conexión con el servidor, y un diccionario de pronunciación inválido queda en el log del servidor.
 - `RH-W-0001` (`completed`): el servidor rechaza peticiones de páginas web (`Origin`) y las que no son JSON, e informa si el modelo no carga; Pi lo avisa en lugar de quedarse en «cargando».
 - Cuantización predeterminada en Linux (~1,7–1,9× más rápido, sin diferencia audible a ciegas); Windows sin cambios; `TEHABLO_QUANTIZE` la cambia (`RH-W-0025`).
@@ -52,7 +53,7 @@ Este archivo proyecta solo hechos verificados del proyecto: registros activos, b
 - `RH-W-0004` (`deferred`, P3): revisar interfaz, TUI, menús, comandos y ajustes, modo automático persistente y acceso sin mouse.
 - `RH-W-0005` (`deferred`, P3): probar otras voces existentes y fuentes gratuitas de Hugging Face y otros sitios, verificando compatibilidad y condiciones de uso.
 - `RH-W-0007` (`deferred`, P3): modo GPU opcional, manteniendo CPU como predeterminado.
-- `RH-W-0008` (`proposed`, P2): instalación local fácil.
+- `RH-W-0008` (`active`, P2): instalación fácil con `install.sh` e `install.ps1`; falta probar `install.ps1` en Windows.
 - `RH-W-0009` (`deferred`, P2): versión Docker y despliegue seguro en VPS; depende de `RH-W-0001` y `RH-W-0008`.
 - `RH-W-0010` (`proposed`, P3): elegir si se usa el diccionario de pronunciación en inglés.
 - `RH-W-0011` (`proposed`, P2): comprobar portabilidad en arm64, Raspberry Pi, Oracle Cloud Free Tier, macOS, WSL, VM, Proxmox y VPS.
@@ -73,4 +74,4 @@ Este archivo proyecta solo hechos verificados del proyecto: registros activos, b
 
 <!-- doc-role:next-step -->
 
-Plan aprobado el 2026-10-30: (0) base confiable, completada; (1) medir con `RH-W-0003`, completado; (2) endurecer el servidor (`RH-W-0001`, completado) y los errores (`RH-W-0013`, completado) y la instalación (`RH-W-0008`); (3) al final, la versión lite (`RH-W-0025`): mínimo consumo, el modelo que funcione bien gastando menos y las funciones mínimas (cambio de orden pedido por la persona responsable el 2026-10-30). La investigación y los deseos grandes quedan `deferred` hasta entonces.
+Plan aprobado el 2026-10-30: (0) base confiable, completada; (1) medir con `RH-W-0003`, completado; (2) endurecer el servidor (`RH-W-0001`, completado) y los errores (`RH-W-0013`, completado) y la instalación (`RH-W-0008`, scripts listos; falta probar `install.ps1`); (3) al final, la versión lite (`RH-W-0025`): mínimo consumo, el modelo que funcione bien gastando menos y las funciones mínimas (cambio de orden pedido por la persona responsable el 2026-10-30). La investigación y los deseos grandes quedan `deferred` hasta entonces.
