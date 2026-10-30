@@ -83,6 +83,26 @@ Otros datos:
 - El cambio de velocidad cuesta alrededor de **1 s de CPU por cada 100 s de audio**.
 - Los pasos 1 y 2 tardan milisegundos.
 
+#### Arranque, reposo y cuantización (2026-10-30)
+
+Mismo equipo, `spanish`, `pocket-tts` 4.0.1 y Torch 2.15.0+cpu ([datos](measurements/windows-2026-10-30.json)):
+
+| Medida | Resultado |
+|---|---|
+| Importar librerías (torch, pocket_tts) | ~4,7 s, 350 MiB |
+| Cargar el modelo | ~0,7–0,9 s |
+| Servidor responde a `/health` desde arranque en frío | ~4,8–5,3 s |
+| Servidor listo para hablar | ~6,0–7,9 s |
+| RAM del servidor listo, en reposo | ~779 MiB |
+| RAM después de hablar (sonando, en pausa, detenido y 60 s quieto) | ~843 MiB; no baja |
+| CPU en reposo | ~0,2 % de un núcleo |
+| `quantize=True` | RAM tras cargar 820 MiB (sin: 776), pico igual (985), 2,4× tiempo real (sin: 3,1×) |
+
+- Casi toda la espera inicial es importar librerías, no cargar el modelo.
+- En reposo el servidor casi no usa CPU, pero conserva la RAM del modelo hasta cerrarse.
+- En este equipo la cuantización no ahorra memoria de forma clara y genera más lento.
+- La extensión espera hasta ~7,5 s a que el servidor responda; el margen medido es de unos 2 s.
+
 ---
 
 ### Fedora

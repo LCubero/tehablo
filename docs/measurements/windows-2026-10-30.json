@@ -1,0 +1,211 @@
+{
+  "date": "2026-10-30",
+  "host": "Windows 11, Ryzen 5 5600X (12 threads), 32 GB",
+  "measure_tts": [
+    {
+      "timestamp": "2026-10-30T11:46:40.304379-06:00",
+      "platform": "Windows-11-10.0.26200-SP0",
+      "distribution": "Windows-11-10.0.26200-SP0",
+      "cpu": "AMD64 Family 25 Model 33 Stepping 0, AuthenticAMD",
+      "logical_cpus": 12,
+      "mem_total_kib": 33458540,
+      "python": "3.12.13",
+      "versions": {
+        "pocket-tts": "4.0.1",
+        "torch": "2.15.0+cpu",
+        "numpy": "2.5.4"
+      },
+      "torch_threads": 1,
+      "torch_interop_threads": 6,
+      "model": "spanish",
+      "voice": "lola",
+      "seed": 1234,
+      "text_file": "samples/benchmark.txt",
+      "characters": 600,
+      "text_sha256": "601849c5ec5ae2209ec595ee45bef62f8974cceaadda4d7937539d8bad4ecb2b",
+      "sample_rate": 24000,
+      "load_s": 0.887523900000815,
+      "rss_after_load_mib": 771.8984375,
+      "peak_after_load_mib": 980.7578125,
+      "voice_prepare_s": 0.0016415999998571351,
+      "runs": [
+        {
+          "run": 1,
+          "wall_s": 13.382661699999517,
+          "cpu_s": 23.140625,
+          "average_cores": 1.7291496653465308,
+          "machine_cpu_percent": 14.409580544554423,
+          "first_chunk_s": 0.1866307999989658,
+          "audio_s": 36.8,
+          "realtime_multiple": 2.7498266656476362,
+          "chunks": 460,
+          "samples": 883200,
+          "rss_after_mib": 907.05859375,
+          "process_peak_mib": 980.7578125
+        },
+        {
+          "run": 2,
+          "wall_s": 12.646616599999106,
+          "cpu_s": 22.59375,
+          "average_cores": 1.786545027387135,
+          "machine_cpu_percent": 14.887875228226125,
+          "first_chunk_s": 0.17847809999875608,
+          "audio_s": 36.8,
+          "realtime_multiple": 2.9098691898355327,
+          "chunks": 460,
+          "samples": 883200,
+          "rss_after_mib": 900.48828125,
+          "process_peak_mib": 980.7578125
+        },
+        {
+          "run": 3,
+          "wall_s": 12.556145799999285,
+          "cpu_s": 22.78125,
+          "average_cores": 1.814350546964921,
+          "machine_cpu_percent": 15.119587891374342,
+          "first_chunk_s": 0.143954199998916,
+          "audio_s": 36.8,
+          "realtime_multiple": 2.930835670927148,
+          "chunks": 452,
+          "samples": 883200,
+          "rss_after_mib": 930.1171875,
+          "process_peak_mib": 980.7578125
+        }
+      ],
+      "method": "Fresh process; cached offline weights; direct synthesis, no preprocessing, playback or speed transform. Run 1 includes warmup; runs 2-3 reuse the model. RSS and peak from GetProcessMemoryInfo (WorkingSetSize, PeakWorkingSetSize), CPU from process_time. OS file cache not cleared."
+    },
+    {
+      "timestamp": "2026-10-30T11:48:22.575302-06:00",
+      "platform": "Windows-11-10.0.26200-SP0",
+      "distribution": "Windows-11-10.0.26200-SP0",
+      "cpu": "AMD64 Family 25 Model 33 Stepping 0, AuthenticAMD",
+      "logical_cpus": 12,
+      "mem_total_kib": 33458540,
+      "python": "3.12.13",
+      "versions": {
+        "pocket-tts": "4.0.1",
+        "torch": "2.15.0+cpu",
+        "numpy": "2.5.4"
+      },
+      "torch_threads": 1,
+      "torch_interop_threads": 6,
+      "model": "spanish_24l",
+      "voice": "lola",
+      "seed": 1234,
+      "text_file": "samples/benchmark.txt",
+      "characters": 600,
+      "text_sha256": "601849c5ec5ae2209ec595ee45bef62f8974cceaadda4d7937539d8bad4ecb2b",
+      "sample_rate": 24000,
+      "load_s": 2.7587327000001096,
+      "rss_after_load_mib": 1638.46484375,
+      "peak_after_load_mib": 2279.46875,
+      "voice_prepare_s": 0.007827299999917159,
+      "runs": [
+        {
+          "run": 1,
+          "wall_s": 31.719025799999145,
+          "cpu_s": 40.171875,
+          "average_cores": 1.266491450692697,
+          "machine_cpu_percent": 10.554095422439142,
+          "first_chunk_s": 0.4970751000000746,
+          "audio_s": 35.68,
+          "realtime_multiple": 1.1248769185086687,
+          "chunks": 446,
+          "samples": 856320,
+          "rss_after_mib": 1814.04296875,
+          "process_peak_mib": 2279.46875
+        },
+        {
+          "run": 2,
+          "wall_s": 30.726094899999225,
+          "cpu_s": 39.25,
+          "average_cores": 1.277415829370526,
+          "machine_cpu_percent": 10.64513191142105,
+          "first_chunk_s": 0.4162940999995044,
+          "audio_s": 35.68,
+          "realtime_multiple": 1.1612279437437036,
+          "chunks": 446,
+          "samples": 856320,
+          "rss_after_mib": 1844.94921875,
+          "process_peak_mib": 2279.46875
+        },
+        {
+          "run": 3,
+          "wall_s": 31.76178820000132,
+          "cpu_s": 41.34375,
+          "average_cores": 1.3016820633543007,
+          "machine_cpu_percent": 10.847350527952505,
+          "first_chunk_s": 0.4339852000011888,
+          "audio_s": 35.68,
+          "realtime_multiple": 1.1233624434281229,
+          "chunks": 446,
+          "samples": 856320,
+          "rss_after_mib": 1858.7265625,
+          "process_peak_mib": 2279.46875
+        }
+      ],
+      "method": "Fresh process; cached offline weights; direct synthesis, no preprocessing, playback or speed transform. Run 1 includes warmup; runs 2-3 reuse the model. RSS and peak from GetProcessMemoryInfo (WorkingSetSize, PeakWorkingSetSize), CPU from process_time. OS file cache not cleared."
+    }
+  ],
+  "quantize_probe": {
+    "method": "Fresh process per variant; import of src/tehablo_tts (same chain as the server), TTSModel.load_model(language='spanish', quantize=...), two runs of samples/benchmark.txt with lola, seed 1234. Ad hoc script, not versioned.",
+    "results": [
+      {
+        "model": "spanish",
+        "quantize": false,
+        "import_s": 4.76,
+        "rss_after_import_mib": 350,
+        "load_s": 0.7,
+        "rss_after_load_mib": 776,
+        "rss_after_runs_mib": 921,
+        "peak_mib": 985,
+        "runs": [
+          {
+            "first_chunk_s": 0.155,
+            "realtime_multiple": 3.07
+          },
+          {
+            "first_chunk_s": 0.131,
+            "realtime_multiple": 3.16
+          }
+        ]
+      },
+      {
+        "model": "spanish",
+        "quantize": true,
+        "import_s": 4.6,
+        "rss_after_import_mib": 350,
+        "load_s": 1.12,
+        "rss_after_load_mib": 820,
+        "rss_after_runs_mib": 867,
+        "peak_mib": 985,
+        "runs": [
+          {
+            "first_chunk_s": 0.151,
+            "realtime_multiple": 2.44
+          },
+          {
+            "first_chunk_s": 0.108,
+            "realtime_multiple": 2.44
+          }
+        ]
+      }
+    ]
+  },
+  "server_probe": {
+    "method": "Real src/tehablo_server.py on port 8798, HF_HUB_OFFLINE=1; times from process start; RSS of the interpreter child (the venv python.exe is a launcher); short Spanish sentence at volume 0.1; idle CPU over 10 s after 60 s idle.",
+    "results": {
+      "health_s": 5.27,
+      "rss_health_mib": 779,
+      "ready_s": 7.88,
+      "rss_ready_idle_mib": 779,
+      "speak_to_playing_s": 0.16,
+      "rss_playing_mib": 843,
+      "rss_paused_mib": 843,
+      "rss_stopped_mib": 843,
+      "rss_idle_60s_mib": 843,
+      "real_pid_differs": true,
+      "idle_cpu_s_per_10s": 0.016
+    }
+  }
+}

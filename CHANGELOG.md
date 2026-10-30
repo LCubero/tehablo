@@ -15,6 +15,7 @@ Este archivo registra los cambios completados en orden cronológico.
 - `scripts/measure_tts.py` funciona en Windows (memoria con la API de Windows, sin dependencias nuevas); las 9 pruebas que fallaban pasan.
 - Documentación corregida: el arranque en frío no suena en menos de 1 s, la medición de «primer audio» era el primer fragmento generado sin reproducir, la velocidad también funciona en Pi y el servidor local ya es una API local (no es una idea pendiente).
 - Hoja de ruta reordenada: `RH-W-0003` (medir) queda `ready` como siguiente; `RH-W-0025` requiere sus mediciones; `RH-W-0007`, `0009`, `0012`, `0014`, `0018`, `0019` y `0021` pasan a `deferred`.
+- Mediciones en Windows (`RH-W-0003`): arranque en frío, RAM en reposo y tras hablar, CPU en reposo y cuantización ([resultados](docs/como-funciona.md#arranque-reposo-y-cuantización-2026-10-30)).
 
 ## 2026-10-29
 

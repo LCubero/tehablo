@@ -46,7 +46,7 @@ Este archivo proyecta solo hechos verificados del proyecto: registros activos, b
 - Registrar todo pendiente no trivial en [roadmap.md](roadmap.md), sin mantener un segundo backlog aquí.
 - `RH-W-0001` (`deferred`, P2): endurecer el servidor local de voz.
 - `RH-W-0002` (`deferred`, P3): pronunciaciones en inglés y limpieza de símbolos aplicadas (hashes omitidos, separadores, flechas, paréntesis y barras); quedan las extensiones de archivo y la confirmación por escucha ([guía de pronunciación](../pronunciacion.md)).
-- `RH-W-0003` (`ready`, P2, siguiente): síntesis offline medida; quedan consumo al pausar, detener y quedar inactivo, salida de audio, carga a demanda o residente, esperas de arranque y medición opcional por equipo. Sin optimizaciones ni ajustes nuevos.
+- `RH-W-0003` (`active`, P2): medido en Windows (arranque, reposo, cuantización); falta repetir en Fedora y decidir si liberar el modelo en reposo y si ampliar la espera de arranque.
 - `RH-W-0004` (`deferred`, P3): revisar interfaz, TUI, menús, comandos y ajustes, modo automático persistente y acceso sin mouse.
 - `RH-W-0005` (`deferred`, P3): probar otras voces existentes y fuentes gratuitas de Hugging Face y otros sitios, verificando compatibilidad y condiciones de uso.
 - `RH-W-0007` (`deferred`, P3): modo GPU opcional, manteniendo CPU como predeterminado.
@@ -72,4 +72,4 @@ Este archivo proyecta solo hechos verificados del proyecto: registros activos, b
 
 <!-- doc-role:next-step -->
 
-Plan aprobado el 2026-10-30: (0) base confiable, completada; (1) medir con `RH-W-0003`, siguiente; (2) decidir la versión lite (`RH-W-0025`) y la instalación (`RH-W-0008`) con esos datos; (3) endurecer el servidor y los errores (`RH-W-0001`, `RH-W-0013`). La investigación y los deseos grandes quedan `deferred` hasta entonces.
+Plan aprobado el 2026-10-30: (0) base confiable, completada; (1) medir con `RH-W-0003`: Windows hecho, falta Fedora; (2) decidir la versión lite (`RH-W-0025`) y la instalación (`RH-W-0008`) con esos datos; (3) endurecer el servidor y los errores (`RH-W-0001`, `RH-W-0013`). La investigación y los deseos grandes quedan `deferred` hasta entonces.
