@@ -147,7 +147,7 @@ lectura al final de cada fase, no el máximo durante ella.
 No es una prueba de reproducción ni de latencia audible: el primer fragmento es
 solo la primera entrega del generador. Tampoco mide pausa, parada, reposo ni el
 dispositivo de audio; no entrega optimizaciones ni ajustes nuevos de recursos
-([alcance pendiente de RH-W-0003](repo-harness/roadmap.md#rh-w-0003-revisar-consumo-carga-a-demanda-y-espera-de-arranque)).
+([continúa en RH-W-0025](repo-harness/roadmap.md#rh-w-0025-versión-lite-de-mínimo-consumo)).
 
 #### Arranque, reposo y cuantización en Fedora (2026-10-30)
 

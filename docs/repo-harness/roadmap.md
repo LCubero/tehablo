@@ -48,25 +48,6 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 - **Decisión:** la persona responsable indicó «pero eso lo hacemos despues»; el 2026-10-29 eligió las pronunciaciones de `API` y `CPU` y el método de la guía, y después autorizó aplicar las siglas en inglés y los términos propuestos, incluidos los de Git y GitHub («cuando digo programacion son los relacionados al desarrollo»).
 - **Condición del siguiente avance:** escucha de la persona responsable y su decisión sobre las extensiones de archivo.
 
-### RH-W-0003: Revisar consumo, carga a demanda y espera de arranque
-
-- **Origen:** consulta sobre los recursos utilizados después de escuchar una respuesta de Pi.
-- **Prioridad:** P2; evaluar el equilibrio entre memoria ocupada y latencia de la siguiente reproducción.
-- **Dependencias:** coordinar la revisión de tiempos de espera con `RH-W-0001`.
-- **Estado:** `active`.
-- **Evidencia:** el código de `src/tehablo_server.py` conserva el modelo y la salida de audio abiertos al terminar o detener; pausar no cancela la generación. No se midió el consumo residual. Las [mediciones offline de Fedora](../como-funciona.md#fedora) verifican solo síntesis directa, carga desde caché y recursos del proceso. El 2026-10-30, en Windows, `scripts/measure_tts.py` no arranca (`ModuleNotFoundError: No module named 'resource'`, módulo solo de Unix), por eso fallaban 9 pruebas de `tests/test_measure_tts.py`; se corrigió el mismo día (commit `931dcad`) y el script ya puede medir en Windows. Medición puntual del mismo día: en Windows el servidor tardó unos 5,3 s en responder a `/health` desde el arranque en frío, antes de cargar el modelo; la salida del servidor queda en `logs/tehablo-server.log`.
-- **Trabajo completado (2026-10-29):** medición acotada offline de `spanish` y `spanish_24l` con `lola`, tres repeticiones por modelo; resultados, metodología y evidencia JSON documentados. No se entregaron mediciones de pausa, parada, reposo o dispositivo de audio, optimizaciones ni ajustes nuevos.
-- **Trabajo completado (2026-10-30, Windows):** medición base con `scripts/measure_tts.py` y pruebas del servidor real ([resultados](../como-funciona.md#arranque-reposo-y-cuantización-2026-10-30), [datos](../measurements/windows-2026-10-30.json)): importar librerías ~4,7 s y cargar el modelo ~0,7–0,9 s; servidor listo en ~6–8 s; RAM ~779 MiB en reposo y ~843 MiB después de hablar, sin bajar en pausa, detenido ni tras 60 s; CPU en reposo ~0,2 % de un núcleo; `quantize=True` no ahorra RAM de forma clara y genera más lento (2,4× contra 3,1×). Se comprobó que matar el lanzador `python.exe` del entorno virtual también termina el intérprete hijo.
-- **Trabajo completado (2026-10-30, Fedora):** las mismas pruebas del servidor real y de cuantización con caché caliente ([resultados](../como-funciona.md#arranque-reposo-y-cuantización-en-fedora-2026-10-30), [datos](../measurements/fedora-2026-10-30.json)): importar ~2,4 s, servidor listo en ~3,0 s, RAM ~815 MiB en reposo y ~857 MiB después de hablar, sin bajar; CPU en reposo ~0,6 % de un núcleo; `quantize=True` no ahorra RAM pero genera ~1,7× más rápido (6,9–7,3× contra 4,1–4,3×), al revés que en Windows; calidad sin escuchar.
-- **Trabajo restante:**
-  - Escuchar audio cuantizado y decidir si se ofrece la cuantización como opción por sistema.
-  - Detallar y medir CPU, RAM y estado de la salida de audio al generar, pausar, detener y quedar inactivo; identificar optimizaciones justificadas por esas mediciones.
-  - Evaluar ajustes para elegir entre carga a demanda y modelo siempre residente en memoria; definir qué evento libera el modelo y qué sucede con la siguiente petición.
-  - Revisar si conviene cambiar o quitar las esperas actuales de arranque, distinguiendo servidor accesible de modelo listo y evitando esperas indefinidas ante errores.
-  - Evaluar una medición opcional del arranque y de la carga del modelo para estimar las necesidades de cada equipo; no se ha elegido calibración automática ni valores nuevos.
-- **Decisión:** solicitud para detallar y revisar después; posteriormente se autorizó la medición offline acotada en Fedora y la descarga faltante de `spanish_24l`. Esa parte está completada. El 2026-10-30 el trabajo pasó a `active` como siguiente paso de medición; las alternativas no están aprobadas como diseño definitivo ni implementadas.
-- **Condición del siguiente avance:** con los datos de Windows y Fedora, proponer si el modelo se libera tras un tiempo sin uso y si se usa la cuantización en Fedora. La espera de arranque quedó resuelta el 2026-10-30: en Fedora un arranque tardó ~8,5 s y superó los ~7,5 s; ahora la extensión espera mientras el proceso siga vivo y avisa al momento si se cierra.
-
 ### RH-W-0004: Revisar interfaz, TUI, menús y opciones
 
 - **Origen:** solicitud de trabajar después en la interfaz y el modo TUI, incluidos menús y opciones.
@@ -346,12 +327,28 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 - **Trabajo restante:**
   - Definir qué es «lite»: qué se incluye, qué se deja fuera y cuál es el consumo objetivo de RAM y CPU.
   - Comparar opciones a partir de mediciones (modelo `spanish`, carga a demanda, liberar el modelo en reposo, menos dependencias) antes de elegir.
-- **Evidencia:** las [mediciones del README](../../README.md#cuánto-gasta) dan unos 870 MB de RAM con `spanish` en Windows y 1,8 GB con `spanish_24l`; el servidor conserva el modelo en memoria al terminar (`RH-W-0003`). Medición en Windows del 2026-10-30: `quantize=True` no reduce la RAM de forma clara y genera más lento; la RAM del servidor (~779–843 MiB) se debe al modelo cargado, que no se libera en reposo, y el arranque lo domina importar torch y pocket_tts (~4,7 s).
+  - Escuchar audio cuantizado frente al normal y decidir si se usa la cuantización donde sea más rápida (Fedora).
+- **Evidencia:** las [mediciones del README](../../README.md#cuánto-gasta) dan unos 870 MB de RAM con `spanish` en Windows y 1,8 GB con `spanish_24l`; el servidor conserva el modelo en memoria al terminar (`RH-W-0003`). Mediciones del 2026-10-30 (`RH-W-0003`): la RAM del servidor (~780–860 MiB) se debe al modelo cargado, que no se libera en reposo; importar torch y pocket_tts ocupa ~380 MiB y domina el arranque (~4,7 s en Windows, ~2,4 s en Fedora con caché caliente); `quantize=True` no ahorra RAM en ninguno, genera más lento en Windows (2,4× contra 3,1×) y ~1,7× más rápido en Fedora (6,9–7,3× contra 4,1–4,3×).
 - **Decisión:** registrar para después; no se eligió alcance ni diseño.
-- **Condición del siguiente avance:** `RH-W-0003` con mediciones en Windows y Fedora; después, autorización para definir el alcance. Puede bastar con un modo de bajo consumo en la misma versión (cuantización, liberar el modelo en reposo) o con el binario `pocket-tts` de Kyutai, que no necesita Python ni PyTorch (no comprobado con los modelos en español).
+- **Condición del siguiente avance:** mediciones de Windows y Fedora listas (`RH-W-0003`, `completed`); falta la escucha de audio cuantizado y autorización para definir el alcance. Puede bastar con un modo de bajo consumo en la misma versión (cuantización, liberar el modelo en reposo) o con el binario `pocket-tts` de Kyutai, que no necesita Python ni PyTorch (no comprobado con los modelos en español).
 
 ## Registros resueltos
 <!-- doc-role:resolved-records -->
+
+### RH-W-0003: Revisar consumo, carga a demanda y espera de arranque
+
+- **Origen:** consulta sobre los recursos utilizados después de escuchar una respuesta de Pi.
+- **Prioridad:** P2; evaluar el equilibrio entre memoria ocupada y latencia de la siguiente reproducción.
+- **Dependencias:** coordinar la revisión de tiempos de espera con `RH-W-0001`.
+- **Estado:** `completed`.
+- **Evidencia:** el código de `src/tehablo_server.py` conserva el modelo y la salida de audio abiertos al terminar o detener; pausar no cancela la generación. No se midió el consumo residual. Las [mediciones offline de Fedora](../como-funciona.md#fedora) verifican solo síntesis directa, carga desde caché y recursos del proceso. El 2026-10-30, en Windows, `scripts/measure_tts.py` no arranca (`ModuleNotFoundError: No module named 'resource'`, módulo solo de Unix), por eso fallaban 9 pruebas de `tests/test_measure_tts.py`; se corrigió el mismo día (commit `931dcad`) y el script ya puede medir en Windows. Medición puntual del mismo día: en Windows el servidor tardó unos 5,3 s en responder a `/health` desde el arranque en frío, antes de cargar el modelo; la salida del servidor queda en `logs/tehablo-server.log`.
+- **Trabajo completado (2026-10-29):** medición acotada offline de `spanish` y `spanish_24l` con `lola`, tres repeticiones por modelo; resultados, metodología y evidencia JSON documentados. No se entregaron mediciones de pausa, parada, reposo o dispositivo de audio, optimizaciones ni ajustes nuevos.
+- **Trabajo completado (2026-10-30, Windows):** medición base con `scripts/measure_tts.py` y pruebas del servidor real ([resultados](../como-funciona.md#arranque-reposo-y-cuantización-2026-10-30), [datos](../measurements/windows-2026-10-30.json)): importar librerías ~4,7 s y cargar el modelo ~0,7–0,9 s; servidor listo en ~6–8 s; RAM ~779 MiB en reposo y ~843 MiB después de hablar, sin bajar en pausa, detenido ni tras 60 s; CPU en reposo ~0,2 % de un núcleo; `quantize=True` no ahorra RAM de forma clara y genera más lento (2,4× contra 3,1×). Se comprobó que matar el lanzador `python.exe` del entorno virtual también termina el intérprete hijo.
+- **Trabajo completado (2026-10-30, Fedora):** las mismas pruebas del servidor real y de cuantización con caché caliente ([resultados](../como-funciona.md#arranque-reposo-y-cuantización-en-fedora-2026-10-30), [datos](../measurements/fedora-2026-10-30.json)): importar ~2,4 s, servidor listo en ~3,0 s, RAM ~815 MiB en reposo y ~857 MiB después de hablar, sin bajar; CPU en reposo ~0,6 % de un núcleo; `quantize=True` no ahorra RAM pero genera ~1,7× más rápido (6,9–7,3× contra 4,1–4,3×), al revés que en Windows; calidad sin escuchar.
+- **Trabajo restante:** none.
+- **Exclusiones (2026-10-30):** el estado del dispositivo de audio pasa a `RH-W-0017`; el límite de 2 s por petición sigue en `RH-W-0001`; liberar el modelo en reposo, la cuantización (escuchar su calidad) y la carga a demanda pasan a `RH-W-0025` como opciones de bajo consumo; se descarta una calibración automática del arranque, porque la extensión ya espera mientras el proceso del servidor siga vivo.
+- **Decisión:** solicitud para detallar y revisar después; luego se autorizó la medición en Fedora y Windows. El 2026-10-30, por decisión delegada de la persona responsable («decidelo tu ... sin sobreingenieria»): el modelo sigue residente mientras viva el servidor. Motivos: el servidor se cierra al terminar la sesión de Pi (`session_shutdown` en `pi-extension/tehablo-tts/src/extension.ts`), en reposo casi no usa CPU (~0,2–0,6 % de un núcleo) y liberar el modelo solo ahorraría ~430 MiB a cambio de volver a cargarlo antes de hablar. La espera de arranque quedó resuelta el mismo día: la extensión espera mientras el proceso siga vivo y avisa al momento si se cierra.
+- **Condición del siguiente avance:** ninguna; el bajo consumo continúa en `RH-W-0025`.
 
 ### RH-W-0024: Botón para iniciar el TTS antes de reproducir
 

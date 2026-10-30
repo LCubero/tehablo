@@ -25,10 +25,11 @@ Este archivo proyecta solo hechos verificados del proyecto: registros activos, b
 
 <!-- doc-role:recent-work -->
 
+- `RH-W-0003` (`completed`): consumo medido en Windows y Fedora (arranque, reposo, cuantización); el modelo sigue residente mientras viva el servidor, que se cierra con la sesión de Pi; liberar RAM y cuantizar pasan a `RH-W-0025`.
 - Base confiable (fase 0): `scripts/measure_tts.py` funciona en Windows, la salida del servidor queda en `logs/tehablo-server.log` y se corrigieron promesas no comprobadas de la documentación; todas las pruebas pasan en Windows.
 - Barra de Pi con `[ ⏻ TTS ]`, `[ Cargando… ]`, reproducción con iconos y Vol/Vel tras `[ ⋯ ]`; comprobada en Pi por la persona responsable (`RH-W-0024`, `completed`).
 - 17 pronunciaciones nuevas en inglés (`speed`, `close`, `CRLF` deletreado y otras; `dual` se lee en español) y registro de los trabajos `RH-W-0010` a `RH-W-0015` (`RH-W-0002`).
-- Mediciones offline de síntesis CPU en Fedora con `spanish` y `spanish_24l`, tres repeticiones por modelo y evidencia JSON ([resultados y límites](../como-funciona.md#fedora)); resultado acotado de `RH-W-0003` (`active`).
+- Mediciones offline de síntesis CPU en Fedora con `spanish` y `spanish_24l`, tres repeticiones por modelo y evidencia JSON ([resultados y límites](../como-funciona.md#fedora)); parte de `RH-W-0003`.
 - Botones de volumen (10 % a 150 %) y velocidad (1.00x a 1.50x) junto a Escuchar en Pi, solo con clic (`RH-W-0004`).
 - Lectura más natural: siglas en inglés, 291 términos de desarrollo, separadores y hashes omitidos, pausas en flechas y paréntesis, tablas leídas por filas y puntajes «N de M» (`RH-W-0002`).
 - Guía para escribir pronunciaciones en inglés ([docs/pronunciacion.md](../pronunciacion.md)).
@@ -46,7 +47,6 @@ Este archivo proyecta solo hechos verificados del proyecto: registros activos, b
 - Registrar todo pendiente no trivial en [roadmap.md](roadmap.md), sin mantener un segundo backlog aquí.
 - `RH-W-0001` (`deferred`, P2): endurecer el servidor local de voz.
 - `RH-W-0002` (`deferred`, P3): pronunciaciones en inglés y limpieza de símbolos aplicadas (hashes omitidos, separadores, flechas, paréntesis y barras); quedan las extensiones de archivo y la confirmación por escucha ([guía de pronunciación](../pronunciacion.md)).
-- `RH-W-0003` (`active`, P2): medido en Windows y Fedora (arranque, reposo, cuantización); falta decidir si liberar el modelo en reposo y si usar la cuantización, que en Fedora genera ~1,7× más rápido (calidad sin escuchar). La espera de arranque quedó resuelta: la extensión espera mientras el proceso del servidor siga vivo.
 - `RH-W-0004` (`deferred`, P3): revisar interfaz, TUI, menús, comandos y ajustes, modo automático persistente y acceso sin mouse.
 - `RH-W-0005` (`deferred`, P3): probar otras voces existentes y fuentes gratuitas de Hugging Face y otros sitios, verificando compatibilidad y condiciones de uso.
 - `RH-W-0007` (`deferred`, P3): modo GPU opcional, manteniendo CPU como predeterminado.
@@ -66,10 +66,10 @@ Este archivo proyecta solo hechos verificados del proyecto: registros activos, b
 - `RH-W-0021` (`deferred`, P3): leer frases en inglés con un modelo inglés.
 - `RH-W-0022` (`proposed`, P3): opciones de lectura (bloques de código, pausas, aviso al terminar, retroceder o repetir, historial).
 - `RH-W-0023` (`proposed`, P2): revisión de seguridad, buenas prácticas (linter, CI, dependencias fijadas), control (límites) y rendimiento (medición de regresiones).
-- `RH-W-0025` (`proposed`, P2): versión lite de mínimo consumo; requiere las mediciones de `RH-W-0003`.
+- `RH-W-0025` (`proposed`, P2): versión lite de mínimo consumo; mediciones listas, falta escuchar audio cuantizado (en Fedora genera ~1,7× más rápido) y definir el alcance.
 
 ## Siguiente paso
 
 <!-- doc-role:next-step -->
 
-Plan aprobado el 2026-10-30: (0) base confiable, completada; (1) medir con `RH-W-0003`: Windows y Fedora hechos, falta decidir con esos datos; (2) decidir la versión lite (`RH-W-0025`) y la instalación (`RH-W-0008`) con esos datos; (3) endurecer el servidor y los errores (`RH-W-0001`, `RH-W-0013`). La investigación y los deseos grandes quedan `deferred` hasta entonces.
+Plan aprobado el 2026-10-30: (0) base confiable, completada; (1) medir con `RH-W-0003`, completado; (2) decidir la versión lite (`RH-W-0025`) y la instalación (`RH-W-0008`) con esos datos; (3) endurecer el servidor y los errores (`RH-W-0001`, `RH-W-0013`). La investigación y los deseos grandes quedan `deferred` hasta entonces.
