@@ -120,6 +120,9 @@ def main() -> int:
         ('Possible Improvement builder Applied', 'pósibol imprúvment bílder apláid'),
         ('Engram harness CRLF', 'éngram járnes si ar el ef'),
         ('modo dual', 'modo dual'),
+        ('find the per-OS Python', 'faind the per ou es páiton'),
+        ('os digo', 'os digo'),
+        ('number numbers technical', 'námber námbers téknikal'),
     ]:
         check(f'new shipped terms: {source}', shipped.apply(source), expected)
     text = shipped.apply(

@@ -7,9 +7,12 @@ omitted, preserving C++. Arrows and parentheses become short comma pauses,
 with redundant commas cleaned up. Non-path word slashes become "eslash";
 numeric slashes stay intact for number normalization. Paths are recognized by
 an extension, an explicit path prefix, a trailing slash, or backslashes.
+Emoji are dropped, the degree sign is read, and questions missing an opening
+¿ receive one at their sentence start.
 Hyphens stay intact so configurable lexicon terms such as pi-tts still match.
 """
 import re
+import unicodedata
 from urllib.parse import urlsplit
 
 
@@ -68,8 +71,25 @@ def _plain(text: str) -> str:
     return re.sub(r'(?<=\w)_(?=\w)', ' ', text)
 
 
+def _without_symbols(text: str) -> str:
+    """Drop emoji and pictographic symbols (category So), their joiners and
+    variation selectors; keep the degree sign for temperatures."""
+    return ''.join(c for c in text if c == '°' or not (
+        unicodedata.category(c) == 'So' or c in '\ufe0e\ufe0f\u200d\u20e3'
+        or '\U0001f3fb' <= c <= '\U0001f3ff'))
+
+
+def _degrees(text: str) -> str:
+    """Read the degree sign: 25 °C -> 25 grados celsius, 90° -> 90 grados."""
+    text = re.sub(r'\s*°\s*C\b', ' grados celsius', text)
+    text = re.sub(r'\s*°\s*F\b', ' grados fárenjait', text)
+    return re.sub(r'\s*°', ' grados', text)
+
+
 def normalize_technical(text: str) -> str:
     """Prepare technical text, omitting noise and inserting natural pauses."""
+    text = _without_symbols(text)
+    text = _degrees(text)
     # Process URL-free spans separately: a host like www.example.py is not a file.
     pieces = []
     end = 0
@@ -97,4 +117,11 @@ def normalize_technical(text: str) -> str:
     text = re.sub(r'([.;:!?])\s*,\s*', r'\1 ', text)
     text = re.sub(r'([.;:!?])(?:\s*\.)+', r'\1', text)
     text = re.sub(r'^[\s.,;:]+(?=\S)|,\s*$', '', text.strip())
-    return re.sub(r'\s{2,}', ' ', text).strip()
+    return _question_openings(re.sub(r'\s{2,}', ' ', text).strip())
+
+
+def _question_openings(text: str) -> str:
+    """Open each question that lacks ¿ at its sentence start; the Spanish model
+    only uses question intonation with ¿ (owner listening test, 2026-10-30)."""
+    return re.sub(r'(?:^|(?<=[.!?;:] ))(?=[^\s¿])((?:[^.!?;:¿]|\.(?!\s))*?\?)',
+                  lambda m: '¿' + m[1], text)

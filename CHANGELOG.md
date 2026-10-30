@@ -6,8 +6,10 @@ Este archivo registra los cambios completados en orden cronológico.
 
 ## 2026-10-30
 
+- Las preguntas suenan a pregunta: si falta `¿`, se añade al inicio de la oración, porque el modelo solo usa entonación de pregunta con `¿` (prueba de escucha).
+- Los emojis y símbolos gráficos (`⚠️`, `✅`, `❌`, `🚀`, `★`) ya no se leen en voz alta; `25 °C` se lee «veinticinco grados celsius», `°F` «grados fárenjait» y `90°` «noventa grados» (`src/tehablo_tech.py`).
 - La extensión de Pi encuentra el Python correcto en dual boot: busca `.venv-pocket` y después `.venv-pocket-windows`, `.venv-pocket-linux` o `.venv-pocket-macos` según el sistema; si no hay entorno, el aviso muestra las rutas probadas en lugar de `spawn ... ENOENT`.
-- Se añadieron 17 pronunciaciones en inglés a `pronunciaciones.json` (`speed` → `espid`, `close` → `clous`, `CRLF` → `si ar el ef`, `harness`, `Engram` y otras); `dual` se sigue leyendo en español (`RH-W-0002`).
+- Se añadieron 17 pronunciaciones en inglés a `pronunciaciones.json` (`speed` → `espid`, `close` → `clous`, `CRLF` → `si ar el ef`, `harness`, `Engram` y otras); `dual` se sigue leyendo en español; después se añadieron `find` → `faind` y `per-OS` → `per ou es`, `number` → `námber` y `technical` → `téknikal`, sin `OS` suelto porque «os» es palabra española (`RH-W-0002`).
 - Se registraron los trabajos propuestos de diccionario opcional, portabilidad, motor propio y fine-tuning, errores y logs, API/CLIProxyAPI y añadir palabras al diccionario desde la interfaz (`RH-W-0010` a `RH-W-0015`), sin cambiar el comportamiento.
 
 ## 2026-10-29

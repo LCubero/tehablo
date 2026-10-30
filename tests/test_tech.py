@@ -7,6 +7,17 @@ from tehablo_tech import normalize_technical
 
 # S1-S5: public speech-preparation behavior, including preserved boundaries.
 RULE_CASES = [
+    ('question opening', 'Alguna suena a pregunta? Y si es así, cuál?',
+     '¿Alguna suena a pregunta? ¿Y si es así, cuál?'),
+    ('question keeps existing opening', '¿Alguna suena a pregunta? Y si es así, ¿cuál?',
+     '¿Alguna suena a pregunta? Y si es así, ¿cuál?'),
+    ('question after statement', 'Listo. Seguimos? Vale 3.5?',
+     'Listo. ¿Seguimos? ¿Vale 3.5?'),
+    ('statement untouched', 'Hago los commits.', 'Hago los commits.'),
+    ('emoji', '\u26a0\ufe0f No añadí OS. \u2705 listo \u274c fallo \U0001f680 \u2605 fin',
+     'No añadí OS. listo fallo fin'),
+    ('degrees', '25 °C, 25°C, -3 °F y 90°.',
+     '25 grados celsius, 25 grados celsius, -3 grados fárenjait y 90 grados.'),
     ('S1', 'antes ' + '+' * 32 + ' === --- *** ___ ~~~ ### después C++ ++',
      'antes después C++ ++'),
     ('S1 Pi block', '++++++++++++++++. Siguiente acción. ++++++++++++++++. Fin.',
