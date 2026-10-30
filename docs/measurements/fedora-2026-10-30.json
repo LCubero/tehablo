@@ -76,7 +76,7 @@
     }
   ],
   "quantize_probe": {
-    "method": "Fresh process per variant; import of src/tehablo_tts (same chain as the server), TTSModel.load_model(language='spanish', quantize=...), two runs of samples/benchmark.txt with lola, seed 1234. Two rounds in opposite order (false,true then true,false). Ad hoc script, not versioned. OS file cache warm.",
+    "method": "Fresh process per variant; import of src/tehablo_tts (same chain as the server), TTSModel.load_model(language='spanish', quantize=...), two runs of samples/benchmark.txt with lola, seed 1234. Two rounds in opposite order (false,true then true,false). Ad hoc script, not versioned. OS file cache warm. spanish_24l measured once per variant afterwards.",
     "results": [
       {
         "model": "spanish",
@@ -157,6 +157,46 @@
             "realtime_multiple": 4.29
           }
         ]
+      },
+      {
+        "model": "spanish_24l",
+        "quantize": false,
+        "import_s": 2.42,
+        "rss_after_import_mib": 379,
+        "load_s": 2.13,
+        "rss_after_load_mib": 1677,
+        "rss_after_runs_mib": 1796,
+        "peak_mib": 2317,
+        "runs": [
+          {
+            "first_chunk_s": 0.454,
+            "realtime_multiple": 1.37
+          },
+          {
+            "first_chunk_s": 0.4,
+            "realtime_multiple": 1.41
+          }
+        ]
+      },
+      {
+        "model": "spanish_24l",
+        "quantize": true,
+        "import_s": 2.39,
+        "rss_after_import_mib": 379,
+        "load_s": 3.68,
+        "rss_after_load_mib": 1414,
+        "rss_after_runs_mib": 1514,
+        "peak_mib": 2317,
+        "runs": [
+          {
+            "first_chunk_s": 0.227,
+            "realtime_multiple": 2.6
+          },
+          {
+            "first_chunk_s": 0.208,
+            "realtime_multiple": 2.59
+          }
+        ]
       }
     ]
   },
@@ -175,5 +215,9 @@
       "rss_idle_60s_mib": 857,
       "idle_cpu_s_per_10s": 0.06
     }
+  },
+  "blind_listening": {
+    "method": "Same technical Spanish text (paths, numbers, English terms, a question) through the full normalization pipeline, spanish/lola/seed 1234, normal vs quantize=True in random unlabeled order A/B, played with pw-play.",
+    "result": "Owner could not distinguish them (A was quantized)."
   }
 }

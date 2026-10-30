@@ -323,14 +323,14 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 - **Origen:** solicitud de la persona responsable del 2026-10-30: «Hay que dejar versión lite mínimo consumo de tehablo».
 - **Prioridad:** P2; permite usarlo en equipos con pocos recursos y se relaciona con la portabilidad (`RH-W-0011`).
 - **Dependencias:** requiere las mediciones de `RH-W-0003`; coordinar con `RH-W-0008` (instalación) y `RH-W-0011`.
-- **Estado:** `proposed`.
+- **Estado:** `active`.
 - **Trabajo restante:**
   - Definir qué es «lite»: qué se incluye, qué se deja fuera y cuál es el consumo objetivo de RAM y CPU.
   - Comparar opciones a partir de mediciones (modelo `spanish`, carga a demanda, liberar el modelo en reposo, menos dependencias) antes de elegir.
-  - Escuchar audio cuantizado frente al normal y decidir si se usa la cuantización donde sea más rápida (Fedora).
 - **Evidencia:** las [mediciones del README](../../README.md#cuánto-gasta) dan unos 870 MB de RAM con `spanish` en Windows y 1,8 GB con `spanish_24l`; el servidor conserva el modelo en memoria al terminar (`RH-W-0003`). Mediciones del 2026-10-30 (`RH-W-0003`): la RAM del servidor (~780–860 MiB) se debe al modelo cargado, que no se libera en reposo; importar torch y pocket_tts ocupa ~380 MiB y domina el arranque (~4,7 s en Windows, ~2,4 s en Fedora con caché caliente); `quantize=True` no ahorra RAM en ninguno, genera más lento en Windows (2,4× contra 3,1×) y ~1,7× más rápido en Fedora (6,9–7,3× contra 4,1–4,3×).
-- **Decisión:** registrar para después; no se eligió alcance ni diseño.
-- **Condición del siguiente avance:** mediciones de Windows y Fedora listas (`RH-W-0003`, `completed`); falta la escucha de audio cuantizado y autorización para definir el alcance. Puede bastar con un modo de bajo consumo en la misma versión (cuantización, liberar el modelo en reposo) o con el binario `pocket-tts` de Kyutai, que no necesita Python ni PyTorch (no comprobado con los modelos en español).
+- **Trabajo completado (2026-10-30):** cuantización predeterminada en Linux (`quantize_default` en `src/tehablo_tts.py`, usada por el servidor, la TUI y la consola), sin cuantizar en Windows; `TEHABLO_QUANTIZE=0` o `1` la cambia. En Fedora genera ~1,7× más rápido con `spanish` y ~1,9× con `spanish_24l` (que además usa ~260 MiB menos tras cargar); en una prueba a ciegas la persona responsable no distinguió el audio ([resultados](../como-funciona.md#arranque-reposo-y-cuantización-en-fedora-2026-10-30)). Pruebas en `tests/test_quantize.py`.
+- **Decisión:** 2026-10-30, por decisión delegada de la persona responsable («decidelo tu ... sin sobreingenieria»): adoptar la cuantización donde se midió más rápida; no se eligió aún el resto del alcance «lite».
+- **Condición del siguiente avance:** mediciones de Windows y Fedora listas (`RH-W-0003`, `completed`); cuantización adoptada en Linux; falta autorización para definir el resto del alcance. Puede bastar con un modo de bajo consumo en la misma versión (cuantización, liberar el modelo en reposo) o con el binario `pocket-tts` de Kyutai, que no necesita Python ni PyTorch (no comprobado con los modelos en español).
 
 ## Registros resueltos
 <!-- doc-role:resolved-records -->

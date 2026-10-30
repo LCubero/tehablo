@@ -128,7 +128,8 @@ class TehabloApp(App):
             self.log_msg(f"Cargando modelo '{name}'...")
             start = time.perf_counter()
             try:
-                self.model = TTSModel.load_model(language=name)
+                from tehablo_tts import load_tts_model
+                self.model = load_tts_model(name)
             except Exception as exc:
                 self.log_msg(f"[red]Error cargando modelo: {exc}[/red]")
                 return

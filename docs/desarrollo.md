@@ -130,7 +130,7 @@ del directorio de trabajo. `/leer` conserva las rutas relativas al directorio ac
 
 ## Pruebas
 
-`tests/test_tech.py`, `tests/test_numbers.py`, `tests/test_lexicon.py`, `tests/test_speed.py` y `tests/test_server.py` comprueban el texto técnico, la conversión de números, el diccionario de pronunciación, el cambio de velocidad y el servidor HTTP sin modelo ni audio; terminan con código 0 si todos los casos pasan:
+`tests/test_tech.py`, `tests/test_numbers.py`, `tests/test_lexicon.py`, `tests/test_speed.py`, `tests/test_server.py` y `tests/test_quantize.py` comprueban el texto técnico, la conversión de números, el diccionario de pronunciación, el cambio de velocidad, el servidor HTTP y la cuantización predeterminada sin modelo ni audio; terminan con código 0 si todos los casos pasan:
 
 ```powershell
 .venv-pocket/Scripts/python tests/test_tech.py
@@ -138,6 +138,7 @@ del directorio de trabajo. `/leer` conserva las rutas relativas al directorio ac
 .venv-pocket/Scripts/python tests/test_lexicon.py
 .venv-pocket/Scripts/python tests/test_speed.py
 .venv-pocket/Scripts/python tests/test_server.py
+.venv-pocket/Scripts/python tests/test_quantize.py
 ```
 
 La extensión de Pi tiene sus pruebas con `node:test` (Node 24, sin dependencias):
@@ -162,6 +163,7 @@ Para repetir las suites sin modelo ni audio desde la raíz:
 .venv-pocket/bin/python tests/test_lexicon.py
 .venv-pocket/bin/python tests/test_speed.py
 .venv-pocket/bin/python tests/test_server.py
+.venv-pocket/bin/python tests/test_quantize.py
 node --test pi-extension/tehablo-tts/test/*.test.ts
 ```
 

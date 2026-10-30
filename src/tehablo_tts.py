@@ -24,6 +24,7 @@ def _load_dotenv() -> None:
 _load_dotenv()
 
 import argparse
+import sys
 import time
 from pathlib import Path
 
@@ -38,6 +39,21 @@ from tehablo_numbers import normalize_numbers
 from tehablo_tech import normalize_technical
 
 VOICES = sorted(_ORIGINS_OF_PREDEFINED_VOICES)
+
+
+def quantize_default(env=os.environ, platform=sys.platform) -> bool:
+    """Quantize on Linux, where it measured ~1.7-1.9x faster at equal heard quality; slower on Windows.
+
+    TEHABLO_QUANTIZE=1 or 0 overrides the platform default.
+    """
+    value = env.get("TEHABLO_QUANTIZE")
+    if value in ("0", "1"):
+        return value == "1"
+    return platform.startswith("linux")
+
+
+def load_tts_model(language: str) -> TTSModel:
+    return TTSModel.load_model(language=language, quantize=quantize_default())
 OUT_DIR = ROOT / "pocket-out"
 
 HELP = """Comandos:
@@ -64,7 +80,7 @@ class App:
     def load_model(self, language: str) -> None:
         print(f"Cargando modelo '{language}'...")
         start = time.perf_counter()
-        self.model = TTSModel.load_model(language=language)
+        self.model = load_tts_model(language)
         self.language = language
         self.voice_cache.clear()
         print(f"Modelo listo en {time.perf_counter() - start:.1f} s")

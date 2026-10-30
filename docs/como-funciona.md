@@ -166,7 +166,10 @@ Mismo equipo, `spanish`, `pocket-tts` 4.0.1 y Torch 2.15.0+cpu ([datos](measurem
 
 - Con caché caliente el servidor queda listo en ~3 s; un arranque en frío tardó ~8,5 s (también en Fedora).
 - Igual que en Windows, el servidor conserva la RAM del modelo hasta cerrarse.
-- En Fedora la cuantización tampoco ahorra memoria, pero genera ~1,7× más rápido, al revés que en Windows. Se repitió en orden inverso con el mismo resultado. No se comprobó la calidad de audio cuantizado escuchándolo.
+- En Fedora la cuantización tampoco ahorra memoria, pero genera ~1,7× más rápido, al revés que en Windows. Se repitió en orden inverso con el mismo resultado.
+- Con `spanish_24l` cuantizado: 2,6× tiempo real (sin: 1,4×), primer fragmento ~0,22 s (sin: ~0,43), RAM tras cargar 1414 MiB (sin: 1677) y carga 3,7 s (sin: 2,1).
+- En una prueba a ciegas con texto técnico (rutas, números, términos en inglés y una pregunta), la persona responsable no distinguió el audio cuantizado del normal.
+- Por eso, desde el 2026-10-30 el modelo se carga cuantizado en Linux y sin cuantizar en Windows; `TEHABLO_QUANTIZE=0` o `1` cambia ese valor (`quantize_default` en `src/tehablo_tts.py`). Las tablas de arriba son sin cuantizar.
 
 ### Método reproducible en Fedora
 

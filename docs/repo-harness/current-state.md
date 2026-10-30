@@ -25,6 +25,7 @@ Este archivo proyecta solo hechos verificados del proyecto: registros activos, b
 
 <!-- doc-role:recent-work -->
 
+- Cuantización predeterminada en Linux (~1,7–1,9× más rápido, sin diferencia audible a ciegas); Windows sin cambios; `TEHABLO_QUANTIZE` la cambia (`RH-W-0025`).
 - `RH-W-0003` (`completed`): consumo medido en Windows y Fedora (arranque, reposo, cuantización); el modelo sigue residente mientras viva el servidor, que se cierra con la sesión de Pi; liberar RAM y cuantizar pasan a `RH-W-0025`.
 - Base confiable (fase 0): `scripts/measure_tts.py` funciona en Windows, la salida del servidor queda en `logs/tehablo-server.log` y se corrigieron promesas no comprobadas de la documentación; todas las pruebas pasan en Windows.
 - Barra de Pi con `[ ⏻ TTS ]`, `[ Cargando… ]`, reproducción con iconos y Vol/Vel tras `[ ⋯ ]`; comprobada en Pi por la persona responsable (`RH-W-0024`, `completed`).
@@ -66,7 +67,7 @@ Este archivo proyecta solo hechos verificados del proyecto: registros activos, b
 - `RH-W-0021` (`deferred`, P3): leer frases en inglés con un modelo inglés.
 - `RH-W-0022` (`proposed`, P3): opciones de lectura (bloques de código, pausas, aviso al terminar, retroceder o repetir, historial).
 - `RH-W-0023` (`proposed`, P2): revisión de seguridad, buenas prácticas (linter, CI, dependencias fijadas), control (límites) y rendimiento (medición de regresiones).
-- `RH-W-0025` (`proposed`, P2): versión lite de mínimo consumo; mediciones listas, falta escuchar audio cuantizado (en Fedora genera ~1,7× más rápido) y definir el alcance.
+- `RH-W-0025` (`active`, P2): versión lite de mínimo consumo; cuantización predeterminada en Linux entregada; falta definir el resto del alcance.
 
 ## Siguiente paso
 

@@ -19,6 +19,7 @@ Este archivo registra los cambios completados en orden cronológico.
 - La extensión de Pi ya no se rinde a los ~7,5 s al arrancar el servidor (en Fedora tardó ~8,5 s y salía «El servidor TTS no respondió a tiempo»): espera mientras el proceso siga vivo; si se cierra, avisa al momento («El servidor TTS se cerró al arrancar») y el siguiente intento arranca uno nuevo en lugar de fallar hasta reiniciar Pi.
 - Si el puerto del servidor está ocupado (por ejemplo por AnkiConnect, que también usa `8765`), el log muestra solo `Address already in use`; antes lo tapaba un `AttributeError` de `src/tehablo_server.py`. El puerto se cambia con `TEHABLO_PORT`.
 - Mediciones en Fedora (`RH-W-0003`) con las mismas pruebas que en Windows: servidor listo en ~3 s con caché caliente, RAM ~815 MiB en reposo y ~857 MiB tras hablar, sin bajar; `quantize=True` no ahorra RAM pero genera ~1,7× más rápido, al revés que en Windows ([resultados](docs/como-funciona.md#arranque-reposo-y-cuantización-en-fedora-2026-10-30)).
+- En Linux el modelo se carga cuantizado por defecto: genera ~1,7× más rápido con `spanish` y ~1,9× con `spanish_24l`, sin diferencia audible en una prueba a ciegas; en Windows sigue sin cuantizar, porque allí era más lento. `TEHABLO_QUANTIZE=0` o `1` lo cambia (`RH-W-0025`).
 - `RH-W-0003` queda `completed`: el modelo sigue residente mientras viva el servidor (se cierra con la sesión de Pi); liberar RAM en reposo y la cuantización pasan a `RH-W-0025`, y el estado del dispositivo de audio a `RH-W-0017`.
 
 ## 2026-10-29

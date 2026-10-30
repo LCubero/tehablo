@@ -24,8 +24,8 @@ MODELS = {'spanish', 'spanish_24l'}
 
 class PocketSynthesizer:
     def __init__(self, name):
-        from tehablo_tts import TTSModel
-        self.model = TTSModel.load_model(language=name)
+        from tehablo_tts import load_tts_model
+        self.model = load_tts_model(name)
         self.sample_rate = self.model.sample_rate
         self.voices = {}
 

@@ -75,6 +75,8 @@ En disco: unos 813 MB el entorno de Python y 1,2 GB los modelos descargados.
 
 En disco: unos 1087 MB el entorno de Python y 0,9 GB los modelos descargados.
 
+Esa tabla es sin cuantizar. En Linux el modelo se carga **cuantizado** por defecto: genera ~1,7 veces más rápido con `spanish` y ~1,9 con `spanish_24l`, sin diferencia audible en una prueba a ciegas, y tarda ~0,5–1,5 s más en cargar. En Windows sigue sin cuantizar, porque allí era más lento. `TEHABLO_QUANTIZE=0` lo desactiva y `TEHABLO_QUANTIZE=1` lo fuerza.
+
 Método, valores exactos y cómo repetir la medición: [docs/como-funciona.md](docs/como-funciona.md#consumo-medido).
 
 ## Instalación
