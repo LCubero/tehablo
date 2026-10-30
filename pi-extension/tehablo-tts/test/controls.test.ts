@@ -6,17 +6,40 @@ function setup() {
   const configs:any[]=[], notices:string[]=[], statuses:(string|undefined)[]=[], settings={volume:1,speed:1,error:null as string|null};
   const hooks:any={}, calls:string[]=[], entries:any[]=[{type:'message',id:'a',message:{role:'assistant',content:'Hola'}} ,{type:'custom',customType:'tehablo-tts',data:{messageId:'a',number:1}}];
   let renderer:any, command:any, state='playing', id:string|null='a', renders=0, fail=false, ready=true, ensures=0;
-  const client:any={beginSession(){},ensure:async()=>{ensures++;},stop:async()=>{},shutdown:async()=>{},request:async(path:string)=>{calls.push(path);if(fail)throw Error('offline');if(path==='/health')return {...settings,ready};return {state,id};},action:async(path:string,body:any)=>{calls.push(path);if(path==='/config'){configs.push(body);Object.assign(settings,body);return {...settings,ready};}if(path==='/health')return {...settings,ready};if(path==='/pause')state='paused';if(path==='/resume')state='playing';return {state};}};
+  const client:any={beginSession(){},ensure:async()=>{ensures++;},stop:async()=>{},shutdown:async()=>{},request:async(path:string)=>{calls.push(path);if(fail)throw Error('offline');if(path==='/health')return {...settings,ready};return {state,id,error:settings.error};},action:async(path:string,body:any)=>{calls.push(path);if(path==='/config'){configs.push(body);Object.assign(settings,body);return {...settings,ready};}if(path==='/health')return {...settings,ready};if(path==='/pause')state='paused';if(path==='/resume')state='playing';return {state};}};
   const ctx:any={mode:'tui',sessionManager:{getBranch:()=>entries},ui:{notify(text:string){notices.push(text);},setStatus(_:string,text:string|undefined){renders++;statuses.push(text);}}};
   createExtension({on:(n:string,h:any)=>hooks[n]=h,registerCommand:(_:any,c:any)=>command=c.handler,registerEntryRenderer:(_:any,r:any)=>renderer=r} as any,client);
   hooks.session_start({},ctx);
   const card=renderer(entries[1],{}, {fg:(_:any,t:string)=>t});
-  return {calls,card,configs,notices,statuses,line:()=>card.render(200)[0], command:(s:string)=>command(s,ctx),set:(s:string,i:string|null='a')=>{state=s;id=i;},setReady:(value:boolean)=>{ready=value;},setError:(value:string)=>{settings.error=value;},ensures:()=>ensures,close:()=>hooks.session_shutdown({},ctx),agentStart:()=>hooks.agent_start({},ctx),fail:()=>{fail=true;},renders:()=>renders};
+  return {calls,card,configs,notices,statuses,line:()=>card.render(200)[0], command:(s:string)=>command(s,ctx),set:(s:string,i:string|null='a')=>{state=s;id=i;},setReady:(value:boolean)=>{ready=value;},setError:(value:string)=>{settings.error=value;},ensures:()=>ensures,close:()=>hooks.session_shutdown({},ctx),agentStart:()=>hooks.agent_start({},ctx),fail:(value=true)=>{fail=value;},renders:()=>renders};
 }
 const tick=()=>new Promise(r=>setTimeout(r,550));
 const click=async(card:any,x:number)=>{card.handleMouse({type:'click',button:'left',x,y:0});await new Promise(r=>setImmediate(r));};
 const clickAt=async(s:any,text:string,offset=0)=>{const line=s.line();assert.ok(line.includes(text),`${text} in ${line}`);await click(s.card,Array.from(line.slice(0,line.indexOf(text))).length+offset);};
 const start=async(s:any)=>{await clickAt(s,'⏻ TTS');await tick();};
+
+test('speech failure warns once and resets playback',async()=>{
+  const s=setup();try {
+    await s.command('play');s.set('idle',null);s.setError('speech failed: broken playback');
+    await tick();
+    assert.deepEqual(s.notices,['TTS: no se pudo reproducir: speech failed: broken playback']);
+    assert.match(s.line(),/Escuchar/);
+    const count=s.calls.length;await tick();assert.equal(s.calls.length,count);
+    assert.equal(s.notices.length,1);
+  }finally{await s.close();}
+});
+
+test('three consecutive status failures stop playback; success resets the count',async()=>{
+  const s=setup();try {
+    await s.command('play');s.fail();await tick();await tick();
+    assert.deepEqual(s.notices,[]);assert.match(s.line(),/■/);
+    s.fail(false);await tick();s.fail();await tick();await tick();
+    assert.deepEqual(s.notices,[]);assert.match(s.line(),/■/);
+    await tick();assert.equal(s.line(),'[ ⏻ TTS ]');
+    assert.deepEqual(s.notices,['TTS: se perdió la conexión con el servidor. Revisa logs/tehablo-server.log.']);
+    const count=s.calls.length;await tick();assert.equal(s.calls.length,count);assert.equal(s.notices.length,1);
+  }finally{await s.close();}
+});
 
 test('start button shows Iniciar, then Cargando, then Escuchar when the model is ready',async()=>{
   const s=setup();

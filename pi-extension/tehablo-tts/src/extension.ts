@@ -14,7 +14,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient()) {
   let context: ExtensionContext | undefined;
   let playback = {state: 'idle', id: null as string | null};
   let timer: ReturnType<typeof setTimeout> | undefined;
-  let pollEpoch = 0, started = false;
+  let pollEpoch = 0, started = false, pollFailures = 0;
   // Server lifecycle shown by the start button; `open` shows the volume and speed controls.
   let server: 'off' | 'loading' | 'ready' = 'off', open = false;
   let readyTimer: ReturnType<typeof setTimeout> | undefined, readyEpoch = 0, readyTries = 0;
@@ -77,7 +77,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient()) {
     if (state !== playback.state || id !== playback.id) { playback = {state, id}; refresh(); }
   };
   const cancelPoll = () => { pollEpoch++; if (timer) clearTimeout(timer); timer = undefined; };
-  const resetPlayback = () => { cancelPoll(); started = false; update('idle', null); };
+  const resetPlayback = () => { cancelPoll(); started = false; pollFailures = 0; update('idle', null); };
   const poll = () => {
     cancelPoll();
     if (!started || playback.state === 'idle') return;
@@ -87,8 +87,22 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient()) {
       try {
         const status = await client.request('/status');
         if (generation !== pollEpoch) return;
+        pollFailures = 0;
+        if (status.state === 'idle') {
+          if (typeof status.error === 'string' && status.error.length > 0)
+            context?.ui.notify(`TTS: no se pudo reproducir: ${status.error}`, 'warning');
+          resetPlayback();
+          return;
+        }
         update(status.state, status.id);
-      } catch { /* Transient status failures must never escape into Pi. */ }
+      } catch {
+        if (generation !== pollEpoch) return;
+        if (++pollFailures >= 3) {
+          resetPlayback(); setServer('off');
+          context?.ui.notify('TTS: se perdió la conexión con el servidor. Revisa logs/tehablo-server.log.', 'warning');
+          return;
+        }
+      }
       if (generation === pollEpoch) poll();
     }, 500);
     timer.unref?.();
@@ -116,6 +130,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient()) {
     await client.request('/speak', {id: card!.messageId, text});
     if (generation !== epoch) return;
     started = true;
+    pollFailures = 0;
     update('generating', card!.messageId);
     poll();
   };

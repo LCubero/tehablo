@@ -155,17 +155,6 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
   2026-10-30: aplazado por decisión de prioridades (la persona responsable delegó la decisión: «decidelo tu ... sin sobreingenieria»): primero base confiable, medición (`RH-W-0003`), decisión de versión lite e instalación, y endurecimiento (`RH-W-0001`, `RH-W-0013`).
 - **Condición del siguiente avance:** `RH-W-0003` avanzado y autorización para investigar.
 
-### RH-W-0013: Manejo de errores y logs
-
-- **Origen:** solicitud de la persona responsable del 2026-10-29: «manejor de rrores, logs, etc.».
-- **Prioridad:** P2; facilita diagnosticar fallos en el servidor, la TUI y la extensión.
-- **Dependencias:** coordinar con `RH-W-0001`, que ya incluye informar en `/health` y `/status` si el modelo no carga.
-- **Estado:** `proposed`.
-- **Trabajo restante:** revisar cómo se manejan y muestran los errores hoy, y proponer un registro de logs (dónde se guardan, nivel de detalle, rotación).
-- **Evidencia:** no se ha revisado el manejo de errores ni de logs actual.
-- **Decisión:** registrar para después; no se eligió diseño.
-- **Condición del siguiente avance:** autorización para revisar el estado actual.
-
 ### RH-W-0014: Ofrecer una API e integrar con CLIProxyAPI
 
 - **Origen:** solicitud de la persona responsable del 2026-10-29: «ofrecer API, integracion con cliproxyapi aunq creo que no es necesario».
@@ -321,6 +310,18 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 
 ## Registros resueltos
 <!-- doc-role:resolved-records -->
+
+### RH-W-0013: Manejo de errores y logs
+
+- **Origen:** solicitud de la persona responsable del 2026-10-29: «manejor de rrores, logs, etc.».
+- **Prioridad:** P2; facilita diagnosticar fallos en el servidor, la TUI y la extensión.
+- **Dependencias:** coordinar con `RH-W-0001`, que ya incluye informar en `/health` y `/status` si el modelo no carga.
+- **Estado:** `completed`.
+- **Trabajo completado (2026-10-30):** revisión del manejo de errores del servidor, la extensión, la TUI, la consola y los scripts. Se corrigieron los fallos que quedaban en silencio en Pi: si una lectura falla (dispositivo de audio, voz o generación), `/status` devuelve `error` (`speech failed: …`) y Pi avisa «TTS: no se pudo reproducir: …»; tras 3 consultas fallidas seguidas Pi deja de esperar, apaga el botón y avisa «TTS: se perdió la conexión con el servidor. Revisa logs/tehablo-server.log.»; un `pronunciaciones.json` inválido se anota una vez en el log del servidor. El error de carga del modelo se cubrió en `RH-W-0001`. Pruebas en `tests/test_server.py` (18) y `pi-extension/tehablo-tts/test/controls.test.ts`.
+- **Trabajo restante:** none.
+- **Exclusiones:** sin rotación ni marcas de tiempo en `logs/tehablo-server.log`: se reescribe en cada arranque y es pequeño. No se cambian la TUI ni la consola: ya muestran sus errores (la TUI en su registro, la consola con `Error: …`); solo un fallo al guardar audio en la TUI o al arrancar la consola sale como traza de Python. Tampoco se cambian los scripts de `scripts/`, que fallan con traza visible.
+- **Decisión:** autorizado por la persona responsable el 2026-10-30 («dale si»), con la instrucción general de no sobrecomplicar.
+- **Condición del siguiente avance:** ninguna.
 
 ### RH-W-0001: Endurecer el servidor local de voz
 

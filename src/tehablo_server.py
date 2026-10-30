@@ -59,6 +59,8 @@ class SpeechService:
         self.lexicon = Lexicon(ROOT / 'pronunciaciones.json')
         self.ready = False
         self.error = None
+        self.speech_error = None
+        self.lexicon_error = None
         self.state = 'loading'
         self.id = None
         self.pending = None
@@ -75,7 +77,12 @@ class SpeechService:
     def normalize_text(self, text, model):
         """Prepare Spanish speech in technical → lexicon → numbers order."""
         if model in MODELS:
-            return normalize_numbers(self.lexicon.apply(normalize_technical(text)))
+            text = self.lexicon.apply(normalize_technical(text))
+            if self.lexicon.error != self.lexicon_error:
+                self.lexicon_error = self.lexicon.error
+                if self.lexicon_error:
+                    print(f'Pronunciation dictionary error: {self.lexicon_error}', file=sys.stderr)
+            return normalize_numbers(text)
         return text
 
     def voices(self):
@@ -121,9 +128,10 @@ class SpeechService:
 
     def status(self):
         with self.condition:
-            return {'state': self.state, 'id': self.id, 'error': self.error}
+            return {'state': self.state, 'id': self.id, 'error': self.error or self.speech_error}
 
     def clear(self):
+        self.speech_error = None
         self.cancel.set()
         self.pending = None
         self.buffer.clear()
@@ -274,7 +282,8 @@ class SpeechService:
                     with self.condition:
                         if not cancel.is_set():
                             self.clear()
-                            self.state = 'idle'
+                            self.speech_error = f'speech failed: {exc}'
+                            self.state = 'error' if self.error is not None else 'idle'
         finally:
             if sink is not None:
                 sink.close()

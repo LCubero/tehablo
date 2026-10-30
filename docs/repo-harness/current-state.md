@@ -25,6 +25,7 @@ Este archivo proyecta solo hechos verificados del proyecto: registros activos, b
 
 <!-- doc-role:recent-work -->
 
+- `RH-W-0013` (`completed`): Pi avisa si una lectura falla o se pierde la conexión con el servidor, y un diccionario de pronunciación inválido queda en el log del servidor.
 - `RH-W-0001` (`completed`): el servidor rechaza peticiones de páginas web (`Origin`) y las que no son JSON, e informa si el modelo no carga; Pi lo avisa en lugar de quedarse en «cargando».
 - Cuantización predeterminada en Linux (~1,7–1,9× más rápido, sin diferencia audible a ciegas); Windows sin cambios; `TEHABLO_QUANTIZE` la cambia (`RH-W-0025`).
 - `RH-W-0003` (`completed`): consumo medido en Windows y Fedora (arranque, reposo, cuantización); el modelo sigue residente mientras viva el servidor, que se cierra con la sesión de Pi; liberar RAM y cuantizar pasan a `RH-W-0025`.
@@ -56,7 +57,6 @@ Este archivo proyecta solo hechos verificados del proyecto: registros activos, b
 - `RH-W-0010` (`proposed`, P3): elegir si se usa el diccionario de pronunciación en inglés.
 - `RH-W-0011` (`proposed`, P2): comprobar portabilidad en arm64, Raspberry Pi, Oracle Cloud Free Tier, macOS, WSL, VM, Proxmox y VPS.
 - `RH-W-0012` (`deferred`, P3): motor o modelo propio y fine-tuning, al final con la optimización.
-- `RH-W-0013` (`proposed`, P2): manejo de errores y logs.
 - `RH-W-0014` (`deferred`, P3): evaluar una API y la integración con CLIProxyAPI.
 - `RH-W-0015` (`proposed`, P3): añadir palabras a `pronunciaciones.json` desde la TUI o la extensión de Pi.
 - `RH-W-0016` (`proposed`, P3): ajuste para sugerir, no sugerir o añadir automáticamente pronunciaciones de términos nuevos en inglés.
@@ -73,4 +73,4 @@ Este archivo proyecta solo hechos verificados del proyecto: registros activos, b
 
 <!-- doc-role:next-step -->
 
-Plan aprobado el 2026-10-30: (0) base confiable, completada; (1) medir con `RH-W-0003`, completado; (2) endurecer el servidor (`RH-W-0001`, completado) y los errores (`RH-W-0013`) y la instalación (`RH-W-0008`); (3) al final, la versión lite (`RH-W-0025`): mínimo consumo, el modelo que funcione bien gastando menos y las funciones mínimas (cambio de orden pedido por la persona responsable el 2026-10-30). La investigación y los deseos grandes quedan `deferred` hasta entonces.
+Plan aprobado el 2026-10-30: (0) base confiable, completada; (1) medir con `RH-W-0003`, completado; (2) endurecer el servidor (`RH-W-0001`, completado) y los errores (`RH-W-0013`, completado) y la instalación (`RH-W-0008`); (3) al final, la versión lite (`RH-W-0025`): mínimo consumo, el modelo que funcione bien gastando menos y las funciones mínimas (cambio de orden pedido por la persona responsable el 2026-10-30). La investigación y los deseos grandes quedan `deferred` hasta entonces.

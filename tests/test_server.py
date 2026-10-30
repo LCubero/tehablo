@@ -1,4 +1,7 @@
 """HTTP contract tests without a model download or audio device."""
+import contextlib
+import io
+import tempfile
 import http.client
 import json
 import socket
@@ -88,6 +91,51 @@ class ServerTests(unittest.TestCase):
     def ready(self):
         self.loaded.set()
         self.wait(lambda: self.request('/health')[1]['ready'])
+
+    def test_speech_failures_are_visible_and_clearable(self):
+        self.ready()
+        original = self.synth.stream
+        for kind in ('stream', 'sink'):
+            with self.subTest(kind=kind):
+                def fail(*args):
+                    raise RuntimeError('broken playback')
+                self.synth.stream = fail if kind == 'stream' else original
+                self.server.service.audio_factory = fail if kind == 'sink' else Sink
+                # Close any previous sink by reloading the model.
+                model = 'spanish_24l' if kind == 'sink' else 'spanish'
+                self.request('/config', {'model': model})
+                self.wait(lambda: self.request('/health')[1]['ready'])
+                self.assertEqual(self.request('/speak', {'id': kind, 'text': 'hola'})[0], 202)
+                self.wait(lambda: self.request('/status')[1]['state'] == 'idle')
+                self.assertEqual(self.request('/status'), (200, {
+                    'state': 'idle', 'id': None, 'error': 'speech failed: broken playback'}))
+                self.assertIsNone(self.request('/health')[1]['error'])
+                self.assertEqual(self.request('/stop', {}), (200, {'state': 'idle'}))
+                self.assertEqual(self.request('/status')[1], {'state': 'idle', 'id': None, 'error': None})
+        self.server.service.audio_factory = Sink
+        self.synth.stream = fail
+        self.request('/speak', {'id': 'fail', 'text': 'hola'})
+        self.wait(lambda: self.request('/status')[1]['error'] is not None)
+        self.synth.stream = original
+        self.assertEqual(self.request('/speak', {'id': 'ok', 'text': 'hola'}), (202, {'id': 'ok'}))
+        self.assertIsNone(self.request('/status')[1]['error'])
+        self.wait(lambda: bool(self.synth.calls))
+
+    def test_lexicon_error_logged_once_per_change(self):
+        from tehablo_lexicon import Lexicon
+        self.ready()
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'pronunciaciones.json'
+            path.write_text('{', encoding='utf-8')
+            self.server.service.lexicon = Lexicon(path)
+            output = io.StringIO()
+            with contextlib.redirect_stderr(output):
+                for identifier in ('one', 'two'):
+                    self.request('/speak', {'id': identifier, 'text': 'hola'})
+                    self.wait(lambda: len(self.synth.calls) == (1 if identifier == 'one' else 2))
+            message = self.server.service.lexicon.error
+            self.assertTrue(message)
+            self.assertEqual(output.getvalue(), f'Pronunciation dictionary error: {message}\n')
 
     def test_origin_rejections(self):
         self.ready()
