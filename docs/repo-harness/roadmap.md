@@ -227,6 +227,21 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 - **Decisión:** registrar para después; no se eligió diseño ni modo predeterminado.
 - **Condición del siguiente avance:** decisión de la persona responsable sobre dónde vive el ajuste.
 
+### RH-W-0017: Cambio de dispositivo de audio
+
+- **Origen:** solicitud de la persona responsable del 2026-10-30: «el cambio de dispositivos de audio en el pc, como lo maneja, que hacer, etc».
+- **Prioridad:** P2; si se cambia de altavoz a audífonos o se desconecta un dispositivo, la voz puede seguir saliendo por el anterior o fallar.
+- **Dependencias:** coordinar con `RH-W-0003` (la salida de audio queda abierta) y `RH-W-0004` (dónde se elige el dispositivo).
+- **Estado:** `proposed`.
+- **Trabajo restante:**
+  - Comprobar qué pasa hoy al cambiar el dispositivo predeterminado o desconectarlo durante y entre reproducciones, en Windows y Linux.
+  - Decidir el comportamiento: seguir al dispositivo predeterminado del sistema, permitir elegir uno o ambos, y cómo recuperarse si desaparece.
+  - Documentar el comportamiento y sus límites.
+  - Más adelante, un menú para elegir el dispositivo de audio («incluso para mas adelante un menu de seleccion de dispositivo de audio seria muy bueno»), coordinado con `RH-W-0004`.
+- **Evidencia:** `src/tehablo_server.py` abre una sola salida con `sd.OutputStream` sobre el dispositivo predeterminado de ese momento y la conserva abierta; la TUI y la consola abren una salida por reproducción. No se ha probado un cambio de dispositivo.
+- **Decisión:** registrar para después; no se eligió comportamiento.
+- **Condición del siguiente avance:** autorización para la prueba acotada en Windows y Linux.
+
 ## Registros resueltos
 <!-- doc-role:resolved-records -->
 
