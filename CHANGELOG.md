@@ -6,6 +6,7 @@ Este archivo registra los cambios completados en orden cronológico.
 
 ## 2026-10-30
 
+- La extensión de Pi encuentra el Python correcto en dual boot: busca `.venv-pocket` y después `.venv-pocket-windows`, `.venv-pocket-linux` o `.venv-pocket-macos` según el sistema; si no hay entorno, el aviso muestra las rutas probadas en lugar de `spawn ... ENOENT`.
 - Se añadieron 17 pronunciaciones en inglés a `pronunciaciones.json` (`speed` → `espid`, `close` → `clous`, `CRLF` → `si ar el ef`, `harness`, `Engram` y otras); `dual` se sigue leyendo en español (`RH-W-0002`).
 - Se registraron los trabajos propuestos de diccionario opcional, portabilidad, motor propio y fine-tuning, errores y logs, API/CLIProxyAPI y añadir palabras al diccionario desde la interfaz (`RH-W-0010` a `RH-W-0015`), sin cambiar el comportamiento.
 

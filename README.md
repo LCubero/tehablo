@@ -99,7 +99,7 @@ sudo dnf install portaudio      # Fedora
 sudo apt install libportaudio2  # Debian / Ubuntu
 ```
 
-El entorno `.venv-pocket` no se puede copiar entre sistemas operativos: créalo en cada equipo. Si vienes de Windows y solo existe `.venv-pocket/Scripts/python.exe`, conserva ese entorno con otro nombre antes de crear el de Linux; la extensión necesita `.venv-pocket/bin/python`. Ejecuta los comandos desde la raíz del repositorio.
+El entorno `.venv-pocket` no se puede copiar entre sistemas operativos: créalo en cada equipo. Con dual boot sobre la misma carpeta, deja un entorno por sistema: la extensión busca primero `.venv-pocket` y después `.venv-pocket-windows`, `.venv-pocket-linux` o `.venv-pocket-macos`, según el sistema (`Scripts/python.exe` en Windows, `bin/python` en Linux y macOS). Si no encuentra ninguno, el aviso muestra las rutas que probó. Ejecuta los comandos desde la raíz del repositorio.
 
 Comprobación básica en Linux (importaciones y Torch sin CUDA; no prueba el audio):
 ```bash
@@ -126,7 +126,7 @@ La extensión [`pi-extension/tehablo-tts/`](pi-extension/tehablo-tts/) lee las r
 | `/tts model [spanish\|spanish_24l]` | Cambia el modelo |
 | `/tts speed [0.75-1.5]` | Cambia la velocidad |
 
-La extensión arranca sola el servidor local [`src/tehablo_server.py`](src/tehablo_server.py) (`127.0.0.1:8765`, se cambia con `TEHABLO_PORT`) y lo apaga al cerrar Pi. Necesita el entorno `.venv-pocket` instalado. Los ajustes duran solo la sesión.
+La extensión arranca sola el servidor local [`src/tehablo_server.py`](src/tehablo_server.py) (`127.0.0.1:8765`, se cambia con `TEHABLO_PORT`) y lo apaga al cerrar Pi. Necesita el entorno `.venv-pocket` (o `.venv-pocket-<sistema>`) instalado. Los ajustes duran solo la sesión.
 
 ## Uso: TUI
 

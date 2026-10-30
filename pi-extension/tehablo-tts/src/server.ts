@@ -1,9 +1,12 @@
 import { spawn as nodeSpawn } from 'node:child_process';
+import { existsSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+const OS_NAMES: Record<string, string> = { win32: 'windows', linux: 'linux', darwin: 'macos' };
+
 type Options = {
-  root?: string; platform?: string; port?: string;
+  root?: string; platform?: string; port?: string; exists?: (path: string) => boolean;
   fetch?: typeof fetch; spawn?: typeof nodeSpawn; delay?: (ms: number) => Promise<void>;
 };
 
@@ -38,11 +41,19 @@ export class ServerClient {
     if (!this.starting) this.starting = this.start().finally(() => { this.starting = undefined; });
     return this.starting;
   }
+  /** Python candidates: .venv-pocket, then .venv-pocket-<os> so a dual boot can keep one environment per OS. */
+  pythonCandidates(): string[] {
+    const platform = this.options.platform ?? process.platform;
+    const binary = platform === 'win32' ? 'Scripts/python.exe' : 'bin/python';
+    const envs = ['.venv-pocket', ...(OS_NAMES[platform] ? [`.venv-pocket-${OS_NAMES[platform]}`] : [])];
+    return envs.map(env => join(this.root, env, binary));
+  }
   private async start() {
     try { await this.request('/health'); return; } catch { /* Start only when unavailable. */ }
     if (this.closed) return;
     if (!this.child) {
-      const python = join(this.root, '.venv-pocket', (this.options.platform ?? process.platform) === 'win32' ? 'Scripts/python.exe' : 'bin/python');
+      const candidates = this.pythonCandidates();
+      const python = candidates.find(this.options.exists ?? existsSync) ?? candidates[0];
       const child = (this.options.spawn ?? nodeSpawn)(python, [join(this.root, 'src/tehablo_server.py'), '--port', new URL(this.base).port], {
         cwd: this.root, stdio: 'ignore', windowsHide: true, detached: true,
       });
@@ -51,7 +62,13 @@ export class ServerClient {
       child.once('error', error => { spawnError = error; });
       child.unref();
       for (let attempt = 0; attempt < 30 && !this.closed; attempt++) {
-        if (spawnError) throw spawnError;
+        if (spawnError) {
+          this.child = undefined;
+          if ((spawnError as NodeJS.ErrnoException).code === 'ENOENT') {
+            throw new Error(`No se encontró el Python del entorno. Probé: ${candidates.join(', ')}. Crea uno de esos entornos (ver README).`);
+          }
+          throw spawnError;
+        }
         try { await this.request('/health'); return; } catch { /* Bounded readiness polling. */ }
         await (this.options.delay ?? (ms => new Promise(r => setTimeout(r, ms))))(250);
       }
