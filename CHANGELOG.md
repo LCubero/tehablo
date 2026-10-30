@@ -4,6 +4,11 @@
 
 Este archivo registra los cambios completados en orden cronológico.
 
+## 2026-10-30
+
+- Se añadieron 17 pronunciaciones en inglés a `pronunciaciones.json` (`speed` → `espid`, `close` → `clous`, `CRLF` → `si ar el ef`, `harness`, `Engram` y otras); `dual` se sigue leyendo en español (`RH-W-0002`).
+- Se registraron los trabajos propuestos de diccionario opcional, portabilidad, motor propio y fine-tuning, errores y logs, API/CLIProxyAPI y añadir palabras al diccionario desde la interfaz (`RH-W-0010` a `RH-W-0015`), sin cambiar el comportamiento.
+
 ## 2026-10-29
 
 - Todos los archivos de texto usan finales de línea LF en Windows y Linux (`* text=auto eol=lf` en `.gitattributes`), para que el dual boot no marque archivos como modificados.

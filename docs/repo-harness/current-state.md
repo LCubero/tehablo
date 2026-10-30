@@ -15,7 +15,7 @@
 - Descarga selectiva de voces en español para clonar (`scripts/get_voices.py`).
 - Pruebas unitarias sin modelo (`tests/test_numbers.py`, `tests/test_lexicon.py`, `tests/test_speed.py`) y scripts de integración de la TUI que reproducen audio.
 - Extensión de Pi `pi-extension/tehablo-tts/` y servidor local `src/tehablo_server.py`: leen las respuestas del agente en modo manual o automático; se carga en este proyecto con `.pi/settings.json`.
-- Lectura simplificada de texto técnico (`src/tehablo_tech.py`): URLs, rutas, archivos, identificadores y hashes; `pronunciaciones.json` tiene 291 términos de desarrollo, Git, GitHub y uso general, con siglas técnicas deletreadas en inglés.
+- Lectura simplificada de texto técnico (`src/tehablo_tech.py`): URLs, rutas, archivos, identificadores y hashes; `pronunciaciones.json` tiene 309 términos de desarrollo, Git, GitHub y uso general, con siglas técnicas deletreadas en inglés.
 - Probado en Windows y, en Fedora, el servidor y el transporte de la extensión con síntesis CPU `spanish`/`lola`, controles y callbacks de audio reales. No acredita escucha/calidad, interfaz completa de Pi, TUI ni `spanish_24l`; [versiones y comprobaciones](../desarrollo.md#verificación-en-fedora).
 - Harness de IA instalado (perfil `pi`, modo integrado); `python .repo-harness/check.py` lo comprueba.
 
@@ -25,6 +25,7 @@ Este archivo proyecta solo hechos verificados del proyecto: registros activos, b
 
 <!-- doc-role:recent-work -->
 
+- 17 pronunciaciones nuevas en inglés (`speed`, `close`, `CRLF` deletreado y otras; `dual` se lee en español) y registro de los trabajos `RH-W-0010` a `RH-W-0015` (`RH-W-0002`).
 - Mediciones offline de síntesis CPU en Fedora con `spanish` y `spanish_24l`, tres repeticiones por modelo y evidencia JSON ([resultados y límites](../como-funciona.md#fedora)); resultado acotado de `RH-W-0003`, que sigue `deferred`.
 - Botones de volumen (10 % a 150 %) y velocidad (1.00x a 1.50x) junto a Escuchar en Pi, solo con clic (`RH-W-0004`).
 - Lectura más natural: siglas en inglés, 291 términos de desarrollo, separadores y hashes omitidos, pausas en flechas y paréntesis, tablas leídas por filas y puntajes «N de M» (`RH-W-0002`).
@@ -49,6 +50,12 @@ Este archivo proyecta solo hechos verificados del proyecto: registros activos, b
 - `RH-W-0007` (`proposed`, P3): modo GPU opcional, manteniendo CPU como predeterminado.
 - `RH-W-0008` (`proposed`, P2): instalación local fácil.
 - `RH-W-0009` (`proposed`, P2): versión Docker y despliegue seguro en VPS; depende de `RH-W-0001` y `RH-W-0008`.
+- `RH-W-0010` (`proposed`, P3): elegir si se usa el diccionario de pronunciación en inglés.
+- `RH-W-0011` (`proposed`, P2): comprobar portabilidad en arm64, Raspberry Pi, Oracle Cloud Free Tier, macOS, WSL, VM, Proxmox y VPS.
+- `RH-W-0012` (`proposed`, P3): motor o modelo propio y fine-tuning, al final con la optimización.
+- `RH-W-0013` (`proposed`, P2): manejo de errores y logs.
+- `RH-W-0014` (`proposed`, P3): evaluar una API y la integración con CLIProxyAPI.
+- `RH-W-0015` (`proposed`, P3): añadir palabras a `pronunciaciones.json` desde la TUI o la extensión de Pi.
 
 ## Siguiente paso
 

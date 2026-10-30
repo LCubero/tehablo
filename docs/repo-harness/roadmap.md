@@ -40,9 +40,9 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 - **Trabajo restante:**
   - Decidir si las extensiones de archivo de `src/tehablo_tech.py` (`html` → `hache te eme ele`, `css` → `ce ese ese`) pasan también al inglés.
   - Confirmar mediante escucha el resultado de cada ajuste.
-- **Trabajo completado (2026-10-29):** `API` → `ei pi ai` y `CPU` → `ci pi iu`; se quitó `APIs`; 15 siglas pasaron del deletreo español al inglés (`USB`, `PDF` y `CD` se mantienen); se añadieron 115 términos de desarrollo, Git, GitHub, CI/CD y gestión (291 entradas). Pruebas: `tests/test_lexicon.py` (43/43) y `tests/test_server.py`. Después de la prueba de escucha: `merge` → `mérch`; los hashes de commit se omiten, los separadores (`+++`) no se leen, `→` y los paréntesis son una pausa corta y la barra entre palabras se lee «eslash», conservando la regla de rutas (`src/tehablo_tech.py`, `tests/test_tech.py` 53/53). También: `reload` → `rilóud`; tablas markdown leídas fila por fila y guiones bajos internos conservados (`pi-extension/tehablo-tts/src/text.ts`); puntajes `N/M` leídos «N de M» (`src/tehablo_numbers.py`).
+- **Trabajo completado (2026-10-29):** `API` → `ei pi ai` y `CPU` → `ci pi iu`; se quitó `APIs`; 15 siglas pasaron del deletreo español al inglés (`USB`, `PDF` y `CD` se mantienen); se añadieron 115 términos de desarrollo, Git, GitHub, CI/CD y gestión (291 entradas). Pruebas: `tests/test_lexicon.py` (43/43) y `tests/test_server.py`. Después de la prueba de escucha: `merge` → `mérch`; los hashes de commit se omiten, los separadores (`+++`) no se leen, `→` y los paréntesis son una pausa corta y la barra entre palabras se lee «eslash», conservando la regla de rutas (`src/tehablo_tech.py`, `tests/test_tech.py` 53/53). También: `reload` → `rilóud`; tablas markdown leídas fila por fila y guiones bajos internos conservados (`pi-extension/tehablo-tts/src/text.ts`); puntajes `N/M` leídos «N de M» (`src/tehablo_numbers.py`). El 2026-10-30 se añadieron 17 términos aprobados: `speed` → `espid`, `close` → `clous`, `gitattributes` → `guitátribiuts`, `boot` → `but`, `root` → `rut`, `cause` → `cos`, `consumer` → `consiúmer`, `Why` → `uái`, `It` → `it`, `matter` → `máter`, `Possible` → `pósibol`, `Improvement` → `imprúvment`, `builder` → `bílder`, `Applied` → `apláid`, `Engram` → `éngram`, `harness` → `járnes` y `CRLF` → `si ar el ef` (309 entradas; `tests/test_lexicon.py` 50/50).
 - **Adiciones:** método común para escribir pronunciaciones: [guía de pronunciación](../pronunciacion.md), basada en la skill `wk-en-pronun-tico-ld9` de la persona responsable y adaptada para un modelo de voz (minúsculas con tilde, sin guiones ni mayúsculas).
-- **Exclusiones:** ninguna sigla cambia sin decisión de la persona responsable; no se implementa tratamiento de precios.
+- **Exclusiones:** ninguna sigla cambia sin decisión de la persona responsable; no se implementa tratamiento de precios; `dual` no entra al diccionario porque también es palabra española («dual que suene dual y ya», 2026-10-30).
 - **Evidencia:** observación directa de la persona responsable: «como los codigos de los commits (commit 22774ca), CPU no lo deletrió en ingles». El 2026-10-29 indicó «API: ei pi ai» y «CPU:  ci pi iu», y pidió «investigar como es para leer como se pronuncia».
 - **Decisión:** la persona responsable indicó «pero eso lo hacemos despues»; el 2026-10-29 eligió las pronunciaciones de `API` y `CPU` y el método de la guía, y después autorizó aplicar las siglas en inglés y los términos propuestos, incluidos los de Git y GitHub («cuando digo programacion son los relacionados al desarrollo»).
 - **Condición del siguiente avance:** escucha de la persona responsable y su decisión sobre las extensiones de archivo.
@@ -134,9 +134,84 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
   - Diseñar cómo llega el audio a quien lo pide: hoy el servidor lo reproduce en el altavoz de su propio equipo (`sounddevice`), que no existe en un contenedor o VPS.
   - Definir autenticación y exposición de red antes de escuchar fuera de `127.0.0.1`.
   - Preparar la imagen Docker para uso local y, después, el despliegue en VPS.
-- **Evidencia:** `src/tehablo_server.py` escucha solo en `127.0.0.1`, sin autenticación, y reproduce el audio localmente.
+- **Evidencia:** `src/tehablo_server.py` escucha solo en `127.0.0.1`, sin autenticación, y reproduce el audio localmente. El 2026-10-30 la persona responsable volvió a pedir «imagenes de docker»; las arquitecturas de las imágenes se coordinan con `RH-W-0011`.
 - **Decisión:** registrar para después, separado de la instalación local; no se eligió diseño.
 - **Condición del siguiente avance:** autorización para diseñar la versión Docker, con `RH-W-0001` resuelto antes de exponer el servidor en red.
+
+### RH-W-0010: Elegir si se usa el diccionario de pronunciación en inglés
+
+- **Origen:** solicitud de la persona responsable del 2026-10-30: «quiero hacer Que se pueda escoger entre usar el diccionario de pronunciación d terminos en inglés o no».
+- **Prioridad:** P3; opción de uso, sin impedir la síntesis de voz.
+- **Dependencias:** coordinar dónde se expone la opción con `RH-W-0004`.
+- **Estado:** `proposed`.
+- **Trabajo restante:**
+  - Decidir dónde se elige: TUI, consola, extensión de Pi o todas, y si la elección se guarda.
+  - Implementar la opción con el diccionario activo por defecto y probarla.
+- **Evidencia:** el diccionario siempre se aplica: `Lexicon(ROOT / 'pronunciaciones.json')` en `src/tehablo_server.py` y `src/tehablo_tts.py`.
+- **Decisión:** registrar como trabajo propio; no se eligió dónde se expone.
+- **Condición del siguiente avance:** decisión de la persona responsable sobre dónde se elige la opción.
+
+### RH-W-0011: Comprobar la portabilidad en arquitecturas y entornos
+
+- **Origen:** pregunta de la persona responsable del 2026-10-30: «funciona en arm64, raspberry, oracle cloud free tier, etc?» y «debe funcionar en todo, windows, linux, mac, servers, vps, vm, proxmox, wsl».
+- **Prioridad:** P2; amplía dónde se puede usar el proyecto.
+- **Dependencias:** coordinar con `RH-W-0008` (instalación) y `RH-W-0009` (imágenes Docker).
+- **Estado:** `proposed`.
+- **Trabajo restante:**
+  - Investigar el soporte de Pocket TTS y PyTorch CPU en arm64 (Raspberry Pi, Oracle Cloud Free Tier Ampere), macOS, WSL, VM, Proxmox, servidores y VPS.
+  - Comprobar instalación y síntesis en cada plataforma con el hardware de la persona responsable, y medir la velocidad.
+  - Documentar las plataformas comprobadas y sus límites.
+- **Evidencia:** solo hay comprobaciones en Windows y Fedora x86-64 ([Desarrollo](../desarrollo.md#verificación-en-fedora)); no hay pruebas en arm64, macOS ni WSL.
+- **Decisión:** «hay que comprobarlo en algun momento, yo tengo cosas para eos asi que relax».
+- **Condición del siguiente avance:** autorización para investigar y disponibilidad del hardware de prueba.
+
+### RH-W-0012: Motor o modelo propio, fine-tuning y mejora de lo que se usa
+
+- **Origen:** solicitud de la persona responsable del 2026-10-30: «hay que considerar crear nuestras propias cosas, si lo que usamos como el pocket tts, quiza podamos hacer el nuestro, pero eso al final con lo de obtimizar etc.» y «el fine tuning ademas crear o mejorar lo que se usa».
+- **Prioridad:** P3; trabajo de largo plazo, al final, junto con la optimización.
+- **Dependencias:** después de `RH-W-0003` (consumo y optimización).
+- **Estado:** `proposed`.
+- **Trabajo restante:**
+  - Evaluar fine-tuning de Pocket TTS y mejoras a lo que se usa hoy.
+  - Evaluar si conviene crear un motor o modelo propio.
+- **Evidencia:** opciones de fine-tuning ya documentadas en [Pocket TTS](../pocket-tts.md#entrenamiento-y-fine-tuning-sí-existen) y el [catálogo gratuito](../catalogo-gratuito.md); ninguna se probó.
+- **Decisión:** dejarlo para el final, con la optimización.
+- **Condición del siguiente avance:** `RH-W-0003` avanzado y autorización para investigar.
+
+### RH-W-0013: Manejo de errores y logs
+
+- **Origen:** solicitud de la persona responsable del 2026-10-30: «manejor de rrores, logs, etc.».
+- **Prioridad:** P2; facilita diagnosticar fallos en el servidor, la TUI y la extensión.
+- **Dependencias:** coordinar con `RH-W-0001`, que ya incluye informar en `/health` y `/status` si el modelo no carga.
+- **Estado:** `proposed`.
+- **Trabajo restante:** revisar cómo se manejan y muestran los errores hoy, y proponer un registro de logs (dónde se guardan, nivel de detalle, rotación).
+- **Evidencia:** no se ha revisado el manejo de errores ni de logs actual.
+- **Decisión:** registrar para después; no se eligió diseño.
+- **Condición del siguiente avance:** autorización para revisar el estado actual.
+
+### RH-W-0014: Ofrecer una API e integrar con CLIProxyAPI
+
+- **Origen:** solicitud de la persona responsable del 2026-10-30: «ofrecer API, integracion con cliproxyapi aunq creo que no es necesario».
+- **Prioridad:** P3; la persona responsable duda de que haga falta.
+- **Dependencias:** `RH-W-0001` antes de exponer una API; coordinar con `RH-W-0009`.
+- **Estado:** `proposed`.
+- **Trabajo restante:** evaluar si hace falta una API pública (por ejemplo compatible con OpenAI) y la integración con CLIProxyAPI; decidir si se hace.
+- **Evidencia:** el servidor local ya ofrece endpoints propios en `127.0.0.1` (`src/tehablo_server.py`); Pocket TTS trae `pocket-tts serve` ([catálogo gratuito](../catalogo-gratuito.md)). No se revisó CLIProxyAPI.
+- **Decisión:** registrar como evaluación; no se decidió hacerlo.
+- **Condición del siguiente avance:** decisión de la persona responsable sobre si es necesario.
+
+### RH-W-0015: Añadir palabras al diccionario desde la TUI o la extensión
+
+- **Origen:** solicitud de la persona responsable del 2026-10-30: «debemos hacer una forma ya sea en el menu tui de la extension para agregar palabras a ese pronunciaciones.json».
+- **Prioridad:** P3; hoy hay que editar el JSON a mano.
+- **Dependencias:** coordinar con `RH-W-0004` (menús de la TUI y comandos de Pi) y `RH-W-0010` (activar o desactivar el diccionario).
+- **Estado:** `proposed`.
+- **Trabajo restante:**
+  - Decidir dónde se añaden palabras: menú de la TUI, comando o menú de la extensión de Pi, o ambos.
+  - Validar la entrada (término y pronunciación no vacíos, sin duplicados) antes de escribir `pronunciaciones.json`, y permitir probar cómo suena.
+- **Evidencia:** `src/tehablo_lexicon.py` recarga el archivo cuando cambia y conserva la última versión válida si el JSON es inválido; no existe forma de añadir palabras desde la interfaz.
+- **Decisión:** registrar para después; no se eligió dónde ni cómo.
+- **Condición del siguiente avance:** decisión de la persona responsable sobre dónde se añaden palabras.
 
 ## Registros resueltos
 <!-- doc-role:resolved-records -->
