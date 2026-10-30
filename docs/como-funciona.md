@@ -101,7 +101,7 @@ Mismo equipo, `spanish`, `pocket-tts` 4.0.1 y Torch 2.15.0+cpu ([datos](measurem
 - Casi toda la espera inicial es importar librerías, no cargar el modelo.
 - En reposo el servidor casi no usa CPU, pero conserva la RAM del modelo hasta cerrarse.
 - En este equipo la cuantización no ahorra memoria de forma clara y genera más lento.
-- La extensión espera hasta ~7,5 s a que el servidor responda; el margen medido es de unos 2 s.
+- La extensión espera a que el servidor responda mientras su proceso siga vivo, sin límite fijo de tiempo; si el proceso se cierra, avisa al momento y remite a `logs/tehablo-server.log`. Antes esperaba solo ~7,5 s, y en Fedora un arranque tardó ~8,5 s.
 
 ---
 

@@ -16,6 +16,7 @@ Este archivo registra los cambios completados en orden cronológico.
 - Documentación corregida: el arranque en frío no suena en menos de 1 s, la medición de «primer audio» era el primer fragmento generado sin reproducir, la velocidad también funciona en Pi y el servidor local ya es una API local (no es una idea pendiente).
 - Hoja de ruta reordenada: `RH-W-0003` (medir) queda `ready` como siguiente; `RH-W-0025` requiere sus mediciones; `RH-W-0007`, `0009`, `0012`, `0014`, `0018`, `0019` y `0021` pasan a `deferred`.
 - Mediciones en Windows (`RH-W-0003`): arranque en frío, RAM en reposo y tras hablar, CPU en reposo y cuantización ([resultados](docs/como-funciona.md#arranque-reposo-y-cuantización-2026-10-30)).
+- La extensión de Pi ya no se rinde a los ~7,5 s al arrancar el servidor (en Fedora tardó ~8,5 s y salía «El servidor TTS no respondió a tiempo»): espera mientras el proceso siga vivo; si se cierra, avisa al momento («El servidor TTS se cerró al arrancar») y el siguiente intento arranca uno nuevo en lugar de fallar hasta reiniciar Pi.
 
 ## 2026-10-29
 

@@ -71,9 +71,13 @@ export class ServerClient {
       }
       this.child = child;
       let spawnError: Error | undefined;
+      let exited = false;
       child.once('error', error => { spawnError = error; });
+      // Forget a dead server so the next attempt starts a new one.
+      child.once('exit', () => { exited = true; if (this.child === child) this.child = undefined; });
       child.unref();
-      for (let attempt = 0; attempt < 30 && !this.closed; attempt++) {
+      // No fixed timeout: startup time depends on the machine and disk, so wait while the process lives.
+      while (!this.closed) {
         if (spawnError) {
           this.child = undefined;
           if ((spawnError as NodeJS.ErrnoException).code === 'ENOENT') {
@@ -81,13 +85,13 @@ export class ServerClient {
           }
           throw spawnError;
         }
-        try { await this.request('/health'); return; } catch { /* Bounded readiness polling. */ }
+        if (exited) throw new Error(`El servidor TTS se cerró al arrancar. Revisa ${this.logPath}.`);
+        try { await this.request('/health'); return; } catch { /* Not listening yet. */ }
         await (this.options.delay ?? (ms => new Promise(r => setTimeout(r, ms))))(250);
       }
     } else {
-      await this.request('/health'); return;
+      await this.request('/health');
     }
-    if (!this.closed) throw new Error(`El servidor TTS no respondió a tiempo. Revisa ${this.logPath}.`);
   }
   async action(path: string, body?: unknown) {
     await this.ensure();

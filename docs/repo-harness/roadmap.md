@@ -26,7 +26,7 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 - **Trabajo restante:**
   - Rechazar peticiones `POST` sin `Content-Type: application/json` o con cabecera `Origin` (`src/tehablo_server.py`).
   - Si el modelo no carga, informar el error en `/health` y `/status` en lugar de quedar en `loading`.
-  - Revisar los tiempos de espera de la extensión (2 s por petición, ~7,5 s de pausas entre intentos al arrancar, más la duración de las peticiones) en equipos lentos, coordinado con `RH-W-0003`.
+  - Revisar el límite de 2 s por petición de la extensión en equipos lentos, coordinado con `RH-W-0003`. La espera de arranque ya no tiene límite fijo (2026-10-30): dura mientras el proceso del servidor siga vivo.
 - **Evidencia:** avisos R1-001, R3-001, R3-002, R4-001 y R4-002 de esa revisión.
 - **Decisión:** la persona responsable lo aplazó explícitamente tras revisar la propuesta; no se autorizó su implementación.
 - **Condición del siguiente avance:** autorización explícita de la persona responsable para retomarlo.
@@ -64,7 +64,7 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
   - Revisar si conviene cambiar o quitar las esperas actuales de arranque, distinguiendo servidor accesible de modelo listo y evitando esperas indefinidas ante errores.
   - Evaluar una medición opcional del arranque y de la carga del modelo para estimar las necesidades de cada equipo; no se ha elegido calibración automática ni valores nuevos.
 - **Decisión:** solicitud para detallar y revisar después; posteriormente se autorizó la medición offline acotada en Fedora y la descarga faltante de `spanish_24l`. Esa parte está completada, pero el trabajo amplio sigue `deferred`: las alternativas no están aprobadas como diseño definitivo ni implementadas.
-- **Condición del siguiente avance:** medir en Fedora cuando la persona responsable arranque ese sistema; después, con los datos de ambos, proponer si el modelo se libera tras un tiempo sin uso y si se amplía la espera de arranque (margen medido en Windows: ~2 s sobre los ~7,5 s actuales).
+- **Condición del siguiente avance:** medir en Fedora cuando la persona responsable arranque ese sistema; después, con los datos de ambos, proponer si el modelo se libera tras un tiempo sin uso. La espera de arranque quedó resuelta el 2026-10-30: en Fedora un arranque tardó ~8,5 s y superó los ~7,5 s; ahora la extensión espera mientras el proceso siga vivo y avisa al momento si se cierra.
 
 ### RH-W-0004: Revisar interfaz, TUI, menús y opciones
 
@@ -373,7 +373,7 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
   - El botón de inicio (`[ ⏻ Iniciar ]`, renombrado `[ ⏻ TTS ]` el 2026-10-30 a pedido de la persona responsable: «[ ⏻ TTS ]») arranca el servidor y consulta `/health` cada 500 ms hasta que el modelo está listo (máximo 240 intentos); la barra de estado muestra `TTS manual · cargando`. Si falla, vuelve a Iniciar con un aviso. Escuchar, `/tts play` y el modo automático siguen arrancando el servidor solos.
   - Solo se usan símbolos de una columna (`⏸` y `⏳` se descartaron por verse como emoji). Pruebas en `pi-extension/tehablo-tts/test/controls.test.ts` y `tts.test.ts`.
 - **Trabajo restante:** `none`.
-- **Evidencia:** en Pi, el servidor arranca solo al pulsar Escuchar (`ensure()` en `pi-extension/tehablo-tts/src/server.ts`, llamado desde `speak` en `extension.ts`), con hasta 30 intentos de `/health` cada 250 ms; mientras el modelo carga, `src/tehablo_server.py` informa el estado `loading`. La barra de controles clicables se arma en `pi-extension/tehablo-tts/src/extension.ts` (lista de controles con `action` `volume-`, `volume+`, `speed-` y `speed+`).
+- **Evidencia:** en Pi, el servidor arranca solo al pulsar Escuchar (`ensure()` en `pi-extension/tehablo-tts/src/server.ts`, llamado desde `speak` en `extension.ts`), consultando `/health` cada 250 ms mientras el proceso siga vivo (hasta el 2026-10-30, máximo 30 intentos); mientras el modelo carga, `src/tehablo_server.py` informa el estado `loading`. La barra de controles clicables se arma en `pi-extension/tehablo-tts/src/extension.ts` (lista de controles con `action` `volume-`, `volume+`, `speed-` y `speed+`).
   Revisión del 2026-10-30: antes de abrir el puerto, el servidor importa `pocket_tts` y torch (`create_server` → `tehablo_tts`), así que `/health` no contesta hasta terminar; si no contesta en los 30 intentos, sale «El servidor TTS no respondió a tiempo». Durante la espera la barra muestra Pausar y Detener sin distinguir «cargando» de «generando», y pulsar Vol o Vel también arranca el servidor. No se ha medido cuánto dura cada parte en Windows.
 - **Decisión:** diseño elegido el 2026-10-30 por la persona responsable (ver Trabajo restante).
 - **Condición del siguiente avance:** ninguna; la persona responsable lo comprobó en Pi el 2026-10-30: «guenia me gusta».

@@ -66,19 +66,44 @@ test('missing environment reports every path tried instead of a bare ENOENT',asy
   assert.equal(spawned.length,1);
 });
 
-test('server output goes to logs/tehablo-server.log and the timeout error names it',async()=>{
+/** Fake child that exits right after spawning, like a Python server that crashes on startup. */
+function exitingSpawn(spawned:any[]){
+  return ((...args:any[])=>{spawned.push(args); return {once(event:string,cb:(code:number)=>void){ if(event==='exit') setImmediate(()=>cb(1)); },unref(){},kill(){}};}) as any;
+}
+
+test('slow startup: waits past 30 health checks while the process lives',async()=>{
+  let checks=0; const spawned:any[]=[];
+  const client=new ServerClient({root:'/tehablo',platform:'linux',exists:()=>true,
+    fetch:(async()=>{ if(++checks<=60) throw Error('offline'); return Response.json({ok:true}); }) as any,
+    spawn:spawnRecorder(spawned,()=>{}), delay:async()=>{}});
+  await client.ensure();
+  assert.equal(spawned.length,1);
+  assert.equal(checks,61);
+});
+
+test('a server that exits on startup fails at once and names the log',async()=>{
   const spawned:any[]=[]; const opened:string[]=[]; const closed:number[]=[];
   const client=new ServerClient({root:'E:/tehablo',platform:'win32',exists:()=>true,
     fetch:(async()=>{ throw Error('offline'); }) as any,
     openLog:(path:string)=>{opened.push(path);return 7;}, closeLog:(fd:number)=>{closed.push(fd);},
-    spawn:spawnRecorder(spawned,()=>{}), delay:async()=>{}});
+    spawn:exitingSpawn(spawned), delay:()=>new Promise(r=>setTimeout(r,1))});
   await assert.rejects(client.ensure(),(error:Error)=>{
-    assert.match(slash(error.message),/^El servidor TTS no respondió a tiempo\. Revisa E:\/tehablo\/logs\/tehablo-server\.log\.$/);
+    assert.match(slash(error.message),/^El servidor TTS se cerró al arrancar\. Revisa E:\/tehablo\/logs\/tehablo-server\.log\.$/);
     return true;
   });
   assert.deepEqual(opened.map(slash),['E:/tehablo/logs/tehablo-server.log']);
   assert.deepEqual(spawned[0][2].stdio,['ignore',7,7]);
   assert.deepEqual(closed,[7]);
+});
+
+test('after the server exits, the next attempt starts a new one',async()=>{
+  const spawned:any[]=[];
+  const client=new ServerClient({root:'/tehablo',platform:'linux',exists:()=>true,
+    fetch:(async()=>{ throw Error('offline'); }) as any,
+    spawn:exitingSpawn(spawned), delay:()=>new Promise(r=>setTimeout(r,1))});
+  await assert.rejects(client.ensure(),/se cerró al arrancar/);
+  await assert.rejects(client.ensure(),/se cerró al arrancar/);
+  assert.equal(spawned.length,2);
 });
 
 test('an unwritable log falls back to ignored output',async()=>{

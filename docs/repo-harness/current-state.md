@@ -46,7 +46,7 @@ Este archivo proyecta solo hechos verificados del proyecto: registros activos, b
 - Registrar todo pendiente no trivial en [roadmap.md](roadmap.md), sin mantener un segundo backlog aquí.
 - `RH-W-0001` (`deferred`, P2): endurecer el servidor local de voz.
 - `RH-W-0002` (`deferred`, P3): pronunciaciones en inglés y limpieza de símbolos aplicadas (hashes omitidos, separadores, flechas, paréntesis y barras); quedan las extensiones de archivo y la confirmación por escucha ([guía de pronunciación](../pronunciacion.md)).
-- `RH-W-0003` (`active`, P2): medido en Windows (arranque, reposo, cuantización); falta repetir en Fedora y decidir si liberar el modelo en reposo y si ampliar la espera de arranque.
+- `RH-W-0003` (`active`, P2): medido en Windows (arranque, reposo, cuantización); falta repetir en Fedora y decidir si liberar el modelo en reposo. La espera de arranque quedó resuelta: la extensión espera mientras el proceso del servidor siga vivo.
 - `RH-W-0004` (`deferred`, P3): revisar interfaz, TUI, menús, comandos y ajustes, modo automático persistente y acceso sin mouse.
 - `RH-W-0005` (`deferred`, P3): probar otras voces existentes y fuentes gratuitas de Hugging Face y otros sitios, verificando compatibilidad y condiciones de uso.
 - `RH-W-0007` (`deferred`, P3): modo GPU opcional, manteniendo CPU como predeterminado.
