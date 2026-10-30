@@ -329,7 +329,7 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 
 ### RH-W-0024: Botón para iniciar el TTS antes de reproducir
 
-- **Origen:** solicitud de la persona responsable del 2026-10-30: «quiero un botón de iniciar el tts antes de reproducir, para no confundir, como tiene delay, hay que ver eso». Ampliado el mismo día: «quiero cambiar los controles de vol y vel a esto: [ Vol + 100% - ] [ Vel - 1.00x + ]»; corregido por la persona responsable: «mi error, es asi [ Vol - 100% + ] [ Vel - 1.00x + ]». Tras la revisión del diseño: «me gusta pero quitemos los textos de pausar y detener, quiza solo los iconos de play/pause y stop y así Vol [- 100% +]  Vel [- 1.00x +] ?». Después: «si está apagado no hace falta los controles de vol ni vel, ni en cargando. en listo si genial, no me gusta el icono para pausar». Eligió `||` para pausar («3»), luego lo cambió: «[ ‖ ] asi»; pidió además: «guarda esa tabla me gusta como se para en un futuro si queda así dejarlo en el readme del repo o algun sitio».
+- **Origen:** solicitud de la persona responsable del 2026-10-30: «quiero un botón de iniciar el tts antes de reproducir, para no confundir, como tiene delay, hay que ver eso». Ampliado el mismo día: «quiero cambiar los controles de vol y vel a esto: [ Vol + 100% - ] [ Vel - 1.00x + ]»; corregido por la persona responsable: «mi error, es asi [ Vol - 100% + ] [ Vel - 1.00x + ]». Tras la revisión del diseño: «me gusta pero quitemos los textos de pausar y detener, quiza solo los iconos de play/pause y stop y así Vol [- 100% +]  Vel [- 1.00x +] ?». Después: «si está apagado no hace falta los controles de vol ni vel, ni en cargando. en listo si genial, no me gusta el icono para pausar». Eligió `||` para pausar («3»), luego lo cambió: «[ ‖ ] asi»; pidió además: «guarda esa tabla me gusta como se para en un futuro si queda así dejarlo en el readme del repo o algun sitio». Luego propuso: «quiza podriamos hacer que "Vol [- 100% +]  Vel [- 1.00x +]" esten ocultos y tengamos on [ Controles ] o algun simbolo/ascci/icono de controles que cuando se de clic se muestre Vol [- 100% +]  Vel [- 1.00x +]», y eligió el icono: «quiza [ ⋯ ]».
 - **Prioridad:** P3; claridad de uso, sin pérdida de función.
 - **Dependencias:** coordinar con `RH-W-0003` (esperas de arranque, carga a demanda o residente) y `RH-W-0004` (botones de Pi).
 - **Estado:** `proposed`.
@@ -340,10 +340,12 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
     |---|---|
     | Apagado | `[ ⏻ Iniciar ]` |
     | Cargando | `[ Cargando… ]` (no se puede pulsar) |
-    | Listo | `[ ▶ Escuchar ]  Vol [- 100% +]  Vel [- 1.00x +]` |
-    | Sonando | `[ ‖ ] [ ■ ]  Vol [- 100% +]  Vel [- 1.00x +]` |
-    | En pausa | `[ ▶ ] [ ■ ]  Vol [- 100% +]  Vel [- 1.00x +]` |
+    | Listo | `[ ▶ Escuchar ] [ ⋯ ]` |
+    | Listo, controles abiertos | `[ ▶ Escuchar ] [ ⋯ ]  Vol [- 100% +]  Vel [- 1.00x +]` |
+    | Sonando | `[ ‖ ] [ ■ ] [ ⋯ ]` |
+    | En pausa | `[ ▶ ] [ ■ ] [ ⋯ ]` |
 
+  - `[ ⋯ ]` muestra u oculta Vol y Vel en todas las barras a la vez; empiezan ocultos en cada sesión de Pi.
   - Antes tenía `[ Vol − ] 100 % [ Vol + ]  [ Vel − ] 1.00x [ Vel + ]`; en la nueva, `[-` baja y `+]` sube.
   - En modo automático el servidor arranca solo, como ahora.
   - Usar solo símbolos de una columna para que los clics caigan en su sitio (`⏸` y `⏳` se ven como emoji y se descartaron).
