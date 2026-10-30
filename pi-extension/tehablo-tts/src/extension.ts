@@ -15,11 +15,49 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient()) {
   let playback = {state: 'idle', id: null as string | null};
   let timer: ReturnType<typeof setTimeout> | undefined;
   let pollEpoch = 0, started = false;
-  const refresh = () => context?.ui.setStatus(ENTRY, enabled ? (auto ? 'TTS auto' : 'TTS manual') : undefined);
+  // Server lifecycle shown by the start button; `open` shows the volume and speed controls.
+  let server: 'off' | 'loading' | 'ready' = 'off', open = false;
+  let readyTimer: ReturnType<typeof setTimeout> | undefined, readyEpoch = 0, readyTries = 0;
+  const READY_TRIES = 240;
+  const refresh = () => context?.ui.setStatus(ENTRY, enabled ? `TTS ${auto ? 'auto' : 'manual'}${server === 'loading' ? ' · cargando' : ''}` : undefined);
+  const setServer = (value: typeof server) => { if (value !== server) { server = value; refresh(); } };
+  const cancelReady = () => { readyEpoch++; if (readyTimer) clearTimeout(readyTimer); readyTimer = undefined; };
   const sync = (health: any) => {
     if (typeof health?.volume === 'number') volume = health.volume;
     if (typeof health?.speed === 'number') speed = health.speed;
+    if (health?.ready === true) { cancelReady(); setServer('ready'); }
+    else if (health?.ready === false) { if (server !== 'loading') readyTries = 0; setServer('loading'); waitReady(); }
     refresh();
+  };
+  /** Polls /health until the model is loaded, bounded to READY_TRIES attempts of 500 ms. */
+  const waitReady = () => {
+    if (readyTimer) return;
+    const generation = readyEpoch;
+    readyTimer = setTimeout(async () => {
+      readyTimer = undefined;
+      if (generation !== readyEpoch || server !== 'loading') return;
+      if (++readyTries > READY_TRIES) {
+        setServer('off');
+        context?.ui.notify('TTS: el modelo no terminó de cargar.', 'warning');
+        return;
+      }
+      try {
+        const health = await client.request('/health');
+        if (generation === readyEpoch) sync(health);
+      } catch { if (generation === readyEpoch) setServer('off'); }
+    }, 500);
+    readyTimer.unref?.();
+  };
+  /** Starts the server when needed and reports its readiness. */
+  const boot = async () => {
+    if (server === 'off') { readyTries = 0; setServer('loading'); }
+    try {
+      await client.ensure();
+      sync(await client.request('/health'));
+    } catch (error) {
+      cancelReady(); setServer('off');
+      throw error;
+    }
   };
   const setting = async (ctx: ExtensionContext, kind: string) => {
     sync(await client.action('/health'));
@@ -69,8 +107,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient()) {
     const text = finalText(entry?.message);
     if (!text) { ctx.ui.notify('Respuesta no encontrada.', 'warning'); return; }
     const generation = epoch;
-    await client.ensure();
-    sync(await client.request('/health'));
+    await boot();
     if (generation !== epoch || !enabled) return;
     await client.request('/speak', {id: card!.messageId, text});
     if (generation !== epoch) return;
@@ -79,18 +116,29 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient()) {
     poll();
   };
   pi.registerEntryRenderer<Card>(ENTRY, (entry, _options, theme) => {
-    const controls = () => playback.id === entry.data?.messageId && playback.state !== 'idle'
-      ? [{label: playback.state === 'paused' ? '▶ Continuar' : '⏸ Pausar', action: playback.state === 'paused' ? 'resume' : 'pause'}, {label: '■ Detener', action: 'stop'}]
-      : [{label: '▶ Escuchar', action: 'play'}];
-    const segments = () => [
-      ...controls().map(c => ({text: `[ ${c.label} ]`, action: c.action, gap: '  '})),
-      {text: '[ Vol − ]', action: 'volume-', gap: ' '},
-      {text: `${Math.round(volume * 100)} %`, action: '', gap: ' '},
-      {text: '[ Vol + ]', action: 'volume+', gap: '  '},
-      {text: '[ Vel − ]', action: 'speed-', gap: ' '},
-      {text: speedLabel(speed), action: '', gap: ' '},
-      {text: '[ Vel + ]', action: 'speed+', gap: ''},
-    ];
+    // Only single-column symbols, so click columns match Array.from lengths.
+    const segments = () => {
+      const active = playback.id === entry.data?.messageId && playback.state !== 'idle';
+      if (!active && server === 'off') return [{text: '[ ⏻ Iniciar ]', action: 'start', gap: ''}];
+      if (!active && server === 'loading') return [{text: '[ Cargando… ]', action: '', gap: ''}];
+      const paused = playback.state === 'paused';
+      return [
+        ...(active
+          ? [{text: paused ? '[ ▶ ]' : '[ ‖ ]', action: paused ? 'resume' : 'pause', gap: ' '}, {text: '[ ■ ]', action: 'stop', gap: ' '}]
+          : [{text: '[ ▶ Escuchar ]', action: 'play', gap: ' '}]),
+        {text: open ? '[ → ]' : '[ ⋯ ]', action: 'toggle', gap: open ? '  ' : ''},
+        ...(open ? [
+          {text: 'Vol', action: '', gap: ' '},
+          {text: '[-', action: 'volume-', gap: ' '},
+          {text: `${Math.round(volume * 100)}%`, action: '', gap: ' '},
+          {text: '+]', action: 'volume+', gap: '  '},
+          {text: 'Vel', action: '', gap: ' '},
+          {text: '[-', action: 'speed-', gap: ' '},
+          {text: speedLabel(speed), action: '', gap: ' '},
+          {text: '+]', action: 'speed+', gap: ''},
+        ] : []),
+      ];
+    };
     const label = () => context?.mode === 'tui' && enabled && entry.data && cards(context).some(c => c.messageId === entry.data!.messageId)
       ? segments().map(c => c.text + c.gap).join('') : '';
     return {
@@ -102,7 +150,10 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient()) {
           for (const control of segments()) {
             const end = start + Array.from(control.text).length;
             if (control.action && event.x >= start && event.x < end) {
-              void safe(context, () => control.action === 'play' ? speak(context!, String(entry.data!.number)) : /^(volume|speed)/.test(control.action) ? setting(context!, control.action) : action(control.action));
+              if (control.action === 'toggle') { open = !open; refresh(); return {handled: true, render: true}; }
+              void safe(context, () => control.action === 'play' ? speak(context!, String(entry.data!.number))
+                : control.action === 'start' ? boot()
+                  : /^(volume|speed)/.test(control.action) ? setting(context!, control.action) : action(control.action));
               return {handled: true, render: true};
             }
             start = end + control.gap.length;
@@ -115,6 +166,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient()) {
     if (ctx.mode !== 'tui') return;
     resetPlayback();
     enabled = true; auto = false; volume = 1; speed = 1; epoch++; context = ctx;
+    cancelReady(); server = 'off'; open = false;
     client.beginSession();
   });
   pi.on('agent_start', (_event, ctx) => {
@@ -124,7 +176,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient()) {
   });
   pi.on('session_shutdown', async (_event, ctx) => {
     if (ctx.mode !== 'tui') return;
-    epoch++; resetPlayback(); context = undefined;
+    epoch++; resetPlayback(); cancelReady(); server = 'off'; context = undefined;
     await safe(ctx, () => client.shutdown());
   });
   pi.on('agent_settled', (event, ctx) => {
