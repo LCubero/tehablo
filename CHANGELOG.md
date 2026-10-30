@@ -11,6 +11,7 @@ Este archivo registra los cambios completados en orden cronológico.
 - Se registraron los trabajos propuestos de botón para iniciar el TTS antes de reproducir y de versión lite de mínimo consumo (`RH-W-0024` y `RH-W-0025`), sin cambiar el comportamiento.
 - La barra de Pi muestra `[ ⏻ Iniciar ]` para arrancar el servidor antes de escuchar, `[ Cargando… ]` mientras carga el modelo, controles de reproducción solo con iconos (`‖`, `▶`, `■`) y Vol/Vel como `Vol [- 100% +]  Vel [- 1.00x +]`, que se muestran u ocultan con `[ ⋯ ]` / `[ → ]` (`RH-W-0024`).
 - El botón de inicio de la barra de Pi pasa de `[ ⏻ Iniciar ]` a `[ ⏻ TTS ]`.
+- La extensión de Pi guarda la salida y los errores del servidor en `logs/tehablo-server.log` (se reescribe en cada arranque) y el aviso de tiempo agotado indica esa ruta; antes se descartaban.
 
 ## 2026-10-29
 

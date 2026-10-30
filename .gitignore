@@ -21,3 +21,6 @@ voices/*.wav
 
 # Local copy of the repo-harness-builder skill (not versioned)
 .pi/skills/repo-harness-builder/
+
+# Local server log (pi-extension/tehablo-tts)
+logs/

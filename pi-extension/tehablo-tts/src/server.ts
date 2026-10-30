@@ -1,5 +1,5 @@
 import { spawn as nodeSpawn } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { closeSync, existsSync, mkdirSync, openSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -8,7 +8,11 @@ const OS_NAMES: Record<string, string> = { win32: 'windows', linux: 'linux', dar
 type Options = {
   root?: string; platform?: string; port?: string; exists?: (path: string) => boolean;
   fetch?: typeof fetch; spawn?: typeof nodeSpawn; delay?: (ms: number) => Promise<void>;
+  openLog?: (path: string) => number; closeLog?: (fd: number) => void;
 };
+
+/** Truncates the log on every server start, so it holds only the latest run. */
+const openLogFile = (path: string) => { mkdirSync(join(path, '..'), {recursive: true}); return openSync(path, 'w'); };
 
 export class ServerClient {
   root: string;
@@ -42,6 +46,7 @@ export class ServerClient {
     return this.starting;
   }
   /** Python candidates: .venv-pocket, then .venv-pocket-<os> so a dual boot can keep one environment per OS. */
+  get logPath() { return join(this.root, 'logs', 'tehablo-server.log'); }
   pythonCandidates(): string[] {
     const platform = this.options.platform ?? process.platform;
     const binary = platform === 'win32' ? 'Scripts/python.exe' : 'bin/python';
@@ -54,9 +59,16 @@ export class ServerClient {
     if (!this.child) {
       const candidates = this.pythonCandidates();
       const python = candidates.find(this.options.exists ?? existsSync) ?? candidates[0];
-      const child = (this.options.spawn ?? nodeSpawn)(python, [join(this.root, 'src/tehablo_server.py'), '--port', new URL(this.base).port], {
-        cwd: this.root, stdio: 'ignore', windowsHide: true, detached: true,
-      });
+      let log: number | undefined;
+      try { log = (this.options.openLog ?? openLogFile)(this.logPath); } catch { /* Logging is best effort. */ }
+      let child: ReturnType<typeof nodeSpawn>;
+      try {
+        child = (this.options.spawn ?? nodeSpawn)(python, [join(this.root, 'src/tehablo_server.py'), '--port', new URL(this.base).port], {
+          cwd: this.root, stdio: log === undefined ? 'ignore' : ['ignore', log, log], windowsHide: true, detached: true,
+        });
+      } finally {
+        if (log !== undefined) (this.options.closeLog ?? closeSync)(log);
+      }
       this.child = child;
       let spawnError: Error | undefined;
       child.once('error', error => { spawnError = error; });
@@ -75,7 +87,7 @@ export class ServerClient {
     } else {
       await this.request('/health'); return;
     }
-    if (!this.closed) throw new Error('El servidor TTS no respondió a tiempo.');
+    if (!this.closed) throw new Error(`El servidor TTS no respondió a tiempo. Revisa ${this.logPath}.`);
   }
   async action(path: string, body?: unknown) {
     await this.ensure();

@@ -139,7 +139,7 @@ La extensión [`pi-extension/tehablo-tts/`](pi-extension/tehablo-tts/) lee las r
 | `/tts model [spanish\|spanish_24l]` | Cambia el modelo |
 | `/tts speed [0.75-1.5]` | Cambia la velocidad |
 
-La extensión arranca sola el servidor local [`src/tehablo_server.py`](src/tehablo_server.py) (`127.0.0.1:8765`, se cambia con `TEHABLO_PORT`) y lo apaga al cerrar Pi. Necesita el entorno `.venv-pocket` (o `.venv-pocket-<sistema>`) instalado. Los ajustes duran solo la sesión.
+La extensión arranca sola el servidor local [`src/tehablo_server.py`](src/tehablo_server.py) (`127.0.0.1:8765`, se cambia con `TEHABLO_PORT`) y lo apaga al cerrar Pi. Necesita el entorno `.venv-pocket` (o `.venv-pocket-<sistema>`) instalado. Los ajustes duran solo la sesión. Los mensajes y errores del servidor se guardan en `logs/tehablo-server.log`, que se reescribe en cada arranque; si el servidor no responde a tiempo, el aviso indica esa ruta.
 
 ## Uso: TUI
 

@@ -65,3 +65,27 @@ test('missing environment reports every path tried instead of a bare ENOENT',asy
   });
   assert.equal(spawned.length,1);
 });
+
+test('server output goes to logs/tehablo-server.log and the timeout error names it',async()=>{
+  const spawned:any[]=[]; const opened:string[]=[]; const closed:number[]=[];
+  const client=new ServerClient({root:'E:/tehablo',platform:'win32',exists:()=>true,
+    fetch:(async()=>{ throw Error('offline'); }) as any,
+    openLog:(path:string)=>{opened.push(path);return 7;}, closeLog:(fd:number)=>{closed.push(fd);},
+    spawn:spawnRecorder(spawned,()=>{}), delay:async()=>{}});
+  await assert.rejects(client.ensure(),(error:Error)=>{
+    assert.match(slash(error.message),/^El servidor TTS no respondió a tiempo\. Revisa E:\/tehablo\/logs\/tehablo-server\.log\.$/);
+    return true;
+  });
+  assert.deepEqual(opened.map(slash),['E:/tehablo/logs/tehablo-server.log']);
+  assert.deepEqual(spawned[0][2].stdio,['ignore',7,7]);
+  assert.deepEqual(closed,[7]);
+});
+
+test('an unwritable log falls back to ignored output',async()=>{
+  let healthy=false; const spawned:any[]=[];
+  const client=new ServerClient({root:'/tehablo',platform:'linux',exists:()=>true,
+    fetch:(async()=>{ if(!healthy) throw Error('offline'); return Response.json({ok:true}); }) as any,
+    openLog:()=>{throw Error('EACCES');}, spawn:spawnRecorder(spawned,()=>{healthy=true;}), delay:async()=>{}});
+  await client.ensure();
+  assert.equal(spawned[0][2].stdio,'ignore');
+});
