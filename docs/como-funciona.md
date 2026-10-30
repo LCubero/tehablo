@@ -149,6 +149,25 @@ solo la primera entrega del generador. Tampoco mide pausa, parada, reposo ni el
 dispositivo de audio; no entrega optimizaciones ni ajustes nuevos de recursos
 ([alcance pendiente de RH-W-0003](repo-harness/roadmap.md#rh-w-0003-revisar-consumo-carga-a-demanda-y-espera-de-arranque)).
 
+#### Arranque, reposo y cuantización en Fedora (2026-10-30)
+
+Mismo equipo, `spanish`, `pocket-tts` 4.0.1 y Torch 2.15.0+cpu ([datos](measurements/fedora-2026-10-30.json)). Caché de disco del SO caliente: es un arranque en caliente, no tras reiniciar el equipo.
+
+| Medida | Resultado |
+|---|---|
+| Importar librerías (torch, pocket_tts) | ~2,3–2,4 s, 379 MiB |
+| Cargar el modelo | ~0,55–0,82 s |
+| Servidor responde a `/health` desde el arranque | ~2,5 s |
+| Servidor listo para hablar | ~3,0 s |
+| RAM del servidor listo, en reposo | ~815 MiB |
+| RAM después de hablar (sonando, en pausa, detenido y 60 s quieto) | ~857 MiB; no baja |
+| CPU en reposo | ~0,6 % de un núcleo |
+| `quantize=True` | RAM tras cargar 805 MiB (sin: 811), pico igual (1020), 6,9–7,3× tiempo real (sin: 4,1–4,3×) |
+
+- Con caché caliente el servidor queda listo en ~3 s; un arranque en frío tardó ~8,5 s (también en Fedora).
+- Igual que en Windows, el servidor conserva la RAM del modelo hasta cerrarse.
+- En Fedora la cuantización tampoco ahorra memoria, pero genera ~1,7× más rápido, al revés que en Windows. Se repitió en orden inverso con el mismo resultado. No se comprobó la calidad de audio cuantizado escuchándolo.
+
 ### Método reproducible en Fedora
 
 El [script de medición](../scripts/measure_tts.py) y el
