@@ -67,7 +67,7 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
   - Comparar mediante escucha su inteligibilidad, naturalidad y pronunciación en español con un mismo texto de prueba.
   - Revisar todas las opciones expresivas de cada modelo y voz, como hace ElevenLabs (tono, énfasis, ánimo o emoción), y cuáles admite Pocket TTS u otros modelos (solicitud del 2026-10-29: «hay que revisar todas las opciones que tengan los modelos o voces, como lo hace elevenlabs que tiene para darle diferentes tonos, enfasis, animos, etc»).
   - Registrar cuáles funcionan y cuáles no, su origen, licencia y condiciones de uso; distinguir descarga gratuita de permiso de uso y redistribución, respetando el consentimiento de voz.
-- **Evidencia:** solicitud de la persona responsable; existe un catálogo previo en `docs/voces-gratuitas.md`, pero esta sesión no probó ni descargó voces nuevas.
+- **Evidencia:** solicitud de la persona responsable; existe un catálogo previo en `docs/voces-gratuitas.md`. Prueba informal del 2026-10-30, sin decisión: la persona responsable escuchó `lola` y `rafael` con `spanish`, `lola` con `spanish_24l` y voces no españolas del catálogo (`giovanni`, `estelle`, `alba`, `jean`, entre otras) con acento extranjero; cambiar de voz no cambia el consumo (mismo modelo) y cada voz del catálogo descarga unos 6 MB la primera vez. Las 18 referencias de `voices/` requieren activar la clonación (token de Hugging Face y pesos con clonación), aún no configurada.
 - **Decisión:** registrar para después; no se autoriza con esta anotación una descarga, incorporación ni publicación de grabaciones.
 - **Condición del siguiente avance:** autorización para una prueba acotada de voces, con fuentes y condiciones de uso verificadas.
 
