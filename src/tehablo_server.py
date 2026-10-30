@@ -58,6 +58,7 @@ class SpeechService:
         self.validate({'model': model, 'voice': voice, 'speed': speed})
         self.lexicon = Lexicon(ROOT / 'pronunciaciones.json')
         self.ready = False
+        self.error = None
         self.state = 'loading'
         self.id = None
         self.pending = None
@@ -115,11 +116,12 @@ class SpeechService:
     def health(self):
         with self.condition:
             return {'ok': True, 'ready': self.ready, 'model': self.model_name,
-                    'voice': self.voice, 'speed': float(self.speed), 'volume': self.volume}
+                    'voice': self.voice, 'speed': float(self.speed), 'volume': self.volume,
+                    'error': self.error}
 
     def status(self):
         with self.condition:
-            return {'state': self.state, 'id': self.id}
+            return {'state': self.state, 'id': self.id, 'error': self.error}
 
     def clear(self):
         self.cancel.set()
@@ -135,6 +137,8 @@ class SpeechService:
         if not isinstance(text, str) or not text.strip() or not isinstance(identifier, str):
             raise ValueError('id and nonempty text must be strings')
         with self.condition:
+            if self.error is not None:
+                raise RuntimeError(self.error)
             self.clear()
             self.cancel = threading.Event()
             self.id = identifier
@@ -147,7 +151,7 @@ class SpeechService:
         with self.condition:
             if action == 'stop':
                 self.clear()
-                self.state = 'idle'
+                self.state = 'error' if self.error is not None else 'idle'
             elif self.id is not None:
                 self.paused = action == 'pause'
                 if self.paused:
@@ -165,6 +169,7 @@ class SpeechService:
                 self.model_name = body['model']
                 self.revision += 1
                 self.ready = False
+                self.error = None
                 self.state = 'loading'
             self.voice = body.get('voice', self.voice)
             self.speed = float(body.get('speed', self.speed))
@@ -221,6 +226,11 @@ class SpeechService:
                         print(f'Model load failed: {exc}', file=sys.stderr)
                         with self.condition:
                             loaded_revision = revision
+                            if revision == self.revision:
+                                self.clear()
+                                self.ready = False
+                                self.error = f'model load failed: {exc}'
+                                self.state = 'error'
                             self.condition.wait_for(lambda: self.closed or self.revision != revision)
                         continue
                     with self.condition:
@@ -304,7 +314,16 @@ class Handler(BaseHTTPRequestHandler):
         self.close_connection = True
         self.reply(code, {'error': message or self.responses.get(code, ('HTTP error',))[0]})
 
+    def reject_origin(self):
+        if 'Origin' in self.headers:
+            self.close_connection = True  # The body, if any, stays unread.
+            self.reply(403, {'error': 'cross-origin requests are not allowed'})
+            return True
+        return False
+
     def do_GET(self):
+        if self.reject_origin():
+            return
         service = self.server.service
         routes = {'/health': service.health, '/status': service.status,
                   '/voices': lambda: {'voices': service.voices()}}
@@ -314,9 +333,15 @@ class Handler(BaseHTTPRequestHandler):
         self.reply(200, routes[self.path]())
 
     def do_POST(self):
+        if self.reject_origin():
+            return
         service = self.server.service
         if self.path not in {'/speak', '/pause', '/resume', '/stop', '/config', '/shutdown'}:
             self.reply(404, {'error': 'unknown path'})
+            return
+        if self.headers.get('Content-Type', '').split(';', 1)[0].strip().lower() != 'application/json':
+            self.close_connection = True
+            self.reply(415, {'error': 'Content-Type must be application/json'})
             return
         try:
             size = int(self.headers.get('Content-Length', '0'))
@@ -335,6 +360,8 @@ class Handler(BaseHTTPRequestHandler):
                 threading.Thread(target=self.server.shutdown, daemon=True).start()
             else:
                 self.reply(200, service.control(self.path[1:]))
+        except RuntimeError as exc:
+            self.reply(503, {'error': str(exc)})
         except (ValueError, UnicodeDecodeError) as exc:
             self.reply(400, {'error': str(exc)})
 

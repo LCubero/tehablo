@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {createExtension} from '../src/extension.ts';
 
 function setup() {
-  const configs:any[]=[], notices:string[]=[], statuses:(string|undefined)[]=[], settings={volume:1,speed:1};
+  const configs:any[]=[], notices:string[]=[], statuses:(string|undefined)[]=[], settings={volume:1,speed:1,error:null as string|null};
   const hooks:any={}, calls:string[]=[], entries:any[]=[{type:'message',id:'a',message:{role:'assistant',content:'Hola'}} ,{type:'custom',customType:'tehablo-tts',data:{messageId:'a',number:1}}];
   let renderer:any, command:any, state='playing', id:string|null='a', renders=0, fail=false, ready=true, ensures=0;
   const client:any={beginSession(){},ensure:async()=>{ensures++;},stop:async()=>{},shutdown:async()=>{},request:async(path:string)=>{calls.push(path);if(fail)throw Error('offline');if(path==='/health')return {...settings,ready};return {state,id};},action:async(path:string,body:any)=>{calls.push(path);if(path==='/config'){configs.push(body);Object.assign(settings,body);return {...settings,ready};}if(path==='/health')return {...settings,ready};if(path==='/pause')state='paused';if(path==='/resume')state='playing';return {state};}};
@@ -11,7 +11,7 @@ function setup() {
   createExtension({on:(n:string,h:any)=>hooks[n]=h,registerCommand:(_:any,c:any)=>command=c.handler,registerEntryRenderer:(_:any,r:any)=>renderer=r} as any,client);
   hooks.session_start({},ctx);
   const card=renderer(entries[1],{}, {fg:(_:any,t:string)=>t});
-  return {calls,card,configs,notices,statuses,line:()=>card.render(200)[0], command:(s:string)=>command(s,ctx),set:(s:string,i:string|null='a')=>{state=s;id=i;},setReady:(value:boolean)=>{ready=value;},ensures:()=>ensures,close:()=>hooks.session_shutdown({},ctx),agentStart:()=>hooks.agent_start({},ctx),fail:()=>{fail=true;},renders:()=>renders};
+  return {calls,card,configs,notices,statuses,line:()=>card.render(200)[0], command:(s:string)=>command(s,ctx),set:(s:string,i:string|null='a')=>{state=s;id=i;},setReady:(value:boolean)=>{ready=value;},setError:(value:string)=>{settings.error=value;},ensures:()=>ensures,close:()=>hooks.session_shutdown({},ctx),agentStart:()=>hooks.agent_start({},ctx),fail:()=>{fail=true;},renders:()=>renders};
 }
 const tick=()=>new Promise(r=>setTimeout(r,550));
 const click=async(card:any,x:number)=>{card.handleMouse({type:'click',button:'left',x,y:0});await new Promise(r=>setImmediate(r));};
@@ -30,6 +30,20 @@ test('start button shows Iniciar, then Cargando, then Escuchar when the model is
     s.setReady(true);await tick();
     assert.equal(s.line(),'[ ▶ Escuchar ] [ ⋯ ]');assert.equal(s.statuses.at(-1),'TTS manual');
     assert.deepEqual(s.notices,[]);
+  } finally {await s.close();}
+});
+
+test('model load failure cancels readiness polling and warns',async()=>{
+  const s=setup();
+  try {
+    s.setReady(false);await clickAt(s,'⏻ TTS');
+    assert.equal(s.line(),'[ Cargando… ]');
+    s.setError('model load failed: broken model');await tick();
+    assert.equal(s.line(),'[ ⏻ TTS ]');
+    assert.equal(s.statuses.at(-1),'TTS manual');
+    assert.deepEqual(s.notices,['TTS: el modelo no cargó: model load failed: broken model']);
+    const count=s.calls.length;await tick();assert.equal(s.calls.length,count);
+    assert.ok(!s.calls.includes('/speak'));
   } finally {await s.close();}
 });
 

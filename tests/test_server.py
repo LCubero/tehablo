@@ -1,6 +1,7 @@
 """HTTP contract tests without a model download or audio device."""
 import http.client
 import json
+import socket
 from pathlib import Path
 import sys
 import threading
@@ -65,12 +66,12 @@ class ServerTests(unittest.TestCase):
         self.server.server_close()
         self.thread.join()
 
-    def request(self, path, body=None, raw=None):
+    def request(self, path, body=None, raw=None, headers=None):
         conn = http.client.HTTPConnection(*self.server.server_address, timeout=3)
         method = 'POST' if body is not None or raw is not None else 'GET'
         conn.request(method, path, raw if raw is not None else
                      (json.dumps(body) if body is not None else None),
-                     {'Content-Type': 'application/json'})
+                     {'Content-Type': 'application/json'} if headers is None else headers)
         response = conn.getresponse()
         result = response.status, json.loads(response.read())
         conn.close()
@@ -87,6 +88,78 @@ class ServerTests(unittest.TestCase):
     def ready(self):
         self.loaded.set()
         self.wait(lambda: self.request('/health')[1]['ready'])
+
+    def test_origin_rejections(self):
+        self.ready()
+        before = self.request('/health')
+        status = self.request('/status')
+        for path, body in [('/health', None), ('/missing', None),
+                           ('/speak', {'id': 'bad', 'text': 'hola'}),
+                           ('/shutdown', {}), ('/config', {'speed': 1.25})]:
+            with self.subTest(path=path):
+                self.assertEqual(self.request(path, body, headers={'Origin': '', 'Content-Type': 'text/plain'}),
+                                 (403, {'error': 'cross-origin requests are not allowed'}))
+                self.assertEqual(self.request('/health'), before)
+                self.assertEqual(self.request('/status'), status)
+                self.assertEqual(self.synth.calls, [])
+
+    def test_content_type_rejections_and_json_variants(self):
+        self.ready()
+        before = self.request('/health')
+        status = self.request('/status')
+        for headers in ({}, {'Content-Type': 'text/plain'}):
+            for path, body in [('/speak', {'id': 'bad', 'text': 'hola'}),
+                               ('/shutdown', {}), ('/config', {'speed': 1.25})]:
+                with self.subTest(headers=headers, path=path):
+                    self.assertEqual(self.request(path, body, headers=headers),
+                                     (415, {'error': 'Content-Type must be application/json'}))
+                    self.assertEqual(self.request('/health'), before)
+                    self.assertEqual(self.request('/status'), status)
+                    self.assertEqual(self.synth.calls, [])
+        self.assertEqual(self.request('/missing', {}, headers={}), (404, {'error': 'unknown path'}))
+        for media in ('application/json; charset=utf-8', 'Application/JSON', ' application/json '):
+            self.assertEqual(self.request('/config', {'speed': 1.25}, headers={'Content-Type': media})[0], 200)
+        self.assertEqual(self.request('/speak', {'id': 'normal', 'text': 'hola'}), (202, {'id': 'normal'}))
+        self.wait(lambda: bool(self.synth.calls))
+
+    def test_model_load_failure_and_config_retry(self):
+        retry = threading.Event()
+        self.addCleanup(retry.set)
+
+        def load(model):
+            if model == 'spanish':
+                raise RuntimeError('broken model')
+            retry.wait(3)
+            return self.synth
+
+        self.server.service.factory = load
+        self.loaded.set()
+        # The initial factory may already be running; force a fresh revision.
+        self.request('/config', {'model': 'spanish_24l'})
+        retry.set()
+        self.wait(lambda: self.request('/health')[1]['ready'])
+        retry.clear()
+        self.request('/config', {'model': 'spanish'})
+        self.wait(lambda: self.request('/status')[1]['state'] != 'loading')
+        message = 'model load failed: broken model'
+        health = self.request('/health')
+        self.assertEqual(health[0], 200)
+        self.assertFalse(health[1]['ready'])
+        self.assertEqual(health[1]['error'], message)
+        self.assertEqual(self.request('/status'), (200, {'state': 'error', 'id': None, 'error': message}))
+        self.assertEqual(self.request('/speak', {'id': 'bad', 'text': 'hola'}), (503, {'error': message}))
+        self.assertEqual(self.request('/health'), health)
+        self.assertEqual(self.synth.calls, [])
+        result = self.request('/config', {'model': 'spanish_24l'})
+        self.assertEqual(result[0], 200)
+        self.assertIsNone(result[1]['error'])
+        self.assertFalse(result[1]['ready'])
+        self.assertEqual(self.request('/status')[1], {'state': 'loading', 'id': None, 'error': None})
+        retry.set()
+        self.wait(lambda: self.request('/health')[1]['ready'])
+        self.assertIsNone(self.request('/health')[1]['error'])
+        self.assertEqual(self.request('/speak', {'id': 'retry', 'text': 'hola'}), (202, {'id': 'retry'}))
+        self.wait(lambda: bool(self.synth.calls))
 
     def test_loading_queue_pipeline_and_latest(self):
         self.assertFalse(self.request('/health')[1]['ready'])
@@ -259,6 +332,44 @@ class ServerTests(unittest.TestCase):
         with self.assertRaises(OSError):
             create_server(port=self.server.server_address[1], synthesizer_factory=lambda model: self.synth,
                           audio_factory=Sink, catalog=['lola'])
+
+    def test_stop_preserves_failed_model_status(self):
+        self.ready()
+
+        def fail(model):
+            raise RuntimeError('broken model')
+
+        self.server.service.factory = fail
+        self.request('/config', {'model': 'spanish_24l'})
+        self.wait(lambda: bool(self.request('/health')[1]['error']))
+        self.assertEqual(self.request('/stop', {}), (200, {'state': 'error'}))
+        self.assertEqual(self.request('/status'),
+                         (200, {'state': 'error', 'id': None, 'error': 'model load failed: broken model'}))
+
+    def test_rejected_body_closes_connection(self):
+        self.ready()
+        before = self.request('/health')
+        body = (b'POST /shutdown HTTP/1.1\r\nHost: localhost\r\n'
+                b'Content-Type: application/json\r\nContent-Length: 2\r\n\r\n{}')
+        with socket.create_connection(self.server.server_address, timeout=3) as conn:
+            conn.sendall(b'POST /speak HTTP/1.1\r\nHost: localhost\r\nConnection: keep-alive\r\n'
+                         b'Content-Type: text/plain\r\nContent-Length: ' + str(len(body)).encode()
+                         + b'\r\n\r\n' + body)
+            chunks = []
+            while True:
+                try:
+                    chunk = conn.recv(4096)
+                except ConnectionResetError:
+                    break
+                if not chunk:
+                    break
+                chunks.append(chunk)
+        response = b''.join(chunks)
+        self.assertTrue(response.startswith(b'HTTP/1.0 415 '))
+        self.assertEqual(response.count(b'HTTP/1.0 '), 1)
+        self.assertEqual(json.loads(response.split(b'\r\n\r\n', 1)[1]),
+                         {'error': 'Content-Type must be application/json'})
+        self.assertEqual(self.request('/health'), before)
 
     def test_shutdown(self):
         self.assertEqual(self.request('/shutdown', {})[1], {'ok': True})

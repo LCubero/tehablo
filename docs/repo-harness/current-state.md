@@ -25,6 +25,7 @@ Este archivo proyecta solo hechos verificados del proyecto: registros activos, b
 
 <!-- doc-role:recent-work -->
 
+- `RH-W-0001` (`completed`): el servidor rechaza peticiones de páginas web (`Origin`) y las que no son JSON, e informa si el modelo no carga; Pi lo avisa en lugar de quedarse en «cargando».
 - Cuantización predeterminada en Linux (~1,7–1,9× más rápido, sin diferencia audible a ciegas); Windows sin cambios; `TEHABLO_QUANTIZE` la cambia (`RH-W-0025`).
 - `RH-W-0003` (`completed`): consumo medido en Windows y Fedora (arranque, reposo, cuantización); el modelo sigue residente mientras viva el servidor, que se cierra con la sesión de Pi; liberar RAM y cuantizar pasan a `RH-W-0025`.
 - Base confiable (fase 0): `scripts/measure_tts.py` funciona en Windows, la salida del servidor queda en `logs/tehablo-server.log` y se corrigieron promesas no comprobadas de la documentación; todas las pruebas pasan en Windows.
@@ -46,7 +47,6 @@ Este archivo proyecta solo hechos verificados del proyecto: registros activos, b
 <!-- doc-role:pending-work -->
 
 - Registrar todo pendiente no trivial en [roadmap.md](roadmap.md), sin mantener un segundo backlog aquí.
-- `RH-W-0001` (`deferred`, P2): endurecer el servidor local de voz.
 - `RH-W-0002` (`deferred`, P3): pronunciaciones en inglés y limpieza de símbolos aplicadas (hashes omitidos, separadores, flechas, paréntesis y barras); quedan las extensiones de archivo y la confirmación por escucha ([guía de pronunciación](../pronunciacion.md)).
 - `RH-W-0004` (`deferred`, P3): revisar interfaz, TUI, menús, comandos y ajustes, modo automático persistente y acceso sin mouse.
 - `RH-W-0005` (`deferred`, P3): probar otras voces existentes y fuentes gratuitas de Hugging Face y otros sitios, verificando compatibilidad y condiciones de uso.
@@ -73,4 +73,4 @@ Este archivo proyecta solo hechos verificados del proyecto: registros activos, b
 
 <!-- doc-role:next-step -->
 
-Plan aprobado el 2026-10-30: (0) base confiable, completada; (1) medir con `RH-W-0003`, completado; (2) endurecer el servidor y los errores (`RH-W-0001`, `RH-W-0013`) y la instalación (`RH-W-0008`); (3) al final, la versión lite (`RH-W-0025`): mínimo consumo, el modelo que funcione bien gastando menos y las funciones mínimas (cambio de orden pedido por la persona responsable el 2026-10-30). La investigación y los deseos grandes quedan `deferred` hasta entonces.
+Plan aprobado el 2026-10-30: (0) base confiable, completada; (1) medir con `RH-W-0003`, completado; (2) endurecer el servidor (`RH-W-0001`, completado) y los errores (`RH-W-0013`) y la instalación (`RH-W-0008`); (3) al final, la versión lite (`RH-W-0025`): mínimo consumo, el modelo que funcione bien gastando menos y las funciones mínimas (cambio de orden pedido por la persona responsable el 2026-10-30). La investigación y los deseos grandes quedan `deferred` hasta entonces.

@@ -17,20 +17,6 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 ## Registros activos
 <!-- doc-role:active-records -->
 
-### RH-W-0001: Endurecer el servidor local de voz
-
-- **Origen:** revisión de código de Gentle AI de la integración con Pi (lineage `review-37a6239aeea8d19d`), aprobada con avisos no bloqueantes.
-- **Prioridad:** P2. Solo escucha en `127.0.0.1`, pero cualquier proceso local o página web abierta puede llamarlo.
-- **Dependencias:** ninguna.
-- **Estado:** `deferred`.
-- **Trabajo restante:**
-  - Rechazar peticiones `POST` sin `Content-Type: application/json` o con cabecera `Origin` (`src/tehablo_server.py`).
-  - Si el modelo no carga, informar el error en `/health` y `/status` en lugar de quedar en `loading`.
-  - Revisar el límite de 2 s por petición de la extensión en equipos lentos, coordinado con `RH-W-0003`. La espera de arranque ya no tiene límite fijo (2026-10-30): dura mientras el proceso del servidor siga vivo.
-- **Evidencia:** avisos R1-001, R3-001, R3-002, R4-001 y R4-002 de esa revisión.
-- **Decisión:** la persona responsable lo aplazó explícitamente tras revisar la propuesta; no se autorizó su implementación.
-- **Condición del siguiente avance:** autorización explícita de la persona responsable para retomarlo.
-
 ### RH-W-0002: Ajustar la lectura de hashes de commit y CPU
 
 - **Origen:** prueba de audio realizada por la persona responsable con las respuestas de Pi.
@@ -335,6 +321,19 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 
 ## Registros resueltos
 <!-- doc-role:resolved-records -->
+
+### RH-W-0001: Endurecer el servidor local de voz
+
+- **Origen:** revisión de código de Gentle AI de la integración con Pi (lineage `review-37a6239aeea8d19d`), aprobada con avisos no bloqueantes.
+- **Prioridad:** P2. Solo escucha en `127.0.0.1`, pero cualquier proceso local o página web abierta puede llamarlo.
+- **Dependencias:** ninguna.
+- **Estado:** `completed`.
+- **Trabajo completado (2026-10-30):** `src/tehablo_server.py` rechaza cualquier petición con cabecera `Origin` (403) y los `POST` sin `Content-Type: application/json` (415), sin efectos y cerrando la conexión porque el cuerpo queda sin leer. Si el modelo no carga, `/health` informa `error` con `ready: false`, `/status` queda en `error` (también tras `/stop`), `/speak` responde 503 y cambiar de modelo en `/config` limpia el error y reintenta; la extensión de Pi apaga el botón y avisa «TTS: el modelo no cargó: …». Pruebas en `tests/test_server.py` (16) y `pi-extension/tehablo-tts/test/controls.test.ts`; verificación independiente con un servidor real y el cliente `fetch` de Pi.
+- **Trabajo restante:** none.
+- **Exclusiones:** se descarta cambiar el límite de 2 s por petición: el servidor responde de inmediato (también mientras carga el modelo, porque atiende cada petición en su propio hilo) y la espera de arranque ya no depende de él. No se añadió comprobación de `Host` contra DNS rebinding: solo expondría lecturas sin efectos (`/health`, `/status`, `/voices`), porque las peticiones con efectos de una página web llevan `Origin`. Un `POST` a una ruta desconocida sigue respondiendo 404 antes de comprobar el tipo, sin efectos.
+- **Evidencia:** avisos R1-001, R3-001, R3-002, R4-001 y R4-002 de esa revisión.
+- **Decisión:** aplazado tras revisar la propuesta; retomado y autorizado por la persona responsable el 2026-10-30 («ok dale»), adelantado en el plan por ser un riesgo de seguridad.
+- **Condición del siguiente avance:** ninguna.
 
 ### RH-W-0003: Revisar consumo, carga a demanda y espera de arranque
 

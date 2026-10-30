@@ -25,7 +25,11 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient()) {
   const sync = (health: any) => {
     if (typeof health?.volume === 'number') volume = health.volume;
     if (typeof health?.speed === 'number') speed = health.speed;
-    if (health?.ready === true) { cancelReady(); setServer('ready'); }
+    if (typeof health?.error === 'string' && health.error.length > 0) {
+      cancelReady(); setServer('off');
+      context?.ui.notify(`TTS: el modelo no cargó: ${health.error}`, 'warning');
+    }
+    else if (health?.ready === true) { cancelReady(); setServer('ready'); }
     else if (health?.ready === false) { if (server !== 'loading') readyTries = 0; setServer('loading'); waitReady(); }
     refresh();
   };
