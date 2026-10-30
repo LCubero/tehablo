@@ -329,17 +329,20 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 
 ### RH-W-0024: Botón para iniciar el TTS antes de reproducir
 
-- **Origen:** solicitud de la persona responsable del 2026-10-30: «quiero un botón de iniciar el tts antes de reproducir, para no confundir, como tiene delay, hay que ver eso». Ampliado el mismo día: «quiero cambiar los controles de vol y vel a esto: [ Vol + 100% - ] [ Vel - 1.00x + ]»; corregido por la persona responsable: «mi error, es asi [ Vol - 100% + ] [ Vel - 1.00x + ]».
+- **Origen:** solicitud de la persona responsable del 2026-10-30: «quiero un botón de iniciar el tts antes de reproducir, para no confundir, como tiene delay, hay que ver eso». Ampliado el mismo día: «quiero cambiar los controles de vol y vel a esto: [ Vol + 100% - ] [ Vel - 1.00x + ]»; corregido por la persona responsable: «mi error, es asi [ Vol - 100% + ] [ Vel - 1.00x + ]». Tras la revisión del diseño: «me gusta pero quitemos los textos de pausar y detener, quiza solo los iconos de play/pause y stop y así Vol [- 100% +]  Vel [- 1.00x +] ?».
 - **Prioridad:** P3; claridad de uso, sin pérdida de función.
 - **Dependencias:** coordinar con `RH-W-0003` (esperas de arranque, carga a demanda o residente) y `RH-W-0004` (botones de Pi).
 - **Estado:** `proposed`.
 - **Trabajo restante:**
-  - Revisar el retraso actual y decidir cómo se ve: un botón para iniciar el servidor y cargar el modelo antes de Escuchar, y un estado visible de «cargando» y «listo».
-  - Decidir si el botón se muestra en Pi, en la TUI o en ambas, y qué pasa si se pulsa Escuchar antes de terminar la carga.
-  - Cambiar la barra de controles clicables de Pi de `[ Vol − ] 100 % [ Vol + ]  [ Vel − ] 1.00x [ Vel + ]` a `[ Vol - 100% + ] [ Vel - 1.00x + ]`: cada control en un solo bloque, con el valor entre sus botones.
+  - Implementar en la barra de controles clicables de Pi (no en la TUI) un solo botón que cambia de estado: `[ ⏻ Iniciar ]` con el servidor apagado, `[ ⏳ Cargando… ]` (no se puede pulsar) mientras arranca y carga el modelo, y `[ ▶ Escuchar ]` cuando está listo.
+  - Mientras suena, solo iconos: `[ ⏸ ] [ ■ ]`; en pausa, `[ ▶ ] [ ■ ]`.
+  - Cambiar los controles de `[ Vol − ] 100 % [ Vol + ]  [ Vel − ] 1.00x [ Vel + ]` a `Vol [- 100% +]  Vel [- 1.00x +]`; `[-` baja y `+]` sube.
+  - Antes de iniciar, Vol y Vel guardan el valor sin arrancar el servidor. En modo automático el servidor arranca solo, como ahora.
+  - Comprobar en la terminal que los iconos ocupan una sola columna para que los clics caigan en su sitio.
 - **Evidencia:** en Pi, el servidor arranca solo al pulsar Escuchar (`ensure()` en `pi-extension/tehablo-tts/src/server.ts`, llamado desde `speak` en `extension.ts`), con hasta 30 intentos de `/health` cada 250 ms; mientras el modelo carga, `src/tehablo_server.py` informa el estado `loading`. La barra de controles clicables se arma en `pi-extension/tehablo-tts/src/extension.ts` (lista de controles con `action` `volume-`, `volume+`, `speed-` y `speed+`).
-- **Decisión:** registrar para después; no se eligió diseño.
-- **Condición del siguiente avance:** autorización para revisar el retraso y proponer el diseño del botón.
+  Revisión del 2026-10-30: antes de abrir el puerto, el servidor importa `pocket_tts` y torch (`create_server` → `tehablo_tts`), así que `/health` no contesta hasta terminar; si no contesta en los 30 intentos, sale «El servidor TTS no respondió a tiempo». Durante la espera la barra muestra Pausar y Detener sin distinguir «cargando» de «generando», y pulsar Vol o Vel también arranca el servidor. No se ha medido cuánto dura cada parte en Windows.
+- **Decisión:** diseño elegido el 2026-10-30 por la persona responsable (ver Trabajo restante).
+- **Condición del siguiente avance:** autorización para implementarlo.
 
 ### RH-W-0025: Versión lite de mínimo consumo
 

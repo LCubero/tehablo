@@ -64,7 +64,7 @@ Este archivo proyecta solo hechos verificados del proyecto: registros activos, b
 - `RH-W-0021` (`proposed`, P3): leer frases en inglés con un modelo inglés.
 - `RH-W-0022` (`proposed`, P3): opciones de lectura (bloques de código, pausas, aviso al terminar, retroceder o repetir, historial).
 - `RH-W-0023` (`proposed`, P2): revisión de seguridad, buenas prácticas (linter, CI, dependencias fijadas), control (límites) y rendimiento (medición de regresiones).
-- `RH-W-0024` (`proposed`, P3): botón para iniciar el TTS antes de reproducir y mostrar cuándo está cargando o listo; además, controles de volumen y velocidad como `[ Vol - 100% + ] [ Vel - 1.00x + ]`.
+- `RH-W-0024` (`proposed`, P3): botón único Iniciar, Cargando y Escuchar en Pi, reproducción con solo iconos y controles `Vol [- 100% +]  Vel [- 1.00x +]`; diseño elegido, falta autorizar la implementación.
 - `RH-W-0025` (`proposed`, P2): versión lite de mínimo consumo.
 
 ## Siguiente paso
