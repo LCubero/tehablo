@@ -12,6 +12,8 @@ Este archivo registra los cambios completados en orden cronológico.
 - La barra de Pi muestra `[ ⏻ Iniciar ]` para arrancar el servidor antes de escuchar, `[ Cargando… ]` mientras carga el modelo, controles de reproducción solo con iconos (`‖`, `▶`, `■`) y Vol/Vel como `Vol [- 100% +]  Vel [- 1.00x +]`, que se muestran u ocultan con `[ ⋯ ]` / `[ → ]` (`RH-W-0024`).
 - El botón de inicio de la barra de Pi pasa de `[ ⏻ Iniciar ]` a `[ ⏻ TTS ]`.
 - La extensión de Pi guarda la salida y los errores del servidor en `logs/tehablo-server.log` (se reescribe en cada arranque) y el aviso de tiempo agotado indica esa ruta; antes se descartaban.
+- `scripts/measure_tts.py` funciona en Windows (memoria con la API de Windows, sin dependencias nuevas); las 9 pruebas que fallaban pasan.
+- Documentación corregida: el arranque en frío no suena en menos de 1 s, la medición de «primer audio» era el primer fragmento generado sin reproducir, la velocidad también funciona en Pi y el servidor local ya es una API local (no es una idea pendiente).
 
 ## 2026-10-29
 

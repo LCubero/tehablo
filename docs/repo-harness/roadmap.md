@@ -54,7 +54,7 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 - **Prioridad:** P2; evaluar el equilibrio entre memoria ocupada y latencia de la siguiente reproducción.
 - **Dependencias:** coordinar la revisión de tiempos de espera con `RH-W-0001`.
 - **Estado:** `deferred`.
-- **Evidencia:** el código de `src/tehablo_server.py` conserva el modelo y la salida de audio abiertos al terminar o detener; pausar no cancela la generación. No se midió el consumo residual. Las [mediciones offline de Fedora](../como-funciona.md#fedora) verifican solo síntesis directa, carga desde caché y recursos del proceso. El 2026-10-30, en Windows, `scripts/measure_tts.py` no arranca (`ModuleNotFoundError: No module named 'resource'`, módulo solo de Unix), por eso fallan 9 pruebas de `tests/test_measure_tts.py`; las demás suites Python y las 23 pruebas de la extensión pasan.
+- **Evidencia:** el código de `src/tehablo_server.py` conserva el modelo y la salida de audio abiertos al terminar o detener; pausar no cancela la generación. No se midió el consumo residual. Las [mediciones offline de Fedora](../como-funciona.md#fedora) verifican solo síntesis directa, carga desde caché y recursos del proceso. El 2026-10-30, en Windows, `scripts/measure_tts.py` no arranca (`ModuleNotFoundError: No module named 'resource'`, módulo solo de Unix), por eso fallaban 9 pruebas de `tests/test_measure_tts.py`; se corrigió el mismo día (commit `931dcad`) y el script ya puede medir en Windows. Medición puntual del mismo día: en Windows el servidor tardó unos 5,3 s en responder a `/health` desde el arranque en frío, antes de cargar el modelo; la salida del servidor queda en `logs/tehablo-server.log`.
 - **Trabajo completado (2026-10-29):** medición acotada offline de `spanish` y `spanish_24l` con `lola`, tres repeticiones por modelo; resultados, metodología y evidencia JSON documentados. No se entregaron mediciones de pausa, parada, reposo o dispositivo de audio, optimizaciones ni ajustes nuevos.
 - **Trabajo restante:**
   - Detallar y medir CPU, RAM y estado de la salida de audio al generar, pausar, detener y quedar inactivo; identificar optimizaciones justificadas por esas mediciones.
@@ -323,7 +323,7 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
   - **Buenas prácticas:** linter y formato, tipos, CI que ejecute las suites en Windows y Linux, y versiones de dependencias fijadas o con archivo de bloqueo.
   - **Control:** límites de tamaño de texto, peticiones simultáneas y tiempo máximo de generación, y una forma clara de detener todo.
   - **Rendimiento:** medición repetible para detectar regresiones de velocidad y memoria.
-- **Evidencia:** no existen `.github/`, configuración de linter ni `SECURITY.md`; `requirements.txt` usa versiones mínimas (`>=`) sin fijar; no se encontró un límite de tamaño de texto en `src/tehablo_server.py`.
+- **Evidencia:** no existen `.github/`, configuración de linter ni `SECURITY.md`; `requirements.txt` usa versiones mínimas (`>=`) sin fijar; el servidor limita cada petición a 1 MiB (`src/tehablo_server.py`) y la extensión de Pi recorta el texto limpio a 3000 caracteres (`pi-extension/tehablo-tts/src/text.ts`); no hay límite de tiempo de generación.
 - **Decisión:** registrar para después; no se eligieron herramientas.
 - **Condición del siguiente avance:** autorización para una revisión acotada que proponga prioridades.
 

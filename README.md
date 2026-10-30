@@ -31,7 +31,7 @@ El uso principal es **leer en voz alta las respuestas de [Pi](#uso-en-pi)**. La 
 | 6. Altavoz | Suena mientras se genera lo siguiente | — |
 
 - La preparación del texto y la velocidad son código propio y casi no gastan. Pocket TTS es el paso pesado.
-- El audio empieza a sonar enseguida (en menos de 1 s), sin esperar a que termine todo el texto.
+- Con el modelo ya cargado, el audio empieza a sonar sin esperar a que termine todo el texto. El primer arranque tarda más: en Windows, el servidor tardó unos 5 s en responder, antes de cargar el modelo (medición puntual del 2026-10-30).
 - Internet solo hace falta la primera vez, para descargar los modelos.
 
 Detalle completo: [docs/como-funciona.md](docs/como-funciona.md).
@@ -70,7 +70,7 @@ En disco: unos 813 MB el entorno de Python y 1,2 GB los modelos descargados.
 | RAM | ~970 MB (pico ~1,1 GB) | ~1,9 GB (pico ~2,4 GB) |
 | CPU | ~1,7 núcleos (~14 %) | ~1,2 núcleos (~10 %) |
 | Velocidad | 4,3 veces más rápido que tiempo real | 1,3 veces |
-| Primer audio | ~0,12 s | ~0,44 s |
+| Primer fragmento generado (modelo cargado, sin reproducir) | ~0,12 s | ~0,44 s |
 | GPU | No la usa | No la usa |
 
 En disco: unos 1087 MB el entorno de Python y 0,9 GB los modelos descargados.
@@ -195,7 +195,7 @@ Solo hace falta para la primera descarga; después funciona sin internet.
 - **Calidad:** prueba `spanish_24l`, o una referencia de voz más limpia.
 
 **Con código, ideas documentadas:**
-- Cuantización para gastar menos RAM, unidades y siglas en el conversor de números, pausas exactas, servidor o API local.
+- Cuantización para gastar menos RAM, unidades y siglas en el conversor de números, pausas exactas.
 - Lista completa con esfuerzo estimado: [docs/pocket-tts.md](docs/pocket-tts.md#12-catálogo-de-mejoras-posibles).
 - Otros motores y recursos gratuitos: [docs/catalogo-gratuito.md](docs/catalogo-gratuito.md).
 

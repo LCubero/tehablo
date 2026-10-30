@@ -1,6 +1,6 @@
 # Cómo funciona tehablo y qué recursos usa
 
-Todo se ejecuta **en el equipo local**: sin API, sin nube, sin cuenta, sin coste por uso y **sin GPU**. Solo usa CPU y RAM.
+Todo se ejecuta **en el equipo local**: sin API externa, sin nube, sin cuenta, sin coste por uso y **sin GPU**. Solo usa CPU y RAM.
 
 ## Índice
 
@@ -30,7 +30,7 @@ Texto escrito
 3. Pocket TTS              modelo de IA de Kyutai                          parte el texto en frases y
    │                                                                       genera el audio a trozos de ~80 ms
    ▼
-4. Velocidad               src/tehablo_speed.py (solo TUI)                 cambia el ritmo sin cambiar el tono
+4. Velocidad               src/tehablo_speed.py (TUI y Pi)                 cambia el ritmo sin cambiar el tono
    │
    ▼
 5. Altavoz                 sounddevice                                     suena mientras se genera lo siguiente
