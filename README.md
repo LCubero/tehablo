@@ -118,14 +118,14 @@ La extensión [`pi-extension/tehablo-tts/`](pi-extension/tehablo-tts/) lee las r
 
   | Estado | Barra |
   |---|---|
-  | Apagado | `[ ⏻ Iniciar ]` |
+  | Apagado | `[ ⏻ TTS ]` |
   | Cargando | `[ Cargando… ]` (no se puede pulsar) |
   | Listo | `[ ▶ Escuchar ] [ ⋯ ]` |
   | Listo, controles abiertos | `[ ▶ Escuchar ] [ → ]  Vol [- 100% +]  Vel [- 1.00x +]` |
   | Sonando | `[ ‖ ] [ ■ ] [ ⋯ ]` |
   | En pausa | `[ ▶ ] [ ■ ] [ ⋯ ]` |
 
-  **Iniciar** arranca el servidor y carga el modelo antes de escuchar; mientras tanto, la barra de estado muestra `TTS manual · cargando`. Escuchar, `/tts play` y el modo automático también lo arrancan si hace falta.
+  **`[ ⏻ TTS ]`** arranca el servidor y carga el modelo antes de escuchar; mientras tanto, la barra de estado muestra `TTS manual · cargando`. Escuchar, `/tts play` y el modo automático también lo arrancan si hace falta.
 - **Volumen y velocidad:** `[ ⋯ ]` muestra **Vol** (10–150 %, pasos de 10 %, inicial 100 %) y **Vel** (1.00x, 1.10x, 1.15x, 1.25x y 1.50x; `/tts speed` sigue aceptando 0.75–1.5) en todas las barras; `[ → ]` los oculta. `[-` baja y `+]` sube. Solo clics, sin atajos de teclado. El volumen cambia incluso el audio en reproducción; la velocidad afecta a los siguientes trozos generados, no al audio ya almacenado. Los límites se mantienen sin error.
 - **Automático:** `/tts auto on` lee cada respuesta al terminar; `/tts auto off` vuelve al modo manual.
 

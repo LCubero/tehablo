@@ -16,14 +16,14 @@ function setup() {
 const tick=()=>new Promise(r=>setTimeout(r,550));
 const click=async(card:any,x:number)=>{card.handleMouse({type:'click',button:'left',x,y:0});await new Promise(r=>setImmediate(r));};
 const clickAt=async(s:any,text:string,offset=0)=>{const line=s.line();assert.ok(line.includes(text),`${text} in ${line}`);await click(s.card,Array.from(line.slice(0,line.indexOf(text))).length+offset);};
-const start=async(s:any)=>{await clickAt(s,'Iniciar');await tick();};
+const start=async(s:any)=>{await clickAt(s,'⏻ TTS');await tick();};
 
 test('start button shows Iniciar, then Cargando, then Escuchar when the model is ready',async()=>{
   const s=setup();
   try {
-    assert.equal(s.line(),'[ ⏻ Iniciar ]');assert.equal(s.calls.length,0);assert.equal(s.ensures(),0);
+    assert.equal(s.line(),'[ ⏻ TTS ]');assert.equal(s.calls.length,0);assert.equal(s.ensures(),0);
     s.setReady(false);
-    await clickAt(s,'Iniciar');
+    await clickAt(s,'⏻ TTS');
     assert.equal(s.ensures(),1);assert.ok(s.calls.includes('/health'));
     assert.equal(s.line(),'[ Cargando… ]');assert.equal(s.statuses.at(-1),'TTS manual · cargando');
     const before=s.ensures();await click(s.card,2);assert.equal(s.ensures(),before);assert.ok(!s.calls.includes('/speak'));
@@ -36,8 +36,8 @@ test('start button shows Iniciar, then Cargando, then Escuchar when the model is
 test('failed start returns to Iniciar and reports the error',async()=>{
   const s=setup();
   try {
-    s.fail();await clickAt(s,'Iniciar');
-    assert.equal(s.line(),'[ ⏻ Iniciar ]');assert.deepEqual(s.notices,['TTS: offline']);
+    s.fail();await clickAt(s,'⏻ TTS');
+    assert.equal(s.line(),'[ ⏻ TTS ]');assert.deepEqual(s.notices,['TTS: offline']);
   } finally {await s.close();}
 });
 

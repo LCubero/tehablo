@@ -10,6 +10,7 @@ Este archivo registra los cambios completados en orden cronológico.
 - El README avisa que el proyecto sigue en desarrollo y enlaza la [hoja de ruta](docs/repo-harness/roadmap.md); la [guía del harness](docs/repo-harness/usage.md) enlaza [repo-harness-builder](https://github.com/LCubero/repo-harness-builder).
 - Se registraron los trabajos propuestos de botón para iniciar el TTS antes de reproducir y de versión lite de mínimo consumo (`RH-W-0024` y `RH-W-0025`), sin cambiar el comportamiento.
 - La barra de Pi muestra `[ ⏻ Iniciar ]` para arrancar el servidor antes de escuchar, `[ Cargando… ]` mientras carga el modelo, controles de reproducción solo con iconos (`‖`, `▶`, `■`) y Vol/Vel como `Vol [- 100% +]  Vel [- 1.00x +]`, que se muestran u ocultan con `[ ⋯ ]` / `[ → ]` (`RH-W-0024`).
+- El botón de inicio de la barra de Pi pasa de `[ ⏻ Iniciar ]` a `[ ⏻ TTS ]`.
 
 ## 2026-10-29
 

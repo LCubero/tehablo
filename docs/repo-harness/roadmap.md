@@ -361,7 +361,7 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
     | En pausa | `[ ▶ ] [ ■ ] [ ⋯ ]` |
 
   - `[ ⋯ ]` muestra Vol y Vel y pasa a `[ → ]`; `[ → ]` los oculta. Vale para todas las barras a la vez; empiezan ocultos en cada sesión de Pi. `[-` baja y `+]` sube.
-  - Iniciar arranca el servidor y consulta `/health` cada 500 ms hasta que el modelo está listo (máximo 240 intentos); la barra de estado muestra `TTS manual · cargando`. Si falla, vuelve a Iniciar con un aviso. Escuchar, `/tts play` y el modo automático siguen arrancando el servidor solos.
+  - El botón de inicio (`[ ⏻ Iniciar ]`, renombrado `[ ⏻ TTS ]` el 2026-10-30 a pedido de la persona responsable: «[ ⏻ TTS ]») arranca el servidor y consulta `/health` cada 500 ms hasta que el modelo está listo (máximo 240 intentos); la barra de estado muestra `TTS manual · cargando`. Si falla, vuelve a Iniciar con un aviso. Escuchar, `/tts play` y el modo automático siguen arrancando el servidor solos.
   - Solo se usan símbolos de una columna (`⏸` y `⏳` se descartaron por verse como emoji). Pruebas en `pi-extension/tehablo-tts/test/controls.test.ts` y `tts.test.ts`.
 - **Trabajo restante:** `none`.
 - **Evidencia:** en Pi, el servidor arranca solo al pulsar Escuchar (`ensure()` en `pi-extension/tehablo-tts/src/server.ts`, llamado desde `speak` en `extension.ts`), con hasta 30 intentos de `/health` cada 250 ms; mientras el modelo carga, `src/tehablo_server.py` informa el estado `loading`. La barra de controles clicables se arma en `pi-extension/tehablo-tts/src/extension.ts` (lista de controles con `action` `volume-`, `volume+`, `speed-` y `speed+`).

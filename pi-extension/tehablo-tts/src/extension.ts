@@ -119,7 +119,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient()) {
     // Only single-column symbols, so click columns match Array.from lengths.
     const segments = () => {
       const active = playback.id === entry.data?.messageId && playback.state !== 'idle';
-      if (!active && server === 'off') return [{text: '[ ⏻ Iniciar ]', action: 'start', gap: ''}];
+      if (!active && server === 'off') return [{text: '[ ⏻ TTS ]', action: 'start', gap: ''}];
       if (!active && server === 'loading') return [{text: '[ Cargando… ]', action: '', gap: ''}];
       const paused = playback.state === 'paused';
       return [
