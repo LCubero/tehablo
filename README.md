@@ -75,7 +75,7 @@ En disco: unos 813 MB el entorno de Python y 1,2 GB los modelos descargados.
 
 En disco: unos 1087 MB el entorno de Python y 0,9 GB los modelos descargados.
 
-Esa tabla es sin cuantizar. En Linux el modelo se carga **cuantizado** por defecto: genera ~1,7 veces más rápido con `spanish` y ~1,9 con `spanish_24l`, sin diferencia audible en una prueba a ciegas, y tarda ~0,5–1,5 s más en cargar. En Windows sigue sin cuantizar, porque allí era más lento. `TEHABLO_QUANTIZE=0` lo desactiva y `TEHABLO_QUANTIZE=1` lo fuerza.
+Esa tabla es sin cuantizar. En Linux el modelo se carga **cuantizado** por defecto: genera ~1,7 veces más rápido con `spanish` y ~1,9 con `spanish_24l`, sin diferencia audible en una prueba a ciegas, y tarda ~0,5–1,5 s más en cargar. En Windows sigue sin cuantizar, porque allí era más lento. `TEHABLO_QUANTIZE=0` lo desactiva y `TEHABLO_QUANTIZE=1` lo fuerza; cualquier otro valor se ignora.
 
 Método, valores exactos y cómo repetir la medición: [docs/como-funciona.md](docs/como-funciona.md#consumo-medido).
 
@@ -141,7 +141,7 @@ La extensión [`pi-extension/tehablo-tts/`](pi-extension/tehablo-tts/) lee las r
 | `/tts model [spanish\|spanish_24l]` | Cambia el modelo |
 | `/tts speed [0.75-1.5]` | Cambia la velocidad |
 
-La extensión arranca sola el servidor local [`src/tehablo_server.py`](src/tehablo_server.py) (`127.0.0.1:8765`, se cambia con `TEHABLO_PORT`) y lo apaga al cerrar Pi. Necesita el entorno `.venv-pocket` (o `.venv-pocket-<sistema>`) instalado. Los ajustes duran solo la sesión. Los mensajes y errores del servidor se guardan en `logs/tehablo-server.log`, que se reescribe en cada arranque; si el servidor no responde a tiempo, el aviso indica esa ruta. Si el modelo no carga, Pi muestra el error en lugar de quedarse en «cargando»; también avisa si una lectura falla (por ejemplo, sin dispositivo de audio) o si se pierde la conexión con el servidor. Por seguridad, el servidor rechaza peticiones de páginas web (cabecera `Origin`) y las que no envían JSON.
+La extensión arranca sola el servidor local [`src/tehablo_server.py`](src/tehablo_server.py) (`127.0.0.1:8765`, se cambia con `TEHABLO_PORT`) y lo apaga al cerrar Pi. Necesita el entorno `.venv-pocket` (o `.venv-pocket-<sistema>`) instalado. Los ajustes duran solo la sesión. Los mensajes y errores del servidor se guardan en `logs/tehablo-server.log`, que se reescribe en cada arranque; si el servidor no responde a tiempo, el aviso indica esa ruta. Si el modelo no carga, Pi muestra el error en lugar de quedarse en «cargando»; también avisa si una lectura falla (por ejemplo, sin dispositivo de audio) o si se pierde la conexión con el servidor. Por seguridad, el servidor rechaza peticiones de páginas web (cabecera `Origin`, 403) y los `POST` que no declaran JSON (415).
 
 ## Uso: TUI
 
@@ -197,7 +197,7 @@ Solo hace falta para la primera descarga; después funciona sin internet.
 - **Calidad:** prueba `spanish_24l`, o una referencia de voz más limpia.
 
 **Con código, ideas documentadas:**
-- Cuantización para gastar menos RAM, unidades y siglas en el conversor de números, pausas exactas.
+- Unidades y siglas en el conversor de números, pausas exactas.
 - Lista completa con esfuerzo estimado: [docs/pocket-tts.md](docs/pocket-tts.md#12-catálogo-de-mejoras-posibles).
 - Otros motores y recursos gratuitos: [docs/catalogo-gratuito.md](docs/catalogo-gratuito.md).
 

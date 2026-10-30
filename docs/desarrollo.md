@@ -167,7 +167,7 @@ Para repetir las suites sin modelo ni audio desde la raíz:
 node --test pi-extension/tehablo-tts/test/*.test.ts
 ```
 
-Todas pasaron (servidor: 8 pruebas; Node: 12). Además, sondas reales con `spanish`
+Todas pasaron en esa restauración del 2026-10-29 (servidor: 8 pruebas; Node: 12; hoy son más). Además, sondas reales con `spanish`
 y `lola` generaron audio finito a 24 kHz; la salida predeterminada recibió 57599
 fotogramas no nulos sin avisos en los callbacks. El transporte `ServerClient`
 sin modificar eligió `.venv-pocket/bin/python` y completó arranque, reproducción,
