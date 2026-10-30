@@ -79,6 +79,7 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
   - Robustez de los botones ante muchos clics seguidos: hoy los pedidos `/config` no se serializan y un clic rápido puede perderse o pisar a otro; detallar el comportamiento esperado (cola, descarte o espera) antes de cambiarlo («hay que detallar cosas depues para que no se daño por muchos clics»).
   - La TUI conserva sus velocidades propias (0.75x a 1.5x en `src/tehablo_speed.py`); decidir si se alinean con los botones de Pi.
   - Decidir dónde se exponen estas opciones: atajos principales, un menú interno de la TUI por hacer o comandos.
+  - Propuestas aprobadas para registrar el 2026-10-30: resaltar en la TUI la frase que se está leyendo, con opción on/off; recordar voz, velocidad, volumen y modo entre sesiones; botón de reproducir junto a cada voz para escucharla antes de elegirla («con un play a la par o algo simple»).
 - **Evidencia:** solicitud de la persona responsable; el 2026-10-29 pidió «los comandos hay que revisarlos agregar modificar, settigs, etc», «Modo automático» y «Modo sin mouse», y aclaró que el modo automático «lee automaticamente sin tener que dar play en escuchar, cada respuesta, hasta que se desactive el modo». No se realizó una evaluación de interfaz.
 - **Decisión:** registrar para después; no se ha elegido un rediseño ni se añaden funciones por el «etc» de la solicitud.
 - **Condición del siguiente avance:** autorización para revisar la interfaz y concretar el alcance con la persona responsable.
@@ -175,7 +176,8 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 - **Estado:** `proposed`.
 - **Trabajo restante:**
   - Evaluar fine-tuning de Pocket TTS y mejoras a lo que se usa hoy.
-  - Evaluar si conviene crear un motor o modelo propio.
+  - Evaluar si conviene crear un motor o modelo propio («si hacemos nuestro propio motor y modelo podemos hacer lo mejor»).
+  - A futuro, poder elegir el motor (Pocket TTS, Kokoro, Piper, Qwen3-TTS u otros), junto con la elección de CPU o GPU de `RH-W-0007`.
 - **Evidencia:** opciones de fine-tuning ya documentadas en [Pocket TTS](../pocket-tts.md#entrenamiento-y-fine-tuning-sí-existen) y el [catálogo gratuito](../catalogo-gratuito.md); ninguna se probó.
 - **Decisión:** dejarlo para el final, con la optimización.
 - **Condición del siguiente avance:** `RH-W-0003` avanzado y autorización para investigar.
@@ -211,6 +213,7 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 - **Trabajo restante:**
   - Decidir dónde se añaden palabras: menú de la TUI, comando o menú de la extensión de Pi, o ambos.
   - Validar la entrada (término y pronunciación no vacíos, sin duplicados) antes de escribir `pronunciaciones.json`, y permitir probar cómo suena.
+  - Diccionario por proyecto además del global: un `pronunciaciones.json` propio de cada repositorio para sus nombres y términos (aprobado el 2026-10-30: «si tmb puede ser»); definir cuál gana si un término está en ambos.
 - **Evidencia:** `src/tehablo_lexicon.py` recarga el archivo cuando cambia y conserva la última versión válida si el JSON es inválido; no existe forma de añadir palabras desde la interfaz.
 - **Decisión:** registrar para después; no se eligió dónde ni cómo.
 - **Condición del siguiente avance:** decisión de la persona responsable sobre dónde se añaden palabras.
@@ -256,6 +259,73 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 - **Evidencia:** hoy solo se eligen voz, modelo, velocidad y volumen; no existe ningún ajuste de rol ni de estilo.
 - **Decisión:** registrar para después; no se eligió diseño.
 - **Condición del siguiente avance:** avance de `RH-W-0005` sobre las opciones expresivas y autorización para diseñar los roles.
+
+### RH-W-0019: Exportar audiolibros
+
+- **Origen:** propuesta del agente aprobada por la persona responsable el 2026-10-30 («este puede ser»), tomada de lectores como OpenReader y Herald.
+- **Prioridad:** P3; hoy solo se guarda el último audio en `.wav`.
+- **Dependencias:** ninguna.
+- **Estado:** `proposed`.
+- **Trabajo restante:** proponer formatos (MP3, M4B), división por capítulos y desde dónde se exporta; implementarlo y probarlo.
+- **Evidencia:** F7 en la TUI y `/guardar` en la consola guardan un `.wav` en `pocket-out/` (`README.md`).
+- **Decisión:** registrar para después; no se eligió formato.
+- **Condición del siguiente avance:** autorización para proponer el diseño.
+
+### RH-W-0020: Funciones de app lectora de escritorio
+
+- **Origen:** propuestas del agente del 2026-10-30 tomadas de apps similares (SayTheRest, CopySpeak, Kokoro Clipboard, PipPal, ElevenReader).
+- **Prioridad:** P3.
+- **Dependencias:** ninguna.
+- **Estado:** `excluded`.
+- **Trabajo restante:** `none`.
+- **Exclusiones:** atajo global para leer texto seleccionado, lectura del portapapeles, icono en la bandeja con ventana flotante, lectura de PDF, EPUB, DOCX y web, sonidos de fondo y un plugin para navegador web (idea de la persona responsable del 2026-10-30: «tengo otra como el 1, un plugin para navegador web»).
+- **Evidencia:** respuesta de la persona responsable: «eso aun no, es como otra app eso»; sobre los sonidos de fondo: «de momento no».
+- **Decisión:** fuera del alcance actual; puede reconsiderarse más adelante.
+- **Condición del siguiente avance:** nueva decisión explícita de la persona responsable.
+
+### RH-W-0021: Leer frases en inglés con un modelo inglés
+
+- **Origen:** propuesta del agente aprobada por la persona responsable el 2026-10-30.
+- **Prioridad:** P3; el diccionario respela palabras sueltas, pero una frase entera en inglés suena mejor con un modelo inglés.
+- **Dependencias:** coordinar con `RH-W-0002` (pronunciación según el modelo) y `RH-W-0010` (diccionario opcional).
+- **Estado:** `proposed`.
+- **Trabajo restante:**
+  - Comprobar si Pocket TTS permite alternar entre el modelo español y el inglés dentro de un mismo texto, y su costo en memoria y latencia.
+  - Definir cómo se detecta una frase en inglés sin confundir términos sueltos.
+- **Evidencia:** Pocket TTS ofrece modelo inglés; no se comprobó el cambio de modelo a mitad de un texto.
+- **Decisión:** registrar para después.
+- **Condición del siguiente avance:** autorización para la prueba acotada.
+
+### RH-W-0022: Opciones de lectura
+
+- **Origen:** propuestas del agente aprobadas por la persona responsable el 2026-10-30.
+- **Prioridad:** P3; calidad de uso al escuchar las respuestas.
+- **Dependencias:** coordinar dónde se exponen con `RH-W-0004`.
+- **Estado:** `proposed`.
+- **Trabajo restante:**
+  - Bloques de código: elegir si se omiten, se anuncian («bloque de código en Python») o se leen.
+  - Pausas escritas a mano con marcas como `[pausa]`.
+  - Sonido corto al terminar una lectura larga, con opción on/off.
+  - Retroceder, repetir o saltar frases: «hay que verlo bien xq puede que sea molesto o dificil de usar»; diseñarlo antes de implementarlo.
+  - Historial para volver a escuchar respuestas anteriores, opcional: «hay que ver donde y como se guardan y el peso».
+- **Evidencia:** hoy los bloques de código siempre se omiten (`pi-extension/tehablo-tts/src/text.ts`) y solo se puede escuchar la respuesta más reciente o una numerada de la sesión.
+- **Decisión:** registrar para después; no se eligió diseño.
+- **Condición del siguiente avance:** autorización para diseñar las opciones.
+
+### RH-W-0023: Revisión de seguridad, buenas prácticas, control y rendimiento
+
+- **Origen:** solicitud de la persona responsable del 2026-10-30: «falta agregar cosas de seguridad, de buenas practicas, control, rendimiento».
+- **Prioridad:** P2; base para instalar en otros equipos, VPS y Docker (`RH-W-0008`, `RH-W-0009`, `RH-W-0011`).
+- **Dependencias:** reúne y amplía `RH-W-0001` (servidor), `RH-W-0003` (consumo) y `RH-W-0013` (errores y logs) sin reemplazarlos.
+- **Estado:** `proposed`.
+- **Trabajo restante:**
+  - **Seguridad:** revisar el servidor, la extensión, la carga de voces y archivos, y los secretos (`HF_TOKEN`); añadir `SECURITY.md` y una revisión de vulnerabilidades de dependencias.
+  - **Buenas prácticas:** linter y formato, tipos, CI que ejecute las suites en Windows y Linux, y versiones de dependencias fijadas o con archivo de bloqueo.
+  - **Control:** límites de tamaño de texto, peticiones simultáneas y tiempo máximo de generación, y una forma clara de detener todo.
+  - **Rendimiento:** medición repetible para detectar regresiones de velocidad y memoria.
+- **Evidencia:** no existen `.github/`, configuración de linter ni `SECURITY.md`; `requirements.txt` usa versiones mínimas (`>=`) sin fijar; no se encontró un límite de tamaño de texto en `src/tehablo_server.py`.
+- **Decisión:** registrar para después; no se eligieron herramientas.
+- **Condición del siguiente avance:** autorización para una revisión acotada que proponga prioridades.
 
 ## Registros resueltos
 <!-- doc-role:resolved-records -->

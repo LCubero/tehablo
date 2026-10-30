@@ -59,6 +59,11 @@ Este archivo proyecta solo hechos verificados del proyecto: registros activos, b
 - `RH-W-0016` (`proposed`, P3): ajuste para sugerir, no sugerir o añadir automáticamente pronunciaciones de términos nuevos en inglés.
 - `RH-W-0017` (`proposed`, P2): cambio de dispositivo de audio (seguir al predeterminado, elegir uno y recuperarse si desaparece).
 - `RH-W-0018` (`proposed`, P3): roles de voz (locutor, profesor, motivador y otros) con frases y muletillas propias.
+- `RH-W-0019` (`proposed`, P3): exportar audiolibros.
+- `RH-W-0020` (`excluded`): funciones de app lectora de escritorio (atajo global, portapapeles, bandeja, documentos, sonidos de fondo, plugin de navegador).
+- `RH-W-0021` (`proposed`, P3): leer frases en inglés con un modelo inglés.
+- `RH-W-0022` (`proposed`, P3): opciones de lectura (bloques de código, pausas, aviso al terminar, retroceder o repetir, historial).
+- `RH-W-0023` (`proposed`, P2): revisión de seguridad, buenas prácticas (linter, CI, dependencias fijadas), control (límites) y rendimiento (medición de regresiones).
 
 ## Siguiente paso
 
