@@ -329,16 +329,25 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 
 ### RH-W-0024: Botón para iniciar el TTS antes de reproducir
 
-- **Origen:** solicitud de la persona responsable del 2026-10-30: «quiero un botón de iniciar el tts antes de reproducir, para no confundir, como tiene delay, hay que ver eso». Ampliado el mismo día: «quiero cambiar los controles de vol y vel a esto: [ Vol + 100% - ] [ Vel - 1.00x + ]»; corregido por la persona responsable: «mi error, es asi [ Vol - 100% + ] [ Vel - 1.00x + ]». Tras la revisión del diseño: «me gusta pero quitemos los textos de pausar y detener, quiza solo los iconos de play/pause y stop y así Vol [- 100% +]  Vel [- 1.00x +] ?». Después: «si está apagado no hace falta los controles de vol ni vel, ni en cargando. en listo si genial, no me gusta el icono para pausar».
+- **Origen:** solicitud de la persona responsable del 2026-10-30: «quiero un botón de iniciar el tts antes de reproducir, para no confundir, como tiene delay, hay que ver eso». Ampliado el mismo día: «quiero cambiar los controles de vol y vel a esto: [ Vol + 100% - ] [ Vel - 1.00x + ]»; corregido por la persona responsable: «mi error, es asi [ Vol - 100% + ] [ Vel - 1.00x + ]». Tras la revisión del diseño: «me gusta pero quitemos los textos de pausar y detener, quiza solo los iconos de play/pause y stop y así Vol [- 100% +]  Vel [- 1.00x +] ?». Después: «si está apagado no hace falta los controles de vol ni vel, ni en cargando. en listo si genial, no me gusta el icono para pausar». Eligió `||` para pausar («3») y pidió: «guarda esa tabla me gusta como se para en un futuro si queda así dejarlo en el readme del repo o algun sitio».
 - **Prioridad:** P3; claridad de uso, sin pérdida de función.
 - **Dependencias:** coordinar con `RH-W-0003` (esperas de arranque, carga a demanda o residente) y `RH-W-0004` (botones de Pi).
 - **Estado:** `proposed`.
 - **Trabajo restante:**
-  - Implementar en la barra de controles clicables de Pi (no en la TUI) un solo botón que cambia de estado: `[ ⏻ Iniciar ]` con el servidor apagado, `[ ⏳ Cargando… ]` (no se puede pulsar) mientras arranca y carga el modelo, y `[ ▶ Escuchar ]` cuando está listo.
-  - Mientras suena, solo iconos: pausa (icono por elegir; `⏸` se descartó porque se ve como emoji) y `[ ■ ]`; en pausa, `[ ▶ ] [ ■ ]`.
-  - Cambiar los controles de `[ Vol − ] 100 % [ Vol + ]  [ Vel − ] 1.00x [ Vel + ]` a `Vol [- 100% +]  Vel [- 1.00x +]`; `[-` baja y `+]` sube. Se muestran solo en Listo, Sonando y En pausa; en Apagado y Cargando no aparecen.
+  - Implementar en la barra de controles clicables de Pi (no en la TUI) la barra elegida:
+
+    | Estado | Barra |
+    |---|---|
+    | Apagado | `[ ⏻ Iniciar ]` |
+    | Cargando | `[ Cargando… ]` (no se puede pulsar) |
+    | Listo | `[ ▶ Escuchar ]  Vol [- 100% +]  Vel [- 1.00x +]` |
+    | Sonando | `[ \|\| ] [ ■ ]  Vol [- 100% +]  Vel [- 1.00x +]` |
+    | En pausa | `[ ▶ ] [ ■ ]  Vol [- 100% +]  Vel [- 1.00x +]` |
+
+  - Antes tenía `[ Vol − ] 100 % [ Vol + ]  [ Vel − ] 1.00x [ Vel + ]`; en la nueva, `[-` baja y `+]` sube.
   - En modo automático el servidor arranca solo, como ahora.
-  - Usar iconos de una sola columna para que los clics caigan en su sitio: `⏳` también se ve como emoji y debe cambiarse.
+  - Usar solo símbolos de una columna para que los clics caigan en su sitio (`⏸` y `⏳` se ven como emoji y se descartaron).
+  - Al terminar, si la barra queda así, copiar esta tabla al README o a la documentación de la extensión.
 - **Evidencia:** en Pi, el servidor arranca solo al pulsar Escuchar (`ensure()` en `pi-extension/tehablo-tts/src/server.ts`, llamado desde `speak` en `extension.ts`), con hasta 30 intentos de `/health` cada 250 ms; mientras el modelo carga, `src/tehablo_server.py` informa el estado `loading`. La barra de controles clicables se arma en `pi-extension/tehablo-tts/src/extension.ts` (lista de controles con `action` `volume-`, `volume+`, `speed-` y `speed+`).
   Revisión del 2026-10-30: antes de abrir el puerto, el servidor importa `pocket_tts` y torch (`create_server` → `tehablo_tts`), así que `/health` no contesta hasta terminar; si no contesta en los 30 intentos, sale «El servidor TTS no respondió a tiempo». Durante la espera la barra muestra Pausar y Detener sin distinguir «cargando» de «generando», y pulsar Vol o Vel también arranca el servidor. No se ha medido cuánto dura cada parte en Windows.
 - **Decisión:** diseño elegido el 2026-10-30 por la persona responsable (ver Trabajo restante).
