@@ -2,6 +2,22 @@
 
 Resultados propios de `RH-W-0005`: qué voces y modelos gratuitos probamos en tehablo, cuánto tardan, qué licencia tienen y si suenan igual o mejor que `lola`. Las fuentes sin probar están en el [catálogo maestro](catalogo-gratuito.md) y en [voces gratuitas](voces-gratuitas.md).
 
+## Resumen (2026-10-31)
+
+Opciones de voz que quedaron bien en las escuchas a ciegas con los ajustes de tehablo. Consumo medido en Windows con `samples/benchmark.txt` ([detalle](#consumo-2026-10-31-windows)). Todavía no hay decisión sobre cuáles se incorporan.
+
+| Uso | Voz | Motor | RAM tras hablar | CPU del texto | ¿Token? | Escucha |
+|---|---|---|---|---|---|---|
+| Mejor calidad | `em_santa` (relatos), `ef_dora`, mezcla 70 % `em_santa` + 30 % `ef_dora` | Kokoro-82M | ~1,1 GiB | 49 s | No | Mejor que `lola` en tres escuchas |
+| Mejor calidad | `F2` | Supertonic 3 | ~0,6 GiB | 46 s | No | Mejor que `lola` |
+| Mejor calidad | `lola` con `spanish_24l` | Pocket TTS | ~1,8 GiB | 44 s | No | Muy bien; 1,02× tiempo real |
+| Variedad LATAM | `ar-hombre-4310`, `cl-mujer-9334`, `co-hombre-9334`, `cl-hombre-3397`, `ar-hombre-7049`, `cl-mujer-8784` (clonadas de `voices/`) | Pocket TTS | ~0,95 GiB | 17,5 s | Solo para crearlas | Iguales o mejores que `lola` |
+| Equilibrio | `lola` | Pocket TTS | ~0,95 GiB | 17,5 s | No | Referencia; «algo robótica» o «tranquila» |
+| Mínimo consumo | `carlfm` (`x_low`) | Piper | ~0,3 GiB | 3,6 s | No | Igual que `lola` |
+| Mínimo consumo, uso personal | `miro` (licencia no comercial) | Piper (OpenVoiceOS) | ~0,3 GiB | 5,1 s | No | Bien, con algo de ruido de fondo |
+
+Pendiente de probar: NeuTTS Nano Spanish y el ajuste castellano de `inferencekey` (con token), Pocket TTS en ONNX int4 y la velocidad de Kokoro. Kokoro y Supertonic no generan por partes: hay que generarlos frase por frase (primera frase en ~0,3–0,5 s).
+
 ## Cómo se prueba
 
 - **Criterio:** solo sirve una voz que suene igual o mejor que `lola` (Pocket TTS `spanish`), sin token de Hugging Face y sin consumir mucho.

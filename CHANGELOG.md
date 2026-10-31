@@ -10,6 +10,7 @@ Este archivo registra los cambios completados en orden cronológico.
 - En Windows el servidor ya no comparte en silencio un puerto ocupado (por ejemplo `8765` de AnkiConnect): falla con `Address already in use` como en Linux, y otro programa no puede tomar su puerto. Antes `SO_REUSEADDR` permitía el doble enlace en Windows. Las 7 suites de Python y las 30 pruebas de Node pasan en Windows.
 - `requirements.txt` limita las dependencias a las versiones mayores probadas (torch por debajo de 2.16, que anuncia el retiro de la cuantización usada en Linux); una instalación nueva ya no sube a versiones sin probar (`RH-W-0023`).
 - Prueba de voces sin token de Hugging Face (`RH-W-0005`): siete motores escuchados a ciegas sin y con los ajustes de tehablo, con consumo medido y licencias revisadas en [pruebas de voces](docs/pruebas-de-voces.md). Con ajustes, Kokoro (`em_santa`, `ef_dora`) y Supertonic `F2` suenan mejor que `lola`; sin ajustes, `lola` lee símbolos y tablas. No cambia el comportamiento.
+- Más pruebas de voces (`RH-W-0005`): voces de Piper que faltaban, MeloTTS, voces de la comunidad en Hugging Face, mezclas de Kokoro, ajustes de Supertonic, `lola` con `spanish_24l` y, con token, las 18 voces de `voices/` clonadas con Pocket TTS (sus estados exportados funcionan sin token). Se encontró que `scripts/get_voices.py` guarda WAV en coma flotante que Pocket TTS no puede leer. Resumen de opciones en [pruebas de voces](docs/pruebas-de-voces.md#resumen-2026-10-31). No cambia el comportamiento.
 
 ## 2026-10-30
 

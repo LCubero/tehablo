@@ -51,7 +51,7 @@ Este archivo proyecta solo hechos verificados del proyecto: registros activos, b
 - Registrar todo pendiente no trivial en [roadmap.md](roadmap.md), sin mantener un segundo backlog aquí.
 - `RH-W-0002` (`deferred`, P3): pronunciaciones en inglés y limpieza de símbolos aplicadas (hashes omitidos, separadores, flechas, paréntesis y barras); quedan las extensiones de archivo y la confirmación por escucha ([guía de pronunciación](../pronunciacion.md)).
 - `RH-W-0004` (`deferred`, P3): revisar interfaz, TUI, menús, comandos y ajustes, modo automático persistente y acceso sin mouse.
-- `RH-W-0005` (`active`, P3): probadas a ciegas voces sin token ([resultados](../pruebas-de-voces.md)); Kokoro suena mejor que `lola` pero gasta más CPU; falta decidir si se incorpora.
+- `RH-W-0005` (`active`, P3): probadas a ciegas voces sin token y, con token, las 18 de `voices/` clonadas con Pocket TTS ([resumen y resultados](../pruebas-de-voces.md#resumen-2026-10-31)); varias suenan mejor que `lola`. Sigue la prueba con NeuTTS y el ajuste castellano; sin decisión sobre qué voces se incorporan. `scripts/get_voices.py` guarda WAV que Pocket TTS no lee.
 - `RH-W-0007` (`deferred`, P3): modo GPU opcional, manteniendo CPU como predeterminado.
 - `RH-W-0009` (`deferred`, P2): versión Docker y despliegue seguro en VPS; depende de `RH-W-0001` y `RH-W-0008`.
 - `RH-W-0010` (`proposed`, P3): elegir si se usa el diccionario de pronunciación en inglés.
