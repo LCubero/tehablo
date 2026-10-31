@@ -50,6 +50,8 @@ Mismo método y texto que la [tabla de consumo de lola](como-funciona.md#windows
 | Piper `es_ES-davefx-medium` | 137 MiB | 420 MiB (420) | 5,8 núcleos (48 %) | 6,0 s | 31× | 0,19 s |
 | Kokoro-82M (`ef_dora`) | 399 MiB | 1127 MiB (1136) | 5,4 núcleos (45 %) | 49,3 s | 3,7× | sin streaming |
 | Piper `es_ES-carlfm-x_low` | 113 MiB | 299 MiB (299) | 5,8 núcleos (48 %) | 3,6 s | 53× | 0,10 s |
+| Piper `miro` (OpenVoiceOS) | — | 327 MiB | 6,0 núcleos | 5,1 s | 36× | 0,16 s |
+| Piper `carlfm-high` (friyin) | — | 373 MiB | 5,9 núcleos | 29,7 s | 6,4× | 0,97 s |
 | MeloTTS `ES` | 1316 MiB | 1239 MiB (1994) | 5,8 núcleos (48 %) | 87,6 s | 2,6× | sin streaming |
 | Coqui VITS CSS10 | 135 MiB | 380 MiB (405) | 3,9 núcleos (33 %) | 6,4 s | 19× | sin streaming |
 | MMS-TTS `spa` | 175 MiB | 410 MiB (434) | 3,9 núcleos (33 %) | 34,3 s | 4,5× | sin streaming |
@@ -192,6 +194,28 @@ Vistazo corto, con el texto de la ronda final, volumen igualado, a ciegas, junto
 - **Mezclas:** sirven para tener más voces sin descargar nada; el peso de cada voz funciona como un dial entre el tono de relato de `em_santa` y uno más neutro.
 - **Supertonic:** 8 pasos es el punto justo; duplicarlos dobla la CPU sin mejora audible y bajarlos a 4 iguala la CPU de `lola` pero mete ruido.
 - `lola` vuelve a quedar como algo robótica, igual que en las rondas anteriores.
+
+## Voces de la comunidad en Hugging Face (2026-10-31)
+
+Búsqueda en Hugging Face de voces en español públicas (sin token), con el texto de la ronda final, volumen igualado, a ciegas y con `lola`:
+
+| Voz | Veredicto de la persona responsable | Licencia |
+|---|---|---|
+| Piper `miro` (`OpenVoiceOS/pipertts_es-ES_miro`), hombre, España | Suena bien, tranquila; lo malo es algo de ruido de fondo. | CC BY-NC-ND 4.0: no comercial |
+| Piper `carlfm-high` (`friyin/vits-piper-es_ES-carlfm-high`) | Suena bien, pero ligeramente robótica y acelerada. | dataset de dominio público |
+| `lola` | Suena bien, algo lenta. | — |
+
+- `carlfm-high` sonó peor que `carlfm-x_low` (que empató con `lola`) y gasta 8 veces más CPU (29,7 s frente a 3,6 s): la versión pequeña es mejor opción.
+- `miro` es casi tan ligera como `carlfm-x_low` (5,1 s de CPU, 327 MiB), pero su licencia no permite uso comercial.
+
+Descartadas sin escuchar:
+
+| Opción | Motivo |
+|---|---|
+| `juangonp/kokoro-spanish-onnx` | Su archivo de voces usa `pickle` (cargarlo puede ejecutar código) y no se abrió; su modelo genera exactamente el mismo audio que Kokoro oficial. |
+| Voces de `HirCoir` (astra, elena, lilith, dark, yahir, towi, capybara) | Piden token y aprobación del autor. |
+| Imitaciones de personas o personajes (Cortana, Veritasium, Lucas Melor, «1 peso de salsa», GLaDOS) | Clones sin consentimiento demostrado; chocan con los términos de uso de voz. |
+| `prasadvittaldev/pocket-tts-spanish-onnx-int4` | Pocket TTS español en ONNX int4 (106 MB, sin torch, incluye el codificador para clonar). Necesita el programa de `KevinAHM/pocket-tts-onnx-export`, que ya no existe en GitHub; no se probó. |
 
 ## Licencias
 
