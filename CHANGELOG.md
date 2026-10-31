@@ -7,6 +7,7 @@ Este archivo registra los cambios completados en orden cronológico.
 ## 2026-10-31
 
 - `install.ps1` verificado en Windows (PowerShell 5.1 con el comando del README y PowerShell 7): instalación desde cero, segunda ejecución, dual boot con `.venv-pocket` de Linux y aviso sin `uv`; `RH-W-0008` queda `completed`.
+- En Windows el servidor ya no comparte en silencio un puerto ocupado (por ejemplo `8765` de AnkiConnect): falla con `Address already in use` como en Linux, y otro programa no puede tomar su puerto. Antes `SO_REUSEADDR` permitía el doble enlace en Windows. Las 7 suites de Python y las 30 pruebas de Node pasan en Windows.
 
 ## 2026-10-30
 

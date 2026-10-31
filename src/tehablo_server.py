@@ -6,6 +6,7 @@ import json
 import math
 import os
 from pathlib import Path
+import socket
 import sys
 import threading
 
@@ -298,6 +299,14 @@ class SpeechService:
 
 class SpeechHTTPServer(ThreadingHTTPServer):
     daemon_threads = True
+    # On Windows SO_REUSEADDR lets a second socket bind a busy port, so a server
+    # started next to AnkiConnect (also 8765) would share the port silently.
+    allow_reuse_address = sys.platform != 'win32'
+
+    def server_bind(self):
+        if sys.platform == 'win32':
+            self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
+        super().server_bind()
 
     def server_close(self):
         # A failed bind closes the server before create_server attaches the service.
