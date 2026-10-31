@@ -32,7 +32,9 @@ Resultados propios de `RH-W-0005`: qué voces y modelos gratuitos probamos en te
 | Kokoro-82M (`kokoro-onnx`) | `ef_dora`, `em_alex`, `em_santa` | sin verificar | 3,3–3,5× | 338 MB | No | ver abajo |
 | Coqui VITS CSS10 (`sherpa-onnx`) | única | sin verificar | 19× | 68 MB | No | ver abajo |
 | MMS-TTS `spa` de Meta (`sherpa-onnx`) | única | sin verificar | 4,1× | 109 MB | No | ver abajo |
-| MeloTTS `ES` | — | — | no instaló | — | No | falló |
+| MeloTTS `ES` | única | España | 1,7× | 199 MB | No | ver abajo |
+| Piper | `es_ES-carlfm-x_low` | España | ≥ 53× | 27 MB | No | ver abajo |
+| Piper | `es_ES-mls_10246-low`, `es_ES-mls_9972-low` | España | — | — | No | ver abajo |
 
 La velocidad de esta tabla es de la primera ronda (texto con ajustes); la de consumo, abajo, es la de referencia.
 
@@ -47,20 +49,23 @@ Mismo método y texto que la [tabla de consumo de lola](como-funciona.md#windows
 | Piper `es_MX-claude-high` | 142 MiB | 363 MiB (364) | 5,7 núcleos (47 %) | 6,9 s | 31× | 0,22 s |
 | Piper `es_ES-davefx-medium` | 137 MiB | 420 MiB (420) | 5,8 núcleos (48 %) | 6,0 s | 31× | 0,19 s |
 | Kokoro-82M (`ef_dora`) | 399 MiB | 1127 MiB (1136) | 5,4 núcleos (45 %) | 49,3 s | 3,7× | sin streaming |
+| Piper `es_ES-carlfm-x_low` | 113 MiB | 299 MiB (299) | 5,8 núcleos (48 %) | 3,6 s | 53× | 0,10 s |
+| MeloTTS `ES` | 1316 MiB | 1239 MiB (1994) | 5,8 núcleos (48 %) | 87,6 s | 2,6× | sin streaming |
 | Coqui VITS CSS10 | 135 MiB | 380 MiB (405) | 3,9 núcleos (33 %) | 6,4 s | 19× | sin streaming |
 | MMS-TTS `spa` | 175 MiB | 410 MiB (434) | 3,9 núcleos (33 %) | 34,3 s | 4,5× | sin streaming |
 | Chatterbox (clona `co-hombre-2121`) | 4487 MiB | 5758 MiB (7065) | 5,7 núcleos (48 %) | 1342 s | 0,2× | sin streaming |
 
 - **CPU total del texto** es el gasto real: segundos de CPU sumando todos los núcleos para generar los ~36 s de audio. `lola` usa pocos núcleos durante más tiempo; Supertonic y Kokoro terminan antes porque ocupan casi la mitad del equipo, pero gastan 2,6–2,8 veces más CPU.
 - **Sin streaming:** el motor entrega el audio completo de una vez, así que la primera palabra suena cuando termina toda la generación.
-- **Importar librerías:** 0,01–0,3 s y 5–45 MiB en los motores ONNX, frente a ~4,7 s y 350 MiB de torch con `lola` (medido el 2026-10-30); Chatterbox, 7,2 s y 427 MiB.
+- **Importar librerías:** 0,01–0,3 s y 5–45 MiB en los motores ONNX, frente a ~4,7 s y 350 MiB de torch con `lola` (medido el 2026-10-30); Chatterbox, 7,2 s y 427 MiB; MeloTTS, 14,9 s y 795 MiB.
 - Valores de las generaciones 2 y 3 (con el modelo caliente); una sola medición por motor y día.
 
 Notas:
 
 - **Piper** en la tabla de resultados se midió con la línea de comandos, que carga el modelo en cada frase; con el modelo cargado genera unas 35 veces más rápido que el tiempo real.
 - **Coqui VITS CSS10** ignora los signos `¿`, `?`, `,` y `.` (no están en su vocabulario), así que lee sin pausas ni entonación de pregunta.
-- **MeloTTS** no arrancó en Windows: le falta el diccionario `unidic` de MeCab (unos 500 MB más con `python -m unidic download`). Un intento, no se repitió.
+- **MeloTTS** no arrancó en el primer intento: le faltaba el diccionario `unidic` de MeCab. Con `python -m unidic download` (unos 500 MB) funcionó. También descarga diccionarios de NLTK en `%APPDATA%
+ltk_data` si no se redirige esa carpeta.
 - **Chatterbox** es 5–6 veces más lento que el tiempo real en CPU: no sirve para leer respuestas en vivo aunque suene bien. En la primera voz cortó la generación por repeticiones (`forcing EOS`), así que puede faltar el final. En Windows necesitó `setuptools<81` para cargar su marca de agua, y descarga datos en `~/.pkuseg` si no se redirige la carpeta de usuario.
 
 ## Escucha sin ajustes (2026-10-31)
@@ -155,6 +160,20 @@ Buenos días. Ya terminé de revisar tu proyecto y, la verdad, quedó bastante b
 - **Primer sonido:** generando frase por frase, Kokoro y Supertonic tienen lista la primera frase en menos de medio segundo; así se evita el silencio de 7–9 s que tenían generando el texto entero. No probado aún dentro del servidor de tehablo.
 - **Resultado:** en las dos escuchas a ciegas, Kokoro supera a `lola` y `lola` queda última o casi. Kokoro gasta más: ~1,1 GiB de RAM (frente a ~0,95 GiB) y unas 2,8 veces más CPU; no necesita torch ni token, y su modelo se descarga de GitHub.
 
+## Voces que faltaban (2026-10-31)
+
+Las voces de Piper en español sin escuchar y MeloTTS, con el texto de la ronda final, volumen igualado, a ciegas y con `lola`:
+
+| Voz | Veredicto de la persona responsable |
+|---|---|
+| Piper `es_ES-carlfm-x_low` | Suena bien. |
+| `lola` | Suena bien. |
+| MeloTTS `ES` | Española, no está mal, ligeramente robótica. |
+| Piper `es_ES-mls_9972-low` | Malísima: acento raro y errores. |
+| Piper `es_ES-mls_10246-low` | Horrible. |
+
+Piper `carlfm` empata con `lola` en la escucha y es la más ligera de todas las probadas: modelo de 27 MB, ~300 MiB de RAM, 3,6 s de CPU para el texto de referencia (5 veces menos que `lola`) y primer sonido en 0,10 s. Candidata para la versión lite (`RH-W-0025`). MeloTTS gasta más que `lola` en todo (1,2–2 GiB, 87,6 s de CPU).
+
 ## Licencias
 
 Cada opción tiene tres capas: el programa, el modelo y la voz con la que se entrenó o se clona.
@@ -163,8 +182,9 @@ Cada opción tiene tres capas: el programa, el modelo y la voz con la que se ent
 |---|---|---|---|---|
 | Pocket TTS | MIT | CC BY 4.0 y términos de Kyutai | `lola`: Common Voice, licencia del archivo sin verificar | Prohíbe clonar o suplantar sin consentimiento. |
 | Supertonic 3 | MIT | OpenRAIL-M | 10 voces propias | Permite uso comercial con usos prohibidos: suplantar sin consentimiento y presentar el audio como real sin avisar que es generado. Proyecto archivado: sin actualizaciones. |
-| Piper | GPL-3.0 (`piper-tts`) | por voz | `davefx` CC0; `ald` Unlicense; `claude` Apache-2.0; `sharvard` CC BY 3.0; `daniela` CC BY-SA 4.0 | Distribuir un programa que lo incluya obliga a GPL. |
+| Piper | GPL-3.0 (`piper-tts`) | por voz | `davefx` CC0; `carlfm` dominio público; `mls_*` CC BY 4.0; `ald` Unlicense; `claude` Apache-2.0; `sharvard` CC BY 3.0; `daniela` CC BY-SA 4.0 | Distribuir un programa que lo incluya obliga a GPL. |
 | Kokoro-82M | `kokoro-onnx` MIT; usa `espeak-ng` (GPL-3.0) a través de `espeakng-loader` (MIT) | Apache-2.0 | voces propias del modelo | Uso comercial libre del modelo; `espeak-ng` es GPL-3.0, así que distribuir un programa que lo incluya tiene la misma condición que Piper. |
+| MeloTTS | MIT | MIT | voz propia del modelo | Depende de torch, MeCab/`unidic` y NLTK. |
 | Chatterbox | MIT | MIT | clona `voices/` (CC BY-SA 4.0) | Cada audio lleva una marca de agua inaudible (Perth). Publicar audio clonado de `voices/` exige atribución y misma licencia. |
 
 Licencias leídas de los archivos `LICENSE`, las fichas de Hugging Face y las `MODEL_CARD` de Piper; no es asesoría legal.

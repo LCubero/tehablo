@@ -387,6 +387,100 @@
      "process_peak_mib": 7064.64453125
     }
    ]
+  },
+  {
+   "engine": "piper-es_ES-carlfm-x_low",
+   "characters": 600,
+   "import_s": 0.22895450000032724,
+   "import_mib": 34.3515625,
+   "load_s": 3.3481812000009086,
+   "rss_after_load_mib": 113.4921875,
+   "peak_after_load_mib": 114.79296875,
+   "runs": [
+    {
+     "run": 1,
+     "wall_s": 0.6724551999996038,
+     "cpu_s": 3.765625,
+     "average_cores": 5.599815422651529,
+     "machine_cpu_percent": 46.665128522096076,
+     "first_chunk_s": 0.14998689999993076,
+     "audio_s": 32.752,
+     "realtime_multiple": 48.705103328845254,
+     "rss_after_mib": 225.22265625,
+     "process_peak_mib": 225.22265625
+    },
+    {
+     "run": 2,
+     "wall_s": 0.6179204000000027,
+     "cpu_s": 3.53125,
+     "average_cores": 5.71473283613874,
+     "machine_cpu_percent": 47.622773634489505,
+     "first_chunk_s": 0.10200040000017907,
+     "audio_s": 32.208,
+     "realtime_multiple": 52.12321845985318,
+     "rss_after_mib": 241.44921875,
+     "process_peak_mib": 241.44921875
+    },
+    {
+     "run": 3,
+     "wall_s": 0.6170562999996037,
+     "cpu_s": 3.609375,
+     "average_cores": 5.84934470323424,
+     "machine_cpu_percent": 48.74453919361867,
+     "first_chunk_s": 0.12008629999945697,
+     "audio_s": 33.216,
+     "realtime_multiple": 53.82977209700531,
+     "rss_after_mib": 299.4453125,
+     "process_peak_mib": 299.4453125
+    }
+   ]
+  },
+  {
+   "engine": "melotts-es",
+   "characters": 600,
+   "import_s": 14.869141099999979,
+   "import_mib": 794.89453125,
+   "load_s": 0.677742699999726,
+   "rss_after_load_mib": 1315.6328125,
+   "peak_after_load_mib": 1315.8203125,
+   "runs": [
+    {
+     "run": 1,
+     "wall_s": 18.4249405999999,
+     "cpu_s": 93.59375,
+     "average_cores": 5.079731437505992,
+     "machine_cpu_percent": 42.331095312549934,
+     "first_chunk_s": null,
+     "audio_s": 39.15952380952381,
+     "realtime_multiple": 2.125354141414384,
+     "rss_after_mib": 1176.8359375,
+     "process_peak_mib": 1910.171875
+    },
+    {
+     "run": 2,
+     "wall_s": 14.420386199999484,
+     "cpu_s": 85.171875,
+     "average_cores": 5.906351870104772,
+     "machine_cpu_percent": 49.21959891753977,
+     "first_chunk_s": null,
+     "audio_s": 38.98537414965986,
+     "realtime_multiple": 2.7034902955415476,
+     "rss_after_mib": 1234.42578125,
+     "process_peak_mib": 1994.2578125
+    },
+    {
+     "run": 3,
+     "wall_s": 15.915696799998841,
+     "cpu_s": 89.9375,
+     "average_cores": 5.650867890371382,
+     "machine_cpu_percent": 47.09056575309485,
+     "first_chunk_s": null,
+     "audio_s": 38.77639455782313,
+     "realtime_multiple": 2.4363617279908194,
+     "rss_after_mib": 1239.3515625,
+     "process_peak_mib": 1994.2578125
+    }
+   ]
   }
  ]
 }
