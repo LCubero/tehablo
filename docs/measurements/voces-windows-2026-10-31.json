@@ -576,5 +576,77 @@
     }
    ]
   }
- ]
+ ],
+ "lola_spanish_24l_measure_tts": {
+  "timestamp": "2026-10-30T22:28:42.720022-06:00",
+  "platform": "Windows-11-10.0.26200-SP0",
+  "distribution": "Windows-11-10.0.26200-SP0",
+  "cpu": "AMD64 Family 25 Model 33 Stepping 0, AuthenticAMD",
+  "logical_cpus": 12,
+  "mem_total_kib": 33458540,
+  "python": "3.12.13",
+  "versions": {
+   "pocket-tts": "4.0.1",
+   "torch": "2.15.0+cpu",
+   "numpy": "2.5.4"
+  },
+  "torch_threads": 1,
+  "torch_interop_threads": 6,
+  "model": "spanish_24l",
+  "voice": "lola",
+  "seed": 1234,
+  "text_file": "samples/benchmark.txt",
+  "characters": 600,
+  "text_sha256": "601849c5ec5ae2209ec595ee45bef62f8974cceaadda4d7937539d8bad4ecb2b",
+  "sample_rate": 24000,
+  "load_s": 1.9456319000000803,
+  "rss_after_load_mib": 1637.73046875,
+  "peak_after_load_mib": 2278.734375,
+  "voice_prepare_s": 0.004356899999038433,
+  "runs": [
+   {
+    "run": 1,
+    "wall_s": 30.454833699999654,
+    "cpu_s": 37.859375,
+    "average_cores": 1.2431318907513993,
+    "machine_cpu_percent": 10.359432422928327,
+    "first_chunk_s": 0.48202149999997346,
+    "audio_s": 35.68,
+    "realtime_multiple": 1.1715710008950206,
+    "chunks": 446,
+    "samples": 856320,
+    "rss_after_mib": 1795.85546875,
+    "process_peak_mib": 2278.734375
+   },
+   {
+    "run": 2,
+    "wall_s": 34.75113210000018,
+    "cpu_s": 44.015625,
+    "average_cores": 1.266595426973148,
+    "machine_cpu_percent": 10.5549618914429,
+    "first_chunk_s": 0.6201021000015317,
+    "audio_s": 35.68,
+    "realtime_multiple": 1.0267291407176866,
+    "chunks": 446,
+    "samples": 856320,
+    "rss_after_mib": 1831.203125,
+    "process_peak_mib": 2278.734375
+   },
+   {
+    "run": 3,
+    "wall_s": 34.92408930000056,
+    "cpu_s": 44.421875,
+    "average_cores": 1.2719551430078175,
+    "machine_cpu_percent": 10.599626191731813,
+    "first_chunk_s": 0.5160888000009436,
+    "audio_s": 35.68,
+    "realtime_multiple": 1.021644392599793,
+    "chunks": 446,
+    "samples": 856320,
+    "rss_after_mib": 1847.53515625,
+    "process_peak_mib": 2278.734375
+   }
+  ],
+  "method": "Fresh process; cached offline weights; direct synthesis, no preprocessing, playback or speed transform. Run 1 includes warmup; runs 2-3 reuse the model. RSS and peak from GetProcessMemoryInfo (WorkingSetSize, PeakWorkingSetSize), CPU from process_time. OS file cache not cleared."
+ }
 }

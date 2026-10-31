@@ -45,6 +45,7 @@ Mismo método y texto que la [tabla de consumo de lola](como-funciona.md#windows
 | Motor | RAM tras cargar | RAM tras hablar (pico) | CPU al generar | CPU total del texto | Velocidad | Primer sonido |
 |---|---|---|---|---|---|---|
 | Pocket TTS `lola` | 772 MiB | 947 MiB (981) | 1,7 núcleos (15 %) | 17,5 s | 3,7× | 0,14 s |
+| Pocket TTS `spanish_24l` con `lola` | 1638 MiB | 1848 MiB (2279) | 1,3 núcleos (11 %) | 44,2 s | 1,02× | 0,57 s |
 | Supertonic 3 (`F1`) | 462 MiB | 584 MiB (591) | 6,3 núcleos (52 %) | 45,7 s | 5,8× | sin streaming |
 | Piper `es_MX-claude-high` | 142 MiB | 363 MiB (364) | 5,7 núcleos (47 %) | 6,9 s | 31× | 0,22 s |
 | Piper `es_ES-davefx-medium` | 137 MiB | 420 MiB (420) | 5,8 núcleos (48 %) | 6,0 s | 31× | 0,19 s |
@@ -216,6 +217,19 @@ Descartadas sin escuchar:
 | Voces de `HirCoir` (astra, elena, lilith, dark, yahir, towi, capybara) | Piden token y aprobación del autor. |
 | Imitaciones de personas o personajes (Cortana, Veritasium, Lucas Melor, «1 peso de salsa», GLaDOS) | Clones sin consentimiento demostrado; chocan con los términos de uso de voz. |
 | `prasadvittaldev/pocket-tts-spanish-onnx-int4` | Pocket TTS español en ONNX int4 (106 MB, sin torch, incluye el codificador para clonar). Necesita el programa de `KevinAHM/pocket-tts-onnx-export`, que ya no existe en GitHub; no se probó. |
+
+## `lola` con `spanish_24l` (2026-10-31)
+
+El modelo grande de Pocket TTS (24 capas) con `lola`, frente a `lola` normal, Kokoro `em_santa` y Supertonic `F2`; texto de la ronda final, volumen igualado y a ciegas:
+
+| Voz | Veredicto de la persona responsable |
+|---|---|
+| Supertonic `F2` | Muy bien. |
+| `lola` con `spanish_24l` | Muy bien, algo lenta o tranquila. |
+| Kokoro `em_santa` | La de los relatos, muy buena. |
+| `lola` con `spanish` | Bien, algo lenta o tranquila; la de menor calidad de las cuatro, pero bien. |
+
+`spanish_24l` mejora a `lola` y queda al nivel de las mejores, pero es la opción más pesada de las útiles: ~1,8 GiB de RAM (pico 2,3 GiB), 44,2 s de CPU para el texto de referencia y solo 1,02× tiempo real en este equipo (`scripts/measure_tts.py`, [datos](measurements/voces-windows-2026-10-31.json)); en un equipo más lento podría no generar al ritmo de la reproducción.
 
 ## Licencias
 
