@@ -156,6 +156,7 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
   - Evaluar si conviene crear un motor o modelo propio («si hacemos nuestro propio motor y modelo podemos hacer lo mejor»).
   - A futuro, poder elegir el motor (Pocket TTS, Kokoro, Piper, Qwen3-TTS u otros), junto con la elección de CPU o GPU de `RH-W-0007`.
 - **Evidencia:** opciones de fine-tuning ya documentadas en [Pocket TTS](../pocket-tts.md#entrenamiento-y-fine-tuning-sí-existen) y el [catálogo gratuito](../catalogo-gratuito.md); ninguna se probó.
+- **Intención de la persona responsable (2026-10-31):** «al final queria hacer pruebas o cambiar o mezclar o crear o fine tuning o esas cosa [...] ya cuando yo te diga quiero hacer mi modelo quiza con varias voces obtimizado para lo que queremos». Se hace al final y solo cuando lo pida; base: [pruebas de voces](../pruebas-de-voces.md), incluidas las mezclas de Kokoro.
 - **Decisión:** dejarlo para el final, con la optimización.
   2026-10-30: aplazado por decisión de prioridades (la persona responsable delegó la decisión: «decidelo tu ... sin sobreingenieria»): primero base confiable, medición (`RH-W-0003`), decisión de versión lite e instalación, y endurecimiento (`RH-W-0001`, `RH-W-0013`).
 - **Condición del siguiente avance:** `RH-W-0003` avanzado y autorización para investigar.

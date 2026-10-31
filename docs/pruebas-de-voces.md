@@ -174,6 +174,25 @@ Las voces de Piper en español sin escuchar y MeloTTS, con el texto de la ronda 
 
 Piper `carlfm` empata con `lola` en la escucha y es la más ligera de todas las probadas: modelo de 27 MB, ~300 MiB de RAM, 3,6 s de CPU para el texto de referencia (5 veces menos que `lola`) y primer sonido en 0,10 s. Candidata para la versión lite (`RH-W-0025`). MeloTTS gasta más que `lola` en todo (1,2–2 GiB, 87,6 s de CPU).
 
+## Mezclas de Kokoro y ajustes de Supertonic (2026-10-31)
+
+Vistazo corto, con el texto de la ronda final, volumen igualado, a ciegas, junto a las originales y `lola`. Kokoro permite mezclar voces sumando sus estilos con pesos; Supertonic permite cambiar los pasos de calidad (`total_steps`, 8 por defecto) y la velocidad (`speed`, 1,05 por defecto).
+
+| Voz | Veredicto de la persona responsable | CPU del texto |
+|---|---|---|
+| Kokoro `em_santa` (original) | La de los relatos; suena muy bien (la reconoció a ciegas). | — |
+| Kokoro 70 % `em_santa` + 30 % `ef_dora` | Muy bien; parecida a la de los relatos, pero más normal. | — |
+| Kokoro 50 % `em_santa` + 50 % `ef_dora` | Muy parecida a la anterior, menos de relato. | — |
+| Kokoro 50 % `ef_dora` + 50 % `em_alex` | Muy bien; un poco de acento en «claro». | — |
+| Supertonic `F2`, 8 pasos (original) | Muy bien. | 32,1 s |
+| Supertonic `F2`, 16 pasos, velocidad 1,0 | Igual que la original. | 60,1 s |
+| Supertonic `F2`, 4 pasos | Ruidos raros; sin ellos no estaría tan mal. | 17,5 s |
+| `lola` | Algo robótica, pero no está mal. | — |
+
+- **Mezclas:** sirven para tener más voces sin descargar nada; el peso de cada voz funciona como un dial entre el tono de relato de `em_santa` y uno más neutro.
+- **Supertonic:** 8 pasos es el punto justo; duplicarlos dobla la CPU sin mejora audible y bajarlos a 4 iguala la CPU de `lola` pero mete ruido.
+- `lola` vuelve a quedar como algo robótica, igual que en las rondas anteriores.
+
 ## Licencias
 
 Cada opción tiene tres capas: el programa, el modelo y la voz con la que se entrenó o se clona.
