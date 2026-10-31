@@ -40,7 +40,7 @@
 - **Requisitos:** no se inventan mínimos de RAM/VRAM. Si no se da una cifra, es **SIN VERIFICAR**; CPU/GPU describe la ruta prevista, no rendimiento garantizado. Para datasets, CPU significa tratamiento de audio; no ejecutar un motor TTS.
 - **Comercial:** «sí» se refiere a la licencia indicada y sus obligaciones, no a una autorización sobre la identidad del hablante. Separa **código, pesos, audio de referencia y términos del servicio**. GPL/LGPL permiten uso comercial, pero pueden imponer obligaciones al distribuir software; NC no. CC BY-SA no convierte automáticamente todo audio sintético ni toda aplicación en ShareAlike.
 
-**Documentación de detalle, sin duplicarla:** [Pocket TTS](pocket-tts.md), [voces gratuitas](voces-gratuitas.md), [uso y resultados locales](../README.md). Ante discrepancias, usa la fuente primaria más específica y reciente. Por ejemplo, TEDx/OpenSLR 67 es **CC BY-NC-ND 4.0**, no CC BY-SA como aparece en una tabla previa.
+**Documentación de detalle, sin duplicarla:** [Pocket TTS](pocket-tts.md), [voces gratuitas](voces-gratuitas.md), [pruebas de voces hechas en tehablo](pruebas-de-voces.md), [uso y resultados locales](../README.md). Ante discrepancias, usa la fuente primaria más específica y reciente. Por ejemplo, TEDx/OpenSLR 67 es **CC BY-NC-ND 4.0**, no CC BY-SA como aparece en una tabla previa.
 
 ## 1. Motores TTS locales
 

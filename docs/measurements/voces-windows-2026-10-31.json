@@ -1,0 +1,392 @@
+{
+ "date": "2026-10-31",
+ "host": {
+  "platform": "Windows-11-10.0.26200-SP0",
+  "cpu": "AMD64 Family 25 Model 33 Stepping 0, AuthenticAMD",
+  "logical_cpus": 12,
+  "mem_total_kib": 33458540
+ },
+ "text_file": "samples/benchmark.txt",
+ "characters": 600,
+ "text_sha256": "601849c5ec5ae2209ec595ee45bef62f8974cceaadda4d7937539d8bad4ecb2b",
+ "method": "One fresh process per engine, offline cached weights, direct synthesis without preprocessing or playback, 3 runs (run 1 includes warmup; Chatterbox 1 run). lola via scripts/measure_tts.py; other engines via the same fields (scratch harness). Memory from GetProcessMemoryInfo, CPU from process_time. first_chunk_s null when the engine does not stream.",
+ "lola_measure_tts": {
+  "timestamp": "2026-10-30T20:36:45.038554-06:00",
+  "platform": "Windows-11-10.0.26200-SP0",
+  "distribution": "Windows-11-10.0.26200-SP0",
+  "cpu": "AMD64 Family 25 Model 33 Stepping 0, AuthenticAMD",
+  "logical_cpus": 12,
+  "mem_total_kib": 33458540,
+  "python": "3.12.13",
+  "versions": {
+   "pocket-tts": "4.0.1",
+   "torch": "2.15.0+cpu",
+   "numpy": "2.5.4"
+  },
+  "torch_threads": 1,
+  "torch_interop_threads": 6,
+  "model": "spanish",
+  "voice": "lola",
+  "seed": 1234,
+  "text_file": "samples/benchmark.txt",
+  "characters": 600,
+  "text_sha256": "601849c5ec5ae2209ec595ee45bef62f8974cceaadda4d7937539d8bad4ecb2b",
+  "sample_rate": 24000,
+  "load_s": 0.9052851999995255,
+  "rss_after_load_mib": 772.12109375,
+  "peak_after_load_mib": 980.98046875,
+  "voice_prepare_s": 0.0013766000001851353,
+  "runs": [
+   {
+    "run": 1,
+    "wall_s": 10.520603799999662,
+    "cpu_s": 18.5,
+    "average_cores": 1.7584542058318549,
+    "machine_cpu_percent": 14.653785048598792,
+    "first_chunk_s": 0.14291460000004008,
+    "audio_s": 36.8,
+    "realtime_multiple": 3.4978980959249864,
+    "chunks": 460,
+    "samples": 883200,
+    "rss_after_mib": 884.84765625,
+    "process_peak_mib": 980.98046875
+   },
+   {
+    "run": 2,
+    "wall_s": 10.233828499999618,
+    "cpu_s": 17.875,
+    "average_cores": 1.7466581543750384,
+    "machine_cpu_percent": 14.555484619791986,
+    "first_chunk_s": 0.14465729999938048,
+    "audio_s": 36.8,
+    "realtime_multiple": 3.59591720732875,
+    "chunks": 460,
+    "samples": 883200,
+    "rss_after_mib": 920.27734375,
+    "process_peak_mib": 980.98046875
+   },
+   {
+    "run": 3,
+    "wall_s": 9.78715800000009,
+    "cpu_s": 17.0625,
+    "average_cores": 1.7433559364219768,
+    "machine_cpu_percent": 14.527966136849807,
+    "first_chunk_s": 0.1375699000000168,
+    "audio_s": 36.8,
+    "realtime_multiple": 3.7600292137921607,
+    "chunks": 460,
+    "samples": 883200,
+    "rss_after_mib": 946.75,
+    "process_peak_mib": 980.98046875
+   }
+  ],
+  "method": "Fresh process; cached offline weights; direct synthesis, no preprocessing, playback or speed transform. Run 1 includes warmup; runs 2-3 reuse the model. RSS and peak from GetProcessMemoryInfo (WorkingSetSize, PeakWorkingSetSize), CPU from process_time. OS file cache not cleared."
+ },
+ "engines": [
+  {
+   "engine": "supertonic3-F1",
+   "characters": 600,
+   "import_s": 0.19504780000079336,
+   "import_mib": 33.85546875,
+   "load_s": 1.089313200000106,
+   "rss_after_load_mib": 462.234375,
+   "peak_after_load_mib": 470.890625,
+   "runs": [
+    {
+     "run": 1,
+     "wall_s": 7.002732799999649,
+     "cpu_s": 43.734375,
+     "average_cores": 6.245329680435928,
+     "machine_cpu_percent": 52.04441400363273,
+     "first_chunk_s": null,
+     "audio_s": 42.25659863945578,
+     "realtime_multiple": 6.034301157322167,
+     "rss_after_mib": 560.1171875,
+     "process_peak_mib": 560.1171875
+    },
+    {
+     "run": 2,
+     "wall_s": 7.20573450000029,
+     "cpu_s": 45.171875,
+     "average_cores": 6.268878627154273,
+     "machine_cpu_percent": 52.24065522628562,
+     "first_chunk_s": null,
+     "audio_s": 42.25659863945578,
+     "realtime_multiple": 5.864301361568912,
+     "rss_after_mib": 584.125,
+     "process_peak_mib": 591.234375
+    },
+    {
+     "run": 3,
+     "wall_s": 7.3888338000006115,
+     "cpu_s": 46.21875,
+     "average_cores": 6.255215809563368,
+     "machine_cpu_percent": 52.12679841302806,
+     "first_chunk_s": null,
+     "audio_s": 42.25659863945578,
+     "realtime_multiple": 5.718980800387239,
+     "rss_after_mib": 584.125,
+     "process_peak_mib": 591.234375
+    }
+   ]
+  },
+  {
+   "engine": "piper-es_MX-claude-high",
+   "characters": 600,
+   "import_s": 0.2166759000001548,
+   "import_mib": 34.25390625,
+   "load_s": 1.8140714000001026,
+   "rss_after_load_mib": 142.4609375,
+   "peak_after_load_mib": 143.73828125,
+   "runs": [
+    {
+     "run": 1,
+     "wall_s": 1.2155124000000797,
+     "cpu_s": 6.875,
+     "average_cores": 5.656050896724336,
+     "machine_cpu_percent": 47.133757472702804,
+     "first_chunk_s": 0.24798680000003515,
+     "audio_s": 38.0691156462585,
+     "realtime_multiple": 31.319397191057867,
+     "rss_after_mib": 362.5,
+     "process_peak_mib": 362.5
+    },
+    {
+     "run": 2,
+     "wall_s": 1.1868003000008684,
+     "cpu_s": 6.875,
+     "average_cores": 5.792886975167574,
+     "machine_cpu_percent": 48.27405812639645,
+     "first_chunk_s": 0.2095630000003439,
+     "audio_s": 38.16199546485261,
+     "realtime_multiple": 32.15536385087254,
+     "rss_after_mib": 361.4609375,
+     "process_peak_mib": 363.78125
+    },
+    {
+     "run": 3,
+     "wall_s": 1.2480959000004077,
+     "cpu_s": 6.921875,
+     "average_cores": 5.545948031715944,
+     "machine_cpu_percent": 46.216233597632865,
+     "first_chunk_s": 0.24036990000058722,
+     "audio_s": 38.138775510204084,
+     "realtime_multiple": 30.557568140550437,
+     "rss_after_mib": 363.171875,
+     "process_peak_mib": 363.84765625
+    }
+   ]
+  },
+  {
+   "engine": "piper-es_ES-davefx-medium",
+   "characters": 600,
+   "import_s": 0.24784290000025067,
+   "import_mib": 34.421875,
+   "load_s": 3.0642008000004353,
+   "rss_after_load_mib": 137.41015625,
+   "peak_after_load_mib": 138.71484375,
+   "runs": [
+    {
+     "run": 1,
+     "wall_s": 1.0017117000006692,
+     "cpu_s": 5.6875,
+     "average_cores": 5.677781341673658,
+     "machine_cpu_percent": 47.31484451394714,
+     "first_chunk_s": 0.2303074999999808,
+     "audio_s": 33.19292517006803,
+     "realtime_multiple": 33.136205926361704,
+     "rss_after_mib": 351.0546875,
+     "process_peak_mib": 351.0546875
+    },
+    {
+     "run": 2,
+     "wall_s": 1.0544167999996716,
+     "cpu_s": 6.046875,
+     "average_cores": 5.734805249690524,
+     "machine_cpu_percent": 47.79004374742104,
+     "first_chunk_s": 0.18772179999996297,
+     "audio_s": 32.833015873015874,
+     "realtime_multiple": 31.13855533506873,
+     "rss_after_mib": 420.22265625,
+     "process_peak_mib": 420.22265625
+    },
+    {
+     "run": 3,
+     "wall_s": 1.0317473999994036,
+     "cpu_s": 5.96875,
+     "average_cores": 5.785088481932157,
+     "machine_cpu_percent": 48.20907068276798,
+     "first_chunk_s": 0.19851490000019112,
+     "audio_s": 32.33378684807256,
+     "realtime_multiple": 31.338859538770105,
+     "rss_after_mib": 419.49609375,
+     "process_peak_mib": 420.46875
+    }
+   ]
+  },
+  {
+   "engine": "kokoro-ef_dora",
+   "characters": 600,
+   "import_s": 0.32712740000079066,
+   "import_mib": 44.63671875,
+   "load_s": 1.035707199999706,
+   "rss_after_load_mib": 399.26171875,
+   "peak_after_load_mib": 425.53125,
+   "runs": [
+    {
+     "run": 1,
+     "wall_s": 8.981336699999702,
+     "cpu_s": 48.21875,
+     "average_cores": 5.368772111616927,
+     "machine_cpu_percent": 44.73976759680773,
+     "first_chunk_s": null,
+     "audio_s": 33.594,
+     "realtime_multiple": 3.74042318221976,
+     "rss_after_mib": 780.2265625,
+     "process_peak_mib": 786.203125
+    },
+    {
+     "run": 2,
+     "wall_s": 8.822963399999935,
+     "cpu_s": 47.34375,
+     "average_cores": 5.36596921619332,
+     "machine_cpu_percent": 44.71641013494433,
+     "first_chunk_s": null,
+     "audio_s": 33.594,
+     "realtime_multiple": 3.8075642476313853,
+     "rss_after_mib": 1127.0390625,
+     "process_peak_mib": 1136.09765625
+    },
+    {
+     "run": 3,
+     "wall_s": 9.384395099999892,
+     "cpu_s": 51.296875,
+     "average_cores": 5.466188758399632,
+     "machine_cpu_percent": 45.551572986663594,
+     "first_chunk_s": null,
+     "audio_s": 33.594,
+     "realtime_multiple": 3.5797725524152737,
+     "rss_after_mib": 1127.04296875,
+     "process_peak_mib": 1136.1015625
+    }
+   ]
+  },
+  {
+   "engine": "vits-coqui-es-css10",
+   "characters": 600,
+   "import_s": 0.014185400000314985,
+   "import_mib": 4.62109375,
+   "load_s": 1.0192439000002196,
+   "rss_after_load_mib": 134.8203125,
+   "peak_after_load_mib": 136.05078125,
+   "runs": [
+    {
+     "run": 1,
+     "wall_s": 1.3933124000004682,
+     "cpu_s": 5.390625,
+     "average_cores": 3.868927743697816,
+     "machine_cpu_percent": 32.24106453081513,
+     "first_chunk_s": null,
+     "audio_s": 30.360226757369613,
+     "realtime_multiple": 21.789963799474844,
+     "rss_after_mib": 321.0390625,
+     "process_peak_mib": 323.59375
+    },
+    {
+     "run": 2,
+     "wall_s": 1.5501367999995637,
+     "cpu_s": 6.09375,
+     "average_cores": 3.931104661215523,
+     "machine_cpu_percent": 32.759205510129355,
+     "first_chunk_s": null,
+     "audio_s": 30.165396825396826,
+     "realtime_multiple": 19.459828852140866,
+     "rss_after_mib": 372.91015625,
+     "process_peak_mib": 399.58203125
+    },
+    {
+     "run": 3,
+     "wall_s": 1.66858990000037,
+     "cpu_s": 6.609375,
+     "average_cores": 3.9610541811373388,
+     "machine_cpu_percent": 33.00878484281115,
+     "first_chunk_s": null,
+     "audio_s": 29.690566893424037,
+     "realtime_multiple": 17.793807150227536,
+     "rss_after_mib": 379.62890625,
+     "process_peak_mib": 405.234375
+    }
+   ]
+  },
+  {
+   "engine": "vits-mms-spa",
+   "characters": 600,
+   "import_s": 0.013638600000376755,
+   "import_mib": 4.71875,
+   "load_s": 0.5691049000006387,
+   "rss_after_load_mib": 175.2734375,
+   "peak_after_load_mib": 182.89453125,
+   "runs": [
+    {
+     "run": 1,
+     "wall_s": 8.014325500000268,
+     "cpu_s": 31.5,
+     "average_cores": 3.9304617712368866,
+     "machine_cpu_percent": 32.75384809364072,
+     "first_chunk_s": null,
+     "audio_s": 38.934,
+     "realtime_multiple": 4.858050749248791,
+     "rss_after_mib": 361.0,
+     "process_peak_mib": 363.37890625
+    },
+    {
+     "run": 2,
+     "wall_s": 8.604511600000478,
+     "cpu_s": 33.953125,
+     "average_cores": 3.945967717679422,
+     "machine_cpu_percent": 32.883064313995185,
+     "first_chunk_s": null,
+     "audio_s": 38.702875,
+     "realtime_multiple": 4.497974643906326,
+     "rss_after_mib": 408.92578125,
+     "process_peak_mib": 433.04296875
+    },
+    {
+     "run": 3,
+     "wall_s": 8.817067699999825,
+     "cpu_s": 34.65625,
+     "average_cores": 3.9305868094900402,
+     "machine_cpu_percent": 32.75489007908367,
+     "first_chunk_s": null,
+     "audio_s": 39.047125,
+     "realtime_multiple": 4.428584006449307,
+     "rss_after_mib": 409.59375,
+     "process_peak_mib": 433.76171875
+    }
+   ]
+  },
+  {
+   "engine": "chatterbox-co-hombre-2121",
+   "characters": 600,
+   "import_s": 7.2273315000002185,
+   "import_mib": 426.57421875,
+   "load_s": 8.459412299999713,
+   "rss_after_load_mib": 4487.3125,
+   "peak_after_load_mib": 7064.64453125,
+   "runs": [
+    {
+     "run": 1,
+     "wall_s": 235.09142620000057,
+     "cpu_s": 1342.203125,
+     "average_cores": 5.709281476977984,
+     "machine_cpu_percent": 47.5773456414832,
+     "first_chunk_s": null,
+     "audio_s": 38.64,
+     "realtime_multiple": 0.16436158742398196,
+     "rss_after_mib": 5757.91796875,
+     "process_peak_mib": 7064.64453125
+    }
+   ]
+  }
+ ]
+}

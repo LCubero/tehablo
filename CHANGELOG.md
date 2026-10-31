@@ -9,6 +9,7 @@ Este archivo registra los cambios completados en orden cronológico.
 - `install.ps1` verificado en Windows (PowerShell 5.1 con el comando del README y PowerShell 7): instalación desde cero, segunda ejecución, dual boot con `.venv-pocket` de Linux y aviso sin `uv`; `RH-W-0008` queda `completed`.
 - En Windows el servidor ya no comparte en silencio un puerto ocupado (por ejemplo `8765` de AnkiConnect): falla con `Address already in use` como en Linux, y otro programa no puede tomar su puerto. Antes `SO_REUSEADDR` permitía el doble enlace en Windows. Las 7 suites de Python y las 30 pruebas de Node pasan en Windows.
 - `requirements.txt` limita las dependencias a las versiones mayores probadas (torch por debajo de 2.16, que anuncia el retiro de la cuantización usada en Linux); una instalación nueva ya no sube a versiones sin probar (`RH-W-0023`).
+- Prueba de voces sin token de Hugging Face (`RH-W-0005`): siete motores escuchados a ciegas sin y con los ajustes de tehablo, con consumo medido y licencias revisadas en [pruebas de voces](docs/pruebas-de-voces.md). Con ajustes, Kokoro (`em_santa`, `ef_dora`) y Supertonic `F2` suenan mejor que `lola`; sin ajustes, `lola` lee símbolos y tablas. No cambia el comportamiento.
 
 ## 2026-10-30
 
