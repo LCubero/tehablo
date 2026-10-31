@@ -152,8 +152,8 @@ node --test pi-extension/tehablo-tts/test/tts.test.ts pi-extension/tehablo-tts/t
 Se restauró un entorno nativo conservando el anterior como `.venv-pocket-windows`.
 Se comprobaron Python 3.12.15, pocket-tts 4.0.1, Torch 2.15.0+cpu,
 sounddevice 0.5.6 y Node 25.9.0, con kernel `7.2.13-200.fc44.x86_64`.
-Las 57 dependencias resultaron compatibles; esto no garantiza futuras versiones
-sin fijar de `requirements.txt` ni una instalación limpia en cualquier equipo.
+Las 57 dependencias resultaron compatibles; esto no garantiza versiones futuras
+dentro de los límites de `requirements.txt` ni una instalación limpia en cualquier equipo.
 
 Para repetir las suites sin modelo ni audio desde la raíz:
 

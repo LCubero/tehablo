@@ -1,6 +1,10 @@
 # Install with the CPU-only PyTorch index (see README.md):
 # uv pip install -r requirements.txt --extra-index-url https://download.pytorch.org/whl/cpu --index-strategy unsafe-best-match
-pocket-tts>=4.0
-sounddevice>=0.5
-textual>=8.0
-audiotsm>=0.1.2
+# Upper bounds keep installs on tested major versions. torch stays below 2.16 because
+# Torch 2.15 deprecates torch.quantize_per_tensor, used by the Linux quantized default;
+# raise the cap only after tests/test_quantize.py and a quantized load pass on the new version.
+pocket-tts>=4.0,<5
+torch<2.16
+sounddevice>=0.5,<0.6
+textual>=8.0,<9
+audiotsm>=0.1.2,<0.2
