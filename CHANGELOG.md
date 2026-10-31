@@ -7,7 +7,7 @@ Este archivo registra los cambios completados en orden cronológico.
 ## 2026-10-31
 
 - Las valoraciones de las escuchas en [pruebas de voces](docs/pruebas-de-voces.md) usan un vocabulario fijo (niveles de «Muy bien» a «Muy mal» y rasgos como «tranquila» o «algo robótica»), explicado en [cómo se anotan las escuchas](docs/pruebas-de-voces.md#cómo-se-anotan-las-escuchas), en lugar de las notas textuales (`RH-W-0005`).
-- Se registró el arranque lento del TTS tras encender el equipo en Linux (~14 s, luego ~3,5 s), con la causa probable sin comprobar (`RH-W-0026`). No cambia el comportamiento.
+- Se registró el arranque lento del TTS tras encender el equipo en Linux (~14 s, luego ~3,5 s) (`RH-W-0026`). Una medición con la caché de disco vaciada descartó que la causa principal sea el entorno de Python en NTFS (suma ~1 s; listo en ~5,4–5,7 s) y que la carga use la red; la causa sigue sin conocerse. No cambia el comportamiento.
 
 ## 2026-10-30
 

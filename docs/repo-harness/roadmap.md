@@ -323,14 +323,15 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 
 - **Origen:** observación de la persona responsable del 2026-10-31 en Fedora: «dura mucho cargando el actual tts de pi en linux».
 - **Prioridad:** P2; es la primera espera que se nota al usar tehablo desde Pi cada día.
-- **Dependencias:** ninguna; coordinar un cambio de ubicación del entorno con la instalación (`RH-W-0008`, `install.sh`).
+- **Dependencias:** ninguna.
 - **Estado:** `proposed`.
 - **Trabajo restante:**
-  - Comprobar la causa: medir un arranque en frío con `.venv-pocket` en NTFS y con una copia del entorno en btrfs, vaciando antes la caché de disco (requiere cerrar el TTS de Pi y un comando con `sudo` de la persona responsable).
-  - Si se confirma, decidir dónde vive el entorno de Linux (por ejemplo `~/.local/share/tehablo/`) y adaptar `install.sh` y la búsqueda de Python de la extensión, sin cambiar Windows.
-- **Evidencia (2026-10-31, Fedora):** el primer arranque tras encender el equipo tardó al menos ~13,4 s hasta cargar el modelo (inicio del proceso 12:10:36, última escritura del log durante la carga 12:10:49,97; el equipo encendió a las 11:55:30). Dos arranques siguientes, ya con caché: responde en ~2,4 s y queda listo en ~3,5 s. `.venv-pocket` ocupa 1,1 GB en 22 666 archivos y está en `/mnt/SSD` (`ntfs3`); la caché de modelos de Hugging Face está en btrfs. Causa probable, sin comprobar: leer el entorno desde NTFS en frío.
-- **Decisión:** registrar y comprobar antes de cambiar la instalación.
-- **Condición del siguiente avance:** autorización de la persona responsable para la medición en frío (copia temporal fuera del repositorio y `sudo`). La sonda está en `.repo-harness/tmp/linux-start/probe_start.py` (ignorado por Git).
+  - Medir el primer arranque real tras encender el equipo, antes de abrir Pi: tiempo desde lanzar `src/tehablo_server.py` hasta que `/health` responde `ready: true`, y anotar si vuelve a tardar ~14 s.
+  - Si se repite, buscar la causa fuera de la caché de disco (por ejemplo, carga del equipo justo después de iniciar sesión o arranque del audio); no mover el entorno de Python por ahora.
+- **Evidencia (2026-10-31, Fedora):** el primer arranque tras encender el equipo tardó al menos ~13,4 s hasta cargar el modelo (inicio del proceso 12:10:36, última escritura del log durante la carga 12:10:49,97; el equipo encendió a las 11:55:30). Dos arranques siguientes, ya con caché: responde en ~2,4 s y queda listo en ~3,5 s. `.venv-pocket` ocupa 1,1 GB en 22 666 archivos y está en `/mnt/SSD` (`ntfs3`); la caché de modelos de Hugging Face está en btrfs. Primera hipótesis: leer el entorno desde NTFS en frío.
+- **Comprobación (2026-10-31):** con la caché de disco vaciada (`drop_caches`, verificando con `fincore` que `libtorch_cpu.so` no estaba en memoria), dos arranques en frío por entorno en orden alternado: `.venv-pocket` en NTFS quedó listo en 5,39 y 5,69 s; una copia idéntica en btrfs, en 4,49 y 4,48 s; en caliente, 3,5 s. NTFS cuesta ~1 s en frío, pero ningún arranque se acercó a ~14 s. La carga del modelo no usa la red (revisiones fijadas; cero conexiones medidas) y `HF_HUB_OFFLINE=1` no cambia el tiempo. La causa de los ~14 s sigue sin conocerse; vaciar la caché no reproduce todo lo que pasa tras encender el equipo. Scripts y log en `.repo-harness/tmp/linux-start/` (ignorado por Git).
+- **Decisión:** 2026-10-31: no mover el entorno de Linux fuera de NTFS por ~1 s; antes, medir un primer arranque real.
+- **Condición del siguiente avance:** la medición del primer arranque tras el próximo encendido del equipo en Linux.
 
 ## Registros resueltos
 <!-- doc-role:resolved-records -->
