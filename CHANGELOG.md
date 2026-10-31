@@ -4,6 +4,10 @@
 
 Este archivo registra los cambios completados en orden cronológico.
 
+## 2026-10-31
+
+- `install.ps1` verificado en Windows (PowerShell 5.1 con el comando del README y PowerShell 7): instalación desde cero, segunda ejecución, dual boot con `.venv-pocket` de Linux y aviso sin `uv`; `RH-W-0008` queda `completed`.
+
 ## 2026-10-30
 
 - El harness se actualizó a repo-harness 3.2.0: la preferencia de idioma guardada manda en la conversación (una orden técnica en inglés no la cambia) y las fechas usan la preferencia `timeZone` (`America/Costa_Rica`), nunca UTC.

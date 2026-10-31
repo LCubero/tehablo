@@ -92,14 +92,14 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 - **Origen:** solicitud de la persona responsable del 2026-10-29: «hay que hacerlo facil de instalar en loca, en vps, etc y seguro».
 - **Prioridad:** P2; hoy la instalación requiere varios pasos manuales por sistema operativo.
 - **Dependencias:** ninguna.
-- **Estado:** `active`.
+- **Estado:** `completed`.
 - **Trabajo completado (2026-10-30):** `install.sh` (Linux/macOS) e `install.ps1` (Windows) en la raíz: comprueban `uv`, crean o reutilizan el entorno (`.venv-pocket`, o `.venv-pocket-linux`/`-macos`/`-windows` si `.venv-pocket` es de otro sistema), instalan las dependencias con el índice CPU de PyTorch y comprueban las importaciones; si falta PortAudio en Linux indican el comando de la distribución. Verificado en Fedora en un clon limpio: instalación 17 s, segunda ejecución 4 s, rama de dual boot y aviso sin `uv` (exit 1, sin crear entorno); `shellcheck` sin avisos. El [README](../../README.md#instalación) los pone primero y conserva la instalación manual.
-- **Trabajo restante:**
-  - Probar `install.ps1` en Windows (no hay PowerShell en Fedora para comprobarlo).
+- **Trabajo completado (2026-10-31, Windows):** `install.ps1` verificado en clones limpios con el comando del README (`powershell -ExecutionPolicy Bypass -File install.ps1`, Windows PowerShell 5.1): instalación 45 s con Torch `2.15.0+cpu`, segunda ejecución 7 s, rama de dual boot (`.venv-pocket` de Linux → crea `.venv-pocket-windows`, 43 s), aviso sin `uv` (exit 1, sin crear entorno) y segunda ejecución con PowerShell 7 (`pwsh`, 7 s); el entorno creado importa `tehablo_tts`. Sin cambios en el script.
+- **Trabajo restante:** ninguno.
 - **Exclusiones:** sin instalador gráfico (la persona responsable, 2026-10-30: «instalador grafico no creo hacerlo o quiza hasta al final de todo»), paquete ni descarga previa de modelos (se descargan en el primer uso); VPS y Docker siguen en `RH-W-0009`.
 - **Evidencia:** pasos manuales en `README.md` antes de este cambio; `requirements.txt` sin versiones fijas (`>=`).
 - **Decisión:** 2026-10-30, por decisión delegada de la persona responsable («tu decidelo, revisa y recuerda sin sobreingenieria»): un script por sistema, sin herramientas nuevas.
-- **Condición del siguiente avance:** ejecutar `install.ps1` en Windows.
+- **Condición del siguiente avance:** ninguna; trabajo completado.
 
 ### RH-W-0009: Versión Docker y despliegue seguro en VPS
 
@@ -309,7 +309,7 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 - **Trabajo completado (2026-10-30):** cuantización predeterminada en Linux (`quantize_default` en `src/tehablo_tts.py`, usada por el servidor, la TUI y la consola), sin cuantizar en Windows; `TEHABLO_QUANTIZE=0` o `1` la cambia. En Fedora genera ~1,7× más rápido con `spanish` y ~1,9× con `spanish_24l` (que además usa ~260 MiB menos tras cargar); en una prueba a ciegas la persona responsable no distinguió el audio ([resultados](../como-funciona.md#arranque-reposo-y-cuantización-en-fedora-2026-10-30)). Pruebas en `tests/test_quantize.py`.
 - **Riesgo conocido:** al cuantizar, Torch 2.15 avisa que `torch.quantize_per_tensor` y funciones afines quedarán obsoletas y se quitarán en una versión futura; `requirements.txt` no fija la versión de torch (`>=`). Si una actualización rompe la carga cuantizada, `TEHABLO_QUANTIZE=0` la desactiva sin cambiar código.
 - **Decisión:** 2026-10-30, por decisión delegada de la persona responsable («decidelo tu ... sin sobreingenieria»): adoptar la cuantización donde se midió más rápida; no se eligió aún el resto del alcance «lite».
-- **Condición del siguiente avance:** terminar la instalación (`RH-W-0008`); la versión lite va al final del plan por decisión de la persona responsable (2026-10-30). Ya están las mediciones (`RH-W-0003`) y la cuantización en Linux. Puede bastar con un modo de bajo consumo en la misma versión (cuantización, liberar el modelo en reposo) o con el binario `pocket-tts` de Kyutai, que no necesita Python ni PyTorch (no comprobado con los modelos en español).
+- **Condición del siguiente avance:** la instalación (`RH-W-0008`) quedó completada el 2026-10-31; la versión lite va al final del plan por decisión de la persona responsable (2026-10-30). Ya están las mediciones (`RH-W-0003`) y la cuantización en Linux. Puede bastar con un modo de bajo consumo en la misma versión (cuantización, liberar el modelo en reposo) o con el binario `pocket-tts` de Kyutai, que no necesita Python ni PyTorch (no comprobado con los modelos en español).
 
 ## Registros resueltos
 <!-- doc-role:resolved-records -->
