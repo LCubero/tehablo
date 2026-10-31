@@ -4,6 +4,11 @@
 
 Este archivo registra los cambios completados en orden cronológico.
 
+## 2026-10-31
+
+- Las valoraciones de las escuchas en [pruebas de voces](docs/pruebas-de-voces.md) usan un vocabulario fijo (niveles de «Muy bien» a «Muy mal» y rasgos como «tranquila» o «algo robótica»), explicado en [cómo se anotan las escuchas](docs/pruebas-de-voces.md#cómo-se-anotan-las-escuchas), en lugar de las notas textuales (`RH-W-0005`).
+- Se registró el arranque lento del TTS tras encender el equipo en Linux (~14 s, luego ~3,5 s), con la causa probable sin comprobar (`RH-W-0026`). No cambia el comportamiento.
+
 ## 2026-10-30
 
 - El harness se actualizó a repo-harness 3.2.0: la preferencia de idioma guardada manda en la conversación (una orden técnica en inglés no la cambia) y las fechas usan la preferencia `timeZone` (`America/Costa_Rica`), nunca UTC.

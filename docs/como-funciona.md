@@ -164,7 +164,7 @@ Mismo equipo, `spanish`, `pocket-tts` 4.0.1 y Torch 2.15.0+cpu ([datos](measurem
 | CPU en reposo | ~0,6 % de un núcleo |
 | `quantize=True` | RAM tras cargar 805 MiB (sin: 811), pico igual (1020), 6,9–7,3× tiempo real (sin: 4,1–4,3×) |
 
-- Con caché caliente el servidor queda listo en ~3 s; un arranque en frío tardó ~8,5 s (también en Fedora).
+- Con caché caliente el servidor queda listo en ~3 s; un arranque en frío tardó ~8,5 s (también en Fedora). El 2026-10-31, el primer arranque tras encender el equipo tardó ~14 s y los siguientes ~3,5 s; causa probable, sin comprobar: el entorno está en NTFS (`RH-W-0026`).
 - Igual que en Windows, el servidor conserva la RAM del modelo hasta cerrarse.
 - En Fedora la cuantización tampoco ahorra memoria, pero genera ~1,7× más rápido, al revés que en Windows. Se repitió en orden inverso con el mismo resultado.
 - Con `spanish_24l` cuantizado: 2,6× tiempo real (sin: 1,4×), primer fragmento ~0,22 s (sin: ~0,43), RAM tras cargar 1414 MiB (sin: 1677) y carga 3,7 s (sin: 2,1).

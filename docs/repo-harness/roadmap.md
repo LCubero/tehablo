@@ -319,6 +319,19 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 - **Decisión:** 2026-10-30, por decisión delegada de la persona responsable («decidelo tu ... sin sobreingenieria»): adoptar la cuantización donde se midió más rápida; no se eligió aún el resto del alcance «lite».
 - **Condición del siguiente avance:** la instalación (`RH-W-0008`) quedó completada el 2026-10-30; la versión lite va al final del plan por decisión de la persona responsable (2026-10-30). Ya están las mediciones (`RH-W-0003`) y la cuantización en Linux. Puede bastar con un modo de bajo consumo en la misma versión (cuantización, liberar el modelo en reposo) o con el binario `pocket-tts` de Kyutai, que no necesita Python ni PyTorch (no comprobado con los modelos en español).
 
+### RH-W-0026: Arranque lento del TTS tras encender el equipo en Linux
+
+- **Origen:** observación de la persona responsable del 2026-10-31 en Fedora: «dura mucho cargando el actual tts de pi en linux».
+- **Prioridad:** P2; es la primera espera que se nota al usar tehablo desde Pi cada día.
+- **Dependencias:** ninguna; coordinar un cambio de ubicación del entorno con la instalación (`RH-W-0008`, `install.sh`).
+- **Estado:** `proposed`.
+- **Trabajo restante:**
+  - Comprobar la causa: medir un arranque en frío con `.venv-pocket` en NTFS y con una copia del entorno en btrfs, vaciando antes la caché de disco (requiere cerrar el TTS de Pi y un comando con `sudo` de la persona responsable).
+  - Si se confirma, decidir dónde vive el entorno de Linux (por ejemplo `~/.local/share/tehablo/`) y adaptar `install.sh` y la búsqueda de Python de la extensión, sin cambiar Windows.
+- **Evidencia (2026-10-31, Fedora):** el primer arranque tras encender el equipo tardó al menos ~13,4 s hasta cargar el modelo (inicio del proceso 12:10:36, última escritura del log durante la carga 12:10:49,97; el equipo encendió a las 11:55:30). Dos arranques siguientes, ya con caché: responde en ~2,4 s y queda listo en ~3,5 s. `.venv-pocket` ocupa 1,1 GB en 22 666 archivos y está en `/mnt/SSD` (`ntfs3`); la caché de modelos de Hugging Face está en btrfs. Causa probable, sin comprobar: leer el entorno desde NTFS en frío.
+- **Decisión:** registrar y comprobar antes de cambiar la instalación.
+- **Condición del siguiente avance:** autorización de la persona responsable para la medición en frío (copia temporal fuera del repositorio y `sudo`). La sonda está en `.repo-harness/tmp/linux-start/probe_start.py` (ignorado por Git).
+
 ## Registros resueltos
 <!-- doc-role:resolved-records -->
 
