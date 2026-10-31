@@ -51,7 +51,7 @@ Este archivo proyecta solo hechos verificados del proyecto: registros activos, b
 - Registrar todo pendiente no trivial en [roadmap.md](roadmap.md), sin mantener un segundo backlog aquí.
 - `RH-W-0002` (`deferred`, P3): pronunciaciones en inglés y limpieza de símbolos aplicadas (hashes omitidos, separadores, flechas, paréntesis y barras); quedan las extensiones de archivo y la confirmación por escucha ([guía de pronunciación](../pronunciacion.md)).
 - `RH-W-0004` (`deferred`, P3): revisar interfaz, TUI, menús, comandos y ajustes, modo automático persistente y acceso sin mouse.
-- `RH-W-0005` (`active`, P3): probadas a ciegas voces sin token y, con token, las 18 de `voices/` clonadas con Pocket TTS ([resumen y resultados](../pruebas-de-voces.md#resumen-2026-10-31)); varias suenan mejor que `lola`. Sigue la prueba con NeuTTS y el ajuste castellano; sin decisión sobre qué voces se incorporan. `scripts/get_voices.py` guarda WAV que Pocket TTS no lee.
+- `RH-W-0005` (`active`, P3): probadas a ciegas voces sin token y, con token, las 18 de `voices/` clonadas con Pocket TTS ([resumen y resultados](../pruebas-de-voces.md#resumen-2026-10-30)); varias suenan mejor que `lola`. Sigue la prueba con NeuTTS y el ajuste castellano; sin decisión sobre qué voces se incorporan. `scripts/get_voices.py` guarda WAV que Pocket TTS no lee.
 - `RH-W-0007` (`deferred`, P3): modo GPU opcional, manteniendo CPU como predeterminado.
 - `RH-W-0009` (`deferred`, P2): versión Docker y despliegue seguro en VPS; depende de `RH-W-0001` y `RH-W-0008`.
 - `RH-W-0010` (`proposed`, P3): elegir si se usa el diccionario de pronunciación en inglés.
@@ -66,11 +66,11 @@ Este archivo proyecta solo hechos verificados del proyecto: registros activos, b
 - `RH-W-0020` (`excluded`): funciones de app lectora de escritorio (atajo global, portapapeles, bandeja, documentos, sonidos de fondo, plugin de navegador).
 - `RH-W-0021` (`deferred`, P3): leer frases en inglés con un modelo inglés.
 - `RH-W-0022` (`proposed`, P3): opciones de lectura (bloques de código, pausas, aviso al terminar, retroceder o repetir, historial).
-- `RH-W-0023` (`proposed`, P2): revisión de seguridad, buenas prácticas (linter, CI), control (límites) y rendimiento (medición de regresiones); dependencias limitadas a versiones probadas el 2026-10-31.
+- `RH-W-0023` (`proposed`, P2): revisión de seguridad, buenas prácticas (linter, CI), control (límites) y rendimiento (medición de regresiones); dependencias limitadas a versiones probadas el 2026-10-30.
 - `RH-W-0025` (`deferred`, P2): versión lite de mínimo consumo; cuantización predeterminada en Linux entregada; el resto queda para el final del plan.
 
 ## Siguiente paso
 
 <!-- doc-role:next-step -->
 
-Plan aprobado el 2026-10-30: (0) base confiable, completada; (1) medir con `RH-W-0003`, completado; (2) endurecer el servidor (`RH-W-0001`, completado) y los errores (`RH-W-0013`, completado) y la instalación (`RH-W-0008`, completado el 2026-10-31); (3) al final, la versión lite (`RH-W-0025`): mínimo consumo, el modelo que funcione bien gastando menos y las funciones mínimas (cambio de orden pedido por la persona responsable el 2026-10-30). La investigación y los deseos grandes quedan `deferred` hasta entonces.
+Plan aprobado el 2026-10-30: (0) base confiable, completada; (1) medir con `RH-W-0003`, completado; (2) endurecer el servidor (`RH-W-0001`, completado) y los errores (`RH-W-0013`, completado) y la instalación (`RH-W-0008`, completado el 2026-10-30); (3) al final, la versión lite (`RH-W-0025`): mínimo consumo, el modelo que funcione bien gastando menos y las funciones mínimas (cambio de orden pedido por la persona responsable el 2026-10-30). La investigación y los deseos grandes quedan `deferred` hasta entonces.

@@ -2,9 +2,9 @@
 
 Resultados propios de `RH-W-0005`: qué voces y modelos gratuitos probamos en tehablo, cuánto tardan, qué licencia tienen y si suenan igual o mejor que `lola`. Las fuentes sin probar están en el [catálogo maestro](catalogo-gratuito.md) y en [voces gratuitas](voces-gratuitas.md).
 
-## Resumen (2026-10-31)
+## Resumen (2026-10-30)
 
-Opciones de voz que quedaron bien en las escuchas a ciegas con los ajustes de tehablo. Consumo medido en Windows con `samples/benchmark.txt` ([detalle](#consumo-2026-10-31-windows)). Todavía no hay decisión sobre cuáles se incorporan.
+Opciones de voz que quedaron bien en las escuchas a ciegas con los ajustes de tehablo. Consumo medido en Windows con `samples/benchmark.txt` ([detalle](#consumo-2026-10-30-windows)). Todavía no hay decisión sobre cuáles se incorporan.
 
 | Uso | Voz | Motor | RAM tras hablar | CPU del texto | ¿Token? | Escucha |
 |---|---|---|---|---|---|---|
@@ -32,7 +32,7 @@ Pendiente de probar: NeuTTS Nano Spanish y el ajuste castellano de `inferencekey
 - **Velocidad:** segundos de audio por segundo de generación, en Windows, CPU de 12 hilos, con el modelo ya cargado salvo donde se indica. Más de 1× es más rápido que el tiempo real.
 - **Dónde:** entornos aparte en `.repo-harness/tmp/voces/` (ignorado por Git); nada se instala en el entorno del proyecto.
 
-## Resultados (2026-10-31, Windows)
+## Resultados (2026-10-30, Windows)
 
 | Motor | Voz | Acento | Velocidad | Tamaño en disco | ¿Token? | Escucha con ajustes |
 |---|---|---|---|---|---|---|
@@ -54,9 +54,9 @@ Pendiente de probar: NeuTTS Nano Spanish y el ajuste castellano de `inferencekey
 
 La velocidad de esta tabla es de la primera ronda (texto con ajustes); la de consumo, abajo, es la de referencia.
 
-## Consumo (2026-10-31, Windows)
+## Consumo (2026-10-30, Windows)
 
-Mismo método y texto que la [tabla de consumo de lola](como-funciona.md#windows): `samples/benchmark.txt` (600 caracteres), un proceso nuevo por motor, modelos ya descargados y sin conexión, síntesis directa sin preprocesado ni reproducción, 3 generaciones (la primera incluye el calentamiento; Chatterbox, una). `lola` se midió con `scripts/measure_tts.py`; los demás, con los mismos campos ([datos](measurements/voces-windows-2026-10-31.json)). Equipo: Ryzen 5 5600X, 12 hilos, 32 GB.
+Mismo método y texto que la [tabla de consumo de lola](como-funciona.md#windows): `samples/benchmark.txt` (600 caracteres), un proceso nuevo por motor, modelos ya descargados y sin conexión, síntesis directa sin preprocesado ni reproducción, 3 generaciones (la primera incluye el calentamiento; Chatterbox, una). `lola` se midió con `scripts/measure_tts.py`; los demás, con los mismos campos ([datos](measurements/voces-windows-2026-10-30.json)). Equipo: Ryzen 5 5600X, 12 hilos, 32 GB.
 
 | Motor | RAM tras cargar | RAM tras hablar (pico) | CPU al generar | CPU total del texto | Velocidad | Primer sonido |
 |---|---|---|---|---|---|---|
@@ -87,7 +87,7 @@ Notas:
 ltk_data` si no se redirige esa carpeta.
 - **Chatterbox** es 5–6 veces más lento que el tiempo real en CPU: no sirve para leer respuestas en vivo aunque suene bien. En la primera voz cortó la generación por repeticiones (`forcing EOS`), así que puede faltar el final. En Windows necesitó `setuptools<81` para cargar su marca de agua, y descarga datos en `~/.pkuseg` si no se redirige la carpeta de usuario.
 
-## Escucha sin ajustes (2026-10-31)
+## Escucha sin ajustes (2026-10-30)
 
 Texto de prueba en markdown, como lo escribe el agente, con todo lo que resuelven los ajustes de tehablo (título, negritas, código, tabla, lista, emojis, flecha, paréntesis, separador, pregunta sin `¿`, inglés, siglas, ruta, rama, hash, `RH-W-0001`, URL, `on/off`, números, porcentaje y grados):
 
@@ -125,7 +125,7 @@ Veredicto de la persona responsable, a ciegas (número de escucha entre parénte
 
 Conclusión: sin ajustes, `lola` es de las peores; los ajustes de tehablo son imprescindibles para Pocket TTS. La comparación justa entre motores es la ronda con ajustes.
 
-## Escucha con ajustes (2026-10-31)
+## Escucha con ajustes (2026-10-30)
 
 El mismo texto, pasado por todo el proceso de tehablo como en Pi (limpiador de la extensión y luego texto técnico, diccionario y números):
 
@@ -159,9 +159,9 @@ Veredicto de la persona responsable, a ciegas, sin normalizar el volumen (númer
 
 La columna «comparada con `lola`» es una lectura de las notas, no una puntuación de la persona responsable.
 
-Conclusión: con ajustes, varias voces suenan mejor que `lola`; las mejores son Kokoro `ef_dora` y Supertonic `F2`. Pero cruzado con el [consumo](#consumo-2026-10-31-windows), ninguna gana en todo: Kokoro y Supertonic gastan 2,6–2,8 veces más CPU que `lola` y no generan por partes (no suenan hasta terminar el texto); Piper es el más ligero, pero sus voces quedaron por debajo de las mejores. Límites: una sola escucha, un solo texto técnico y volumen sin normalizar (las voces más fuertes pueden parecer mejores o peores).
+Conclusión: con ajustes, varias voces suenan mejor que `lola`; las mejores son Kokoro `ef_dora` y Supertonic `F2`. Pero cruzado con el [consumo](#consumo-2026-10-30-windows), ninguna gana en todo: Kokoro y Supertonic gastan 2,6–2,8 veces más CPU que `lola` y no generan por partes (no suenan hasta terminar el texto); Piper es el más ligero, pero sus voces quedaron por debajo de las mejores. Límites: una sola escucha, un solo texto técnico y volumen sin normalizar (las voces más fuertes pueden parecer mejores o peores).
 
-## Ronda final (2026-10-31)
+## Ronda final (2026-10-30)
 
 Las tres mejores con ajustes y `lola`, con otro texto en tono de conversación, volumen igualado (mismo RMS, −20 dBFS) y a ciegas. Texto leído, ya con ajustes:
 
@@ -179,7 +179,7 @@ Buenos días. Ya terminé de revisar tu proyecto y, la verdad, quedó bastante b
 - **Primer sonido:** generando frase por frase, Kokoro y Supertonic tienen lista la primera frase en menos de medio segundo; así se evita el silencio de 7–9 s que tenían generando el texto entero. No probado aún dentro del servidor de tehablo.
 - **Resultado:** en las dos escuchas a ciegas, Kokoro supera a `lola` y `lola` queda última o casi. Kokoro gasta más: ~1,1 GiB de RAM (frente a ~0,95 GiB) y unas 2,8 veces más CPU; no necesita torch ni token, y su modelo se descarga de GitHub.
 
-## Voces que faltaban (2026-10-31)
+## Voces que faltaban (2026-10-30)
 
 Las voces de Piper en español sin escuchar y MeloTTS, con el texto de la ronda final, volumen igualado, a ciegas y con `lola`:
 
@@ -193,7 +193,7 @@ Las voces de Piper en español sin escuchar y MeloTTS, con el texto de la ronda 
 
 Piper `carlfm` empata con `lola` en la escucha y es la más ligera de todas las probadas: modelo de 27 MB, ~300 MiB de RAM, 3,6 s de CPU para el texto de referencia (5 veces menos que `lola`) y primer sonido en 0,10 s. Candidata para la versión lite (`RH-W-0025`). MeloTTS gasta más que `lola` en todo (1,2–2 GiB, 87,6 s de CPU).
 
-## Mezclas de Kokoro y ajustes de Supertonic (2026-10-31)
+## Mezclas de Kokoro y ajustes de Supertonic (2026-10-30)
 
 Vistazo corto, con el texto de la ronda final, volumen igualado, a ciegas, junto a las originales y `lola`. Kokoro permite mezclar voces sumando sus estilos con pesos; Supertonic permite cambiar los pasos de calidad (`total_steps`, 8 por defecto) y la velocidad (`speed`, 1,05 por defecto).
 
@@ -212,7 +212,7 @@ Vistazo corto, con el texto de la ronda final, volumen igualado, a ciegas, junto
 - **Supertonic:** 8 pasos es el punto justo; duplicarlos dobla la CPU sin mejora audible y bajarlos a 4 iguala la CPU de `lola` pero mete ruido.
 - `lola` vuelve a quedar como algo robótica, igual que en las rondas anteriores.
 
-## Voces de la comunidad en Hugging Face (2026-10-31)
+## Voces de la comunidad en Hugging Face (2026-10-30)
 
 Búsqueda en Hugging Face de voces en español públicas (sin token), con el texto de la ronda final, volumen igualado, a ciegas y con `lola`:
 
@@ -234,7 +234,7 @@ Descartadas sin escuchar:
 | Imitaciones de personas o personajes (Cortana, Veritasium, Lucas Melor, «1 peso de salsa», GLaDOS) | Clones sin consentimiento demostrado; chocan con los términos de uso de voz. |
 | `prasadvittaldev/pocket-tts-spanish-onnx-int4` | Pocket TTS español en ONNX int4 (106 MB, sin torch, incluye el codificador para clonar). Necesita el programa de `KevinAHM/pocket-tts-onnx-export`, que ya no existe en GitHub; no se probó. |
 
-## `lola` con `spanish_24l` (2026-10-31)
+## `lola` con `spanish_24l` (2026-10-30)
 
 El modelo grande de Pocket TTS (24 capas) con `lola`, frente a `lola` normal, Kokoro `em_santa` y Supertonic `F2`; texto de la ronda final, volumen igualado y a ciegas:
 
@@ -245,9 +245,9 @@ El modelo grande de Pocket TTS (24 capas) con `lola`, frente a `lola` normal, Ko
 | Kokoro `em_santa` | La de los relatos, muy buena. |
 | `lola` con `spanish` | Bien, algo lenta o tranquila; la de menor calidad de las cuatro, pero bien. |
 
-`spanish_24l` mejora a `lola` y queda al nivel de las mejores, pero es la opción más pesada de las útiles: ~1,8 GiB de RAM (pico 2,3 GiB), 44,2 s de CPU para el texto de referencia y solo 1,02× tiempo real en este equipo (`scripts/measure_tts.py`, [datos](measurements/voces-windows-2026-10-31.json)); en un equipo más lento podría no generar al ritmo de la reproducción.
+`spanish_24l` mejora a `lola` y queda al nivel de las mejores, pero es la opción más pesada de las útiles: ~1,8 GiB de RAM (pico 2,3 GiB), 44,2 s de CPU para el texto de referencia y solo 1,02× tiempo real en este equipo (`scripts/measure_tts.py`, [datos](measurements/voces-windows-2026-10-30.json)); en un equipo más lento podría no generar al ritmo de la reproducción.
 
-## Voces de `voices/` clonadas con Pocket TTS (2026-10-31)
+## Voces de `voices/` clonadas con Pocket TTS (2026-10-30)
 
 Con token de Hugging Face (términos de `kyutai/pocket-tts` aceptados; token de solo lectura en `.env`, ignorado por Git), cada una de las 18 referencias de `voices/` se convirtió en un estado `.safetensors` con `spanish` (unos 2–4 s por voz, una sola vez). **Verificado:** un estado exportado carga y habla con los pesos **sin clonación** y **sin token**, así que el token solo hace falta para crear la voz.
 

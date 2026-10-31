@@ -4,14 +4,6 @@
 
 Este archivo registra los cambios completados en orden cronológico.
 
-## 2026-10-31
-
-- `install.ps1` verificado en Windows (PowerShell 5.1 con el comando del README y PowerShell 7): instalación desde cero, segunda ejecución, dual boot con `.venv-pocket` de Linux y aviso sin `uv`; `RH-W-0008` queda `completed`.
-- En Windows el servidor ya no comparte en silencio un puerto ocupado (por ejemplo `8765` de AnkiConnect): falla con `Address already in use` como en Linux, y otro programa no puede tomar su puerto. Antes `SO_REUSEADDR` permitía el doble enlace en Windows. Las 7 suites de Python y las 30 pruebas de Node pasan en Windows.
-- `requirements.txt` limita las dependencias a las versiones mayores probadas (torch por debajo de 2.16, que anuncia el retiro de la cuantización usada en Linux); una instalación nueva ya no sube a versiones sin probar (`RH-W-0023`).
-- Prueba de voces sin token de Hugging Face (`RH-W-0005`): siete motores escuchados a ciegas sin y con los ajustes de tehablo, con consumo medido y licencias revisadas en [pruebas de voces](docs/pruebas-de-voces.md). Con ajustes, Kokoro (`em_santa`, `ef_dora`) y Supertonic `F2` suenan mejor que `lola`; sin ajustes, `lola` lee símbolos y tablas. No cambia el comportamiento.
-- Más pruebas de voces (`RH-W-0005`): voces de Piper que faltaban, MeloTTS, voces de la comunidad en Hugging Face, mezclas de Kokoro, ajustes de Supertonic, `lola` con `spanish_24l` y, con token, las 18 voces de `voices/` clonadas con Pocket TTS (sus estados exportados funcionan sin token). Se encontró que `scripts/get_voices.py` guarda WAV en coma flotante que Pocket TTS no puede leer. Resumen de opciones en [pruebas de voces](docs/pruebas-de-voces.md#resumen-2026-10-31). No cambia el comportamiento.
-
 ## 2026-10-30
 
 - El harness se actualizó a repo-harness 3.2.0: la preferencia de idioma guardada manda en la conversación (una orden técnica en inglés no la cambia) y las fechas usan la preferencia `timeZone` (`America/Costa_Rica`), nunca UTC.
@@ -34,6 +26,11 @@ Este archivo registra los cambios completados en orden cronológico.
 - El servidor local rechaza peticiones de páginas web (cabecera `Origin`, 403) y `POST` que no son JSON (415), sin aplicar cambios. Si el modelo no carga, `/health` y `/status` muestran el error, `/speak` responde 503 y Pi avisa «TTS: el modelo no cargó: …» en lugar de quedarse en «cargando» (`RH-W-0001`).
 - En Linux el modelo se carga cuantizado por defecto: genera ~1,7× más rápido con `spanish` y ~1,9× con `spanish_24l`, sin diferencia audible en una prueba a ciegas; en Windows sigue sin cuantizar, porque allí era más lento. `TEHABLO_QUANTIZE=0` o `1` lo cambia (`RH-W-0025`).
 - `RH-W-0003` queda `completed`: el modelo sigue residente mientras viva el servidor (se cierra con la sesión de Pi); liberar RAM en reposo y la cuantización pasan a `RH-W-0025`, y el estado del dispositivo de audio a `RH-W-0017`.
+- `install.ps1` verificado en Windows (PowerShell 5.1 con el comando del README y PowerShell 7): instalación desde cero, segunda ejecución, dual boot con `.venv-pocket` de Linux y aviso sin `uv`; `RH-W-0008` queda `completed`.
+- En Windows el servidor ya no comparte en silencio un puerto ocupado (por ejemplo `8765` de AnkiConnect): falla con `Address already in use` como en Linux, y otro programa no puede tomar su puerto. Antes `SO_REUSEADDR` permitía el doble enlace en Windows. Las 7 suites de Python y las 30 pruebas de Node pasan en Windows.
+- `requirements.txt` limita las dependencias a las versiones mayores probadas (torch por debajo de 2.16, que anuncia el retiro de la cuantización usada en Linux); una instalación nueva ya no sube a versiones sin probar (`RH-W-0023`).
+- Prueba de voces sin token de Hugging Face (`RH-W-0005`): siete motores escuchados a ciegas sin y con los ajustes de tehablo, con consumo medido y licencias revisadas en [pruebas de voces](docs/pruebas-de-voces.md). Con ajustes, Kokoro (`em_santa`, `ef_dora`) y Supertonic `F2` suenan mejor que `lola`; sin ajustes, `lola` lee símbolos y tablas. No cambia el comportamiento.
+- Más pruebas de voces (`RH-W-0005`): voces de Piper que faltaban, MeloTTS, voces de la comunidad en Hugging Face, mezclas de Kokoro, ajustes de Supertonic, `lola` con `spanish_24l` y, con token, las 18 voces de `voices/` clonadas con Pocket TTS (sus estados exportados funcionan sin token). Se encontró que `scripts/get_voices.py` guarda WAV en coma flotante que Pocket TTS no puede leer. Resumen de opciones en [pruebas de voces](docs/pruebas-de-voces.md#resumen-2026-10-30). No cambia el comportamiento.
 
 ## 2026-10-29
 
