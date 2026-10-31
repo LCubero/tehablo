@@ -10,11 +10,11 @@ Opciones de voz que quedaron bien en las escuchas a ciegas con los ajustes de te
 |---|---|---|---|---|---|---|
 | Mejor calidad | `em_santa` (relatos), `ef_dora`, mezcla 70 % `em_santa` + 30 % `ef_dora` | Kokoro-82M | ~1,1 GiB | 49 s | No | Mejor que `lola` en tres escuchas |
 | Mejor calidad | `F2` | Supertonic 3 | ~0,6 GiB | 46 s | No | Mejor que `lola` |
-| Mejor calidad | `lola` con `spanish_24l` | Pocket TTS | ~1,8 GiB | 44 s | No | Muy bien; 1,02× tiempo real |
+| Mejor calidad | `lola` con `spanish_24l` | Pocket TTS | ~1,8 GiB | 44 s | No | Muy bien: tranquila; genera a solo 1,02× tiempo real |
 | Variedad LATAM | `ar-hombre-4310`, `cl-mujer-9334`, `co-hombre-9334`, `cl-hombre-3397`, `ar-hombre-7049`, `cl-mujer-8784` (clonadas de `voices/`) | Pocket TTS | ~0,95 GiB | 17,5 s | Solo para crearlas | Iguales o mejores que `lola` |
-| Equilibrio | `lola` | Pocket TTS | ~0,95 GiB | 17,5 s | No | Referencia; «algo robótica» o «tranquila» |
+| Equilibrio | `lola` | Pocket TTS | ~0,95 GiB | 17,5 s | No | Referencia: bien, algo robótica, tranquila |
 | Mínimo consumo | `carlfm` (`x_low`) | Piper | ~0,3 GiB | 3,6 s | No | Igual que `lola` |
-| Mínimo consumo, uso personal | `miro` (licencia no comercial) | Piper (OpenVoiceOS) | ~0,3 GiB | 5,1 s | No | Bien, con algo de ruido de fondo |
+| Mínimo consumo, uso personal | `miro` (licencia no comercial) | Piper (OpenVoiceOS) | ~0,3 GiB | 5,1 s | No | Bien: tranquila, ruido de fondo |
 
 Pendiente de probar: NeuTTS Nano Spanish y el ajuste castellano de `inferencekey` (con token), Pocket TTS en ONNX int4 y la velocidad de Kokoro. Kokoro y Supertonic no generan por partes: hay que generarlos frase por frase (primera frase en ~0,3–0,5 s).
 
@@ -29,8 +29,36 @@ Pendiente de probar: NeuTTS Nano Spanish y el ajuste castellano de `inferencekey
 - **Texto sin ajustes:**
 
   > Hola, soy tu asistente de voz. Hoy revisé el código y encontré 3 errores en el servidor. ¿Quieres que haga el commit ahora, o prefieres revisarlo primero? El 29/10/2026 terminamos la instalación, y todo funcionó en menos de 45 segundos.
+- **Valoración:** cada escucha se anota con un nivel y, si hace falta, los rasgos que se notaron (ver [cómo se anotan](#cómo-se-anotan-las-escuchas)).
 - **Velocidad:** segundos de audio por segundo de generación, en Windows, CPU de 12 hilos, con el modelo ya cargado salvo donde se indica. Más de 1× es más rápido que el tiempo real.
 - **Dónde:** entornos aparte en `.repo-harness/tmp/voces/` (ignorado por Git); nada se instala en el entorno del proyecto.
+
+### Cómo se anotan las escuchas
+
+Las valoraciones resumen lo que dijo la persona responsable al escuchar a ciegas, con un vocabulario fijo para poder comparar entre rondas. Formato: `Nivel: rasgos`.
+
+| Nivel | Significado |
+|---|---|
+| Muy bien | Natural y sin defectos que molesten. |
+| Bien | Natural, con algún rasgo leve. |
+| Aceptable | Se puede usar, pero se notan defectos. |
+| Mal | Los defectos estorban la escucha. |
+| Muy mal | No sirve: se entiende mal o suena muy artificial. |
+
+| Rasgo | Significado |
+|---|---|
+| tranquila | Tono calmado, sin energía. |
+| lenta / acelerada | Ritmo más lento o más rápido de lo natural. |
+| robótica / sintética | Se nota que es voz generada. |
+| volumen alto | Suena más fuerte que las demás (solo en rondas sin volumen igualado). |
+| acento español / marcado / extraño / no identificado | Acento de España, muy notorio, incorrecto o que no se reconoce. |
+| sibilantes marcadas | Las «s» se oyen demasiado. |
+| ruido de fondo, soplidos, temblor | Sonidos que no son la voz. |
+| sonidos extraños | Ruidos o sílabas que no corresponden al texto. |
+| omite palabras, errores de pronunciación | No lee el texto completo o lo lee mal. |
+| ideal para relatos | Tono narrativo, apto para cuentos o audiolibros. |
+
+Sin nivel cuando la escucha no lo indicó.
 
 ## Resultados (2026-10-30, Windows)
 
@@ -83,8 +111,7 @@ Notas:
 
 - **Piper** en la tabla de resultados se midió con la línea de comandos, que carga el modelo en cada frase; con el modelo cargado genera unas 35 veces más rápido que el tiempo real.
 - **Coqui VITS CSS10** ignora los signos `¿`, `?`, `,` y `.` (no están en su vocabulario), así que lee sin pausas ni entonación de pregunta.
-- **MeloTTS** no arrancó en el primer intento: le faltaba el diccionario `unidic` de MeCab. Con `python -m unidic download` (unos 500 MB) funcionó. También descarga diccionarios de NLTK en `%APPDATA%
-ltk_data` si no se redirige esa carpeta.
+- **MeloTTS** no arrancó en el primer intento: le faltaba el diccionario `unidic` de MeCab. Con `python -m unidic download` (unos 500 MB) funcionó. También descarga diccionarios de NLTK en `%APPDATA%\nltk_data` si no se redirige esa carpeta.
 - **Chatterbox** es 5–6 veces más lento que el tiempo real en CPU: no sirve para leer respuestas en vivo aunque suene bien. En la primera voz cortó la generación por repeticiones (`forcing EOS`), así que puede faltar el final. En Windows necesitó `setuptools<81` para cargar su marca de agua, y descarga datos en `~/.pkuseg` si no se redirige la carpeta de usuario.
 
 ## Escucha sin ajustes (2026-10-30)
@@ -110,17 +137,17 @@ Listo, revisé el **pull request** en GitHub → encontré 3 bugs en el backend 
 Quieres que haga el merge y el deploy con Docker ahora? El modo automático queda on/off según el ajuste 🚀.
 ```
 
-Veredicto de la persona responsable, a ciegas (número de escucha entre paréntesis):
+Valoración a ciegas (número de escucha entre paréntesis):
 
-| Voz | Veredicto sin ajustes |
+| Voz | Valoración sin ajustes |
 |---|---|
-| Coqui VITS CSS10 (03) | La mejor de la ronda. Su vocabulario no tiene símbolos, así que los omite todos (también la puntuación). |
-| Piper `es_AR-daniela-high` (02) | Se salta algunos símbolos; mejor que las que leen todo. |
-| Piper `es_ES-sharvard-medium` (06), `es_ES-davefx-medium` (08); Kokoro `em_alex` (04), `em_santa` (07), `ef_dora` (09) | Parecidas a 02 y 03. |
-| Piper `es_MX-claude-high` (10) | Parecida a 02 y 03, un poco robótica. |
-| Piper `es_MX-ald-medium` (01) | Lee todo, hasta los símbolos; la peor junto con `lola`. |
-| `lola` (11) | Lee todo, también la tabla: sin ajustes no sirve para respuestas con markdown. |
-| MMS-TTS `spa` (05) | Fatal. |
+| Coqui VITS CSS10 (03) | Bien, la mejor de la ronda: omite todos los símbolos, también la puntuación, porque no están en su vocabulario. |
+| Piper `es_AR-daniela-high` (02) | Bien: omite algunos símbolos; mejor que las que los leen todos. |
+| Piper `es_ES-sharvard-medium` (06), `es_ES-davefx-medium` (08); Kokoro `em_alex` (04), `em_santa` (07), `ef_dora` (09) | Bien: similares a 02 y 03. |
+| Piper `es_MX-claude-high` (10) | Bien: similar a 02 y 03, algo robótica. |
+| Piper `es_MX-ald-medium` (01) | Mal: lee todos los símbolos. |
+| `lola` (11) | Mal: lee todos los símbolos y la tabla; sin ajustes no sirve para respuestas con markdown. |
+| MMS-TTS `spa` (05) | Muy mal. |
 | Supertonic 3 | No genera: rechaza el selector de variación del emoji `⚠️` (`U+FE0F`). |
 
 Conclusión: sin ajustes, `lola` es de las peores; los ajustes de tehablo son imprescindibles para Pocket TTS. La comparación justa entre motores es la ronda con ajustes.
@@ -133,29 +160,29 @@ El mismo texto, pasado por todo el proceso de tehablo como en Pi (limpiador de l
 Resumen . Listo, revisé el pul ricuést en guítjab, encontré tres bags en el bákend, el más grave está en tehablo sérver punto pai, dentro de tehablo sérver. Prueba, Resultado. test tech, cincuenta y tres de cincuenta y tres. Servidor, dieciocho de dieciocho . Hice el comít en la rama fit eslash pai ti ti es y abrí la tarea erre hache, doble ve, cero cero cero uno. La ei pi ai devuelve yéison; el rídmi está en enlace a guítjab punto com. El escrípt de páiton procesó quince mil líneas en tres punto cinco segundos, con la ci pi iu al cuarenta y cinco por ciento y a veinticinco grados celsius. ¿Quieres que haga el mérch y el diplói con dóquer ahora? El modo automático queda on eslash off según el ajuste .
 ```
 
-Veredicto de la persona responsable, a ciegas, sin normalizar el volumen (número de escucha entre paréntesis):
+Valoración a ciegas, sin igualar el volumen (número de escucha entre paréntesis):
 
-| Voz | Veredicto con ajustes | Comparada con `lola` |
+| Voz | Valoración con ajustes | Comparada con `lola` |
 |---|---|---|
-| Kokoro `ef_dora` (13) | Suena muy bien. | Mejor |
-| Supertonic `F2` (16) | Suena muy bien, con un acento que no identifica. | Mejor |
-| Kokoro `em_santa` (02) | Suena bien; buenísima para cuentos o relatos. | Mejor |
-| Supertonic `M4` (07), `M2` (18); Kokoro `em_alex` (15) | Suena bien. | Mejor |
-| Supertonic `F4` (14) | Algo acelerada, pero suena bien. | Mejor |
-| Supertonic `M5` (04) | Bien, algo tranquila. | Mejor |
-| Supertonic `F5` (17) | Tranquila, limpia, no está mal. | Mejor |
-| Supertonic `F1` (05) | No está mal, muy ligeramente robótica. | Mejor |
-| Supertonic `F3` (06) | No está mal; se notan las «s»; muy ligeramente robótica. | Mejor |
-| Piper `es_ES-davefx-medium` (10) | No está mal. | Mejor |
-| Piper `es_ES-sharvard-medium` (12) | No está mal, como española, muy ligeramente robótica. | Mejor |
-| Coqui VITS CSS10 (11) | Como acelerada, pero no está tan mal. | Parecida |
-| Supertonic `M3` (08) | Suena un poco raro, pero no tan mal. | Parecida |
-| Piper `es_AR-daniela-high` (19) | Mucho volumen, con acento, algo acelerada; no está mal. | Parecida |
-| `lola` (03) | Algo robótica. | referencia |
-| Piper `es_MX-claude-high` (09) | Mucho volumen, algo robótica. | Parecida o peor |
-| Supertonic `M1` (01) | No le gustó mucho. | Peor |
-| MMS-TTS `spa` (20) | Suena muy mal; acento mal. | Peor |
-| Piper `es_MX-ald-medium` (21) | Suena mal, parecida a la 20. | Peor |
+| Kokoro `ef_dora` (13) | Muy bien. | Mejor |
+| Supertonic `F2` (16) | Muy bien: acento no identificado. | Mejor |
+| Kokoro `em_santa` (02) | Bien: ideal para relatos. | Mejor |
+| Supertonic `M4` (07), `M2` (18); Kokoro `em_alex` (15) | Bien. | Mejor |
+| Supertonic `F4` (14) | Bien: algo acelerada. | Mejor |
+| Supertonic `M5` (04) | Bien: algo tranquila. | Mejor |
+| Supertonic `F5` (17) | Aceptable: tranquila, sin ruido. | Mejor |
+| Supertonic `F1` (05) | Aceptable: ligeramente robótica. | Mejor |
+| Supertonic `F3` (06) | Aceptable: ligeramente robótica, sibilantes marcadas. | Mejor |
+| Piper `es_ES-davefx-medium` (10) | Aceptable. | Mejor |
+| Piper `es_ES-sharvard-medium` (12) | Aceptable: acento español, ligeramente robótica. | Mejor |
+| Coqui VITS CSS10 (11) | Aceptable: algo acelerada. | Parecida |
+| Supertonic `M3` (08) | Aceptable: sonido algo extraño. | Parecida |
+| Piper `es_AR-daniela-high` (19) | Aceptable: volumen alto, acento marcado, algo acelerada. | Parecida |
+| `lola` (03) | Algo robótica. | Referencia |
+| Piper `es_MX-claude-high` (09) | Volumen alto, algo robótica. | Parecida o peor |
+| Supertonic `M1` (01) | Mal. | Peor |
+| MMS-TTS `spa` (20) | Muy mal: acento extraño. | Peor |
+| Piper `es_MX-ald-medium` (21) | Mal: similar a la 20. | Peor |
 
 La columna «comparada con `lola`» es una lectura de las notas, no una puntuación de la persona responsable.
 
@@ -169,12 +196,12 @@ Las tres mejores con ajustes y `lola`, con otro texto en tono de conversación, 
 Buenos días. Ya terminé de revisar tu proyecto y, la verdad, quedó bastante bien. Hay dos detalles pequeños: un test que falla a veces y un mensaje de error poco claro. ¿Quieres que los arregle ahora o prefieres descansar un rato? Si te parece, mañana a las nueve y treinta seguimos con el diplói en guítjab. Por cierto, ¡felicidades! Llevas veinticinco comíts esta semana.
 ```
 
-| Puesto | Voz | Veredicto de la persona responsable | Primera frase lista | Texto completo, frase por frase |
+| Puesto | Voz | Valoración | Primera frase lista | Texto completo, frase por frase |
 |---|---|---|---|---|
-| 1 | Kokoro `em_santa` | Suena muy buena, para todo; excelente para relatos o cuentos. | 0,35 s | 6,7 s |
-| 2 | Kokoro `ef_dora` | Suena muy bien. | 0,31 s | 5,9 s |
-| 3 | Supertonic `F2` | Suena bien; un poco de soplidos o ruido al final, nada mal. | 0,49 s | 6,3 s |
-| 4 | `lola` | Ligeramente robótica, la menos buena, nada mal; algo lenta. | 0,78 s (0,12 s en streaming) | 8,7 s |
+| 1 | Kokoro `em_santa` | Muy bien: sirve para todo, ideal para relatos. | 0,35 s | 6,7 s |
+| 2 | Kokoro `ef_dora` | Muy bien. | 0,31 s | 5,9 s |
+| 3 | Supertonic `F2` | Bien: soplidos leves al final. | 0,49 s | 6,3 s |
+| 4 | `lola` | Aceptable: ligeramente robótica, algo lenta. | 0,78 s (0,12 s en streaming) | 8,7 s |
 
 - **Primer sonido:** generando frase por frase, Kokoro y Supertonic tienen lista la primera frase en menos de medio segundo; así se evita el silencio de 7–9 s que tenían generando el texto entero. No probado aún dentro del servidor de tehablo.
 - **Resultado:** en las dos escuchas a ciegas, Kokoro supera a `lola` y `lola` queda última o casi. Kokoro gasta más: ~1,1 GiB de RAM (frente a ~0,95 GiB) y unas 2,8 veces más CPU; no necesita torch ni token, y su modelo se descarga de GitHub.
@@ -183,13 +210,13 @@ Buenos días. Ya terminé de revisar tu proyecto y, la verdad, quedó bastante b
 
 Las voces de Piper en español sin escuchar y MeloTTS, con el texto de la ronda final, volumen igualado, a ciegas y con `lola`:
 
-| Voz | Veredicto de la persona responsable |
+| Voz | Valoración |
 |---|---|
-| Piper `es_ES-carlfm-x_low` | Suena bien. |
-| `lola` | Suena bien. |
-| MeloTTS `ES` | Española, no está mal, ligeramente robótica. |
-| Piper `es_ES-mls_9972-low` | Malísima: acento raro y errores. |
-| Piper `es_ES-mls_10246-low` | Horrible. |
+| Piper `es_ES-carlfm-x_low` | Bien. |
+| `lola` | Bien. |
+| MeloTTS `ES` | Aceptable: acento español, ligeramente robótica. |
+| Piper `es_ES-mls_9972-low` | Muy mal: acento extraño, errores de pronunciación. |
+| Piper `es_ES-mls_10246-low` | Muy mal. |
 
 Piper `carlfm` empata con `lola` en la escucha y es la más ligera de todas las probadas: modelo de 27 MB, ~300 MiB de RAM, 3,6 s de CPU para el texto de referencia (5 veces menos que `lola`) y primer sonido en 0,10 s. Candidata para la versión lite (`RH-W-0025`). MeloTTS gasta más que `lola` en todo (1,2–2 GiB, 87,6 s de CPU).
 
@@ -197,16 +224,16 @@ Piper `carlfm` empata con `lola` en la escucha y es la más ligera de todas las 
 
 Vistazo corto, con el texto de la ronda final, volumen igualado, a ciegas, junto a las originales y `lola`. Kokoro permite mezclar voces sumando sus estilos con pesos; Supertonic permite cambiar los pasos de calidad (`total_steps`, 8 por defecto) y la velocidad (`speed`, 1,05 por defecto).
 
-| Voz | Veredicto de la persona responsable | CPU del texto |
+| Voz | Valoración | CPU del texto |
 |---|---|---|
-| Kokoro `em_santa` (original) | La de los relatos; suena muy bien (la reconoció a ciegas). | — |
-| Kokoro 70 % `em_santa` + 30 % `ef_dora` | Muy bien; parecida a la de los relatos, pero más normal. | — |
-| Kokoro 50 % `em_santa` + 50 % `ef_dora` | Muy parecida a la anterior, menos de relato. | — |
-| Kokoro 50 % `ef_dora` + 50 % `em_alex` | Muy bien; un poco de acento en «claro». | — |
+| Kokoro `em_santa` (original) | Muy bien: ideal para relatos (reconocida a ciegas). | — |
+| Kokoro 70 % `em_santa` + 30 % `ef_dora` | Muy bien: similar a la original, más neutra. | — |
+| Kokoro 50 % `em_santa` + 50 % `ef_dora` | Muy bien: similar a la anterior, menos de relato. | — |
+| Kokoro 50 % `ef_dora` + 50 % `em_alex` | Muy bien: acento leve en «claro». | — |
 | Supertonic `F2`, 8 pasos (original) | Muy bien. | 32,1 s |
-| Supertonic `F2`, 16 pasos, velocidad 1,0 | Igual que la original. | 60,1 s |
-| Supertonic `F2`, 4 pasos | Ruidos raros; sin ellos no estaría tan mal. | 17,5 s |
-| `lola` | Algo robótica, pero no está mal. | — |
+| Supertonic `F2`, 16 pasos, velocidad 1,0 | Muy bien: igual que la original. | 60,1 s |
+| Supertonic `F2`, 4 pasos | Mal: sonidos extraños; sin ellos sería aceptable. | 17,5 s |
+| `lola` | Aceptable: algo robótica. | — |
 
 - **Mezclas:** sirven para tener más voces sin descargar nada; el peso de cada voz funciona como un dial entre el tono de relato de `em_santa` y uno más neutro.
 - **Supertonic:** 8 pasos es el punto justo; duplicarlos dobla la CPU sin mejora audible y bajarlos a 4 iguala la CPU de `lola` pero mete ruido.
@@ -216,11 +243,11 @@ Vistazo corto, con el texto de la ronda final, volumen igualado, a ciegas, junto
 
 Búsqueda en Hugging Face de voces en español públicas (sin token), con el texto de la ronda final, volumen igualado, a ciegas y con `lola`:
 
-| Voz | Veredicto de la persona responsable | Licencia |
+| Voz | Valoración | Licencia |
 |---|---|---|
-| Piper `miro` (`OpenVoiceOS/pipertts_es-ES_miro`), hombre, España | Suena bien, tranquila; lo malo es algo de ruido de fondo. | CC BY-NC-ND 4.0: no comercial |
-| Piper `carlfm-high` (`friyin/vits-piper-es_ES-carlfm-high`) | Suena bien, pero ligeramente robótica y acelerada. | dataset de dominio público |
-| `lola` | Suena bien, algo lenta. | — |
+| Piper `miro` (`OpenVoiceOS/pipertts_es-ES_miro`), hombre, España | Bien: tranquila, ruido de fondo. | CC BY-NC-ND 4.0: no comercial |
+| Piper `carlfm-high` (`friyin/vits-piper-es_ES-carlfm-high`) | Bien: ligeramente robótica, algo acelerada. | dataset de dominio público |
+| `lola` | Bien: algo lenta. | — |
 
 - `carlfm-high` sonó peor que `carlfm-x_low` (que empató con `lola`) y gasta 8 veces más CPU (29,7 s frente a 3,6 s): la versión pequeña es mejor opción.
 - `miro` es casi tan ligera como `carlfm-x_low` (5,1 s de CPU, 327 MiB), pero su licencia no permite uso comercial.
@@ -238,12 +265,12 @@ Descartadas sin escuchar:
 
 El modelo grande de Pocket TTS (24 capas) con `lola`, frente a `lola` normal, Kokoro `em_santa` y Supertonic `F2`; texto de la ronda final, volumen igualado y a ciegas:
 
-| Voz | Veredicto de la persona responsable |
+| Voz | Valoración |
 |---|---|
 | Supertonic `F2` | Muy bien. |
-| `lola` con `spanish_24l` | Muy bien, algo lenta o tranquila. |
-| Kokoro `em_santa` | La de los relatos, muy buena. |
-| `lola` con `spanish` | Bien, algo lenta o tranquila; la de menor calidad de las cuatro, pero bien. |
+| `lola` con `spanish_24l` | Muy bien: tranquila, algo lenta. |
+| Kokoro `em_santa` | Muy bien: ideal para relatos. |
+| `lola` con `spanish` | Bien: tranquila, algo lenta; la más débil de las cuatro. |
 
 `spanish_24l` mejora a `lola` y queda al nivel de las mejores, pero es la opción más pesada de las útiles: ~1,8 GiB de RAM (pico 2,3 GiB), 44,2 s de CPU para el texto de referencia y solo 1,02× tiempo real en este equipo (`scripts/measure_tts.py`, [datos](measurements/voces-windows-2026-10-30.json)); en un equipo más lento podría no generar al ritmo de la reproducción.
 
@@ -257,29 +284,29 @@ Tres escuchas a ciegas con `lola` y volumen igualado: texto técnico **sin ajust
 
 | Voz | Técnico sin ajustes | Técnico con ajustes | Conversación |
 |---|---|---|---|
-| `ar-hombre-4310` | mal | bien, tranquilo | muy bien |
-| `ar-hombre-5223` | muy mal, sonidos raros | tranquilo, bien | tranquilo, no esta mal; fallo con ", ¡felicidades!" |
-| `ar-hombre-7049` | muy mal, sonidos raros silenciosos | bien, algo lento | muy bien |
-| `ar-mujer-5223` | mal | bien, ligeramente robotica | bien |
-| `ar-mujer-610` | muy mal, sonidos raros | casi bien, algo sintetica | bien, casi muy bien |
-| `ar-mujer-8421` | muy mal, sonidos raros | casi bien | no esta mal |
-| `cl-hombre-3397` | muy mal, sonidos raros silenciosos | bien, algo tranquilo | muy bien |
-| `cl-hombre-7508` | muy mal, sonidos raros silenciosos | muy tranquilo, algo lento, bien | bien, muy tranquila y algo lenta |
-| `cl-hombre-8784` | mal | bien, algo tranquilo | bastante bien |
-| `cl-mujer-7508` | mal | medio mal, algo de ruido o temblor de voz | bien, un poco de sonido raro al final, muy ligero |
-| `cl-mujer-8784` | muy mal, sonidos raros | muy bien, algo tranquila | bien |
-| `cl-mujer-9334` | mal | bien | muy bien |
-| `co-hombre-2121` | muy mal, sonidos raros | bien, tranquilo | bien |
-| `co-hombre-8784` | muy mal, sonidos raros silenciosos | casi bien, algo lento | no esta mal, pero se comio palabras |
-| `co-hombre-9334` | mal | bien, tranquilo | muy bien, algo tranquila |
-| `co-mujer-1523` | muy mal, sonidos raros | medio mal | casi bien, suena un poco raro |
-| `co-mujer-2484` | mal | bien | bien |
-| `co-mujer-9334` | mal | bien, tranquila | muy tranquila, no esta mal |
-| `lola` | mal | bien | bien, tranquila |
+| `ar-hombre-4310` | Mal | Bien: tranquila | Muy bien |
+| `ar-hombre-5223` | Muy mal: sonidos extraños | Bien: tranquila | Aceptable: tranquila; falla en «, ¡felicidades!» |
+| `ar-hombre-7049` | Muy mal: sonidos extraños suaves | Bien: algo lenta | Muy bien |
+| `ar-mujer-5223` | Mal | Bien: ligeramente robótica | Bien |
+| `ar-mujer-610` | Muy mal: sonidos extraños | Aceptable: algo sintética | Bien, cerca de muy bien |
+| `ar-mujer-8421` | Muy mal: sonidos extraños | Aceptable | Aceptable |
+| `cl-hombre-3397` | Muy mal: sonidos extraños suaves | Bien: algo tranquila | Muy bien |
+| `cl-hombre-7508` | Muy mal: sonidos extraños suaves | Bien: muy tranquila, algo lenta | Bien: muy tranquila, algo lenta |
+| `cl-hombre-8784` | Mal | Bien: algo tranquila | Bien, cerca de muy bien |
+| `cl-mujer-7508` | Mal | Mal: ruido o temblor en la voz | Bien: sonido extraño muy leve al final |
+| `cl-mujer-8784` | Muy mal: sonidos extraños | Muy bien: algo tranquila | Bien |
+| `cl-mujer-9334` | Mal | Bien | Muy bien |
+| `co-hombre-2121` | Muy mal: sonidos extraños | Bien: tranquila | Bien |
+| `co-hombre-8784` | Muy mal: sonidos extraños suaves | Aceptable: algo lenta | Aceptable: omite palabras |
+| `co-hombre-9334` | Mal | Bien: tranquila | Muy bien: algo tranquila |
+| `co-mujer-1523` | Muy mal: sonidos extraños | Mal | Aceptable: sonido algo extraño |
+| `co-mujer-2484` | Mal | Bien | Bien |
+| `co-mujer-9334` | Mal | Bien: tranquila | Aceptable: muy tranquila |
+| `lola` | Mal | Bien | Bien: tranquila |
 
-- **Sin ajustes**, todas (también `lola`) leen la tabla y los símbolos; 10 de 19 hacen además sonidos raros seguidos después de la tabla, hasta «La API» (zona con hash, rama y `RH-W-0001`). Los ajustes de tehablo son imprescindibles para Pocket TTS.
-- **Con ajustes**, las clonadas más consistentes en las dos escuchas: `ar-hombre-4310`, `cl-mujer-9334`, `co-hombre-9334`, `cl-hombre-3397`, `ar-hombre-7049` y `cl-mujer-8784`. Las más débiles: `co-mujer-1523`, `co-hombre-8784` (se comió palabras; su audio fue el más corto) y `cl-mujer-7508` (ruido o temblor).
-- Casi todas suenan «tranquilas». La persona responsable echa de menos voces o modos alegres y entusiastas (registrado en `RH-W-0018`, para otro momento).
+- **Sin ajustes**, todas (también `lola`) leen la tabla y los símbolos; 10 de 19 hacen además sonidos extraños seguidos después de la tabla, hasta «La API» (zona con hash, rama y `RH-W-0001`). Los ajustes de tehablo son imprescindibles para Pocket TTS.
+- **Con ajustes**, las clonadas más consistentes en las dos escuchas: `ar-hombre-4310`, `cl-mujer-9334`, `co-hombre-9334`, `cl-hombre-3397`, `ar-hombre-7049` y `cl-mujer-8784`. Las más débiles: `co-mujer-1523`, `co-hombre-8784` (omite palabras; su audio fue el más corto) y `cl-mujer-7508` (ruido o temblor).
+- Casi todas suenan tranquilas. La persona responsable echa de menos voces o modos alegres y entusiastas (registrado en `RH-W-0018`, para otro momento).
 
 ## Licencias
 
