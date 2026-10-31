@@ -231,6 +231,40 @@ El modelo grande de Pocket TTS (24 capas) con `lola`, frente a `lola` normal, Ko
 
 `spanish_24l` mejora a `lola` y queda al nivel de las mejores, pero es la opción más pesada de las útiles: ~1,8 GiB de RAM (pico 2,3 GiB), 44,2 s de CPU para el texto de referencia y solo 1,02× tiempo real en este equipo (`scripts/measure_tts.py`, [datos](measurements/voces-windows-2026-10-31.json)); en un equipo más lento podría no generar al ritmo de la reproducción.
 
+## Voces de `voices/` clonadas con Pocket TTS (2026-10-31)
+
+Con token de Hugging Face (términos de `kyutai/pocket-tts` aceptados; token de solo lectura en `.env`, ignorado por Git), cada una de las 18 referencias de `voices/` se convirtió en un estado `.safetensors` con `spanish` (unos 2–4 s por voz, una sola vez). **Verificado:** un estado exportado carga y habla con los pesos **sin clonación** y **sin token**, así que el token solo hace falta para crear la voz.
+
+**Hallazgo:** `scripts/get_voices.py` guarda las referencias como WAV en coma flotante de 32 bits (`astype(np.float32)`), y Pocket TTS solo lee WAV PCM (`wave.Error: unknown format: 3`); por eso las 18 voces nunca se habrían podido usar tal como están. Para la prueba se convirtieron copias a 16 bits; `voices/` y el script no se tocaron.
+
+Tres escuchas a ciegas con `lola` y volumen igualado: texto técnico **sin ajustes**, el mismo **con ajustes** y el texto de conversación de la ronda final (con ajustes). Mismo consumo que `lola`: mismo motor y modelo.
+
+| Voz | Técnico sin ajustes | Técnico con ajustes | Conversación |
+|---|---|---|---|
+| `ar-hombre-4310` | mal | bien, tranquilo | muy bien |
+| `ar-hombre-5223` | muy mal, sonidos raros | tranquilo, bien | tranquilo, no esta mal; fallo con ", ¡felicidades!" |
+| `ar-hombre-7049` | muy mal, sonidos raros silenciosos | bien, algo lento | muy bien |
+| `ar-mujer-5223` | mal | bien, ligeramente robotica | bien |
+| `ar-mujer-610` | muy mal, sonidos raros | casi bien, algo sintetica | bien, casi muy bien |
+| `ar-mujer-8421` | muy mal, sonidos raros | casi bien | no esta mal |
+| `cl-hombre-3397` | muy mal, sonidos raros silenciosos | bien, algo tranquilo | muy bien |
+| `cl-hombre-7508` | muy mal, sonidos raros silenciosos | muy tranquilo, algo lento, bien | bien, muy tranquila y algo lenta |
+| `cl-hombre-8784` | mal | bien, algo tranquilo | bastante bien |
+| `cl-mujer-7508` | mal | medio mal, algo de ruido o temblor de voz | bien, un poco de sonido raro al final, muy ligero |
+| `cl-mujer-8784` | muy mal, sonidos raros | muy bien, algo tranquila | bien |
+| `cl-mujer-9334` | mal | bien | muy bien |
+| `co-hombre-2121` | muy mal, sonidos raros | bien, tranquilo | bien |
+| `co-hombre-8784` | muy mal, sonidos raros silenciosos | casi bien, algo lento | no esta mal, pero se comio palabras |
+| `co-hombre-9334` | mal | bien, tranquilo | muy bien, algo tranquila |
+| `co-mujer-1523` | muy mal, sonidos raros | medio mal | casi bien, suena un poco raro |
+| `co-mujer-2484` | mal | bien | bien |
+| `co-mujer-9334` | mal | bien, tranquila | muy tranquila, no esta mal |
+| `lola` | mal | bien | bien, tranquila |
+
+- **Sin ajustes**, todas (también `lola`) leen la tabla y los símbolos; 10 de 19 hacen además sonidos raros seguidos después de la tabla, hasta «La API» (zona con hash, rama y `RH-W-0001`). Los ajustes de tehablo son imprescindibles para Pocket TTS.
+- **Con ajustes**, las clonadas más consistentes en las dos escuchas: `ar-hombre-4310`, `cl-mujer-9334`, `co-hombre-9334`, `cl-hombre-3397`, `ar-hombre-7049` y `cl-mujer-8784`. Las más débiles: `co-mujer-1523`, `co-hombre-8784` (se comió palabras; su audio fue el más corto) y `cl-mujer-7508` (ruido o temblor).
+- Casi todas suenan «tranquilas». La persona responsable echa de menos voces o modos alegres y entusiastas (registrado en `RH-W-0018`, para otro momento).
+
 ## Licencias
 
 Cada opción tiene tres capas: el programa, el modelo y la voz con la que se entrenó o se clona.

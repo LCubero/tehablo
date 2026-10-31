@@ -61,7 +61,9 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 - **Dependencias:** ninguna; usar como punto de partida el [catálogo de voces gratuitas](../voces-gratuitas.md), sin asumir que todas sus fuentes son compatibles o ya están probadas.
 - **Estado:** `active`.
 - **Trabajo restante:**
-  - Decidir si se incorpora Kokoro como voz opcional o predeterminada, y cómo (frase por frase para no esperar al texto completo).
+  - Decidir qué voces se incorporan como opciones (Kokoro, Supertonic, Piper `carlfm`, clonadas de `voices/`) y cómo (frase por frase para no esperar al texto completo).
+  - Corregir `scripts/get_voices.py` para que guarde WAV PCM de 16 bits.
+  - Probar NeuTTS Nano Spanish y el ajuste castellano de `inferencekey` (con token).
   - Probar las demás voces disponibles en el proyecto, no solo Lola.
   - Probar referencias de voz de Hugging Face y evaluar otras fuentes gratuitas.
   - Verificar compatibilidad real con Pocket TTS y el flujo local del proyecto antes de añadirlas como opciones utilizables.
@@ -71,7 +73,8 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 - **Evidencia:** solicitud de la persona responsable; existe un catálogo previo en `docs/voces-gratuitas.md`. Prueba informal del 2026-10-30, sin decisión: la persona responsable escuchó `lola` y `rafael` con `spanish`, `lola` con `spanish_24l` y voces no españolas del catálogo (`giovanni`, `estelle`, `alba`, `jean`, entre otras) con acento extranjero; cambiar de voz no cambia el consumo (mismo modelo) y cada voz del catálogo descarga unos 6 MB la primera vez. Las 18 referencias de `voices/` requieren activar la clonación (token de Hugging Face y pesos con clonación), aún no configurada.
 - **Trabajo completado (2026-10-31, Windows):** prueba acotada sin token de Hugging Face, autorizada por la persona responsable, con escucha a ciegas en tres rondas (sin ajustes, con ajustes y final con volumen igualado), consumo medido con el método de `scripts/measure_tts.py` y licencias revisadas ([resultados](../pruebas-de-voces.md), [datos](../measurements/voces-windows-2026-10-31.json)). Motores: Pocket TTS `lola`, Supertonic 3, Piper, Kokoro-82M, Coqui VITS CSS10, MMS-TTS y Chatterbox; MeloTTS no se instaló en Windows. Sin ajustes, `lola` lee símbolos y tablas y queda entre las peores; con ajustes, Kokoro (`em_santa`, `ef_dora`) y Supertonic `F2` suenan mejor que `lola` en las dos escuchas. Kokoro gasta ~1,1 GiB de RAM y ~2,8× más CPU que `lola`; generando frase por frase empieza a sonar en ~0,3 s. Chatterbox se descarta por consumo (~5,8 GiB, 0,2× tiempo real).
 - **Decisión:** registrar para después; no se autoriza con esta anotación una descarga, incorporación ni publicación de grabaciones. El 2026-10-31 se autorizó la prueba sin Hugging Face («te dije que sin hugginface aun»), con el criterio de igualar o superar a `lola`.
-- **Condición del siguiente avance:** decisión de la persona responsable sobre incorporar Kokoro como voz (opcional o predeterminada) en tehablo.
+- **Trabajo completado (2026-10-31, con token):** las 18 voces de `voices/` clonadas con Pocket TTS y escuchadas a ciegas sin y con ajustes; los estados `.safetensors` exportados funcionan sin token. Hallazgo: `scripts/get_voices.py` guarda WAV en coma flotante y Pocket TTS no los lee ([resultados](../pruebas-de-voces.md#voces-de-voices-clonadas-con-pocket-tts-2026-10-31)).
+- **Condición del siguiente avance:** la persona responsable sigue probando para tener varias opciones de voz (2026-10-31: «la idea es tratar de tener opciones de voz, no solo 1»); sin decisión todavía sobre cuáles se incorporan.
 
 ### RH-W-0007: Modo GPU opcional
 
@@ -226,6 +229,7 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
   - Proponer un conjunto inicial de roles y cómo se elige, sin cambiar el contenido ni el significado de lo que se lee.
   - Probar mediante escucha que cada rol suena más natural.
 - **Evidencia:** hoy solo se eligen voz, modelo, velocidad y volumen; no existe ningún ajuste de rol ni de estilo.
+- **Nota de la persona responsable (2026-10-31), tras las pruebas de voces:** «faltan voces o modos de voz alegres, entusiastas, etc pero no sé si eso es para otro momento, solo te lo digo no es que lo hagas ya». Las voces probadas suenan casi todas tranquilas ([pruebas de voces](../pruebas-de-voces.md)).
 - **Decisión:** registrar para después; no se eligió diseño.
   2026-10-30: aplazado por decisión de prioridades (la persona responsable delegó la decisión: «decidelo tu ... sin sobreingenieria»): primero base confiable, medición (`RH-W-0003`), decisión de versión lite e instalación, y endurecimiento (`RH-W-0001`, `RH-W-0013`).
 - **Condición del siguiente avance:** avance de `RH-W-0005` sobre las opciones expresivas y autorización para diseñar los roles.
