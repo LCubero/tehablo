@@ -123,6 +123,9 @@ def main() -> int:
         ('find the per-OS Python', 'faind the per ou es páiton'),
         ('os digo', 'os digo'),
         ('number numbers technical', 'námber námbers téknikal'),
+        ('thread queue feature heap deadline', 'tred kiú fítcher jíp dédlain'),
+        ('session prompt payload dashboard widget', 'seshion prómpt péiloud dáschbord güíllet'),
+        ('template default module parser component', 'témplet difólt mádyul párser compóunent'),
     ]:
         check(f'new shipped terms: {source}', shipped.apply(source), expected)
     text = shipped.apply(

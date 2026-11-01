@@ -353,5 +353,20 @@
   "RTX": "erre te equis",
   "WSL": "doble ve ese ele",
   "VM": "vi em",
-  "check": "chek"
+  "check": "chek",
+  "thread": "tred",
+  "queue": "kiú",
+  "feature": "fítcher",
+  "heap": "jíp",
+  "deadline": "dédlain",
+  "session": "seshion",
+  "prompt": "prómpt",
+  "payload": "péiloud",
+  "dashboard": "dáschbord",
+  "widget": "güíllet",
+  "template": "témplet",
+  "default": "difólt",
+  "module": "mádyul",
+  "parser": "párser",
+  "component": "compóunent"
 }
