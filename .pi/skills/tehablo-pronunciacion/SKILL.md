@@ -45,14 +45,15 @@ Use when the owner tests how tehablo speaks English terms, compares spellings, o
 
 ## Playback
 
-1. Check the TTS server: `curl -s localhost:8765/status`. If nothing answers, start a test server in the background on another port and leave Pi's port alone:
+1. Use the server that answers: `PORT=8765`, or `PORT=8766` if `curl -s localhost:8765/status` gets no reply. In that case start a test server in the background and leave Pi's port alone:
    `.venv-pocket/bin/python src/tehablo_server.py --port 8766`
-2. When comparing variants, send one word per request with a short pause (about 0.6 s between words, 1.5 s between groups). Run it in the background:
+2. When comparing variants, send one word per request with a short pause (about 0.6 s between words, 1.5 s between groups). Run it in the background; `say` waits until the word has finished playing:
 
    ```bash
-   say(){ curl -s -X POST localhost:8766/speak -H 'Content-Type: application/json' \
-     -d "{\"id\":\"w\",\"text\":\"$1\"}" >/dev/null; sleep 0.5
-     for i in $(seq 1 40); do curl -s localhost:8766/status | grep -q idle && break; sleep 0.25; done
+   PORT=8766
+   say(){ curl -s -X POST localhost:$PORT/speak -H 'Content-Type: application/json' \
+     -d "{\"id\":\"w\",\"text\":\"$1\"}" >/dev/null
+     while curl -s localhost:$PORT/status | grep -Eq '"(loading|generating|playing)"'; do sleep 0.1; done
      sleep "$2"; }
    say "fícher." 0.6; say "fítcher." 1.5
    ```
