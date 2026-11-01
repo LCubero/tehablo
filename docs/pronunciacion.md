@@ -54,11 +54,11 @@ Con la voz `lola` ganaron, escuchando, formas que no siguen la tabla: `sch` por 
 El modelo español no lee letras: parte el texto en piezas de su tokenizador (4000 piezas, `tokenizer.json` del modelo `spanish`). Comprobado el 2026-10-31:
 
 - **No hay pieza para `sh`, `sch`, `tch`, `w` ni `k`.** `seshion` llega como `se·s·hi·on`, `dáschbord` como `d·á·s·ch·bor·d` y `fítcher` como `fí·t·che·r`.
-- **`w`, `k` y `ü` caen a bytes sueltos** (`chek` → `che` + byte de `k`; `wídyet` empieza con el byte de `w`): son letras casi ausentes del español con que aprendió el modelo.
+- **`w`, `k` y `ü` caen a bytes sueltos** (`chek` → `che` + byte de `k`; `wídyet` empieza con el byte de `w`): esto describe la tokenización, no la frecuencia de esas letras en el entrenamiento ni la causa de un resultado acústico.
 - **Sí hay piezas españolas** como `ch`, `lle`, `que`, `gui` y `th`.
-- **`gui` suena «gi» y `güi` suena «güi»**, como en español: por eso `güíllet` ganó a `guillet` y `guíllet` (la misma adaptación que «whisky» → «güisqui»).
+- **En la ortografía española, `gui` tiene `u` muda y `güi` indica que se pronuncia.** Esa convención no demuestra por qué `güíllet` ganó a `guillet` y `guíllet`.
 
-Hipótesis: suena mejor la escritura armada con piezas españolas (`ch`, `lle`, `que`, `güi`) que la que usa letras que caen a bytes (`w`, `k`). Escucha del 2026-10-31: **para la `w` se confirmó**: `wídyet` sonó mal y `uídyet`, que solo cambia la `w` por `u`, sonó mucho mejor. **Para la `k` no**: `chek`/`chec` y `kiú`/`quiú` sonaron casi iguales. **La `z` no da la /z/ inglesa**: con seseo suena como `s`, y `propóusd` (`prop·ó·us·d`) ganó a `propóuzd` (`prop·ó·u·z·d`); escribe `s`. En `widget`, `güíllet` siguió ganando, aunque `güíyet` sonó cerca (la `y` no sonó como `i`). **No escribas `w`**: usa `u` o `güi`. Para ver las piezas de una palabra, usa el comando de la skill [`tehablo-pronunciacion`](../.pi/skills/tehablo-pronunciacion/SKILL.md).
+La escucha del 2026-10-31 no establece una regla general sobre piezas o bytes: `wídyet` sonó mal y `uídyet`, que solo cambia la `w` por `u`, sonó mucho mejor; `chek`/`chec` y `kiú`/`quiú` sonaron casi iguales. `propóusd` (`prop·ó·us·d`) ganó a `propóuzd` (`prop·ó·u·z·d`), sin demostrar cómo sonará la `z` en otras palabras. En `widget`, `güíllet` siguió ganando, aunque `güíyet` sonó cerca (la `y` no sonó como `i`). Son preferencias para esas comparaciones, no una prohibición de `w` ni una sustitución general de `z` por `s`. Para ver las piezas de una palabra, usa el comando de la skill [`tehablo-pronunciacion`](../.pi/skills/tehablo-pronunciacion/SKILL.md).
 
 ## Cómo probar variantes
 

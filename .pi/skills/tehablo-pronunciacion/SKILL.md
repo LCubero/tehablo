@@ -28,7 +28,7 @@ Use when the owner tests how tehablo speaks English terms, compares spellings, o
 ## Building Variants
 
 - Offer at most 5 variants per word and change one thing at a time.
-- The Spanish tokenizer has no piece for `sh`, `sch`, `tch`, `w` or `k`; `w`, `k` and `ü` become raw bytes. Never write `w` in a spelling: listening on 2026-10-31 confirmed `wídyet` sounds bad and `uídyet` (only `w` → `u`) much better; use `u` or `güi`. The same listening found no audible difference between `k` and `c`/`qu` (`chek`/`chec`, `kiú`/`quiú`), so `k` needs no replacement. `z` gives no English /z/ (seseo makes it `s`): `propóusd` beat `propóuzd`, so write `s`. See `docs/pronunciacion.md#qué-ve-el-modelo`.
+- The Spanish tokenizer has no piece for `sh`, `sch`, `tch`, `w` or `k`; `w`, `k` and `ü` become raw bytes. This does not establish training frequency or an acoustic cause. Listening on 2026-10-31 favored `uídyet` over `wídyet`, found no audible difference in `chek`/`chec` and `kiú`/`quiú`, and favored `propóusd` over `propóuzd`. These are word-specific observations, not bans on `w` or `z`. See `docs/pronunciacion.md#qué-ve-el-modelo`.
 - To see the pieces of candidate spellings (read-only, offline):
 
   ```bash
@@ -47,15 +47,28 @@ Use when the owner tests how tehablo speaks English terms, compares spellings, o
 
 1. Use the server that answers: `PORT=8765`, or `PORT=8766` if `curl -s localhost:8765/status` gets no reply. In that case start a test server in the background and leave Pi's port alone:
    `.venv-pocket/bin/python src/tehablo_server.py --port 8766`
-2. When comparing variants, send one word per request with a short pause (about 0.6 s between words, 1.5 s between groups). Run it in the background; `say` waits until the word has finished playing:
+2. When comparing variants, send one word per request with a short pause (about 0.6 s between words, 1.5 s between groups). Run this Bash sequence in the background with the `PORT` selected in step 1. It stops on HTTP, transport, invalid status or speech errors. It polls at most 120 times (1 s apart, each HTTP call limited to 5 s); on timeout it aborts without sending another word or stopping accepted audio:
 
    ```bash
-   PORT=8766
-   say(){ curl -s -X POST localhost:$PORT/speak -H 'Content-Type: application/json' \
-     -d "{\"id\":\"w\",\"text\":\"$1\"}" >/dev/null
-     while curl -s localhost:$PORT/status | grep -Eq '"(loading|generating|playing)"'; do sleep 0.1; done
-     sleep "$2"; }
-   say "fícher." 0.6; say "fítcher." 1.5
+   say(){
+     local payload status state attempt
+     payload=$(python3 -c 'import json,sys; print(json.dumps({"id":"w", "text":sys.argv[1]}))' "$1") || return
+     curl --fail --silent --show-error --connect-timeout 2 --max-time 5 \
+       -X POST "localhost:$PORT/speak" -H 'Content-Type: application/json' -d "$payload" >/dev/null || return
+     for ((attempt=0; attempt<120; attempt++)); do
+       status=$(curl --fail --silent --show-error --connect-timeout 2 --max-time 5 "localhost:$PORT/status") || return
+       state=$(python3 -c 'import json,sys
+s=json.loads(sys.argv[1])
+if s.get("error") or s.get("state") not in ("idle", "loading", "generating", "playing"):
+    sys.exit("Error de estado: " + str(s))
+print(s["state"])' "$status") || return
+       if [[ "$state" == idle ]]; then sleep "$2"; return; fi
+       sleep 1 || return
+     done
+     echo 'Tiempo de espera agotado; secuencia abortada sin cortar el audio.' >&2
+     return 1
+   }
+   say "fícher." 0.6 && say "fítcher." 1.5
    ```
 
    Ellipses do not make a pause: normalization turns `...` into a period.

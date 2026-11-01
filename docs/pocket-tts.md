@@ -363,7 +363,7 @@ La segmentación intenta límites de oración (`.!?`, incluidos patrones de punt
 |---|---|---|
 | Diccionario ortográfico por idioma | Antes de sintetizar, sustituir términos: `software` → `sóftuer`, `email` → `imeil`, `Wi-Fi` → `uaifai`. | **IDEA NO PROBADA.** Son aproximaciones ilustrativas, no pronunciaciones aprobadas ni acento inglés auténtico. Deben probarse por modelo y contexto. |
 | Reglas contextuales | Diferenciar el significado de «live», nombres propios, siglas y variantes regionales. Aplicar coincidencias por palabra, expresiones largas primero y sin reemplazos en cascada. | **IDEA NO IMPLEMENTADA** en tehablo. Un reemplazo global ingenuo puede dañar palabras normales o el texto mostrado. |
-| Tramos con otro modelo | La aplicación interpreta `[en]...[/en]`, quita las marcas y sintetiza el tramo con `english`; el resto, con `spanish`. | **IDEA NO PROBADA.** Las marcas no son reconocidas por Pocket TTS. Requiere concatenar audio, igualar formato y calcular estado de la misma referencia por modelo. Puede haber saltos de prosodia, dos modelos en RAM y mayor latencia; clonación requiere pesos gated. |
+| Tramos con otro modelo | La aplicación interpreta `[en]...[/en]`, quita las marcas y sintetiza el tramo con `english`; el resto, con `spanish`. | **Mezcla de modelos rechazada en tehablo:** [RH-W-0021](repo-harness/roadmap.md), por sonar a dos voces distintas. Esto no acredita una prueba de este parser `[en]`. Las marcas no son reconocidas por Pocket TTS. Requeriría concatenar audio, igualar formato y calcular estado por modelo, con dos modelos en RAM y mayor latencia; clonación requiere pesos gated. |
 | Referencia española nativa | Usarla con `spanish` o 24l. | Puede reducir acento extranjero de la voz; no garantiza que los préstamos se pronuncien en inglés. |
 | Fine-tuning con code-switching | Datos con mezcla español/inglés, transcripciones y alineaciones; usar `training/`. | **IDEA NO PROBADA** para este proyecto. Más esfuerzo, GPU y evaluación; no basta un diccionario de palabras. |
 
@@ -461,7 +461,7 @@ Buenas prácticas: documentar autorización del hablante, fuente exacta, licenci
 - Acento de cada voz; licencia y consentimiento específico de los archivos originales de lola, giovanni, juergen y rafael; que el último provenga realmente de YouTube.
 - Licencia de ipsilondev, del servidor ai-joe y de los audios españoles de VoxForge/M-AILABS/CSS10; ficha actual específica de Common Voice es y sus condiciones de acceso.
 - Espejos HF equivalentes para Perú/Puerto Rico/Venezuela; que tts-hub sea accesible públicamente.
-- Beneficio auditivo/latencia real de reescrituras, modelos pequeños, mejoras de limpieza, fine-tuning o mezcla de modelos en tehablo; compatibilidad de GPU y despliegue offline completo.
+- Beneficio auditivo/latencia real generalizable de reescrituras, modelos pequeños, mejoras de limpieza o fine-tuning en tehablo; el parser `[en]` concreto (la mezcla de modelos se rechazó en [RH-W-0021](repo-harness/roadmap.md)); compatibilidad de GPU y despliegue offline completo.
 
 ## 12. Catálogo de mejoras posibles
 
@@ -479,7 +479,7 @@ Buenas prácticas: documentar autorización del hablante, fuente exacta, licenci
 | Números/fechas/monedas/siglas | Preprocesamiento contextual; posible num2words | Medio | No | **Números, fechas, horas, ₡/$ y % implementados** en `src/tehablo_numbers.py`; unidades implementadas; siglas frecuentes en `pronunciaciones.json` (`RH-W-0027`); regla general de siglas pendiente |
 | Diccionario inglés→reescritura | JSON antes de llamar al modelo, con excepciones | Medio | No | **Implementado** en `src/tehablo_lexicon.py` + `pronunciaciones.json` |
 | Diccionario en API/CLI nativa | Seguir `pronunciations=` / `--pronunciations` | Medio | Sí, si se adopta ese parche antes de publicarse | **PR abierto #375**, no disponible localmente |
-| Inglés auténtico por tramos | Parser externo, modelo inglés y español, estados separados y concatenación | Alto | No | **Idea no probada** |
+| Inglés auténtico por tramos | Parser externo, modelo inglés y español, estados separados y concatenación | Alto | No | **Mezcla rechazada:** [RH-W-0021](repo-harness/roadmap.md); parser concreto no probado |
 | Pausas de duración exacta | Dividir y añadir silencio PCM externamente | Medio | No | **Idea no probada** aquí; workaround comunitario |
 | Pausas por etiquetas nativas | `[pause:1]` o SSML break parcial | Medio | Sí, para incorporar la propuesta pendiente | **PR abierto #242**, no fusionado |
 | Menos clics en uniones | Evaluar fuente, fade-in y propuesta de descartar primer cuadro | Medio | Sí para el parche propuesto; no para posprocesado externo | **PR abierto #331**; eficacia local no probada |
