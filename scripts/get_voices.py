@@ -3,7 +3,8 @@
 Source: Google crowdsourced Latin American Spanish TTS corpora (OpenSLR 61/71/72),
 mirrored on Hugging Face by ylacombe. License: CC BY-SA 4.0 (attribution required).
 Only a few short clips per speaker are fetched through the HF datasets-server API;
-they are concatenated into one ~15 s reference WAV per speaker under voices/.
+they are concatenated into one ~15 s PCM16 reference WAV per speaker under voices/.
+Existing files are skipped and left untouched (no automatic conversion).
 
 Usage: python scripts/get_voices.py [--speakers 3] [--seconds 15]
 """
@@ -90,6 +91,7 @@ def main() -> None:
                     print(f"ya existe {path.name}")
                     continue
                 rate, audio = build_voice(clips, args.seconds)
+                audio = (np.clip(audio, -1.0, 1.0) * 32767).astype(np.int16)
                 scipy.io.wavfile.write(path, rate, audio)
                 print(f"{path.name}: {len(audio) / rate:.1f} s")
                 credits.append(f"{path.name}: speaker {speaker}, {dataset} ({origin})")
