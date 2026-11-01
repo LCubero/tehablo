@@ -476,7 +476,7 @@ Buenas prácticas: documentar autorización del hablante, fuente exacta, licenci
 | Evitar recargar en cada frase | Mantener modelo/estado en memoria o `serve` | Bajo | No | **Oficial** |
 | Menos cortes finales | Ajustar EOS/cuadros con batería corta y larga | Bajo | No | **Oficial**; ajuste concreto no probado |
 | Menos omisiones largas | Puntuación, límites de fragmento y revisión de uniones | Medio | No | **Oficial** para chunking; política propia no probada |
-| Números/fechas/monedas/siglas | Preprocesamiento contextual; posible num2words | Medio | No | **Números, fechas, horas, ₡/$ y % implementados** en `src/tehablo_numbers.py`; unidades implementadas; siglas pendientes |
+| Números/fechas/monedas/siglas | Preprocesamiento contextual; posible num2words | Medio | No | **Números, fechas, horas, ₡/$ y % implementados** en `src/tehablo_numbers.py`; unidades implementadas; siglas frecuentes en `pronunciaciones.json` (`RH-W-0027`); regla general de siglas pendiente |
 | Diccionario inglés→reescritura | JSON antes de llamar al modelo, con excepciones | Medio | No | **Implementado** en `src/tehablo_lexicon.py` + `pronunciaciones.json` |
 | Diccionario en API/CLI nativa | Seguir `pronunciations=` / `--pronunciations` | Medio | Sí, si se adopta ese parche antes de publicarse | **PR abierto #375**, no disponible localmente |
 | Inglés auténtico por tramos | Parser externo, modelo inglés y español, estados separados y concatenación | Alto | No | **Idea no probada** |
