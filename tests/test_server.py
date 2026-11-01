@@ -237,7 +237,7 @@ class ServerTests(unittest.TestCase):
             ('src/tehablo_server.py', 'tehablo sérver punto pai'),
             ('docs/repo-harness/roadmap.md', 'róudmap punto eme de'),
             ('.pi/settings.json', 'settings punto yéison'),
-            (r'E:\code\x', 'x'),
+            (r'E:\code\x', 'equis'),
             ('README.md', 'rídmi punto eme de'),
             ('RH-W-0001', 'erre hache, doble ve, cero cero cero uno'),
             ('ABC-12', 'a be ce, doce'),

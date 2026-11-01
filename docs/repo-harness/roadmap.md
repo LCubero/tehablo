@@ -258,20 +258,6 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 - **Decisión:** fuera del alcance actual; puede reconsiderarse más adelante.
 - **Condición del siguiente avance:** nueva decisión explícita de la persona responsable.
 
-### RH-W-0021: Leer frases en inglés con un modelo inglés
-
-- **Origen:** propuesta del agente aprobada por la persona responsable el 2026-10-29.
-- **Prioridad:** P3; el diccionario respela palabras sueltas, pero una frase entera en inglés suena mejor con un modelo inglés.
-- **Dependencias:** coordinar con `RH-W-0002` (pronunciación según el modelo) y `RH-W-0010` (diccionario opcional).
-- **Estado:** `deferred`.
-- **Trabajo restante:**
-  - Comprobar si Pocket TTS permite alternar entre el modelo español y el inglés dentro de un mismo texto, y su costo en memoria y latencia.
-  - Definir cómo se detecta una frase en inglés sin confundir términos sueltos.
-- **Evidencia:** Pocket TTS ofrece modelo inglés; no se comprobó el cambio de modelo a mitad de un texto.
-- **Decisión:** registrar para después.
-  2026-10-30: aplazado por decisión de prioridades (la persona responsable delegó la decisión: «decidelo tu ... sin sobreingenieria»): primero base confiable, medición (`RH-W-0003`), decisión de versión lite e instalación, y endurecimiento (`RH-W-0001`, `RH-W-0013`).
-- **Condición del siguiente avance:** autorización para la prueba acotada.
-
 ### RH-W-0022: Opciones de lectura
 
 - **Origen:** propuestas del agente aprobadas por la persona responsable el 2026-10-29.
@@ -336,6 +322,33 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 
 ## Registros resueltos
 <!-- doc-role:resolved-records -->
+
+### RH-W-0027: Leer bien siglas, símbolos e inglés frecuente con la misma voz
+
+- **Origen:** solicitud de la persona responsable del 2026-10-31: «más palabras de ingles [...] lo que sea mejor para seguir la filosofía del menor consumo posible y que funcione como tiene que ser» y «dame una ruta optima sin sobreingenieria».
+- **Prioridad:** P2; es lo que más se oye mal al escuchar las respuestas de Pi, y no gasta memoria.
+- **Dependencias:** ninguna; `RH-W-0016` automatiza después la detección de términos nuevos.
+- **Estado:** `completed`.
+- **Trabajo completado (2026-10-31):** medición sobre 1756 líneas de la documentación (estilo de las respuestas de Pi) pasadas por la preparación actual: 0 dígitos sin convertir, 0 ordinales y 2 `€`; ~1326 palabras en mayúsculas (siglas como `RAM`, `MIT`, `ONNX` y palabras normales), ~200 símbolos `=`, `<`, `>`, `×`, `≥`, `≈`, 371 `#` y ~40 términos ingleses frecuentes sin entrada (`token`, `test`, `dataset`, `config`, `checkpoint`, `install`, `health`, `low`, `medium`, `high`). El Markdown ya lo limpia `pi-extension/tehablo-tts/src/text.ts`. Script en `.repo-harness/tmp/gap-test/` (ignorado por Git).
+- **Trabajo completado (2026-10-31, entrega):** `src/tehablo_tech.py` lee `=`, `==`, `!=`, `<`, `>`, `<=`, `>=`, `≤`, `≥`, `≠`, `≈`, `±`, `~` antes de un número, `×` y `x` tras un número («veces», o «por» entre números), `#350` como «número 350», y `->`/`=>` como pausa; una `x` sola se lee «equis»; `pronunciaciones.json` suma 15 siglas y 26 términos ingleses. Tras escucharlo en Pi, la persona responsable pidió deletrear en español `CPU`, `GPU`, `NTFS`, `UTC`, `WAV`, `WSL` y `RTX` (dejó `VM` y `VRAM` en inglés) y eligió entre variantes `check` → «chek», `pocket` → «páquet», `completed` → «complítid», `deferred` → «diférrd», `proposed` → «propóusd» y `dataset` → «déiraset» ([guía](../pronunciacion.md)). Queda abierto si todas las siglas pasan a letras del español. Pruebas en `tests/test_tech.py`.
+- **Trabajo restante:** none.
+- **Exclusiones:** ordinales y `€` (casi no aparecen); un segundo modelo o voz (`RH-W-0021`, rechazado).
+- **Decisión:** 2026-10-31: autorizado por la persona responsable («dale»).
+- **Condición del siguiente avance:** ninguna.
+
+### RH-W-0021: Leer frases en inglés con un modelo inglés
+
+- **Origen:** propuesta del agente aprobada por la persona responsable el 2026-10-29.
+- **Prioridad:** P3; el diccionario respela palabras sueltas, pero una frase entera en inglés suena mejor con un modelo inglés.
+- **Dependencias:** coordinar con `RH-W-0002` (pronunciación según el modelo) y `RH-W-0010` (diccionario opcional).
+- **Estado:** `rejected`.
+- **Trabajo completado (2026-10-31):** prueba acotada en Fedora con cuantización (script y audios en `.repo-harness/tmp/english-test/`, ignorado por Git). Clonando `lola` en los modelos ingleses: `english_7m_2026-10` (64 MB) suma 19 MiB de RAM, carga en 0,1 s y genera 5,4 s de audio en 0,5 s; `english_18m_2026-10` (107 MB) suma 161 MiB; `english` (209 MB) suma 509 MiB. Los tres usan 24 kHz, así que el audio se une al español sin remuestrear.
+- **Trabajo restante:** none.
+- **Evidencia:** al escuchar las mezclas español + inglés, la persona responsable oyó dos voces distintas: «escuché algunos y nada que ver en 2 voces diferentes, eso jamás». No se encontró un modelo Pocket TTS que mezcle español e inglés en la misma voz; Phonon 40M (gradium) cubre cinco idiomas en un modelo, pero sin prueba de mezcla dentro de una frase y con licencia CC BY-NC 4.0.
+- **Decisión:** registrar para después.
+  2026-10-30: aplazado por decisión de prioridades (la persona responsable delegó la decisión: «decidelo tu ... sin sobreingenieria»): primero base confiable, medición (`RH-W-0003`), decisión de versión lite e instalación, y endurecimiento (`RH-W-0001`, `RH-W-0013`).
+  2026-10-31: rechazado por la persona responsable: nunca dos voces distintas en una lectura. El inglés sigue con el diccionario en la voz española (`RH-W-0027`, `RH-W-0016`).
+- **Condición del siguiente avance:** ninguna; solo una decisión explícita posterior lo reemplaza.
 
 ### RH-W-0013: Manejo de errores y logs
 

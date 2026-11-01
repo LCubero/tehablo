@@ -43,6 +43,7 @@ Este archivo proyecta solo hechos verificados del proyecto: registros activos, b
 - Se añadió el selector de velocidad que conserva el tono.
 - Se añadió la lectura en voz alta de las respuestas de Pi (extensión `tehablo-tts`).
 - Se añadió la lectura simplificada de texto técnico y la pronunciación de términos de Git.
+- Se leen completas las unidades tras un número y, con la misma voz, símbolos (`=`, `<`, `>=`, `≈`, `#350`), más siglas e inglés frecuente (`RH-W-0027`); leer el inglés con un segundo modelo se rechazó (`RH-W-0021`).
 
 ## Trabajo pendiente
 
@@ -64,7 +65,6 @@ Este archivo proyecta solo hechos verificados del proyecto: registros activos, b
 - `RH-W-0018` (`deferred`, P3): roles de voz (locutor, profesor, motivador y otros) con frases y muletillas propias.
 - `RH-W-0019` (`deferred`, P3): exportar audiolibros.
 - `RH-W-0020` (`excluded`): funciones de app lectora de escritorio (atajo global, portapapeles, bandeja, documentos, sonidos de fondo, plugin de navegador).
-- `RH-W-0021` (`deferred`, P3): leer frases en inglés con un modelo inglés.
 - `RH-W-0022` (`proposed`, P3): opciones de lectura (bloques de código, pausas, aviso al terminar, retroceder o repetir, historial).
 - `RH-W-0023` (`proposed`, P2): revisión de seguridad, buenas prácticas (linter, CI), control (límites) y rendimiento (medición de regresiones); dependencias limitadas a versiones probadas el 2026-10-30.
 - `RH-W-0026` (`proposed`, P2): en Fedora, el primer arranque del TTS tras encender el equipo tardó ~14 s (luego ~3,5 s); en frío con la caché vaciada no pasa de ~5,7 s y NTFS solo suma ~1 s, así que la causa sigue sin conocerse; falta medir un primer arranque real.

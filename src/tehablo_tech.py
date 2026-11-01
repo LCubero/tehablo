@@ -8,7 +8,9 @@ with redundant commas cleaned up. Non-path word slashes become "eslash";
 numeric slashes stay intact for number normalization. Paths are recognized by
 an extension, an explicit path prefix, a trailing slash, or backslashes.
 Emoji are dropped, the degree sign is read, and questions missing an opening
-¿ receive one at their sentence start.
+¿ receive one at their sentence start. Comparison and math symbols are read
+(= igual a, < menor que, ≥ mayor o igual que, 1,7× veces, 3×4 por, ~14
+aproximadamente), -> and => become pauses, and #350 is read "número 350".
 Hyphens stay intact so configurable lexicon terms such as pi-tts still match.
 """
 import re
@@ -74,7 +76,27 @@ def _plain(text: str) -> str:
     text = IDENTIFIER.sub(identifier, text)
     text = HASH.sub(lambda m: '' if re.search('[a-f]', m[0])
                     and re.search('[0-9]', m[0]) else m[0], text)
-    return re.sub(r'(?<=\w)_(?=\w)', ' ', text)
+    return _symbols(re.sub(r'(?<=\w)_(?=\w)', ' ', text))
+
+
+SYMBOLS = (('<=', 'menor o igual que'), ('≤', 'menor o igual que'),
+           ('>=', 'mayor o igual que'), ('≥', 'mayor o igual que'),
+           ('!=', 'distinto de'), ('≠', 'distinto de'), ('==', 'igual a'),
+           ('=', 'igual a'), ('<', 'menor que'), ('>', 'mayor que'),
+           ('≈', 'aproximadamente'), ('±', 'más o menos'))
+
+
+def _symbols(text: str) -> str:
+    """Read math and comparison symbols; arrows become pauses, #350 a number."""
+    text = re.sub(r'\s*(?:->|=>)\s*', ', ', text)
+    text = re.sub(r'(?<=\S)\s?×\s?(?=\d)|(?<=\d) x (?=\d)', ' por ', text)
+    text = re.sub(r'(?<=\d)[×x](?!\w)', ' veces', text)
+    text = re.sub(r'(?<![\w.-])[xX](?![\w.-])', 'equis', text)  # the model skips a lone x
+    text = re.sub(r'~\s?(?=\d)', 'aproximadamente ', text)
+    text = re.sub(r'(?<![\w&])#(?=\d)', 'número ', text)
+    for symbol, words in SYMBOLS:
+        text = re.sub(rf'\s*{re.escape(symbol)}\s*', f' {words} ', text)
+    return text
 
 
 def _without_symbols(text: str) -> str:
