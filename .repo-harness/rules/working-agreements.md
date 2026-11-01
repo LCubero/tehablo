@@ -33,7 +33,7 @@ Load when: sizing a change, deciding when to stop, or agreeing how work is done 
 
 ## Project Agreements
 
-Replace with actual project agreements; delete if none.
+- `/tmp` on the owner's Fedora is RAM (`tmpfs`, per-user quota). Never copy the repository or `.repo-harness/tmp/` (voice environments, many GB) there, and tell subagents the same; run heavy scratch work in `.repo-harness/tmp/` (2026-10-31: a subagent copy filled 13 GB of RAM; owner: «correcto que no vuelva a pasar»).
 
 ## Budget
 
