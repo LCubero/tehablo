@@ -24,7 +24,7 @@ Texto escrito
 1. Diccionario de inglés   pronunciaciones.json + src/tehablo_lexicon.py   "Python" → "páiton"
    │
    ▼
-2. Números a palabras      src/tehablo_numbers.py                          "15.000" → "quince mil"
+2. Números a palabras      src/tehablo_numbers.py                          "15.000" → "quince mil", "5 s" → "cinco segundos"
    │
    ▼
 3. Pocket TTS              modelo de IA de Kyutai                          parte el texto en frases y

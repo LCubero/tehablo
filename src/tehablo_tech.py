@@ -15,6 +15,11 @@ import re
 import unicodedata
 from urllib.parse import urlsplit
 
+from tehablo_numbers import UNIT_SYMBOLS
+
+_SLASH_UNIT = re.compile(r'(?:\d+(?:[.,]\d+)?)?('
+                         + '|'.join(re.escape(u) for u in UNIT_SYMBOLS if '/' in u) + ')')
+
 
 EXTENSIONS = {
     'py': 'pai', 'ts': 'te ese', 'js': 'jota ese', 'json': 'yéison',
@@ -42,8 +47,9 @@ def _plain(text: str) -> str:
     def path(match):
         token = match.group()
         core = token.rstrip('.:')
-        if not re.search(r'[/\\]', core) or re.fullmatch(r'[0-9/\\]+', core):
-            return token
+        if (not re.search(r'[/\\]', core) or re.fullmatch(r'[0-9/\\]+', core)
+                or _SLASH_UNIT.fullmatch(core)):
+            return token  # numbers and speed units are read by the number normalizer
         parts = re.split(r'[/\\]', core.rstrip('/\\'))
         is_path = (core.startswith(('/', './', '../', '~/'))
                    or core.endswith('/') or '\\' in core

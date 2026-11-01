@@ -18,6 +18,8 @@ RULE_CASES = [
      'No añadí OS. listo fallo fin'),
     ('degrees', '25 °C, 25°C, -3 °F y 90°.',
      '25 grados celsius, 25 grados celsius, -3 grados fárenjait y 90 grados.'),
+    ('speed units keep their slash', 'A 60 km/h, 60km/h, 3 m/s o 120 MB/s.',
+     'A 60 km/h, 60km/h, 3 m/s o 120 MB/s.'),
     ('S1', 'antes ' + '+' * 32 + ' === --- *** ___ ~~~ ### después C++ ++',
      'antes después C++ ++'),
     ('S1 Pi block', '++++++++++++++++. Siguiente acción. ++++++++++++++++. Fin.',

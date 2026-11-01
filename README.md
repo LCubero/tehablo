@@ -28,7 +28,7 @@ El uso principal es **leer en voz alta las respuestas de [Pi](#uso-en-pi)**. La 
 |---|---|---|
 | 1. Texto técnico | Simplifica URLs, rutas, archivos e identificadores | `src/tehablo_server.py` → *tehablo sérver punto pai* |
 | 2. Términos en inglés | Los cambia por cómo suenan ([`pronunciaciones.json`](pronunciaciones.json)) | `Python` → *páiton* |
-| 3. Números | Los convierte a palabras | `15.000` → *quince mil* |
+| 3. Números | Los convierte a palabras, con su unidad | `15.000` → *quince mil*, `5,86 s` → *cinco coma ochenta y seis segundos* |
 | 4. Pocket TTS | Genera la voz a trozos | — |
 | 5. Velocidad | Cambia el ritmo sin cambiar el tono | — |
 | 6. Altavoz | Suena mientras se genera lo siguiente | — |
@@ -211,12 +211,12 @@ Solo hace falta para la primera descarga; después funciona sin internet.
 
 **Sin tocar código:**
 - **Pronunciación de términos en inglés:** edita [`pronunciaciones.json`](pronunciaciones.json) (`"Python": "páiton"`). Incluye Git y Pi (`feat`, `master`, `origin`, `pi-tts`); se recarga solo. Cómo escribir cada entrada: [docs/pronunciacion.md](docs/pronunciacion.md).
-- **Texto técnico en español:** las URLs se leen como «enlace a dominio», las rutas solo por su último segmento y los archivos con su extensión; una barra entre palabras se lee «eslash» (`on/off`). Identificadores como `RH-W-0001` se deletrean y los hashes de commit se omiten. Los separadores (`+++`, `===`) no se leen, y las flechas `→` y los paréntesis se convierten en una pausa corta. En Pi, las tablas se leen fila por fila (celdas separadas por pausas) y los puntajes como `53/53` se leen «53 de 53». Todo esto ocurre antes de aplicar el diccionario y los números.
+- **Texto técnico en español:** las URLs se leen como «enlace a dominio», las rutas solo por su último segmento y los archivos con su extensión; una barra entre palabras se lee «eslash» (`on/off`). Identificadores como `RH-W-0001` se deletrean y los hashes de commit se omiten. Los separadores (`+++`, `===`) no se leen, y las flechas `→` y los paréntesis se convierten en una pausa corta. En Pi, las tablas se leen fila por fila (celdas separadas por pausas) y los puntajes como `53/53` se leen «53 de 53». Las unidades tras un número se leen completas: tiempo (`ms`, `s`, `min`, `h`), longitud (`m`, `km`, `in`, `ft`), superficie (`m²`, `m2`, `ha`), volumen (`l`, `ml`, `cc`, `gal`), peso (`kg`, `lb`, `ton`), velocidad (`km/h`, `MB/s`), datos (`MB`, `GiB`, `Mbps`), frecuencia (`GHz`), electricidad (`V`, `mA`, `kWh`), presión (`hPa`, `bar`, `psi`), sonido (`dB`), energía (`kcal`) y pantalla (`px`, `fps`), con «un/una» y femenino donde toca («una hora», «doscientas kilocalorías»). Todo esto ocurre antes de aplicar el diccionario y los números.
 - **Voces nuevas:** copia grabaciones en `voices/`, o descarga más con `scripts/get_voices.py --speakers 5`.
 - **Calidad:** prueba `spanish_24l`, o una referencia de voz más limpia.
 
 **Con código, ideas documentadas:**
-- Unidades y siglas en el conversor de números, pausas exactas.
+- Siglas en el conversor de números, pausas exactas.
 - Lista completa con esfuerzo estimado: [docs/pocket-tts.md](docs/pocket-tts.md#12-catálogo-de-mejoras-posibles).
 - Otros motores y recursos gratuitos: [docs/catalogo-gratuito.md](docs/catalogo-gratuito.md).
 
