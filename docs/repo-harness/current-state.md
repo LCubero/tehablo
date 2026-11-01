@@ -12,9 +12,10 @@
 - Conversión de números a palabras en español (`src/tehablo_numbers.py`).
 - Pronunciación de términos en inglés con `pronunciaciones.json` (`src/tehablo_lexicon.py`).
 - Selector de velocidad que conserva el tono (`src/tehablo_speed.py`).
-- Descarga selectiva de voces en español para clonar (`scripts/get_voices.py`).
+- Descarga selectiva de voces en español para clonar (`scripts/get_voices.py`): referencias nuevas en PCM16, con muestras limitadas a [-1, 1]; los archivos existentes se omiten sin convertirlos.
 - Pruebas unitarias sin modelo (`tests/test_numbers.py`, `tests/test_lexicon.py`, `tests/test_speed.py`) y scripts de integración de la TUI que reproducen audio.
 - Extensión de Pi `pi-extension/tehablo-tts/` y servidor local `src/tehablo_server.py`: leen las respuestas del agente en modo manual o automático; se carga en este proyecto con `.pi/settings.json`.
+- Apagado manual con `[ ⏻ ]` solo al final de Vol/Vel abiertos: la persona responsable confirmó que funciona en Linux tras `/reload`; la comprobación de procesos y puertos del agente principal no encontró `tehablo_server.py` ni listeners en 8765/8766. Las 42 pruebas deterministas de la extensión pasan, incluido volver a encender en la misma sesión; esto último no se comprobó físicamente. La cobertura de todas las columnas de `[ ⏻ TTS ]` pasa en código, pero el problema del clic físico en toda la superficie sigue sin resolverse.
 - Lectura simplificada de texto técnico (`src/tehablo_tech.py`): URLs, rutas, archivos, identificadores y hashes; `pronunciaciones.json` tiene 370 términos de desarrollo, Git, GitHub y uso general, con siglas técnicas deletreadas en inglés y excepciones aprobadas en español (`CPU`, `GPU` y otras); la política global sigue pendiente ([decisiones de pronunciación](../pronunciacion.md#decisiones-y-pendientes)).
 - Probado en Windows y, en Fedora, el servidor y el transporte de la extensión con síntesis CPU `spanish`/`lola`, controles y callbacks de audio reales. No acredita escucha/calidad, interfaz completa de Pi, TUI ni `spanish_24l`; [versiones y comprobaciones](../desarrollo.md#verificación-en-fedora).
 - Harness de IA instalado (perfil `pi`, modo integrado); `python .repo-harness/check.py` lo comprueba.
@@ -52,7 +53,7 @@ Este archivo proyecta solo hechos verificados del proyecto: registros activos, b
 - Registrar todo pendiente no trivial en [roadmap.md](roadmap.md), sin mantener un segundo backlog aquí.
 - `RH-W-0002` (`deferred`, P3): pronunciaciones en inglés y limpieza de símbolos aplicadas (hashes omitidos, separadores, flechas, paréntesis y barras); quedan las extensiones de archivo y la confirmación por escucha ([guía de pronunciación](../pronunciacion.md)).
 - `RH-W-0004` (`deferred`, P3): revisar interfaz, TUI, menús, comandos y ajustes, modo automático persistente y acceso sin mouse.
-- `RH-W-0005` (`active`, P3): probadas a ciegas voces sin token y, con token, las 18 de `voices/` clonadas con Pocket TTS ([resumen y resultados](../pruebas-de-voces.md#resumen-2026-10-30)); varias suenan mejor que `lola`. Sigue la prueba con NeuTTS y el ajuste castellano; sin decisión sobre qué voces se incorporan. `scripts/get_voices.py` guarda WAV que Pocket TTS no lee.
+- `RH-W-0005` (`active`, P3): probadas a ciegas voces sin token y, con token, las 18 de `voices/` clonadas con Pocket TTS ([resumen y resultados](../pruebas-de-voces.md#resumen-2026-10-30)); varias suenan mejor que `lola`. Sigue la prueba con NeuTTS y el ajuste castellano; sin decisión sobre qué voces se incorporan. Corregida solo la salida nueva del descargador a PCM16 (pruebas deterministas sin red); los originales existentes siguen en coma flotante. El lector de Pocket TTS acepta una copia PCM16 donde rechaza el original, pero esta corrección no verifica una clonación completa ni añade escuchas.
 - `RH-W-0007` (`deferred`, P3): modo GPU opcional, manteniendo CPU como predeterminado.
 - `RH-W-0009` (`deferred`, P2): versión Docker y despliegue seguro en VPS; depende de `RH-W-0001` y `RH-W-0008`.
 - `RH-W-0010` (`proposed`, P3): elegir si se usa el diccionario de pronunciación en inglés.

@@ -142,12 +142,13 @@ La extensión [`pi-extension/tehablo-tts/`](pi-extension/tehablo-tts/) lee las r
   | Apagado | `[ ⏻ TTS ]` |
   | Cargando | `[ Cargando… ]` (no se puede pulsar) |
   | Listo | `[ ▶ Escuchar ] [ ⋯ ]` |
-  | Listo, controles abiertos | `[ ▶ Escuchar ] [ → ]  Vol [- 100% +]  Vel [- 1.00x +]` |
+  | Listo, controles abiertos | `[ ▶ Escuchar ] [ → ]  Vol [- 100% +]  Vel [- 1.00x +] [ ⏻ ]` |
   | Sonando | `[ ‖ ] [ ■ ] [ ⋯ ]` |
   | En pausa | `[ ▶ ] [ ■ ] [ ⋯ ]` |
 
-  **`[ ⏻ TTS ]`** arranca el servidor y carga el modelo antes de escuchar; mientras tanto, la barra de estado muestra `TTS manual · cargando`. Escuchar, `/tts play` y el modo automático también lo arrancan si hace falta.
+  **`[ ⏻ TTS ]`** arranca el servidor y carga el modelo antes de escuchar; mientras tanto, la barra de estado muestra `TTS manual · cargando`. Las pruebas de código cubren clics en toda su superficie (corchetes, símbolo, letras y espacios normales); el problema del clic físico en el host sigue sin resolverse. Escuchar, `/tts play` y el modo automático también lo arrancan si hace falta.
 - **Volumen y velocidad:** `[ ⋯ ]` muestra **Vol** (10–150 %, pasos de 10 %, inicial 100 %) y **Vel** (1.00x, 1.10x, 1.15x, 1.25x y 1.50x; `/tts speed` sigue aceptando 0.75–1.5) en todas las barras; `[ → ]` los oculta. `[-` baja y `+]` sube. Solo clics, sin atajos de teclado. El volumen cambia incluso el audio en reproducción; la velocidad afecta a los siguientes trozos generados, no al audio ya almacenado. Los límites se mantienen sin error.
+- **Apagar y liberar el modelo:** `[ ⏻ ]` aparece solo al final de los controles abiertos, después del último `+]`. Detiene la lectura y cierra el servidor propio para liberar sus recursos; reinicia los controles y vuelve al modo manual. `[ ⏻ TTS ]` permite encenderlo otra vez sin cerrar Pi. No equivale a `[ ■ ]` (solo detener) ni a `/tts off` (desactivar los controles).
 - **Automático:** `/tts auto on` lee cada respuesta al terminar; `/tts auto off` vuelve al modo manual.
 
 | Comando | Acción |

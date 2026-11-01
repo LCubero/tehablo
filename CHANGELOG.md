@@ -6,6 +6,10 @@ Este archivo registra los cambios completados en orden cronológico.
 
 ## 2026-11-01
 
+- Los controles abiertos de Pi añaden `[ ⏻ ]` al final, después de velocidad: apaga el servidor propio y libera el modelo, cancela respuestas pendientes y permite volver a encenderlo en la misma sesión. Las pruebas de la extensión comprueban todas las columnas de `[ ⏻ TTS ]`, incluidos los espacios normales; no verifican el mouse físico del host.
+
+- `scripts/get_voices.py` guarda las referencias nuevas como WAV PCM16, limitando las muestras a [-1, 1], sin convertir ni sobrescribir voces existentes. Conserva los avisos y la atribución; pruebas sin red verifican formato, muestras, frecuencia, duración y archivos intactos. Resuelve solo el subtrabajo del descargador de `RH-W-0005`; la elección y escucha de voces siguen activas, sin verificar una clonación completa en esta corrección.
+
 - Se corrigió el ejemplo de escucha: conserva el puerto elegido, codifica JSON y aborta ante errores o espera agotada sin enviar la siguiente palabra. La documentación limita las conclusiones acústicas a las comparaciones escuchadas y aclara el rechazo de la mezcla de modelos y las excepciones de siglas.
 
 ## 2026-10-31

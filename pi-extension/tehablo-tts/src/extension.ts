@@ -4,7 +4,7 @@ import { finalText } from './text.ts';
 
 const ENTRY = 'tehablo-tts';
 interface Card { messageId: string; number: number }
-const help = '/tts on|off · auto on|off · play [n] · pause · resume · stop · voice [nombre] · model [spanish|spanish_24l] · speed [0.75-1.5]';
+const help = '/tts on|off · auto on|off · play [n] · pause · resume · stop · voice [nombre] · model [spanish|spanish_24l] · speed [0.75-1.5]\n[ ⋯ ] abre los ajustes; [ ⏻ ] al final apaga el servidor y libera el modelo; [ ⏻ TTS ] vuelve a encenderlo.';
 
 export function createExtension(pi: ExtensionAPI, client = new ServerClient()) {
   let enabled = true, auto = false, epoch = 0;
@@ -54,23 +54,32 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient()) {
   };
   /** Starts the server when needed and reports its readiness. */
   const boot = async () => {
+    const generation = epoch;
     if (server === 'off') { readyTries = 0; setServer('loading'); }
     try {
       await client.ensure();
-      sync(await client.request('/health'));
+      if (generation !== epoch) return;
+      const health = await client.request('/health');
+      if (generation === epoch) sync(health);
     } catch (error) {
+      if (generation !== epoch) return;
       cancelReady(); setServer('off');
       throw error;
     }
   };
   const setting = async (ctx: ExtensionContext, kind: string) => {
-    sync(await client.action('/health'));
+    const generation = epoch;
+    const health = await client.action('/health');
+    if (generation !== epoch) return;
+    sync(health);
     const direction = kind.endsWith('+') ? 1 : -1;
     const field = kind.startsWith('volume') ? 'volume' : 'speed';
     const value = field === 'volume' ? Math.max(1, Math.min(15, Math.round(volume * 10) + direction)) / 10
       : direction > 0 ? (speeds.find(v => v > speed) ?? speed)
         : (speeds.findLast(v => v < speed) ?? speed);
-    sync(await client.action('/config', {[field]: value}));
+    const configured = await client.action('/config', {[field]: value});
+    if (generation !== epoch) return;
+    sync(configured);
     ctx.ui.notify(field === 'volume' ? `Volumen: ${Math.round(volume * 100)} %` : `Velocidad: ${speedLabel(speed)}`, 'info');
   };
   const update = (state: string, id: string | null) => {
@@ -78,6 +87,12 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient()) {
   };
   const cancelPoll = () => { pollEpoch++; if (timer) clearTimeout(timer); timer = undefined; };
   const resetPlayback = () => { cancelPoll(); started = false; pollFailures = 0; update('idle', null); };
+  const powerOff = async () => {
+    epoch++; resetPlayback(); cancelReady();
+    open = false; auto = false; volume = 1; speed = 1;
+    setServer('off'); refresh();
+    await client.powerOff();
+  };
   const poll = () => {
     cancelPoll();
     if (!started || playback.state === 'idle') return;
@@ -154,7 +169,8 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient()) {
           {text: 'Vel', action: '', gap: ' '},
           {text: '[-', action: 'speed-', gap: ' '},
           {text: speedLabel(speed), action: '', gap: ' '},
-          {text: '+]', action: 'speed+', gap: ''},
+          {text: '+]', action: 'speed+', gap: ' '},
+          {text: '[ ⏻ ]', action: 'powerOff', gap: ''},
         ] : []),
       ];
     };
@@ -171,7 +187,8 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient()) {
             if (control.action && event.x >= start && event.x < end) {
               if (control.action === 'toggle') { open = !open; refresh(); return {handled: true, render: true}; }
               void safe(context, () => control.action === 'play' ? speak(context!, String(entry.data!.number))
-                : control.action === 'start' ? boot()
+                : control.action === 'powerOff' ? powerOff()
+                  : control.action === 'start' ? boot()
                   : /^(volume|speed)/.test(control.action) ? setting(context!, control.action) : action(control.action));
               return {handled: true, render: true};
             }
@@ -217,8 +234,9 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient()) {
       await safe(ctx, async () => {
         const [command = '', ...rest] = args.trim().split(/\s+/);
         const value = rest.join(' ');
+        const generation = epoch;
         const info = (text: string) => ctx.ui.notify(text, 'info');
-        const applied = (h: any) => { sync(h); info(`Modelo: ${h.model} · voz: ${h.voice} · velocidad: ${h.speed} · volumen: ${Math.round(volume * 100)} %`); };
+        const applied = (h: any) => { if (generation !== epoch) return; sync(h); info(`Modelo: ${h.model} · voz: ${h.voice} · velocidad: ${h.speed} · volumen: ${Math.round(volume * 100)} %`); };
         switch (command) {
           case 'on': enabled = true; refresh(); info('TTS activado.'); return;
           case 'off': enabled = false; epoch++; resetPlayback(); refresh(); await client.stop(); info('TTS desactivado.'); return;
@@ -228,7 +246,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient()) {
           case 'play': await speak(ctx, value); return;
           case 'stop': case 'pause': case 'resume': await action(command); return;
           case 'voice':
-            if (!value) { const data = await client.action('/voices'); info(`Voces: ${data.voices.join(', ')}`); return; }
+            if (!value) { const data = await client.action('/voices'); if (generation !== epoch) return; info(`Voces: ${data.voices.join(', ')}`); return; }
             applied(await client.action('/config', {voice: value})); return;
           case 'model': case 'speed':
             if (value) {
@@ -236,8 +254,10 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient()) {
             }
         }
         const health = await client.action('/health');
+        if (generation !== epoch) return;
         sync(health);
         const status = await client.action('/status');
+        if (generation !== epoch) return;
         info(`TTS: ${enabled ? 'activado' : 'desactivado'} · automático: ${auto ? 'sí' : 'no'}\nServidor: ${status.state} · listo: ${health.ready ? 'sí' : 'no'}\nModelo: ${health.model} · voz: ${health.voice} · velocidad: ${health.speed} · volumen: ${Math.round(volume * 100)} %\n${help}`);
       });
     },

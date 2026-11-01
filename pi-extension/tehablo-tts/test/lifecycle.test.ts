@@ -27,6 +27,27 @@ test('failed graceful shutdown kills owned child and reports failure',async()=>{
   await client.shutdown(); assert.equal(kills,1);
 });
 
+test('power off releases the owned process and allows same-session restart; shutdown stays terminal',async()=>{
+  let healthy=false,kills=0,exit=()=>{};const calls:string[]=[],spawned:any[]=[];
+  const client=new ServerClient({root:'/tehablo',openLog:()=>1,closeLog:()=>{},
+    fetch:(async(url:any)=>{const path=new URL(url).pathname;calls.push(path);if(!healthy)throw Error('offline');if(path==='/shutdown')setImmediate(()=>{healthy=false;exit();});return Response.json({ok:true});}) as any,
+    spawn:((...args:any[])=>{spawned.push(args);healthy=true;return {once(event:string,callback:()=>void){if(event==='exit'){const previous=exit;exit=()=>{previous();callback();};}},unref(){},kill(){kills++;}};}) as any});
+  await client.ensure();await client.powerOff();assert.deepEqual(calls.slice(-2),['/stop','/shutdown']);assert.equal(kills,0);
+  assert.equal(healthy,false,'power off waits for process exit before allowing restart');
+  await client.ensure();assert.equal(spawned.length,2);
+  await client.shutdown();await assert.rejects(client.ensure(),/Sesión TTS cerrada\./);
+});
+
+test('power off during pending startup prevents stale spawn and can restart',async()=>{
+  let release!:()=>void,checks=0,spawns=0;
+  const client=new ServerClient({root:'/tehablo',openLog:()=>1,closeLog:()=>{},
+    fetch:(async()=>{if(++checks===1) {await new Promise<void>(r=>{release=r;});throw Error('offline');}return Response.json({ok:true});}) as any,
+    spawn:(()=>{spawns++;return {once(){},unref(){},kill(){}};}) as any});
+  const boot=client.ensure();await new Promise(r=>setImmediate(r));
+  const off=client.powerOff();release();await boot;await off;assert.equal(spawns,0);
+  await client.ensure();await client.shutdown();
+});
+
 const slash=(path:string)=>path.replaceAll('\\','/');
 
 function spawnRecorder(spawned:any[],onSpawn:()=>void,error?:Error){

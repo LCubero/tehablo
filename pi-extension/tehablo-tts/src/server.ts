@@ -21,13 +21,15 @@ export class ServerClient {
   private child?: ReturnType<typeof nodeSpawn>;
   private starting?: Promise<void>;
   private closed = false;
+  private ending = false;
+  private poweringOff?: Promise<void>;
   private used = false;
   constructor(options: Options = {}) {
     this.options = options;
     this.root = options.root ?? process.env.TEHABLO_ROOT ?? resolve(fileURLToPath(new URL('../', import.meta.url)), '../..');
     this.base = `http://127.0.0.1:${options.port ?? process.env.TEHABLO_PORT ?? '8765'}`;
   }
-  beginSession() { this.closed = false; this.used = false; }
+  beginSession() { this.closed = false; this.used = false; this.ending = false; }
   async request(path: string, body?: unknown): Promise<any> {
     const response = await (this.options.fetch ?? globalThis.fetch)(this.base + path, {
       method: body === undefined ? 'GET' : 'POST',
@@ -40,6 +42,7 @@ export class ServerClient {
     return data;
   }
   async ensure(): Promise<void> {
+    await this.poweringOff;
     if (this.closed) throw new Error('Sesión TTS cerrada.');
     this.used = true;
     if (!this.starting) this.starting = this.start().finally(() => { this.starting = undefined; });
@@ -99,7 +102,25 @@ export class ServerClient {
     return this.request(path, body);
   }
   async stop() { if (this.used && !this.closed) await this.request('/stop', {}); }
+  /** Release the owned server without closing this Pi session. */
+  powerOff(): Promise<void> {
+    if (!this.poweringOff) {
+      // The shutdown response precedes process exit; do not reconnect to that dying server.
+      const exited = this.child && new Promise<void>(resolve => this.child!.once('exit', () => resolve()));
+      this.poweringOff = this.close().finally(async () => {
+        await exited;
+        this.poweringOff = undefined;
+        if (!this.ending) this.beginSession();
+      });
+    }
+    return this.poweringOff;
+  }
   async shutdown() {
+    this.ending = true;
+    await this.poweringOff;
+    await this.close();
+  }
+  private async close() {
     if (this.closed) return;
     this.closed = true;
     await this.starting?.catch(() => {});

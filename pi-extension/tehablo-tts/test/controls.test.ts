@@ -6,13 +6,88 @@ function setup() {
   const configs:any[]=[], notices:string[]=[], statuses:(string|undefined)[]=[], settings={volume:1,speed:1,error:null as string|null};
   const hooks:any={}, calls:string[]=[], entries:any[]=[{type:'message',id:'a',message:{role:'assistant',content:'Hola'}} ,{type:'custom',customType:'tehablo-tts',data:{messageId:'a',number:1}}];
   let renderer:any, command:any, state='playing', id:string|null='a', renders=0, fail=false, ready=true, ensures=0;
-  const client:any={beginSession(){},ensure:async()=>{ensures++;},stop:async()=>{},shutdown:async()=>{},request:async(path:string)=>{calls.push(path);if(fail)throw Error('offline');if(path==='/health')return {...settings,ready};return {state,id,error:settings.error};},action:async(path:string,body:any)=>{calls.push(path);if(path==='/config'){configs.push(body);Object.assign(settings,body);return {...settings,ready};}if(path==='/health')return {...settings,ready};if(path==='/pause')state='paused';if(path==='/resume')state='playing';return {state};}};
+  const client:any={beginSession(){},ensure:async()=>{ensures++;},stop:async()=>{},shutdown:async()=>{},powerOff:async()=>{calls.push('/shutdown');},request:async(path:string)=>{calls.push(path);if(fail)throw Error('offline');if(path==='/health')return {...settings,ready};return {state,id,error:settings.error};},action:async(path:string,body:any)=>{calls.push(path);if(path==='/config'){configs.push(body);Object.assign(settings,body);return {...settings,ready};}if(path==='/health')return {...settings,ready};if(path==='/pause')state='paused';if(path==='/resume')state='playing';return {state};}};
   const ctx:any={mode:'tui',sessionManager:{getBranch:()=>entries},ui:{notify(text:string){notices.push(text);},setStatus(_:string,text:string|undefined){renders++;statuses.push(text);}}};
   createExtension({on:(n:string,h:any)=>hooks[n]=h,registerCommand:(_:any,c:any)=>command=c.handler,registerEntryRenderer:(_:any,r:any)=>renderer=r} as any,client);
   hooks.session_start({},ctx);
   const card=renderer(entries[1],{}, {fg:(_:any,t:string)=>t});
-  return {calls,card,configs,notices,statuses,line:()=>card.render(200)[0], command:(s:string)=>command(s,ctx),set:(s:string,i:string|null='a')=>{state=s;id=i;},setReady:(value:boolean)=>{ready=value;},setError:(value:string)=>{settings.error=value;},ensures:()=>ensures,close:()=>hooks.session_shutdown({},ctx),agentStart:()=>hooks.agent_start({},ctx),fail:(value=true)=>{fail=value;},renders:()=>renders};
+  return {client,calls,card,configs,notices,statuses,line:()=>card.render(200)[0], command:(s:string)=>command(s,ctx),set:(s:string,i:string|null='a')=>{state=s;id=i;},setReady:(value:boolean)=>{ready=value;},setError:(value:string)=>{settings.error=value;},ensures:()=>ensures,close:()=>hooks.session_shutdown({},ctx),agentStart:()=>hooks.agent_start({},ctx),fail:(value=true)=>{fail=value;},renders:()=>renders};
 }
+test('every start button column is clickable, including normal spaces and brackets',async()=>{
+  for(let x=0;x<Array.from('[ ⏻ TTS ]').length;x++) {
+    const s=setup();try {await click(s.card,x);assert.equal(s.ensures(),1,`column ${x}`);assert.equal(s.line(),'[ ▶ Escuchar ] [ ⋯ ]');}finally{await s.close();}
+  }
+});
+
+test('expanded controls end with power off, release idle or playing server and allow restart',async()=>{
+  for(const playing of [false,true]) {
+    const s=setup();try {
+      await clickAt(s,'⏻ TTS');if(playing)await s.command('play');
+      assert.ok(!s.line().includes('[ ⏻ ]'));
+      await clickAt(s,'[ ⋯ ]');assert.ok(s.line().endsWith('Vel [- 1.00x +] [ ⏻ ]'));
+      await clickAt(s,'[ ⏻ ]');assert.deepEqual(s.calls.filter((p:string)=>p==='/shutdown'),['/shutdown']);
+      assert.equal(s.line(),'[ ⏻ TTS ]');const count=s.calls.length;await tick();assert.equal(s.calls.length,count);
+      await clickAt(s,'⏻ TTS');assert.equal(s.line(),'[ ▶ Escuchar ] [ ⋯ ]');
+      await clickAt(s,'Escuchar');assert.ok(s.calls.includes('/speak'));assert.deepEqual(s.notices,[]);
+    }finally{await s.close();}
+  }
+});
+
+test('power off invalidates pending boot, readiness and playback responses',async()=>{
+  for(const pending of ['boot','ready','poll']) {
+    const s=setup();let resolve!:(value:any)=>void;
+    try {
+      await clickAt(s,'⏻ TTS');
+      if(pending!=='boot')await s.command('play');
+      await clickAt(s,'[ ⋯ ]');
+      if(pending==='ready') {s.setReady(false);await clickAt(s,'% +]',2);}
+      const request=s.client.request;
+      s.client.request=async(path:string)=>path===(pending==='poll'?'/status':'/health')
+        ? new Promise(r=>{resolve=r;}) : request(path);
+      if(pending==='boot') {void s.command('play');await new Promise(r=>setImmediate(r));}
+      else await tick();
+      assert.equal(typeof resolve,'function');
+      await clickAt(s,'[ ⏻ ]');const count=s.calls.length;
+      resolve(pending==='poll'?{state:'playing',id:'a'}:{ready:true,volume:1.5,speed:1.5});
+      await new Promise(r=>setImmediate(r));await tick();
+      assert.equal(s.line(),'[ ⏻ TTS ]');assert.equal(s.calls.length,count);assert.deepEqual(s.notices.filter((n:string)=>n.startsWith('TTS:')),[]);
+    }finally{await s.close();}
+  }
+});
+
+for(const [command,path] of [['speed 1.25','/config'],['model spanish_24l','/config'],['voice lola','/config'],['voice','/voices'],['','/health'],['','/status']] as const) {
+  test(`power off ignores pending command ${command || 'status'} at ${path}`,async()=>{
+    const s=setup();let resolve!:(value:any)=>void;
+    try {
+      await clickAt(s,'⏻ TTS');await clickAt(s,'[ ⋯ ]');
+      const action=s.client.action;
+      s.client.action=async(p:string,body:any)=>p===path?new Promise(r=>{resolve=r;}):action(p,body);
+      const pending=s.command(command);
+      await new Promise(r=>setImmediate(r));assert.equal(typeof resolve,'function');
+      await clickAt(s,'[ ⏻ ]');const count=s.calls.length;
+      resolve({ready:true,volume:1.5,speed:1.25,model:'spanish_24l',voice:'lola',voices:['lola'],state:'idle'});
+      await pending;
+      assert.equal(s.line(),'[ ⏻ TTS ]');assert.equal(s.calls.length,count);assert.deepEqual(s.notices,[]);
+    }finally{await s.close();}
+  });
+}
+
+test('config and status commands still synchronize and report successful results',async()=>{
+  const s=setup();try {
+    const action=s.client.action;
+    s.client.action=async(path:string,body:any)=>({...await action(path,body),model:'spanish',voice:'lola',voices:['lola']});
+    for(const [command,body] of [['speed 1.25',{speed:1.25}],['model spanish_24l',{model:'spanish_24l'}],['voice lola',{voice:'lola'}]] as const) {
+      await s.command(command);assert.deepEqual(s.configs.at(-1),body);
+      assert.equal(s.line(),'[ ▶ Escuchar ] [ ⋯ ]');
+      assert.equal(s.notices.at(-1),'Modelo: spanish · voz: lola · velocidad: 1.25 · volumen: 100 %');
+    }
+    await s.command('voice');assert.equal(s.notices.at(-1),'Voces: lola');
+    await clickAt(s,'[ ⋯ ]');assert.match(s.line(),/Vel \[- 1\.25x \+\]/);
+    await s.command('');assert.match(s.notices.at(-1)!,/^TTS: activado · automático: no\nServidor: playing · listo: sí\nModelo: spanish · voz: lola · velocidad: 1.25 · volumen: 100 %\n/);
+    assert.deepEqual(s.calls.slice(-2),['/health','/status']);
+  }finally{await s.close();}
+});
+
 const tick=()=>new Promise(r=>setTimeout(r,550));
 const click=async(card:any,x:number)=>{card.handleMouse({type:'click',button:'left',x,y:0});await new Promise(r=>setImmediate(r));};
 const clickAt=async(s:any,text:string,offset=0)=>{const line=s.line();assert.ok(line.includes(text),`${text} in ${line}`);await click(s.card,Array.from(line.slice(0,line.indexOf(text))).length+offset);};
@@ -84,7 +159,7 @@ test('controls toggle shows and hides volume and speed',async()=>{
     await start(s);
     assert.equal(s.line(),'[ ▶ Escuchar ] [ ⋯ ]');
     await clickAt(s,'[ ⋯ ]',2);
-    assert.equal(s.line(),'[ ▶ Escuchar ] [ → ]  Vol [- 100% +]  Vel [- 1.00x +]');
+    assert.equal(s.line(),'[ ▶ Escuchar ] [ → ]  Vol [- 100% +]  Vel [- 1.00x +] [ ⏻ ]');
     await clickAt(s,'[ → ]',2);
     assert.equal(s.line(),'[ ▶ Escuchar ] [ ⋯ ]');assert.equal(s.configs.length,0);
   } finally {await s.close();}
@@ -123,8 +198,8 @@ test('active states use icons, pause/resume/stop clicks and command fallbacks',a
     await click(s.card,5);await click(s.card,199);assert.equal(s.calls.length,before);
     await click(s.card,2);assert.ok(s.calls.includes('/pause'));assert.equal(s.line(),'[ ▶ ] [ ■ ] [ ⋯ ]');
     await click(s.card,2);assert.ok(s.calls.includes('/resume'));assert.equal(s.line(),'[ ‖ ] [ ■ ] [ ⋯ ]');
-    await clickAt(s,'[ ⋯ ]',2);assert.equal(s.line(),'[ ‖ ] [ ■ ] [ → ]  Vol [- 100% +]  Vel [- 1.00x +]');
-    await click(s.card,8);assert.ok(s.calls.includes('/stop'));assert.equal(s.line(),'[ ▶ Escuchar ] [ → ]  Vol [- 100% +]  Vel [- 1.00x +]');
+    await clickAt(s,'[ ⋯ ]',2);assert.equal(s.line(),'[ ‖ ] [ ■ ] [ → ]  Vol [- 100% +]  Vel [- 1.00x +] [ ⏻ ]');
+    await click(s.card,8);assert.ok(s.calls.includes('/stop'));assert.equal(s.line(),'[ ▶ Escuchar ] [ → ]  Vol [- 100% +]  Vel [- 1.00x +] [ ⏻ ]');
     for(const state of ['loading','generating','playing','paused']) {
       s.set(state);await s.command('play 1');await tick();
       assert.match(s.line(),state==='paused'?/^\[ ▶ \] \[ ■ \]/:/^\[ ‖ \] \[ ■ \]/);
