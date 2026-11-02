@@ -34,7 +34,7 @@ El uso principal es **leer en voz alta las respuestas de [Pi](#uso-en-pi)**. La 
 | 6. Altavoz | Suena mientras se genera lo siguiente | — |
 
 - La preparación del texto y la velocidad son código propio y casi no gastan. Pocket TTS es el paso pesado.
-- Con el modelo ya cargado, el audio empieza a sonar sin esperar a que termine todo el texto. El primer arranque tarda más: en Windows, el servidor tardó unos 5 s en responder, antes de cargar el modelo (medición puntual del 2026-10-30).
+- Con el modelo ya cargado, el audio empieza a sonar sin esperar a que termine todo el texto. El arranque puede tardar varios segundos; las mediciones y sus límites se detallan en [desarrollo](docs/desarrollo.md#arranque-en-windows-mediciones-y-límites).
 - Internet solo hace falta la primera vez, para descargar los modelos.
 
 Detalle completo: [docs/como-funciona.md](docs/como-funciona.md).
@@ -162,6 +162,8 @@ La extensión [`pi-extension/tehablo-tts/`](pi-extension/tehablo-tts/) lee las r
 | `/tts speed [0.75-1.5]` | Cambia la velocidad |
 
 La extensión arranca sola el servidor local [`src/tehablo_server.py`](src/tehablo_server.py) (`127.0.0.1:8765`, se cambia con `TEHABLO_PORT`) y lo apaga al cerrar Pi. Necesita el entorno `.venv-pocket` (o `.venv-pocket-<sistema>`) instalado. Los ajustes duran solo la sesión. Los mensajes y errores del servidor se guardan en `logs/tehablo-server.log`, que se reescribe en cada arranque; si el servidor no responde a tiempo, el aviso indica esa ruta. Si el modelo no carga, Pi muestra el error en lugar de quedarse en «cargando»; también avisa si una lectura falla (por ejemplo, sin dispositivo de audio) o si se pierde la conexión con el servidor. Por seguridad, el servidor rechaza peticiones de páginas web (cabecera `Origin`, 403) y los `POST` que no declaran JSON (415).
+
+El registro incluye líneas `Startup:` con segundos por etapa: importaciones del servidor, importaciones de TTS y carga del modelo (sin repetir el tiempo de importación de TTS). Sirven para comparar próximos arranques, no para diagnosticar retrospectivamente la demora ni atribuirla a la caché. No miden la creación del proceso Python ni el inicio de la reproducción. Guarda el registro antes de volver a arrancar: se sobrescribe. Las [mediciones de arranque en Windows y sus límites](docs/desarrollo.md#arranque-en-windows-mediciones-y-límites) quedan documentadas para futuras comparaciones.
 
 ## Uso: TUI
 

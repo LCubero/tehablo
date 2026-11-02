@@ -29,8 +29,6 @@ import time
 from pathlib import Path
 
 import numpy as np
-import scipy.io.wavfile
-import sounddevice as sd
 from pocket_tts import TTSModel
 from pocket_tts.utils.utils import _ORIGINS_OF_PREDEFINED_VOICES
 
@@ -96,6 +94,8 @@ class App:
             text = normalize_numbers(self.lexicon.apply(normalize_technical(text)))
             if self.lexicon.error:
                 print(f"Aviso: {self.lexicon.error}")
+        import sounddevice as sd
+
         sr = self.model.sample_rate
         chunks: list[np.ndarray] = []
         start = time.perf_counter()
@@ -116,6 +116,8 @@ class App:
         if self.last_audio is None:
             print("Todavia no hay audio para guardar.")
             return
+        import scipy.io.wavfile
+
         OUT_DIR.mkdir(exist_ok=True)
         path = OUT_DIR / (name or f"{self.voice}-{time.strftime('%Y%m%d-%H%M%S')}")
         path = path.with_suffix(".wav")

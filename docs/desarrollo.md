@@ -6,7 +6,8 @@ Detalle para quien trabaja en el código de tehablo. La guía de uso está en el
 2. [Licencias y atribución](#licencias-y-atribución)
 3. [Archivos del proyecto](#archivos-del-proyecto)
 4. [Pruebas](#pruebas)
-5. [Problemas conocidos](#problemas-conocidos)
+5. [Arranque en Windows: mediciones y límites](#arranque-en-windows-mediciones-y-límites)
+6. [Problemas conocidos](#problemas-conocidos)
 
 ---
 
@@ -130,7 +131,7 @@ del directorio de trabajo. `/leer` conserva las rutas relativas al directorio ac
 
 ## Pruebas
 
-`tests/test_tech.py`, `tests/test_numbers.py`, `tests/test_lexicon.py`, `tests/test_speed.py`, `tests/test_server.py` y `tests/test_quantize.py` comprueban el texto técnico, la conversión de números, el diccionario de pronunciación, el cambio de velocidad, el servidor HTTP y la cuantización predeterminada sin modelo ni audio; terminan con código 0 si todos los casos pasan:
+`tests/test_tech.py`, `tests/test_numbers.py`, `tests/test_lexicon.py`, `tests/test_speed.py`, `tests/test_server.py`, `tests/test_startup.py`, `tests/test_console_imports.py` y `tests/test_quantize.py` comprueban el texto técnico, la conversión de números, el diccionario de pronunciación, el cambio de velocidad, el servidor HTTP, los diagnósticos de arranque y la cuantización predeterminada sin modelo ni audio; terminan con código 0 si todos los casos pasan:
 
 ```powershell
 .venv-pocket/Scripts/python tests/test_tech.py
@@ -138,6 +139,8 @@ del directorio de trabajo. `/leer` conserva las rutas relativas al directorio ac
 .venv-pocket/Scripts/python tests/test_lexicon.py
 .venv-pocket/Scripts/python tests/test_speed.py
 .venv-pocket/Scripts/python tests/test_server.py
+.venv-pocket/Scripts/python tests/test_startup.py
+.venv-pocket/Scripts/python tests/test_console_imports.py
 .venv-pocket/Scripts/python tests/test_quantize.py
 ```
 
@@ -163,6 +166,8 @@ Para repetir las suites sin modelo ni audio desde la raíz:
 .venv-pocket/bin/python tests/test_lexicon.py
 .venv-pocket/bin/python tests/test_speed.py
 .venv-pocket/bin/python tests/test_server.py
+.venv-pocket/bin/python tests/test_startup.py
+.venv-pocket/bin/python tests/test_console_imports.py
 .venv-pocket/bin/python tests/test_quantize.py
 node --test pi-extension/tehablo-tts/test/*.test.ts
 ```
@@ -203,6 +208,100 @@ En Linux/macOS, use `.venv-pocket/bin/python` en todos los comandos.
 
 Los scripts imprimen los registros para inspección; su código de salida por sí
 solo no acredita estos resultados.
+
+---
+
+## Arranque en Windows: mediciones y límites
+
+### Comprobación manual y registro real
+
+El propietario confirmó que toda la etiqueta responde al clic, incluidas letras
+y espacios, y que apagar y volver a encender funciona en la misma sesión.
+El propietario indicó que el primer arranque tardó más que el segundo, sin
+medir sus duraciones. No es una pareja medida en frío/caliente ni necesariamente
+el primer inicio tras arrancar Windows. No se estableció una causa relacionada con la caché.
+
+Como antecedente, el README registraba una medición puntual del 2026-10-30:
+el servidor en Windows tardó unos 5 s en responder, antes de cargar el modelo.
+No es una comparación controlada con la siguiente medición.
+
+Tras `/reload` y un arranque, el registro real mostró:
+
+| Etapa o evento | Resultado observado |
+|---|---|
+| Importaciones del servidor | 0.240 s |
+| Importaciones de TTS | 5.258 s |
+| Escucha HTTP | `Listening on http://127.0.0.1:8765` |
+| Carga del modelo `spanish` | 0.617 s |
+
+Las tres etapas medidas suman **6.115 s**; no incluyen creación del proceso
+Python, sondeo de la interfaz ni audio. No son el tiempo total hasta oír la voz.
+El archivo `logs/tehablo-server.log` se sobrescribe en cada arranque; estos
+resultados se conservan aquí para futuras comparaciones.
+
+### Perfil de importaciones separado
+
+Después se ejecutó una sonda de solo importación de `src/tehablo_tts.py` con
+el Python de `.venv-pocket-windows`, opciones `-B -X importtime` y variables
+`PYTHONDONTWRITEBYTECODE=1`, `HF_HUB_OFFLINE=1`, `HF_HUB_DISABLE_TELEMETRY=1`.
+Terminó con código 0, sin stderr ajeno al perfil, sin cargar modelos, descargar
+ni reproducir audio. Sus tiempos acumulados fueron:
+
+| Ruta importada | Acumulado |
+|---|---|
+| `torch` | 1.827688 s |
+| `torch._inductor.cpp_builder` | 1.413053 s |
+| `scipy.signal._support_alternative_backends` | 0.848566 s |
+| `sounddevice` | 0.289156 s |
+
+**Son acumulados anidados que se solapan: no se suman.** Este perfil separado
+no atribuye exactamente los 5.258 s del registro anterior ni explica la diferencia
+percibida entre arranques. La duración externa de un trabajo tampoco equivale
+al tiempo exacto transcurrido dentro de Python.
+
+### Importaciones exclusivas de consola
+
+Una comparación separada con `.venv-pocket-windows/Scripts/python.exe -B`
+midió tres parejas en procesos Python nuevos: antes, 6.838/5.634/5.874 s;
+con `scipy.io.wavfile` diferido a `App.save` y `sounddevice` a `App.speak`,
+5.468/5.114/5.537 s. La mediana de las diferencias por pareja fue 0.520 s;
+las tres favorecieron el cambio. Se conserva únicamente esa modificación:
+NumPy, Pocket TTS y sus dependencias internas permanecen intactos.
+
+Se ejecutó el código original y el candidato en memoria, con el mismo nombre
+`tehablo_tts`, ruta y `__file__`; el reloj cubrió compilación e importaciones,
+no la creación del proceso. Se alternó el orden de las parejas, sin vaciar
+cachés: no garantiza arranque en frío ni una mejora equivalente del servidor.
+Ambas variantes omitieron solamente la llamada a `_load_dotenv` para no leer
+secretos locales. Se usaron `PYTHONDONTWRITEBYTECODE=1`, `HF_HUB_OFFLINE=1`,
+`HF_HUB_DISABLE_TELEMETRY=1` y `TRANSFORMERS_OFFLINE=1`, sin modelo ni audio.
+La salida estándar, stderr vacío y código 0 de `--help` coincidieron en los
+seis procesos. No son los 5.258 s del registro real anterior.
+
+Seis pruebas de consola con modelo, dispositivo y escritura simulados verifican
+importación diferida, guardado con/sin audio, muestras reproducidas, flujo vacío
+e interrupción. La revisión final ejecutó juntas las seis de consola, seis de
+arranque y las 18 de servidor: 30 pruebas aprobadas, sin exclusiones, con los
+temporales dirigidos a `.repo-harness/tmp/`. También pasaron las tres de
+cuantización en la comprobación del cambio. No se comprobó escucha física ni
+se volvió a medir el arranque real del servidor.
+
+En un arranque real posterior al cambio, el registro mostró 0.202 s de
+importaciones del servidor, 5.588 s de TTS y 0.685 s de carga del modelo
+(6.475 s entre las etapas medidas). No confirmó una aceleración frente a los
+6.115 s anteriores. No es una comparación controlada ni demuestra por sí sola
+una regresión; el ahorro del experimento de importación no se puede trasladar
+al arranque real como resultado garantizado.
+
+### Alcance y entorno
+
+`.pi/settings.json` registra la extensión local `../pi-extension/tehablo-tts`
+y se usa el entorno Python local existente. No se inspeccionó el registro global:
+estas mediciones no demuestran una instalación global faltante ni justifican
+reinstalar. La importación diferida evaluada arriba no modifica la instalación. Los diagnósticos añadidos ocupan unas nueve líneas de
+código, sin cambios de API, planificación, dependencias ni harness. La validación
+comunicada para ese cambio fue de 6 pruebas de arranque y 18 de servidor;
+no sustituye una comparación controlada de tiempos ni una prueba de escucha.
 
 ---
 

@@ -1,4 +1,8 @@
 """Loopback HTTP speech service with interruptible, buffered playback."""
+import time
+
+IMPORT_STARTED = time.perf_counter()
+
 import argparse
 from collections import deque
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -26,7 +30,9 @@ MODELS = {'spanish', 'spanish_24l'}
 class PocketSynthesizer:
     def __init__(self, name):
         from tehablo_tts import load_tts_model
+        started = time.perf_counter()
         self.model = load_tts_model(name)
+        print(f'Startup: model {name} loaded in {time.perf_counter() - started:.3f} s', flush=True)
         self.sample_rate = self.model.sample_rate
         self.voices = {}
 
@@ -387,7 +393,9 @@ class Handler(BaseHTTPRequestHandler):
 def create_server(port=8765, model='spanish', voice='lola', speed=1.0,
                   synthesizer_factory=PocketSynthesizer, audio_factory=audio_sink, catalog=None):
     if catalog is None:
+        started = time.perf_counter()
         from tehablo_tts import VOICES
+        print(f'Startup: TTS imports completed in {time.perf_counter() - started:.3f} s', flush=True)
         catalog = VOICES
     service = SpeechService(model, voice, speed, synthesizer_factory, audio_factory, catalog)
     try:
@@ -406,6 +414,7 @@ def main():
     parser.add_argument('--voice', default='lola')
     parser.add_argument('--speed', type=float, default=1.0)
     args = parser.parse_args()
+    print(f'Startup: server imports completed in {time.perf_counter() - IMPORT_STARTED:.3f} s', flush=True)
     try:
         server = create_server(**vars(args))
     except ValueError as exc:
