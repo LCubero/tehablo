@@ -230,6 +230,17 @@ class ServerTests(unittest.TestCase):
         self.assertEqual(self.synth.calls[0][0],
                          'Mira tehablo sérver punto pai y erre hache, doble ve, cero cero cero uno')
 
+    def test_long_id_speak_pipeline(self):
+        self.ready()
+        self.assertEqual(self.request('/speak', {
+            'id': 'long-id',
+            'text': '#12340007; 10000000 kg; resultado=10000000; commit 3862ef7.'
+        })[0], 202)
+        self.wait(lambda: bool(self.synth.calls))
+        self.assertEqual(self.synth.calls[0][0],
+                         'terminación en cero cero cero siete; diez millones kilogramos; '
+                         'resultado igual a diez millones; comít .')
+
     def test_pipeline_samples_and_model_guard(self):
         samples = [
             ('https://github.com/LCubero/tehablo.', 'enlace a guítjab punto com.'),

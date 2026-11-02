@@ -14,6 +14,14 @@ Cómo se aplica el diccionario (mayúsculas, palabras completas, plural con `s`)
 6. **Una entrada se confirma escuchándola.** Prueba la frase en la TUI o con Pi antes de darla por buena; el texto escrito no garantiza el sonido. La escritura es para el TTS, no para una persona: vale una forma rara como `güíllet` si suena mejor.
 7. **Cada entrada es una excepción de esa palabra.** Que `feature` gane con `fítcher` o `dashboard` con `dáschbord` no autoriza cambiar todos los `-ture` por `-tcher` ni los `sh` por `sch`.
 
+## Identificadores numéricos largos
+
+Antes del diccionario, se abrevian los identificadores técnicos explícitos con valor mayor que `9999999`: `#12340007` → «terminación en cero cero cero siete». Se leen los últimos cuatro dígitos por separado, incluidos sus ceros; no se añade «número» a la terminación.
+
+Se reconocen IDs estructurados como `ABC-12345678` o `RH-W-12340007`, `#12345678` incluso solo, y referencias `issue`, `PR`, `pull request` o `commit` seguidas del número (con `ID` o `#` opcionales). Para `prueba`, `test`, `run`, `feat` y `feature` se exige `ID` o `#`: `test ID 12345678` se abrevia, pero `tests 12345678 passed` no.
+
+Los números sueltos, cantidades, medidas, porcentajes, decimales y puntuaciones como `test 12345678/12345678 passed` mantienen su lectura anterior. Ante sintaxis de unidades u operaciones junto al ID, no se abrevia. Los IDs cortos tampoco cambian; los hashes hexadecimales mixtos que ya se omitían siguen omitiéndose. Es una regla textual acotada, no una interpretación del significado ni una escucha confirmada.
+
 ## Letras en inglés
 
 | Letra | Se escribe | Letra | Se escribe | Letra | Se escribe |

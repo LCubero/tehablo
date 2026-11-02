@@ -326,6 +326,8 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 
 ### RH-W-0027: Leer bien siglas, símbolos e inglés frecuente con la misma voz
 
+- **Evidencia de apoyo (2026-11-02):** abreviación textual de [IDs numéricos largos](../pronunciacion.md#identificadores-numéricos-largos), conservando números y cantidades comunes y la omisión de hashes mixtos. Pasan 74 casos técnicos, 73 numéricos y 19 de servidor; no acredita escucha ni calidad acústica. Se mantiene `completed`.
+
 - **Origen:** solicitud de la persona responsable del 2026-10-31: «más palabras de ingles [...] lo que sea mejor para seguir la filosofía del menor consumo posible y que funcione como tiene que ser» y «dame una ruta optima sin sobreingenieria».
 - **Prioridad:** P2; es lo que más se oye mal al escuchar las respuestas de Pi, y no gasta memoria.
 - **Dependencias:** ninguna; `RH-W-0016` automatiza después la detección de términos nuevos.

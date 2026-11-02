@@ -45,6 +45,28 @@ IDENTIFIER = re.compile(
 HASH = re.compile(r'(?<![\w-])[0-9a-f]{7,40}(?![\w-])')
 
 
+_ID_REFERENCE = re.compile(
+    r'(?<![\w&#$₡€£+*/=<>.-])(?P<prefix>'
+    r'(?:(?:issue|PR|pull request|commit)\s+(?:ID\s*:?\s*)?#?'
+    r'|(?:prueba|test|run|feat|feature)\s+(?:ID\s*:?\s*|#))|#)'
+    r'(?P<number>[0-9]{8,})(?![\w-])', re.IGNORECASE)
+_DIGIT_WORDS = 'cero uno dos tres cuatro cinco seis siete ocho nueve'.split()
+
+
+def _long_id(number: str) -> str:
+    # Compare without int(): arbitrarily long IDs and leading zeros are safe.
+    if len(number.lstrip('0')) <= 7:
+        return number
+    return 'terminación en ' + ' '.join(_DIGIT_WORDS[int(c)] for c in number[-4:])
+
+
+def _quantity_after(text: str, end: int) -> bool:
+    tail = text[end:]
+    return bool(re.match(r'(?:[.,][0-9]|\s*[/\\=+*×÷<>%$₡€£:−-]|\s+[xX]\s+[0-9])', tail)
+                or re.match(r'\s*(?:' + '|'.join(re.escape(u) for u in UNIT_SYMBOLS)
+                            + r')(?!\w)', tail))
+
+
 def _plain(text: str) -> str:
     def path(match):
         token = match.group()
@@ -65,17 +87,30 @@ def _plain(text: str) -> str:
     text = FILE.sub(lambda m: re.sub(r'[_-]', ' ', m[1]) + ' punto '
                     + EXTENSIONS[m[2].lower()], text)
 
+    # Omit mixed hexadecimal hashes before considering digit-only references.
+    text = HASH.sub(lambda m: '' if re.search('[a-f]', m[0])
+                    and re.search('[0-9]', m[0]) else m[0], text)
+
+    def reference(match):
+        number = match['number']
+        spoken = _long_id(number)
+        if spoken == number or _quantity_after(text, match.end()):
+            return match[0]
+        return match['prefix'].removesuffix('#') + spoken
+
+    text = _ID_REFERENCE.sub(reference, text)
+
     def identifier(match):
         token = match.group()
         if not any(c.isdigit() for c in token):
             return token
         groups = re.findall(r'[A-Z]+|[0-9]+', token)
         return ', '.join(' '.join(LETTERS[c] for c in group)
-                         if group.isalpha() else group for group in groups)
+                         if group.isalpha() else
+                         (_long_id(group) if not _quantity_after(text, match.end()) else group)
+                         for group in groups)
 
     text = IDENTIFIER.sub(identifier, text)
-    text = HASH.sub(lambda m: '' if re.search('[a-f]', m[0])
-                    and re.search('[0-9]', m[0]) else m[0], text)
     return _symbols(re.sub(r'(?<=\w)_(?=\w)', ' ', text))
 
 

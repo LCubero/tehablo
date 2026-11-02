@@ -7,6 +7,19 @@ from tehablo_tech import normalize_technical
 
 # S1-S5: public speech-preparation behavior, including preserved boundaries.
 RULE_CASES = [
+    ('long explicit IDs', '#12340007 issue 10000000 PR #12345678 commit 12345678',
+     'terminación en cero cero cero siete issue terminación en cero cero cero cero PR terminación en cinco seis siete ocho commit terminación en cinco seis siete ocho'),
+    ('structured long IDs', 'ABC-12345678 RH-W-12340007',
+     'a be ce, terminación en cinco seis siete ocho erre hache, doble ve, terminación en cero cero cero siete'),
+    ('marked test IDs', 'prueba ID 12345678 test #12345678 run ID: 12345678 feat ID 12345678 feature ID 12345678',
+     'prueba ID terminación en cinco seis siete ocho test terminación en cinco seis siete ocho run ID: terminación en cinco seis siete ocho feat ID terminación en cinco seis siete ocho feature ID terminación en cinco seis siete ocho'),
+    ('ID threshold', '#9999999 #10000000 #00000007 #00010000000',
+     'número 9999999 terminación en cero cero cero cero número 00000007 terminación en cero cero cero cero'),
+    ('counts and plain numbers', 'tests 12345678 passed; test 12345678/12345678 passed; 12345678; resultado=12345678; $12345678; 12345678kg; 12345678%',
+     'tests 12345678 passed; test 12345678/12345678 passed; 12345678; resultado igual a 12345678; $12345678; 12345678kg; 12345678%'),
+    ('ID quantity exclusions', 'issue 12345678/2; PR 12345678.5; #12345678,5; test ID 12345678 kg; commit 12345678%; issue 12345678 + 2',
+     'issue 12345678/2; PR 12345678.5; número 12345678,5; test ID 12345678 kg; commit 12345678%; issue 12345678 + 2'),
+    ('labelled hash still omitted', 'commit 12345678abc issue 12345678abc', 'commit issue'),
     ('question opening', 'Alguna suena a pregunta? Y si es así, cuál?',
      '¿Alguna suena a pregunta? ¿Y si es así, cuál?'),
     ('question keeps existing opening', '¿Alguna suena a pregunta? Y si es así, ¿cuál?',

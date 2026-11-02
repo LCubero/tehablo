@@ -6,6 +6,8 @@ Este archivo registra los cambios completados en orden cronológico.
 
 ## 2026-11-02
 
+- Los identificadores técnicos numéricos explícitos mayores que `9999999` se abrevian como «terminación en» y sus últimos cuatro dígitos, incluidos los ceros; los números y cantidades comunes conservan su lectura ([reglas y límites](docs/pronunciacion.md#identificadores-numéricos-largos)). Verificado en texto, sin escucha confirmada.
+
 - El log existente mide por separado las importaciones del servidor, las de TTS y la carga del modelo. Solo se difieren `scipy.io.wavfile` al guardado y `sounddevice` a la reproducción de consola; 30 pruebas sin modelo ni audio pasan (6 de consola, 6 de arranque y 18 de servidor), y `--help` no cambia. El ahorro medido al importar no confirmó una mejora del arranque real ([mediciones y límites](docs/desarrollo.md#arranque-en-windows-mediciones-y-límites)).
 - La persona responsable confirmó en Windows el clic físico en toda la etiqueta `[ ⏻ TTS ]`, apagar y volver a encender en la misma sesión. En Linux ya estaba confirmado el apagado; el clic en toda la etiqueta y el reinicio físico siguen sin comprobarse allí. No se modificó la extensión en este bloque.
 
