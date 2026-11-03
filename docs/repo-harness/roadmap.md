@@ -215,6 +215,7 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
   - Documentar el comportamiento y sus límites.
   - Más adelante, un menú para elegir el dispositivo de audio («incluso para mas adelante un menu de seleccion de dispositivo de audio seria muy bueno»), coordinado con `RH-W-0004`.
 - **Evidencia:** `src/tehablo_server.py` abre una sola salida con `sd.OutputStream` sobre el dispositivo predeterminado de ese momento y la conserva abierta; la TUI y la consola abren una salida por reproducción. No se ha probado un cambio de dispositivo.
+- **Revisión del código (2026-11-03):** en el servidor, la salida se crea en la primera lectura y se reutiliza en las siguientes; si una lectura falla, la salida no se cierra ni se vuelve a abrir hasta cambiar de modelo o reiniciar el servidor (`src/tehablo_server.py`, `SpeechService.run`). Inferencia sin prueba física: al cambiar a audífonos la voz podría seguir saliendo por el dispositivo anterior o quedarse muda. Posible arreglo, pequeño y sin opciones nuevas: abrir la salida en cada lectura, como la TUI y la consola, solo si la prueba física confirma el fallo. Ya hay personas usando tehablo; por eso es lo primero que se recomienda probar.
 - **Decisión:** registrar para después; no se eligió comportamiento.
 - **Condición del siguiente avance:** autorización para la prueba acotada en Windows y Linux.
 
@@ -283,6 +284,7 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 - **Trabajo restante:**
   - **Seguridad:** revisar el servidor, la extensión, la carga de voces y archivos, y los secretos (`HF_TOKEN`); añadir `SECURITY.md` y una revisión de vulnerabilidades de dependencias.
   - **Buenas prácticas:** linter y formato, tipos y CI que ejecute las suites en Windows y Linux.
+  - **Pruebas en Windows (2026-11-03):** `tests/test_get_voices.py` solo pasa como `python -m tests.test_get_voices` (ejecutado directo no encuentra `scripts`), y `tests/test_listening_skill.py` falla porque lee la skill sin `encoding='utf-8'` y llama a un `python` que no existe en Git Bash. No afectan el uso; corregirlas antes de la CI.
   - **Control:** límites de tamaño de texto, peticiones simultáneas y tiempo máximo de generación, y una forma clara de detener todo.
   - **Rendimiento:** medición repetible para detectar regresiones de velocidad y memoria.
 - **Evidencia:** no existen `.github/`, configuración de linter ni `SECURITY.md`; el servidor limita cada petición a 1 MiB (`src/tehablo_server.py`) y la extensión de Pi recorta el texto limpio a 3000 caracteres (`pi-extension/tehablo-tts/src/text.ts`); no hay límite de tiempo de generación.
