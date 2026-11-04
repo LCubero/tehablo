@@ -27,6 +27,8 @@ type Seg = {text: string; style?: string; fn?: () => void};
 
 export const VOLUMES = [0.1, 0.25, 0.5, 0.75, 1, 1.25, 1.5];
 const W = 72, IN = W - 2;
+// RAM while the model is loaded, measured in Fedora (docs/pruebas-de-voces.md); every Pocket voice shares one model.
+const RAM: Record<string, string> = {phonon: '~0,3 GB', spanish: '~1 GB', spanish_24l: '~1,8 GB'};
 const width = (t: string) => Array.from(t).length;
 const fit = (t: string, n: number) => { const a = Array.from(t); return a.length > n ? a.slice(0, n - 1).join('') + '…' : t + ' '.repeat(n - a.length); };
 const nearest = (list: number[], value: number) => list.reduce((best, v, i) => Math.abs(v - value) < Math.abs(list[best] - value) ? i : best, 0);
@@ -221,15 +223,15 @@ export class SettingsWindow {
       line();
       line([{text: ' '}, {text: '[ Cerrar ]', style: 'accent', fn: () => this.done()}, {text: '   ↑↓ elegir · ←→ cambiar · Enter · Esc', style: 'dim'}]);
     } else if (this.page === 'voices') {
-      line([{text: '   ' + fit('Voz', 34) + fit('Tipo', 22) + 'Estado', style: 'dim'}]);
+      line([{text: '   ' + fit('Voz', 34) + fit('Estado', 22) + 'RAM aprox.', style: 'dim'}]);
       line([{text: '   ' + '─'.repeat(IN - 4), style: 'dim'}]);
       this.order().forEach((v, i) => {
         const sel = i === this.pick, pickIt = () => { this.pick = i; this.choose(v); };
         const style = v.downloaded ? 'success' : v.kind === 'account' && !this.c.state().token ? 'warning' : 'dim';
         line([{text: sel ? ' ▶ ' : '   ', style: 'accent', fn: pickIt},
-          {text: fit(`${v.name}${v.kind === 'account' ? ' *' : ''} (${v.note})`, 34), style: this.isActive(v) ? 'warning' : sel ? 'accent' : undefined, fn: pickIt},
+          {text: fit(`${this.isActive(v) ? '●' : ' '} ${v.name}${v.kind === 'account' ? ' *' : ''} (${v.note})`, 34), style: this.isActive(v) ? 'warning' : sel ? 'accent' : undefined, fn: pickIt},
           {text: fit(this.typeLabel(v), 22), style, fn: pickIt},
-          {text: this.isActive(v) ? '● activa' : '', style: 'success', fn: pickIt}]);
+          {text: RAM[v.model] ?? '', style: 'dim', fn: pickIt}]);
       });
       line([{text: '   * necesita una cuenta gratis de Hugging Face (1 sola vez)', style: 'dim'}]);
       line([{text: ' '}, {text: '[ Volver ]', style: 'accent', fn: () => this.home()}, {text: '   ↑↓ elegir · Enter usar · Esc', style: 'dim'}]);

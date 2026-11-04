@@ -74,7 +74,11 @@ test('voice table orders downloaded, downloadable, then account voices and marks
   const lines = s.w.render(100);
   const order = ['lola', 'rafael', 'Regina', 'ar-hombre-4310'].map(n => lines.findIndex(l => l.includes(n + ' (') || l.includes(n + ' * (')));
   assert.deepEqual([...order].sort((a, b) => a - b), order);
-  assert.ok(lines[order[0]].includes('Descargada') && lines[order[0]].includes('● activa'));
+  assert.ok(lines.some(l => /Voz\s+Estado\s+RAM aprox\.\s*│$/.test(l)) && !lines.some(l => l.includes('Tipo')));
+  assert.ok(lines[order[0]].includes('● lola (') && lines[order[0]].includes('Descargada') && lines[order[0]].includes('~1 GB'));
+  assert.ok(lines[order[1]].includes('  rafael (') && lines[order[1]].includes('~1 GB'));
+  assert.ok(lines[order[2]].includes('  Regina * (') && lines[order[2]].includes('~0,3 GB'));
+  assert.ok(!lines.some(l => l.includes('activa')));
   assert.ok(lines[order[1]].includes('Para descargar'));
   assert.ok(lines[order[2]].includes('Con cuenta gratis'));
 });
@@ -84,11 +88,11 @@ test('voice table shows the active voice name in yellow (warning), also under th
   s.key('\r');
   const lines = s.w.render(100);
   const row = (n: string) => lines.find(l => l.includes(n + ' (') || l.includes(n + ' * ('))!;
-  assert.match(row('lola'), /<warning>lola \(la de siempre\)\s*<\/warning>/);
+  assert.match(row('lola'), /<warning>● lola \(la de siempre\)\s*<\/warning>/);
   for (const n of ['rafael', 'Regina', 'ar-hombre-4310']) assert.ok(!row(n).includes(`<warning>${n}`), n);
   s.key('\x1b[B');
-  assert.match(s.w.render(100).find(l => l.includes('lola ('))!, /<warning>lola \(/);
-  assert.match(s.w.render(100).find(l => l.includes('rafael ('))!, /<accent>rafael \(/);
+  assert.match(s.w.render(100).find(l => l.includes('lola ('))!, /<warning>● lola \(/);
+  assert.match(s.w.render(100).find(l => l.includes('rafael ('))!, /<accent>  rafael \(/);
 });
 
 test('choosing by type: downloaded activates, downloadable confirms, account asks for the token first', () => {
@@ -163,7 +167,7 @@ test('with the server off, unknown download state is shown by kind and chosen wi
   s.click('[ Cambiar ]');
   const text = s.text();
   assert.ok(text.includes('Sin cuenta') && text.includes('Con cuenta gratis'));
-  assert.match(text.split('\n').find(l => l.includes('lola ('))!, /● activa/);
+  assert.match(text.split('\n').find(l => l.includes('lola ('))!, /● lola \(/);
   s.click('lola (');
   assert.deepEqual(s.calls.at(-1), ['choose', 'lola', 'spanish']);
 });
