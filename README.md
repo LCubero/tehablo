@@ -138,7 +138,7 @@ Pi empieza con la voz marcada `"default": true` en [`src/voice_table.json`](src/
 
 Phonon 40M es (`Regina`, `Iker`) es opcional. Sus pesos son **CC BY-NC 4.0** (no comercial) y requieren una cuenta gratis de Hugging Face, aceptar las condiciones en <https://huggingface.co/gradium/phonon-40m-es> y un token para la primera descarga: la ventana `[ ≡ ]` lo pide al elegir una de esas voces (o usa `hf auth login`). Después puede funcionar desde caché. Si eliges Phonon y falta el paquete, el acceso o la caché, el servidor registra el motivo y usa Pocket `spanish` con `lola`; `/health` muestra el modelo real.
 
-También con comandos: `/tts model phonon` (o `spanish`, `spanish_24l`). Al cambiar de modelo sin indicar voz se elige `Regina` para Phonon y `lola` para Pocket. El servidor acepta `--model` y `--voice`. Las voces de `voices/` solo son para Pocket.
+La voz se elige en la ventana (`[ ≡ ]` o `/tts menu`); cada voz ya trae su modelo. El servidor acepta `--model` y `--voice`. Las voces de `voices/` solo son para Pocket.
 
 La extensión [`pi-extension/tehablo-tts/`](pi-extension/tehablo-tts/) lee las respuestas finales del agente con la voz local. Se carga sola al abrir Pi dentro de este repositorio (`.pi/settings.json`), después de aceptar la confianza del proyecto y ejecutar `/reload`. Para usarla en otros proyectos, añade la ruta absoluta de esa carpeta a `extensions` en tu configuración de Pi.
 
@@ -155,9 +155,9 @@ La extensión [`pi-extension/tehablo-tts/`](pi-extension/tehablo-tts/) lee las r
 
   `[ ▶ ]` lee esa respuesta y `[ ▶ copiado ]` el texto copiado; en pausa, `[ ▶ ]` sigue.
 
-  **`[ ⏻ TTS ]`** arranca el servidor y carga el modelo antes de escuchar; mientras tanto, la barra de estado muestra `TTS manual · cargando`. Las pruebas de código cubren clics en toda su superficie (corchetes, símbolo, letras y espacios normales); la persona responsable confirmó el clic físico en toda la etiqueta en Windows y en el corchete y las letras en Linux, y apagar y volver a encender en ambos. `[ ▶ ]`, `[ ▶ copiado ]`, `/tts play` y el modo automático también lo arrancan si hace falta.
-- **Volumen y velocidad:** `[ ⋯ ]` muestra **Vol** (10–150 %, pasos de 10 %, inicial 100 %) y **Vel** (1.00x, 1.10x, 1.15x, 1.25x y 1.50x; `/tts speed` sigue aceptando 0.75–1.5) en todas las barras; `[ → ]` los oculta. `[-` baja y `+]` sube, con clics. Todas las voces suenan más fuerte que antes: el servidor sube la salida ×1,8 (elegido por escucha) y corrige cada voz de la tabla para que suenen parecido (`gain_db` en `src/voice_table.json`); los picos fuertes se redondean en lugar de recortarse. El volumen cambia incluso el audio en reproducción; la velocidad afecta a los siguientes trozos generados, no al audio ya almacenado. Los límites se mantienen sin error.
-- **Apagar y liberar el modelo:** `[ ⏻ ]` aparece solo al final de los controles abiertos, después del último `+]`. Detiene la lectura y cierra el servidor propio para liberar sus recursos; los ajustes guardados se mantienen. `[ ⏻ TTS ]` permite encenderlo otra vez sin cerrar Pi. No equivale a `[ ■ ]` (solo detener) ni a `/tts off` (desactivar los controles).
+  **`[ ⏻ TTS ]`** arranca el servidor y carga el modelo antes de escuchar; mientras tanto, la barra de estado muestra `TTS manual · cargando`; con el servidor apagado muestra `TTS off`, y luego `TTS manual` o `TTS auto`. Las pruebas de código cubren clics en toda su superficie (corchetes, símbolo, letras y espacios normales); la persona responsable confirmó el clic físico en toda la etiqueta en Windows y en el corchete y las letras en Linux, y apagar y volver a encender en ambos. `[ ▶ ]`, `[ ▶ copiado ]`, `/tts play` y el modo automático también lo arrancan si hace falta.
+- **Volumen y velocidad:** `[ ⋯ ]` muestra **Vol** (10–150 %, pasos de 10 %, inicial 100 %) y **Vel** (1.00x, 1.10x, 1.15x, 1.25x y 1.50x) en todas las barras; `[ → ]` los oculta. `[-` baja y `+]` sube, con clics. Todas las voces suenan más fuerte que antes: el servidor sube la salida ×1,8 (elegido por escucha) y corrige cada voz de la tabla para que suenen parecido (`gain_db` en `src/voice_table.json`); los picos fuertes se redondean en lugar de recortarse. El volumen cambia incluso el audio en reproducción; la velocidad afecta a los siguientes trozos generados, no al audio ya almacenado. Los límites se mantienen sin error.
+- **Apagar y liberar el modelo:** `[ ⏻ ]` aparece solo al final de los controles abiertos, después del último `+]`. Detiene la lectura y cierra el servidor propio para liberar sus recursos; los ajustes guardados se mantienen. `[ ⏻ TTS ]` permite encenderlo otra vez sin cerrar Pi. No equivale a `[ ■ ]` (solo detener) ni a `/tts toolbar` (ocultar la barra). `/tts` hace lo mismo que `[ ⏻ TTS ]` y `[ ⏻ ]`: enciende o apaga el servidor.
 - **Lo copiado:** Pi no ve lo que seleccionas con el ratón (esa selección es de la terminal), así que primero cópialo (`Ctrl+Shift+C` en la terminal) y pulsa `[ ▶ copiado ]`: lo lee en esa barra, con pausa y detener. No añade dependencias: usa `Get-Clipboard` en Windows, `pbpaste` en macOS y `wl-paste` (paquete `wl-clipboard`) o `xclip` en Linux; si falta, lo avisa.
 - **Automático:** `/tts auto` activa o desactiva la lectura de cada respuesta al terminar (si el servidor está apagado, lo enciende). Apagar el servidor también vuelve al modo manual; reiniciarlo no.
 - **Ventana de ajustes `[ ≡ ]`:** junto a `[ ⏻ TTS ]` con el servidor apagado, y dentro de los controles abiertos (`[ ⋯ ]`, antes de *Vol*) con el servidor encendido. Pulsar `[ ≡ ]` con la ventana abierta la cierra. Abre una ventana centrada que se usa con clics o con el teclado (↑↓ elegir, ←→ cambiar, Enter, Esc cerrar):
@@ -168,14 +168,15 @@ La extensión [`pi-extension/tehablo-tts/`](pi-extension/tehablo-tts/) lee las r
 
 | Comando | Acción |
 |---|---|
-| `/tts` | Estado y ayuda |
-| `/tts on` / `/tts off` | Activa o desactiva los controles |
-| `/tts auto` | Activa o desactiva la lectura automática de cada respuesta (al activarla enciende el servidor si está apagado) |
-| `/tts play [n]` | Lee la respuesta `n` (o la última) |
-| `/tts pause` / `/tts resume` / `/tts stop` | Controla la lectura |
-| `/tts voice [nombre]` | Lista o cambia la voz |
-| `/tts model [phonon\|spanish\|spanish_24l]` | Cambia el modelo |
-| `/tts speed [0.75-1.5]` | Cambia la velocidad |
+| `/tts` | Enciende o apaga el servidor (como `[ ⏻ TTS ]` y `[ ⏻ ]`; apagar también desactiva la lectura automática) |
+| `/tts auto` | Activa o desactiva la lectura automática de cada respuesta (al activarla enciende el servidor si está apagado). Apagado nunca tiene lectura automática: Pi empieza con el servidor apagado y en `TTS off` |
+| `/tts play [n]` | Lee la última respuesta, o la `n` de la sesión contando desde la primera (`/tts play 3` = la tercera) |
+| `/tts copy` | Lee el texto copiado, como `[ ▶ copiado ]` |
+| `/tts pause` | Pausa o sigue la lectura |
+| `/tts stop` | Detiene la lectura |
+| `/tts toolbar` | Muestra u oculta la barra (la lectura, el modo automático y los atajos siguen funcionando) |
+| `/tts menu` | Abre la ventana de ajustes |
+| `/tts status` | Estado y ayuda |
 
 La extensión arranca sola el servidor local [`src/tehablo_server.py`](src/tehablo_server.py) (`127.0.0.1:8765`, se cambia con `TEHABLO_PORT`) y lo apaga al cerrar Pi. Necesita el entorno `.venv-pocket` (o `.venv-pocket-<sistema>`) instalado. Los ajustes se guardan en `tehablo-settings.json` (raíz del proyecto, fuera de Git) y se aplican al encender el servidor. Los mensajes y errores del servidor se guardan en `logs/tehablo-server.log`, que se reescribe en cada arranque; si el servidor no responde a tiempo, el aviso indica esa ruta. Si el modelo no carga, Pi muestra el error en lugar de quedarse en «cargando»; también avisa si una lectura falla (por ejemplo, sin dispositivo de audio) o si se pierde la conexión con el servidor. Cada lectura usa la salida de audio predeterminada del sistema en ese momento: si cambias a audífonos o Bluetooth, la siguiente lectura ya suena ahí. En Windows la que está sonando termina en la salida anterior; en Linux (Fedora) cambia en el momento. Por seguridad, el servidor rechaza peticiones de páginas web (cabecera `Origin`, 403) y los `POST` que no declaran JSON (415).
 

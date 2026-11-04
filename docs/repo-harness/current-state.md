@@ -27,6 +27,7 @@ Este archivo proyecta solo hechos verificados del proyecto: registros activos, b
 
 <!-- doc-role:recent-work -->
 
+- Pi (2026-11-04, tercera parte): arranca con la voz guardada; barra más corta `[ ▶ ] [ ▶ copiado ] [ ⋯ ]` con el menú `[ ≡ ]` dentro de los controles; lectura de lo copiado sin dependencias nuevas; comandos simplificados (`/tts` enciende o apaga, `auto`, `play [n]`, `copy`, `pause`, `stop`, `toolbar`, `menu`, `status`); mensajes con «TTS TeHablo: »; `TTS off` en la barra de estado y sin auto con el servidor apagado (`RH-W-0004`).
 - 6 voces clonadas aprobadas incluidas ya preparadas y sin token (`Facundo`, `Santiago`, `Camila`, `Javiera`, `Diego`, `Felipe`); volumen más fuerte y parejo entre voces; tabla de voces con `●` activa y *RAM aprox.* (`RH-W-0004`, `RH-W-0005`).
 - Ventana de ajustes `[ ≡ ]` en Pi (voz, volumen, velocidad, lectura automática, atajos, servidor) con ajustes guardados; Phonon 40M es elegible como voz más natural, `lola` sigue de inicio (`RH-W-0004`, `RH-W-0005`).
 - `RH-W-0026` (`completed`): en Fedora, el primer arranque real del TTS tras reiniciar quedó listo en 5,87 s; no se repitieron los ~14 s del 2026-10-31, cuya causa sigue sin conocerse. Se reabre si vuelve a pasar.

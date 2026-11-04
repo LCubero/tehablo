@@ -59,8 +59,8 @@ test('power off invalidates pending boot, readiness and playback responses',asyn
   }
 });
 
-for(const [command,path] of [['speed 1.25','/config'],['model spanish_24l','/config'],['voice lola','/config'],['voice','/voices'],['','/health'],['','/status']] as const) {
-  test(`power off ignores pending command ${command || 'status'} at ${path}`,async()=>{
+for(const [command,path] of [['status','/health'],['status','/status']] as const) {
+  test(`power off ignores pending command ${command} at ${path}`,async()=>{
     const s=setup();let resolve!:(value:any)=>void;
     try {
       await clickAt(s,'⏻ TTS');await clickAt(s,'[ ⋯ ]');
@@ -76,19 +76,27 @@ for(const [command,path] of [['speed 1.25','/config'],['model spanish_24l','/con
   });
 }
 
-test('config and status commands still synchronize and report successful results',async()=>{
-  const s=setup();try {
-    const action=s.client.action;
-    s.client.action=async(path:string,body:any)=>({...await action(path,body),model:'spanish',voice:'lola',voices:['lola']});
-    for(const [command,body] of [['speed 1.25',{speed:1.25}],['model spanish_24l',{model:'spanish_24l'}],['voice lola',{voice:'lola'}]] as const) {
-      await s.command(command);assert.deepEqual(s.configs.at(-1),body);
-      assert.equal(s.line(),'[ ▶ ] [ ▶ copiado ] [ ⋯ ]');
-      assert.equal(s.notices.at(-1),'Modelo: spanish · voz: lola · velocidad: 1.25 · volumen: 100 %');
+test('/tts toggles the server like the bar; status, menu, copy, pause, toolbar; removed commands only show usage',async()=>{
+  const s=setup(memoryStore(),async()=>'Texto copiado');try {
+    s.set('idle',null);
+    await s.command('');assert.equal(s.ensures(),1);assert.equal(s.line(),'[ ▶ ] [ ▶ copiado ] [ ⋯ ]');
+    await s.command('auto');assert.equal(s.store.load().auto,true);
+    await s.command('');assert.ok(s.calls.includes('/shutdown'));assert.equal(s.line(),'[ ⏻ TTS ] [ ≡ ]');assert.equal(s.statuses.at(-1),'TTS off');assert.equal(s.store.load().auto,false);
+    await s.command('');assert.equal(s.ensures(),2);
+    await s.command('status');assert.match(s.notices.at(-1)!,/^TTS TeHablo: Barra visible · automático: no\nServidor: idle · listo: sí\n/);
+    assert.match(s.notices.at(-1)!,/\/tts · auto · play \[n\] · copy · pause · stop · toolbar · menu · status/);
+    await s.command('copy');assert.ok(s.calls.includes('/speak'));
+    s.set('playing','a');await s.command('pause');assert.equal(s.calls.at(-1),'/pause');
+    s.set('paused','a');await tick();await s.command('pause');assert.equal(s.calls.at(-1),'/resume');
+    await s.command('menu');await new Promise(r=>setImmediate(r));assert.equal(s.windows.length,1);s.windows[0].w.c.power('restart');
+    await s.command('play');s.set('playing','a');await tick();const stops=s.calls.filter((p:string)=>p==='/stop').length;
+    await s.command('toolbar');assert.equal(s.line(),undefined);assert.equal(s.notices.at(-1),'TTS TeHablo: Barra oculta.');
+    await tick();assert.equal(s.calls.filter((p:string)=>p==='/stop').length,stops);
+    await s.command('toolbar');assert.match(s.line(),/^\[ ‖ \] \[ ■ \]/);assert.equal(s.notices.at(-1),'TTS TeHablo: Barra visible.');
+    for(const removed of ['on','off','voice','voice lola','model spanish','speed 1.25','resume']) {
+      const n=s.calls.length;await s.command(removed);
+      assert.match(s.notices.at(-1)!,/^TTS TeHablo: Uso: \/tts · auto · play \[n\]/,removed);assert.equal(s.calls.length,n,removed);
     }
-    await s.command('voice');assert.equal(s.notices.at(-1),'Voces: lola');
-    await clickAt(s,'[ ⋯ ]');assert.match(s.line(),/Vel \[- 1\.25x \+\]/);
-    await s.command('');assert.match(s.notices.at(-1)!,/^TTS: activado · automático: no\nServidor: playing · listo: sí\nModelo: spanish · voz: lola · velocidad: 1.25 · volumen: 100 %\n/);
-    assert.deepEqual(s.calls.slice(-2),['/health','/status']);
   }finally{await s.close();}
 });
 
@@ -101,7 +109,7 @@ test('speech failure warns once and resets playback',async()=>{
   const s=setup();try {
     await s.command('play');s.set('idle',null);s.setError('speech failed: broken playback');
     await tick();
-    assert.deepEqual(s.notices,['TTS: no se pudo reproducir: speech failed: broken playback']);
+    assert.deepEqual(s.notices,['TTS TeHablo: No se pudo reproducir: speech failed: broken playback']);
     assert.match(s.line(),/^\[ ▶ \] \[ ▶ copiado \]/);
     const count=s.calls.length;await tick();assert.equal(s.calls.length,count);
     assert.equal(s.notices.length,1);
@@ -115,7 +123,7 @@ test('three consecutive status failures stop playback; success resets the count'
     s.fail(false);await tick();s.fail();await tick();await tick();
     assert.deepEqual(s.notices,[]);assert.match(s.line(),/■/);
     await tick();assert.equal(s.line(),'[ ⏻ TTS ] [ ≡ ]');
-    assert.deepEqual(s.notices,['TTS: se perdió la conexión con el servidor. Revisa logs/tehablo-server.log.']);
+    assert.deepEqual(s.notices,['TTS TeHablo: Se perdió la conexión con el servidor. Revisa logs/tehablo-server.log.']);
     const count=s.calls.length;await tick();assert.equal(s.calls.length,count);assert.equal(s.notices.length,1);
   }finally{await s.close();}
 });
@@ -142,8 +150,8 @@ test('model load failure cancels readiness polling and warns',async()=>{
     assert.equal(s.line(),'[ Cargando… ] [ ≡ ]');
     s.setError('model load failed: broken model');await tick();
     assert.equal(s.line(),'[ ⏻ TTS ] [ ≡ ]');
-    assert.equal(s.statuses.at(-1),'TTS manual');
-    assert.deepEqual(s.notices,['TTS: el modelo no cargó: model load failed: broken model']);
+    assert.equal(s.statuses.at(-1),'TTS off');
+    assert.deepEqual(s.notices,['TTS TeHablo: El modelo no cargó: model load failed: broken model']);
     const count=s.calls.length;await tick();assert.equal(s.calls.length,count);
     assert.ok(!s.calls.includes('/speak'));
   } finally {await s.close();}
@@ -153,7 +161,7 @@ test('failed start returns to Iniciar and reports the error',async()=>{
   const s=setup();
   try {
     s.fail();await clickAt(s,'⏻ TTS');
-    assert.equal(s.line(),'[ ⏻ TTS ] [ ≡ ]');assert.deepEqual(s.notices,['TTS: offline']);
+    assert.equal(s.line(),'[ ⏻ TTS ] [ ≡ ]');assert.deepEqual(s.notices,['TTS TeHablo: offline']);
   } finally {await s.close();}
 });
 
@@ -174,9 +182,9 @@ test('volume and speed buttons, limits and command synchronization',async()=>{
   const volDown=()=>clickAt(s,'Vol [-',5), volUp=()=>clickAt(s,'% +]',2), velDown=()=>clickAt(s,'Vel [-',5), velUp=()=>clickAt(s,'x +]',2);
   try {
     await start(s);await clickAt(s,'[ ⋯ ]',2);
-    await volDown();assert.deepEqual(s.configs.at(-1),{volume:.9});assert.ok(s.notices.includes('Volumen: 90 %'));assert.match(s.line(),/Vol \[- 90% \+\]/);
+    await volDown();assert.deepEqual(s.configs.at(-1),{volume:.9});assert.ok(s.notices.includes('TTS TeHablo: Volumen: 90 %'));assert.match(s.line(),/Vol \[- 90% \+\]/);
     await volUp();assert.deepEqual(s.configs.at(-1),{volume:1});
-    await velUp();assert.deepEqual(s.configs.at(-1),{speed:1.1});assert.ok(s.notices.includes('Velocidad: 1.10x'));
+    await velUp();assert.deepEqual(s.configs.at(-1),{speed:1.1});assert.ok(s.notices.includes('TTS TeHablo: Velocidad: 1.10x'));
     await velUp();assert.deepEqual(s.configs.at(-1),{speed:1.15});
     await velDown();await velDown();assert.deepEqual(s.configs.at(-1),{speed:1});
     const n=s.configs.length;
@@ -186,8 +194,6 @@ test('volume and speed buttons, limits and command synchronization',async()=>{
     for(let i=0;i<20;i++)await volUp();assert.equal(s.configs.at(-1).volume,1.5);
     for(let i=0;i<8;i++)await velDown();assert.equal(s.configs.at(-1).speed,1);
     for(let i=0;i<8;i++)await velUp();assert.equal(s.configs.at(-1).speed,1.5);
-    await s.command('speed 1.25');assert.match(s.line(),/Vel \[- 1\.25x \+\]/);
-    await s.command('speed 0.9');await velDown();assert.equal(s.configs.at(-1).speed,.9);await velUp();assert.equal(s.configs.at(-1).speed,1);
     await clickAt(s,'[ ▶ ]');assert.ok(s.calls.includes('/speak'));
   } finally {await s.close();}
 });
@@ -260,7 +266,7 @@ test('a server started here gets the saved model and voice at launch, so no relo
   }finally{await s.close();}
 });
 
-test('turning auto reading on starts a stopped server; off or already running does not',async()=>{
+test('turning auto reading on starts a stopped server, also with the bar hidden; off or already running does not',async()=>{
   for(const how of ['command','shortcut','window']) {
     const store=memoryStore();store.save({...DEFAULTS,shortcutsOn:true,shortcuts:{auto:'alt+a'}});
     const s=setup(store);try {
@@ -273,7 +279,7 @@ test('turning auto reading on starts a stopped server; off or already running do
       await s.command('auto off');await s.command('auto on');assert.equal(s.ensures(),1,how);
     }finally{await s.close();}
   }
-  const s=setup();try {await s.command('off');await s.command('auto on');assert.equal(s.ensures(),0);}finally{await s.close();}
+  const s=setup();try {await s.command('toolbar');await s.command('auto on');assert.equal(s.ensures(),1);}finally{await s.close();}
 });
 
 test('open controls: [ → ] closes them, ":" only separates, and the menu sits before Vol',async()=>{
@@ -304,7 +310,7 @@ test('turning the server off also turns auto reading off; restart keeps it',asyn
       if(how==='window'||how==='restart'){await clickAt(s,'[ ⋯ ]');await clickAt(s,'[ ≡ ]');s.windows[0].w.c.power(how==='window'?'off':'restart');await new Promise(r=>setImmediate(r));}
       assert.ok(s.calls.includes('/shutdown'),how);
       const auto=how==='restart';
-      assert.equal(s.store.load().auto,auto,how);assert.equal(s.statuses.at(-1),auto?'TTS auto':'TTS manual',how);
+      assert.equal(s.store.load().auto,auto,how);assert.equal(s.statuses.at(-1),auto?'TTS auto':'TTS off',how);
     }finally{await s.close();}
   }
 });
@@ -314,7 +320,6 @@ test('inline volume buttons and /tts commands keep the saved settings in sync',a
     await start(s);await clickAt(s,'[ ⋯ ]',2);await clickAt(s,'% +]',2);
     assert.equal(s.store.load().volume,1.1);
     await s.command('auto on');assert.equal(s.store.load().auto,true);
-    await s.command('speed 1.25');assert.equal(s.store.load().speed,1.25);
   }finally{await s.close();}
 });
 
@@ -351,6 +356,15 @@ test('powering off while the clipboard is still being read does not restart the 
     await clickAt(s,'[ ⋯ ]');await clickAt(s,'[ ⏻ ]');
     release('Texto copiado');await new Promise(r=>setImmediate(r));await new Promise(r=>setImmediate(r));
     assert.ok(!s.calls.includes('/speak'));assert.equal(s.ensures(),ensures);assert.equal(s.line(),'[ ⏻ TTS ] [ ≡ ]');
+  }finally{await s.close();}
+});
+
+test('Pi start or /reload shows TTS off at once, and a stopped server never keeps auto reading',async()=>{
+  const store=memoryStore();store.save({...DEFAULTS,auto:true});
+  const s=setup(store);try {
+    assert.equal(s.statuses.at(-1),'TTS off');assert.equal(s.store.load().auto,false);
+    await s.command('auto');assert.equal(s.statuses.at(-1),'TTS auto');
+    await s.command('auto');assert.equal(s.statuses.at(-1),'TTS manual');
   }finally{await s.close();}
 });
 

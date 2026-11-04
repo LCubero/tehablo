@@ -32,8 +32,10 @@ export const memoryStore = (table: VoiceRow[] = []): Store => {
 };
 
 const ENTRY = 'tehablo-tts';
+/** Every message from this extension starts with this prefix. */
+const say = (c: ExtensionContext | undefined, text: string, level: 'info' | 'warning') => c?.ui.notify(`TTS TeHablo: ${text}`, level);
 interface Card { messageId: string; number: number }
-const help = '/tts on|off · auto · play [n] · pause · resume · stop · voice [nombre] · model [phonon|spanish|spanish_24l] · speed [0.75-1.5]\n[ ▶ ] lee la respuesta; [ ▶ copiado ] lee lo copiado; [ ≡ ] abre la ventana de ajustes; [ ⋯ ] muestra volumen y velocidad; [ ⏻ ] apaga el servidor y libera el modelo; [ ⏻ TTS ] vuelve a encenderlo.';
+const help = '/tts · auto · play [n] · copy · pause · stop · toolbar · menu · status\n/tts enciende o apaga el servidor; play sin número lee la última respuesta y play 3 la tercera de la sesión; toolbar muestra u oculta la barra; menu abre los ajustes.';
 
 export function createExtension(pi: ExtensionAPI, client = new ServerClient(), store: Store = client.root ? fileStore(client.root) : memoryStore(),
   clipboard: () => Promise<string> = () => readClipboard()) {
@@ -43,7 +45,8 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
   let current: {model: string; voice: string} | undefined;
   let stopKeys: (() => void) | undefined;
   const persist = () => { try { store.save(settings); } catch { /* Settings are best effort. */ } };
-  let enabled = true, auto = false, epoch = 0;
+  // barVisible only hides the bar (/tts toolbar); reading, auto and shortcuts keep working.
+  let barVisible = true, auto = false, epoch = 0;
   let volume = 1, speed = 1;
   const speeds = [1, 1.1, 1.15, 1.25, 1.5];
   const speedLabel = (value: number) => `${value.toFixed(2)}x`;
@@ -55,7 +58,9 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
   let server: 'off' | 'loading' | 'ready' = 'off', open = false;
   let readyTimer: ReturnType<typeof setTimeout> | undefined, readyEpoch = 0, readyTries = 0;
   const READY_TRIES = 240;
-  const refresh = () => context?.ui.setStatus(ENTRY, enabled ? `TTS ${auto ? 'auto' : 'manual'}${server === 'loading' ? ' · cargando' : ''}` : undefined);
+  // Status line: "TTS off" while the server is off, else "TTS manual" or "TTS auto".
+  const refresh = () => context?.ui.setStatus(ENTRY, server === 'off' ? 'TTS off'
+    : `TTS ${auto ? 'auto' : 'manual'}${server === 'loading' ? ' · cargando' : ''}`);
   const setServer = (value: typeof server) => { if (value !== server) { server = value; refresh(); } };
   const cancelReady = () => { readyEpoch++; if (readyTimer) clearTimeout(readyTimer); readyTimer = undefined; };
   const sync = (health: any) => {
@@ -65,7 +70,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
     if (health?.ready === true && !applied) { applied = true; void applySaved(health); }
     if (typeof health?.error === 'string' && health.error.length > 0) {
       cancelReady(); setServer('off');
-      context?.ui.notify(`TTS: el modelo no cargó: ${health.error}`, 'warning');
+      say(context, `El modelo no cargó: ${health.error}`, 'warning');
     }
     else if (health?.ready === true) { cancelReady(); setServer('ready'); }
     else if (health?.ready === false) { if (server !== 'loading') readyTries = 0; setServer('loading'); waitReady(); }
@@ -86,7 +91,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
       const result = await client.action('/config', body);
       if (generation === epoch) sync(result);
     } catch (error) {
-      if (generation === epoch) context?.ui.notify(`TTS: no se aplicaron los ajustes guardados: ${error instanceof Error ? error.message : String(error)}`, 'warning');
+      if (generation === epoch) say(context, `No se aplicaron los ajustes guardados: ${error instanceof Error ? error.message : String(error)}`, 'warning');
     }
   };
   /** Polls /health until the model is loaded, bounded to READY_TRIES attempts of 500 ms. */
@@ -98,7 +103,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
       if (generation !== readyEpoch || server !== 'loading') return;
       if (++readyTries > READY_TRIES) {
         setServer('off');
-        context?.ui.notify('TTS: el modelo no terminó de cargar.', 'warning');
+        say(context, 'El modelo no terminó de cargar.', 'warning');
         return;
       }
       try {
@@ -127,7 +132,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
   /** Auto reading needs the server, so turning it on also starts a stopped one. */
   const setAuto = (value: boolean) => {
     auto = value; settings = {...settings, auto}; persist(); epoch++; refresh();
-    return auto && enabled && server === 'off' ? boot() : undefined;
+    return auto && server === 'off' ? boot() : undefined;
   };
   const setting = async (ctx: ExtensionContext, kind: string) => {
     const generation = epoch;
@@ -143,7 +148,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
     if (generation !== epoch) return;
     if (typeof configured?.[field] === 'number') { settings = {...settings, [field]: configured[field]}; persist(); }
     sync(configured);
-    ctx.ui.notify(field === 'volume' ? `Volumen: ${Math.round(volume * 100)} %` : `Velocidad: ${speedLabel(speed)}`, 'info');
+    say(ctx, field === 'volume' ? `Volumen: ${Math.round(volume * 100)} %` : `Velocidad: ${speedLabel(speed)}`, 'info');
   };
   const update = (state: string, id: string | null) => {
     if (state !== playback.state || id !== playback.id) { playback = {state, id}; refresh(); }
@@ -170,7 +175,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
         pollFailures = 0;
         if (status.state === 'idle') {
           if (typeof status.error === 'string' && status.error.length > 0)
-            context?.ui.notify(`TTS: no se pudo reproducir: ${status.error}`, 'warning');
+            say(context, `No se pudo reproducir: ${status.error}`, 'warning');
           resetPlayback();
           return;
         }
@@ -179,7 +184,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
         if (generation !== pollEpoch) return;
         if (++pollFailures >= 3) {
           resetPlayback(); setServer('off');
-          context?.ui.notify('TTS: se perdió la conexión con el servidor. Revisa logs/tehablo-server.log.', 'warning');
+          say(context, 'Se perdió la conexión con el servidor. Revisa logs/tehablo-server.log.', 'warning');
           return;
         }
       }
@@ -196,14 +201,13 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
   const cards = (ctx: ExtensionContext): Card[] => ctx.sessionManager.getBranch()
     .filter((e: any) => e.type === 'custom' && e.customType === ENTRY).map((e: any) => e.data);
   const safe = async (ctx: ExtensionContext, operation: () => Promise<unknown> | unknown) => {
-    try { await operation(); } catch (error) { ctx.ui.notify(`TTS: ${error instanceof Error ? error.message : String(error)}`, 'warning'); }
+    try { await operation(); } catch (error) { say(ctx, `${error instanceof Error ? error.message : String(error)}`, 'warning'); }
   };
   const speak = async (ctx: ExtensionContext, number?: string) => {
-    if (!enabled) { ctx.ui.notify('Activa TTS con /tts on.', 'warning'); return; }
     const card = number ? cards(ctx).find(c => String(c.number) === number) : cards(ctx).at(-1);
     const entry: any = card && ctx.sessionManager.getBranch().find(e => e.id === card.messageId && e.type === 'message');
     const text = finalText(entry?.message);
-    if (!text) { ctx.ui.notify('Respuesta no encontrada.', 'warning'); return; }
+    if (!text) { say(ctx, 'Respuesta no encontrada.', 'warning'); return; }
     return play(card!.messageId, text);
   };
   /** Reads text in the bar of message `id`, so its pause and stop buttons control it.
@@ -211,7 +215,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
   const play = async (id: string, text: string, generation = epoch) => {
     if (generation !== epoch) return;
     await boot();
-    if (generation !== epoch || !enabled) return;
+    if (generation !== epoch) return;
     await client.request('/speak', {id, text});
     if (generation !== epoch) return;
     started = true;
@@ -221,13 +225,12 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
   };
   /** Reads the copied text; Pi cannot see the terminal's mouse selection, so the user copies it first. */
   const speakCopied = async (ctx: ExtensionContext, id?: string) => {
-    if (!enabled) { ctx.ui.notify('Activa TTS con /tts on.', 'warning'); return; }
     const target = id ?? cards(ctx).at(-1)?.messageId;
     if (!target) return;
     const generation = epoch;
     const text = cleanText(await clipboard());
     if (generation !== epoch) return;
-    if (!text) { ctx.ui.notify('El portapapeles está vacío.', 'warning'); return; }
+    if (!text) { say(ctx, 'El portapapeles está vacío.', 'warning'); return; }
     return play(target, text, generation);
   };
   /** Live server changes when it runs; settings are always saved and applied on the next start. */
@@ -248,7 +251,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
     if (windowOpen) { closeWindow?.(); return; }
     windowOpen = true;
     try { await refreshVoices(); } catch { /* Keep the last known voices. */ }
-    const warn = (error: unknown) => ctx.ui.notify(`TTS: ${error instanceof Error ? error.message : String(error)}`, 'warning');
+    const warn = (error: unknown) => say(ctx, `${error instanceof Error ? error.message : String(error)}`, 'warning');
     const run = (operation: () => Promise<unknown>) => { void operation().catch(warn); };
     const controller: Controller = {
       state: () => ({settings, server, token: store.hasToken()}),
@@ -300,7 +303,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
       case 'auto':
       {
         const starting = setAuto(!auto);
-        ctx.ui.notify(`Lectura automática: ${auto ? 'sí' : 'no'}`, 'info'); return starting;
+        say(ctx, `Lectura automática: ${auto ? 'sí' : 'no'}`, 'info'); return starting;
       }
       case 'play': return speak(ctx);
       case 'pause': if (playback.state !== 'idle') return action(playback.state === 'paused' ? 'resume' : 'pause'); return;
@@ -313,7 +316,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
   const listenKeys = (ctx: ExtensionContext) => {
     stopKeys?.();
     stopKeys = ctx.ui.onTerminalInput?.(data => {
-      if (!settings.shortcutsOn || windowOpen || !enabled) return undefined;
+      if (!settings.shortcutsOn || windowOpen) return undefined;
       const key = keyOf(data);
       const name = key ? ACTIONS.find(a => settings.shortcuts[a] === key) : undefined;
       if (!name) return undefined;
@@ -352,7 +355,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
         ] : []),
       ];
     };
-    const label = () => context?.mode === 'tui' && enabled && entry.data && cards(context).some(c => c.messageId === entry.data!.messageId)
+    const label = () => context?.mode === 'tui' && barVisible && entry.data && cards(context).some(c => c.messageId === entry.data!.messageId)
       ? segments().map(c => c.text + c.gap).join('') : '';
     return {
       render: (width: number) => label() && width > 0 ? [theme.fg('accent', Array.from(label()).slice(0, width).join(''))] : [],
@@ -382,8 +385,10 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
     if (ctx.mode !== 'tui') return;
     resetPlayback();
     settings = store.load(); applied = false;
-    enabled = true; auto = settings.auto; volume = settings.volume; speed = settings.speed; epoch++; context = ctx;
+    // The server starts off, and an off server has no auto reading (turning auto on starts it).
+    barVisible = true; auto = false; if (settings.auto) { settings = {...settings, auto: false}; persist(); } volume = settings.volume; speed = settings.speed; epoch++; context = ctx;
     cancelReady(); server = 'off'; open = false;
+    refresh();
     listenKeys(ctx);
     client.beginSession();
   });
@@ -399,7 +404,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
     await safe(ctx, () => client.shutdown());
   });
   pi.on('agent_settled', (event, ctx) => {
-    if (ctx.mode !== 'tui' || !enabled || event.aborted) return;
+    if (ctx.mode !== 'tui' || event.aborted) return;
     context = ctx;
     void safe(ctx, () => {
       const last: any = ctx.sessionManager.getBranch().filter((e: any) => e.type === 'message' && e.message.role === 'assistant').at(-1);
@@ -418,37 +423,35 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
         const [command = '', ...rest] = args.trim().split(/\s+/);
         const value = rest.join(' ');
         const generation = epoch;
-        const info = (text: string) => ctx.ui.notify(text, 'info');
-        const applied = (h: any) => { if (generation !== epoch) return;
-          settings = {...settings, model: h.model ?? settings.model, voice: h.voice ?? settings.voice, speed: h.speed ?? settings.speed}; persist();
-          sync(h);
-          info(`Modelo: ${h.model} · voz: ${h.voice} · velocidad: ${h.speed} · volumen: ${Math.round(volume * 100)} %`); };
+        const info = (text: string) => say(ctx, text, 'info');
         switch (command) {
-          case 'on': enabled = true; refresh(); info('TTS activado.'); return;
-          case 'off': enabled = false; epoch++; resetPlayback(); refresh(); await client.stop(); info('TTS desactivado.'); return;
+          // Plain /tts turns the server on or off, like [ ⏻ TTS ] and [ ⏻ ] in the bar.
+          case '': return server === 'off' ? boot() : turnOff();
+          case 'toolbar':
+            barVisible = !barVisible; refresh(); info(barVisible ? 'Barra visible.' : 'Barra oculta.');
+            return;
           case 'auto':
             // Plain /tts auto toggles; on/off still work for anyone who already types them.
-            if (!['', 'on', 'off'].includes(value)) { ctx.ui.notify('Uso: /tts auto', 'warning'); return; }
+            if (!['', 'on', 'off'].includes(value)) { say(ctx, 'Uso: /tts auto', 'warning'); return; }
             {
               const starting = setAuto(value ? value === 'on' : !auto);
               info(`Lectura automática: ${auto ? 'sí' : 'no'}`); await starting; return;
             }
           case 'play': await speak(ctx, value); return;
-          case 'stop': case 'pause': case 'resume': await action(command); return;
-          case 'voice':
-            if (!value) { const data = await client.action('/voices'); if (generation !== epoch) return; info(`Voces: ${data.voices.join(', ')}`); return; }
-            applied(await client.action('/config', {voice: value})); return;
-          case 'model': case 'speed':
-            if (value) {
-              applied(await client.action('/config', {[command]: command === 'speed' ? Number(value) : value})); return;
-            }
+          case 'copy': await speakCopied(ctx); return;
+          case 'pause': if (playback.state !== 'idle') await action(playback.state === 'paused' ? 'resume' : 'pause'); return;
+          case 'stop': if (server !== 'off') await action('stop'); return;
+          // Not awaited: the window stays open until closed, and the command should return now.
+          case 'menu': void safe(ctx, () => openSettings(ctx)); return;
+          case 'status': break;
+          default: say(ctx, `Uso: ${help}`, 'warning'); return;
         }
         const health = await client.action('/health');
         if (generation !== epoch) return;
         sync(health);
         const status = await client.action('/status');
         if (generation !== epoch) return;
-        info(`TTS: ${enabled ? 'activado' : 'desactivado'} · automático: ${auto ? 'sí' : 'no'}\nServidor: ${status.state} · listo: ${health.ready ? 'sí' : 'no'}\nModelo: ${health.model} · voz: ${health.voice} · velocidad: ${health.speed} · volumen: ${Math.round(volume * 100)} %\n${help}`);
+        info(`Barra ${barVisible ? 'visible' : 'oculta'} · automático: ${auto ? 'sí' : 'no'}\nServidor: ${status.state} · listo: ${health.ready ? 'sí' : 'no'}\nModelo: ${health.model} · voz: ${health.voice} · velocidad: ${health.speed} · volumen: ${Math.round(volume * 100)} %\n${help}`);
       });
     },
   });

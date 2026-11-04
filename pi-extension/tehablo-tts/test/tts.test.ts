@@ -63,7 +63,7 @@ test('manual controls and numbered/latest playback; off hides controls',async()=
   await s.command('play 1'); assert.deepEqual(s.calls.at(-1),['/speak',{id:'0',text:'Hola mundo'}]);
   await s.command('play'); assert.equal(s.calls.at(-1)[1].text,'Segunda');
   assert.equal(component.render(100)[0],'[ ▶ ] [ ▶ copiado ] [ ⋯ ]');
-  await s.command('off'); assert.deepEqual(component.render(100),[]);
+  await s.command('toolbar'); assert.deepEqual(component.render(100),[]);
 });
 test('auto toggles, skips errors/aborts/empty; new prompt stops',async()=>{
   const s=setup(); await s.command('auto on'); await s.finish();
@@ -84,24 +84,28 @@ test('[ Leer copiado ] reads the copied text in that bar; an empty or unreadable
   await press(); assert.deepEqual(s.calls.at(-1),['/speak',{id:'0',text:'Hola copiado'}]);
   assert.match(component.render(100)[0],/^\[ ‖ \] \[ ■ \]/);
   await s.command('stop'); const speaks=()=>s.calls.filter(c=>c[0]==='/speak').length; const before=speaks();
-  copied='  '; await press(); assert.deepEqual(s.notices.at(-1),['El portapapeles está vacío.','warning']);
+  copied='  '; await press(); assert.deepEqual(s.notices.at(-1),['TTS TeHablo: El portapapeles está vacío.','warning']);
   copied=new Error('No se pudo leer el portapapeles: instala wl-clipboard o xclip.'); await press();
-  assert.deepEqual(s.notices.at(-1),['TTS: No se pudo leer el portapapeles: instala wl-clipboard o xclip.','warning']);
+  assert.deepEqual(s.notices.at(-1),['TTS TeHablo: No se pudo leer el portapapeles: instala wl-clipboard o xclip.','warning']);
   assert.equal(speaks(),before);
 });
-test('/tts auto alone toggles auto reading',async()=>{
-  const s=setup(); await s.command('auto'); assert.equal(s.notices.at(-1)[0],'Lectura automática: sí');
-  await s.finish(); assert.equal(s.calls.filter(c=>c[0]==='/speak').length,1);
-  await s.command('auto'); assert.equal(s.notices.at(-1)[0],'Lectura automática: no');
-  await s.finish('Manual'); assert.equal(s.calls.filter(c=>c[0]==='/speak').length,1);
-  await s.command('auto x'); assert.equal(s.notices.at(-1)[0],'Uso: /tts auto');
+test('a hidden toolbar only hides the bar: auto reading and play still work',async()=>{
+  const s=setup(); await s.command('toolbar'); await s.command('auto'); await s.finish();
+  assert.equal(s.calls.filter(c=>c[0]==='/speak').length,1);
+  await s.command('play 1'); assert.equal(s.calls.filter(c=>c[0]==='/speak').length,2);
+  assert.ok(!s.calls.some(c=>c[0]==='/stop'));
 });
-test('playback endpoints, server config error and voices/status',async()=>{
-  const s=setup(); for(const c of ['pause','resume','stop']) {await s.command(c); assert.equal(s.calls.at(-1)[0],'/'+c);}
-  await s.command('speed 2'); assert.match(s.notices.at(-1)[0],/Velocidad fuera de rango/); assert.equal(s.notices.at(-1)[1],'warning');
-  await s.command('voice'); assert.equal(s.calls.at(-1)[0],'/voices');
-  await s.command('model spanish_24l'); assert.deepEqual(s.calls.at(-1),['/config',{model:'spanish_24l'}]);
-  await s.command(''); assert.match(s.notices.at(-1)[0],/spanish.*voz/s);
+test('/tts auto alone toggles auto reading',async()=>{
+  const s=setup(); await s.command('auto'); assert.equal(s.notices.at(-1)[0],'TTS TeHablo: Lectura automática: sí');
+  await s.finish(); assert.equal(s.calls.filter(c=>c[0]==='/speak').length,1);
+  await s.command('auto'); assert.equal(s.notices.at(-1)[0],'TTS TeHablo: Lectura automática: no');
+  await s.finish('Manual'); assert.equal(s.calls.filter(c=>c[0]==='/speak').length,1);
+  await s.command('auto x'); assert.equal(s.notices.at(-1)[0],'TTS TeHablo: Uso: /tts auto');
+});
+test('playback endpoints and status',async()=>{
+  const s=setup(); await s.command('pause'); await s.command('stop'); assert.equal(s.calls.length,0);
+  await s.finish(); await s.command('play'); await s.command('stop'); assert.equal(s.calls.at(-1)[0],'/stop');
+  await s.command('status'); assert.match(s.notices.at(-1)[0],/spanish.*voz/s);
 });
 test('non-interactive modes do nothing',async()=>{
   for(const mode of ['rpc','json','print']) {const s=setup(mode); await s.finish(); await s.command('play'); await s.emit('agent_start'); await s.emit('session_shutdown'); assert.equal(s.calls.length,0); assert.equal(s.cards().length,0);}
