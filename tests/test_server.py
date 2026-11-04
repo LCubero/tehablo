@@ -108,7 +108,7 @@ class ServerTests(unittest.TestCase):
 
         output = io.StringIO()
         with contextlib.redirect_stderr(output):
-            server = create_server(port=0, synthesizer_factory=load, audio_factory=Sink, catalog=['lola'])
+            server = create_server(port=0, model='phonon', synthesizer_factory=load, audio_factory=Sink, catalog=['lola'])
             service = server.service
             try:
                 self.assertTrue(entered.wait(3))
@@ -149,7 +149,7 @@ class ServerTests(unittest.TestCase):
 
                 output = io.StringIO()
                 with contextlib.redirect_stderr(output):
-                    server = create_server(port=0, synthesizer_factory=load, audio_factory=Sink, catalog=['lola'])
+                    server = create_server(port=0, model='phonon', synthesizer_factory=load, audio_factory=Sink, catalog=['lola'])
                     service = server.service
                     try:
                         self.assertTrue(entered.wait(3))
@@ -186,12 +186,12 @@ class ServerTests(unittest.TestCase):
             self.assertEqual(self.request('/config', {'model': model, 'voice': voice}), (400, {'error': message}))
             self.assertEqual(self.request('/health'), before)
 
-    def test_phonon_default(self):
+    def test_pocket_lola_default(self):
         server = create_server(port=0, synthesizer_factory=lambda name: self.synth,
                                audio_factory=Sink, catalog=['lola'])
         try:
-            self.assertEqual(server.service.health()['model'], 'phonon')
-            self.assertEqual(server.service.health()['voice'], 'Regina')
+            self.assertEqual(server.service.health()['model'], 'spanish')
+            self.assertEqual(server.service.health()['voice'], 'lola')
         finally:
             server.server_close()
 

@@ -494,7 +494,7 @@ class Handler(BaseHTTPRequestHandler):
             self.reply(400, {'error': str(exc)})
 
 
-def create_server(port=8765, model='phonon', voice=None, speed=1.0,
+def create_server(port=8765, model='spanish', voice=None, speed=1.0,
                   synthesizer_factory=synthesizer, audio_factory=audio_sink, catalog=None):
     if catalog is None:
         started = time.perf_counter()
@@ -514,8 +514,8 @@ def create_server(port=8765, model='phonon', voice=None, speed=1.0,
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--port', type=int, default=os.environ.get('TEHABLO_PORT', '8765'))
-    parser.add_argument('--model', choices=sorted(MODELS), default='phonon',
-                        help='engine (default: phonon; Pocket: spanish or spanish_24l)')
+    parser.add_argument('--model', choices=sorted(MODELS), default='spanish',
+                        help='engine (default: spanish; also spanish_24l or phonon)')
     parser.add_argument('--voice', default=None,
                         help='voice (default: Regina for phonon, lola for Pocket)')
     parser.add_argument('--speed', type=float, default=1.0)
