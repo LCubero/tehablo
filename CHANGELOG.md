@@ -4,6 +4,10 @@
 
 Este archivo registra los cambios completados en orden cronológico.
 
+## 2026-11-03
+
+- `tests/test_get_voices.py` y `tests/test_listening_skill.py` pasan en Windows ejecutadas directamente: la primera encuentra `scripts` sin `-m` y la segunda usa UTF-8 y el mismo intérprete de Python para el ejemplo de bash. Solo cambian las pruebas; el uso de tehablo no cambia (`RH-W-0023`).
+
 ## 2026-11-02
 
 - Los identificadores técnicos numéricos explícitos mayores que `9999999` se abrevian como «terminación en» y sus últimos cuatro dígitos, incluidos los ceros; los números y cantidades comunes conservan su lectura ([reglas y límites](docs/pronunciacion.md#identificadores-numéricos-largos)). Verificado en texto, sin escucha confirmada.

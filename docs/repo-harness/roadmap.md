@@ -284,7 +284,7 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 - **Trabajo restante:**
   - **Seguridad:** revisar el servidor, la extensión, la carga de voces y archivos, y los secretos (`HF_TOKEN`); añadir `SECURITY.md` y una revisión de vulnerabilidades de dependencias.
   - **Buenas prácticas:** linter y formato, tipos y CI que ejecute las suites en Windows y Linux.
-  - **Pruebas en Windows (2026-11-03):** `tests/test_get_voices.py` solo pasa como `python -m tests.test_get_voices` (ejecutado directo no encuentra `scripts`), y `tests/test_listening_skill.py` falla porque lee la skill sin `encoding='utf-8'` y llama a un `python` que no existe en Git Bash. No afectan el uso; corregirlas antes de la CI.
+  - **Pruebas en Windows (2026-11-03, corregido el mismo día):** `tests/test_get_voices.py` ya pasa ejecutado directo (añade la raíz al path) y `tests/test_listening_skill.py` lee la skill y la salida de bash en UTF-8 y ejecuta el `python3` del ejemplo con el mismo intérprete de la prueba. Ambas pasan en Windows con `.venv-pocket-windows`; no se volvieron a ejecutar en Linux.
   - **Control:** límites de tamaño de texto, peticiones simultáneas y tiempo máximo de generación, y una forma clara de detener todo.
   - **Rendimiento:** medición repetible para detectar regresiones de velocidad y memoria.
 - **Evidencia:** no existen `.github/`, configuración de linter ni `SECURITY.md`; el servidor limita cada petición a 1 MiB (`src/tehablo_server.py`) y la extensión de Pi recorta el texto limpio a 3000 caracteres (`pi-extension/tehablo-tts/src/text.ts`); no hay límite de tiempo de generación.

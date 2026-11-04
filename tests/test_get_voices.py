@@ -3,6 +3,7 @@
 from contextlib import redirect_stderr, redirect_stdout
 import io
 from pathlib import Path
+import sys
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -11,10 +12,10 @@ import wave
 import numpy as np
 import scipy.io.wavfile
 
-from scripts import get_voices
-
-
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+
+from scripts import get_voices  # noqa: E402
 
 
 class GetVoicesTests(unittest.TestCase):

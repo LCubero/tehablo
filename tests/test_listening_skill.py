@@ -4,19 +4,22 @@ from pathlib import Path
 import re
 import shlex
 import subprocess
+import sys
 import unittest
 
 SKILL = Path(__file__).resolve().parents[1] / '.pi/skills/tehablo-pronunciacion/SKILL.md'
 
 
 def snippet():
-    return re.findall(r'```bash\n(.*?)```', SKILL.read_text(), re.S)[1]
+    return re.findall(r'```bash\n(.*?)```', SKILL.read_text(encoding='utf-8'), re.S)[1]
 
 
 class ListeningSkillTests(unittest.TestCase):
     def run_example(self, states=('generating', 'playing', 'idle'), failure='', port='9123', text=None):
         replies = [json.dumps(s if isinstance(s, dict) else {'state': s, 'error': None}) for s in states]
+        # Run the snippet's python3 with this interpreter (Git Bash may only have a Store stub).
         mock = '''
+python3() { PYTHON_VALUE "$@"; }
 PORT=PORT_VALUE
 n=0
 curl() {
@@ -34,11 +37,11 @@ curl() {
   esac
 }
 sleep() { printf 'SLEEP %s\\n' "$1" >&2; n=$((n+1)); }
-'''.replace('PORT_VALUE', port)
+'''.replace('PORT_VALUE', port).replace('PYTHON_VALUE', shlex.quote(Path(sys.executable).as_posix()))
         code = snippet()
         if text is not None:
             code = code[:code.index('say "fícher."')] + 'say ' + shlex.quote(text) + ' 0.6\n'
-        result = subprocess.run(['bash', '-c', 'failure=' + shlex.quote(failure) + '\nreplies=(' + ' '.join(map(shlex.quote, replies)) + ')\n' + mock + code], capture_output=True, text=True, timeout=15)
+        result = subprocess.run(['bash', '-c', 'failure=' + shlex.quote(failure) + '\nreplies=(' + ' '.join(map(shlex.quote, replies)) + ')\n' + mock + code], capture_output=True, text=True, encoding='utf-8', timeout=15)
         calls = [line[5:] for line in result.stderr.splitlines() if line.startswith('CALL ')]
         return result, calls
 
