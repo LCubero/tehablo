@@ -72,7 +72,7 @@ test('voice table orders downloaded, downloadable, then account voices and marks
   const s = setup();
   s.click('[ Cambiar ]');
   const lines = s.w.render(100);
-  const order = ['lola', 'rafael', 'Regina', 'ar-hombre-4310'].map(n => lines.findIndex(l => l.includes(n + ' (')));
+  const order = ['lola', 'rafael', 'Regina', 'ar-hombre-4310'].map(n => lines.findIndex(l => l.includes(n + ' (') || l.includes(n + ' * (')));
   assert.deepEqual([...order].sort((a, b) => a - b), order);
   assert.ok(lines[order[0]].includes('Descargada') && lines[order[0]].includes('● activa'));
   assert.ok(lines[order[1]].includes('Para descargar'));
@@ -85,7 +85,7 @@ test('choosing by type: downloaded activates, downloadable confirms, account ask
   assert.ok(s.text().includes('[ Descargar y usar ]'));
   s.click('[ Descargar y usar ]');
   assert.deepEqual(s.calls.at(-1), ['choose', 'rafael', 'spanish']);
-  s.click('[ Cambiar ]'); s.click('Regina (');
+  s.click('[ Cambiar ]'); s.click('Regina * (');
   const guide = s.text();
   for (const part of ['huggingface.co/join', 'huggingface.co/settings/tokens', 'Token:']) assert.ok(guide.includes(part), part);
   for (const ch of 'hf_secret') s.key(ch);
@@ -100,7 +100,7 @@ test('choosing by type: downloaded activates, downloadable confirms, account ask
 
 test('an invalid token shows the error and keeps the field without revealing it', () => {
   const s = setup();
-  s.click('[ Cambiar ]'); s.click('Regina (');
+  s.click('[ Cambiar ]'); s.click('Regina * (');
   for (const ch of 'bad') s.key(ch);
   s.key('\r');
   const text = s.text();
@@ -113,7 +113,7 @@ test('with a saved token, account voices skip the guide', () => {
   const s = setup({token: true});
   s.click('[ Cambiar ]');
   assert.ok(s.text().includes('Con cuenta ✓'));
-  s.click('Regina (');
+  s.click('Regina * (');
   assert.ok(s.text().includes('[ Descargar y usar ]'));
 });
 
@@ -159,4 +159,14 @@ test('with the server off, unknown download state is shown by kind and chosen wi
 test('the main row names the active voice even when none was chosen', () => {
   const s = setup({settings: {...DEFAULTS}});
   assert.ok(s.text().includes('lola · la de siempre'));
+});
+
+test('account voices carry a * and the table explains it', () => {
+  const s = setup();
+  s.click('[ Cambiar ]');
+  const lines = s.w.render(100);
+  assert.ok(lines.find(l => l.includes('Regina'))!.includes('Regina * (México)'));
+  assert.ok(lines.find(l => l.includes('ar-hombre-4310'))!.includes('ar-hombre-4310 * ('));
+  assert.ok(!lines.find(l => l.includes('lola ('))!.includes('*'));
+  assert.ok(lines.some(l => l.includes('* necesita una cuenta gratis de Hugging Face (1 sola vez)')));
 });
