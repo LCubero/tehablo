@@ -27,3 +27,7 @@ if ($LASTEXITCODE -ne 0) { exit 1 }
 Write-Host "Listo: $envDir"
 Write-Host "Para iniciar: .\$python src/tehablo_tui.py"
 Write-Host 'Pi encuentra el entorno automaticamente. Los modelos se descargan en el primer uso.'
+Write-Host 'Voz principal de Pi: Phonon 40M es (acceso restringido, uso no comercial). Para activarla:'
+Write-Host '  1. Acepta los terminos en https://huggingface.co/gradium/phonon-40m-es'
+Write-Host '  2. Ejecuta: uvx hf auth login'
+Write-Host 'Hasta entonces Pi lee con Pocket TTS (lola).'
