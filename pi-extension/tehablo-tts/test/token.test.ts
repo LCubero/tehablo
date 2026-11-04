@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdtempSync, readFileSync, rmSync, statSync, writeFileSync} from 'node:fs';
+import {mkdtempSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {hasToken, saveToken} from '../src/token.ts';
@@ -12,7 +12,7 @@ const withRoot = (run: (root: string) => void) => {
 
 test('saving creates .env with only HF_TOKEN and private permissions', () => withRoot(root => {
   assert.equal(hasToken(root, {}), false);
-  saveToken(root, '  hf_abcDEF123  ');
+  saveToken(root, 'hf_abcDEF123');
   assert.equal(readFileSync(join(root, '.env'), 'utf8'), 'HF_TOKEN=hf_abcDEF123\n');
   assert.equal(hasToken(root, {}), true);
   if (process.platform !== 'win32') assert.equal(statSync(join(root, '.env')).mode & 0o777, 0o600);
@@ -47,4 +47,47 @@ test('token presence comes from .env or the environment, and empty values do not
   assert.equal(hasToken(root, {HF_TOKEN: 'hf_env'}), true);
   writeFileSync(join(root, '.env'), 'HF_TOKEN="hf_q"\n');
   assert.equal(hasToken(root, {}), true);
+}));
+
+test('rejects boundary whitespace without changing existing bytes', () => withRoot(root => {
+  const file = join(root, '.env');
+  const before = Buffer.from('# keep\r\nOTHER=1\r\n');
+  writeFileSync(file, before);
+  for (const value of [' hf_new', 'hf_new ', '\thf_new', 'hf_new\n', '\r\nhf_new']) {
+    assert.throws(() => saveToken(root, value), {message: 'El token no es válido: copia el token completo de Hugging Face.'});
+    assert.deepEqual(readFileSync(file), before);
+  }
+}));
+
+test('preserves CRLF comments and unrelated assignments', () => withRoot(root => {
+  const file = join(root, '.env');
+  writeFileSync(file, '# keep\r\nOTHER=1\r\nHF_TOKEN=hf_old\r\n');
+  saveToken(root, 'hf_new');
+  assert.equal(readFileSync(file, 'utf8'), '# keep\r\nOTHER=1\r\nHF_TOKEN=hf_new\r\n');
+}));
+
+test('presence follows the server: environment first, then the first assignment', () => withRoot(root => {
+  const file = join(root, '.env');
+  writeFileSync(file, 'HF_TOKEN=hf_file\n');
+  assert.equal(hasToken(root, {HF_TOKEN: ''}), false);
+  assert.equal(hasToken(root, {HF_TOKEN: 'hf_env'}), true);
+  writeFileSync(file, 'HF_TOKEN=\nHF_TOKEN=hf_second\n');
+  assert.equal(hasToken(root, {}), false);
+  writeFileSync(file, 'HF_TOKEN=\'""\'\n');
+  assert.equal(hasToken(root, {}), false);
+}));
+
+test('a rewrite makes an existing file private', () => withRoot(root => {
+  const file = join(root, '.env');
+  writeFileSync(file, 'HF_TOKEN=hf_old\n', {mode: 0o644});
+  saveToken(root, 'hf_new');
+  if (process.platform !== 'win32') assert.equal(statSync(file).mode & 0o777, 0o600);
+}));
+
+test('refuses a symlinked .env without modifying its target', {skip: process.platform === 'win32'}, () => withRoot(root => {
+  const target = join(root, 'other');
+  writeFileSync(target, 'OTHER=keep\n');
+  symlinkSync(target, join(root, '.env'));
+  assert.throws(() => saveToken(root, 'hf_new'), {message: 'No se guardó el token: .env es un enlace; reemplázalo por un archivo normal.'});
+  assert.equal(readFileSync(target, 'utf8'), 'OTHER=keep\n');
 }));
