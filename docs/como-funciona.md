@@ -211,7 +211,7 @@ HF_HUB_OFFLINE=1 .venv-pocket/bin/python scripts/measure_tts.py \
 | GPU | Se instala PyTorch solo CPU (~200 MB frente a ~3 GB con CUDA); funciona en equipos sin tarjeta gráfica |
 | Internet | Solo en la primera ejecución, para descargar los modelos; después funciona sin conexión |
 
-Además del acceso inicial a Phonon (opcional) en Pi, otra excepción es la **clonación de voces** de `voices/`. Requiere un token gratuito de Hugging Face para la primera descarga de los pesos con clonación. Ver [README](../README.md#activar-la-clonación-de-voces-token-de-hugging-face).
+Además del acceso inicial a Phonon (opcional) en Pi, otra excepción es la **clonación de voces** desde audio en `voices/`. Requiere un token gratuito de Hugging Face para la primera descarga de los pesos con clonación; las 6 voces incluidas como `.safetensors` no lo necesitan. Ver [README](../README.md#activar-la-clonación-de-voces-token-de-hugging-face).
 
 ---
 

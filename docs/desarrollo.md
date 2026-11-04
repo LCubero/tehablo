@@ -150,7 +150,7 @@ En cada push, GitHub Actions (`.github/workflows/tests.yml`) ejecuta en Windows 
 La extensión de Pi tiene sus pruebas con `node:test` (Node 24, sin dependencias):
 
 ```powershell
-node --test pi-extension/tehablo-tts/test/tts.test.ts pi-extension/tehablo-tts/test/lifecycle.test.ts pi-extension/tehablo-tts/test/controls.test.ts
+node --test pi-extension/tehablo-tts/test/*.test.ts
 ```
 
 ### Verificación en Fedora

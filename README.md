@@ -209,7 +209,7 @@ Escribe texto y pulsa Enter. Comandos: `/leer archivo.txt`, `/multi`, `/voz <nom
 |---|---|---|
 | **Catálogo** incluido | `lola` (única nativa en español), `rafael` y unas 25 más con timbre de otros idiomas | No |
 | **Incluidas** en `voices/` | `Facundo`, `Santiago` (Argentina), `Camila`, `Javiera`, `Diego` (Chile) y `Felipe` (Colombia), elegidas por escucha (CC BY-SA 4.0, ver `voices/ATTRIBUTION.txt`) | No |
-| **Descargadas** en `voices/` | Argentina, Chile y Colombia, mujer y hombre (`scripts/get_voices.py`) | Sí |
+| **Referencias WAV** en `voices/` | Argentina, Chile y Colombia, mujer y hombre (`scripts/get_voices.py`), para crear otras voces | Para clonarlas, no para descargarlas |
 | **Propias** | Cualquier `.wav`, `.mp3` o `.flac` limpio de 10 a 30 s en `voices/` (F8 para recargar) | Sí |
 
 > ⚠️ Clona solo voces que tengas permiso para usar. `cosette` del catálogo es solo para uso no comercial.

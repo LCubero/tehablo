@@ -50,7 +50,7 @@ Las licencias y los estados cambian: vuelve a comprobarlos antes de publicar nad
 | Chile | 3 | 3 | CC BY-SA 4.0 |
 | Colombia | 3 | 3 | CC BY-SA 4.0 |
 
-Necesitan los pesos con clonación (token de Hugging Face; ver [README](../README.md)).
+Para usarlas como referencia hacen falta los pesos con clonación (token de Hugging Face; ver [README](../README.md)). Las 6 aprobadas ya vienen preparadas en `voices/*.safetensors` y no piden token.
 
 ---
 

@@ -373,7 +373,7 @@ La segmentación intenta límites de oración (`.!?`, incluidos patrones de punt
 
 **Implementado en tehablo:** [`src/tehablo_lexicon.py`](../src/tehablo_lexicon.py) sigue el mismo formato que el PR #375 (JSON `{"término": "reescritura"}`, palabras completas, sin distinguir mayúsculas, coincidencia más larga primero, una sola pasada) y añade el plural con `s` (`routers` → `ráuters`). La TUI y la consola lo aplican antes de convertir números, con cualquier voz, cuando el modelo es `spanish` o `spanish_24l`. El diccionario es [`pronunciaciones.json`](../pronunciaciones.json), en la raíz, y se recarga solo al guardarlo; si tiene un error, se conserva la versión anterior y se muestra un aviso. Las reescrituras usan ortografía española con tilde en la sílaba fuerte (`páiton`, `guítjab`) y las siglas se deletrean con letras en inglés (`ei pi ai`; ver [docs/pronunciacion.md](pronunciacion.md)). Pruebas: `tests/test_lexicon.py`.
 
-**No uses esos argumentos como si existieran en 4.0.1.** Mientras no se incorpore una versión compatible, un preprocesador propio puede aplicar la misma idea sin modificar Pocket TTS. No se ha implementado aquí ni se presupone que el PR haya sido aprobado.
+**No uses esos argumentos como si existieran en 4.0.1.** Mientras no se incorpore una versión compatible, tehablo aplica la misma idea con su propio preprocesador (arriba), sin modificar Pocket TTS ni presuponer que el PR haya sido aprobado.
 
 Ejemplo de diccionario **conceptual, no validado acústicamente**:
 
