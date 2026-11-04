@@ -138,7 +138,7 @@ test('Editar opens the shortcuts table; keys are captured, validated and removab
   s.click('[ Editar ]');
   const table = s.text();
   for (const part of ['Atajos de teclado', 'Encender / apagar TTS', 'Lectura automática sí/no', 'Escuchar la última respuesta',
-    'Pausar / seguir', 'Detener', 'Abrir ajustes', '(sin atajo)']) assert.ok(table.includes(part), part);
+    'Pausar / seguir', 'Detener', 'Abrir ajustes', 'Leer lo copiado', '(sin atajo)']) assert.ok(table.includes(part), part);
   s.key('\r');
   assert.ok(s.text().includes('Presiona la combinación'));
   s.key('p');

@@ -2,7 +2,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 // Settings of the Pi settings window, kept in tehablo-settings.json at the project root (gitignored).
-export const ACTIONS = ['power', 'auto', 'play', 'pause', 'stop', 'settings'] as const;
+export const ACTIONS = ['power', 'auto', 'play', 'pause', 'stop', 'settings', 'copied'] as const;
 export type Action = typeof ACTIONS[number];
 export const MODELS = ['phonon', 'spanish', 'spanish_24l'];
 export const SPEEDS = [1, 1.1, 1.15, 1.25, 1.5];

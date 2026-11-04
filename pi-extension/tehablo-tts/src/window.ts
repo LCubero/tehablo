@@ -3,10 +3,10 @@ import { keyOf, label, usedByPi } from './shortcuts.ts';
 
 export const ACTION_NAMES: Record<Action, string> = {
   power: 'Encender / apagar TTS', auto: 'Lectura automática sí/no', play: 'Escuchar la última respuesta',
-  pause: 'Pausar / seguir', stop: 'Detener', settings: 'Abrir ajustes',
+  pause: 'Pausar / seguir', stop: 'Detener', settings: 'Abrir ajustes', copied: 'Leer lo copiado',
 };
 
-// Floating settings window opened from [.⚙ ] (approved prototype: .repo-harness/tmp/menu-proto/proto.ts).
+// Floating settings window opened from [ ≡ ] (approved prototype: .repo-harness/tmp/menu-proto/proto.ts).
 // Keys come through Pi's injected keybindings, so no direct pi-tui import is needed.
 export interface WindowState { settings: Settings; server: 'off' | 'loading' | 'ready'; token: boolean }
 export interface Controller {

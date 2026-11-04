@@ -4,7 +4,7 @@ import { createExtension, memoryStore } from '../src/extension.ts';
 import { ServerClient } from '../src/server.ts';
 import { cleanText } from '../src/text.ts';
 
-function setup(mode = 'tui') {
+function setup(mode = 'tui', clipboard?: () => Promise<string>) {
   const hooks: any = {}, commands: any = {}, renderers: any = {};
   const entries: any[] = [], calls: any[] = [], notices: any[] = [];
   const fetcher = async (url: any, init: any) => {
@@ -19,7 +19,7 @@ function setup(mode = 'tui') {
   const pi: any = {on:(n:any,h:any)=>hooks[n]=h, registerCommand:(n:any,c:any)=>commands[n]=c,
     registerEntryRenderer:(n:any,r:any)=>renderers[n]=r,
     appendEntry:(customType:any,data:any)=>entries.push({type:'custom',customType,data})};
-  createExtension(pi, client, memoryStore());
+  createExtension(pi, client, memoryStore(), clipboard);
   const emit = async (name:string,event:any={})=>{ await hooks[name](event,ctx); await new Promise(resolve=>setImmediate(resolve)); };
   const command = (args:string)=>commands.tts.handler(args,ctx);
   const finish = async (text='**Hola** [mundo](https://example.org)', stopReason='stop')=>{
@@ -59,10 +59,10 @@ test('manual controls and numbered/latest playback; off hides controls',async()=
   const s=setup(); await s.finish(); await s.finish('Segunda');
   assert.equal(s.cards().length,2); assert.equal(s.calls.length,0);
   const component=s.renderers['tehablo-tts'](s.cards()[0],{}, {fg:(_:any,t:any)=>t});
-  assert.equal(component.render(100)[0],'[ ⏻ TTS ] [.⚙ ]');assert.doesNotMatch(component.render(100)[0],/\/tts|\b1\b(?!\.\d)/);
+  assert.equal(component.render(100)[0],'[ ⏻ TTS ] [ ≡ ]');assert.doesNotMatch(component.render(100)[0],/\/tts|\b1\b(?!\.\d)/);
   await s.command('play 1'); assert.deepEqual(s.calls.at(-1),['/speak',{id:'0',text:'Hola mundo'}]);
   await s.command('play'); assert.equal(s.calls.at(-1)[1].text,'Segunda');
-  assert.equal(component.render(100)[0],'[ ▶ Escuchar ] [ ⋯ ] [.⚙ ]');
+  assert.equal(component.render(100)[0],'[ ▶ ] [ ▶ copiado ] [ ⋯ ]');
   await s.command('off'); assert.deepEqual(component.render(100),[]);
 });
 test('auto toggles, skips errors/aborts/empty; new prompt stops',async()=>{
@@ -72,6 +72,29 @@ test('auto toggles, skips errors/aborts/empty; new prompt stops',async()=>{
   assert.equal(s.calls.filter(c=>c[0]==='/speak').length,1);
   await s.emit('agent_settled',{aborted:true}); assert.equal(s.cards().length,2);
   await s.emit('agent_start'); assert.equal(s.calls.at(-1)[0],'/stop');
+});
+test('[ Leer copiado ] reads the copied text in that bar; an empty or unreadable clipboard only warns',async()=>{
+  let copied:any='**Hola** copiado';
+  const s=setup('tui',async()=>{ if(copied instanceof Error) throw copied; return copied; });
+  await s.finish(); await s.command('play'); await s.command('stop');
+  const component=s.renderers['tehablo-tts'](s.cards()[0],{}, {fg:(_:any,t:any)=>t});
+  const press=async()=>{const line=component.render(100)[0]; assert.ok(line.includes('[ ▶ copiado ]'),line);
+    component.handleMouse({type:'click',button:'left',x:Array.from(line.slice(0,line.indexOf('▶ copiado'))).length,y:0});
+    await new Promise(r=>setImmediate(r)); await new Promise(r=>setImmediate(r));};
+  await press(); assert.deepEqual(s.calls.at(-1),['/speak',{id:'0',text:'Hola copiado'}]);
+  assert.match(component.render(100)[0],/^\[ ‖ \] \[ ■ \]/);
+  await s.command('stop'); const speaks=()=>s.calls.filter(c=>c[0]==='/speak').length; const before=speaks();
+  copied='  '; await press(); assert.deepEqual(s.notices.at(-1),['El portapapeles está vacío.','warning']);
+  copied=new Error('No se pudo leer el portapapeles: instala wl-clipboard o xclip.'); await press();
+  assert.deepEqual(s.notices.at(-1),['TTS: No se pudo leer el portapapeles: instala wl-clipboard o xclip.','warning']);
+  assert.equal(speaks(),before);
+});
+test('/tts auto alone toggles auto reading',async()=>{
+  const s=setup(); await s.command('auto'); assert.equal(s.notices.at(-1)[0],'Lectura automática: sí');
+  await s.finish(); assert.equal(s.calls.filter(c=>c[0]==='/speak').length,1);
+  await s.command('auto'); assert.equal(s.notices.at(-1)[0],'Lectura automática: no');
+  await s.finish('Manual'); assert.equal(s.calls.filter(c=>c[0]==='/speak').length,1);
+  await s.command('auto x'); assert.equal(s.notices.at(-1)[0],'Uso: /tts auto');
 });
 test('playback endpoints, server config error and voices/status',async()=>{
   const s=setup(); for(const c of ['pause','resume','stop']) {await s.command(c); assert.equal(s.calls.at(-1)[0],'/'+c);}

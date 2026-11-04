@@ -5,21 +5,21 @@ import {mkdtempSync, writeFileSync, rmSync, mkdirSync} from 'node:fs';
 import {join} from 'node:path';
 import {DEFAULTS} from '../src/settings.ts';
 
-function setup(store=memoryStore()) {
+function setup(store=memoryStore(),clipboard?:()=>Promise<string>) {
   const windows:any[]=[], keyHandlers:any[]=[];
   const configs:any[]=[], notices:string[]=[], statuses:(string|undefined)[]=[], settings={volume:1,speed:1,error:null as string|null};
   const hooks:any={}, calls:string[]=[], entries:any[]=[{type:'message',id:'a',message:{role:'assistant',content:'Hola'}} ,{type:'custom',customType:'tehablo-tts',data:{messageId:'a',number:1}}];
   let renderer:any, command:any, state='playing', id:string|null='a', renders=0, fail=false, ready=true, ensures=0;
   const client:any={beginSession(){},ensure:async()=>{ensures++;},stop:async()=>{},shutdown:async()=>{},powerOff:async()=>{calls.push('/shutdown');},request:async(path:string)=>{calls.push(path);if(fail)throw Error('offline');if(path==='/health')return {...settings,ready};return {state,id,error:settings.error};},action:async(path:string,body:any)=>{calls.push(path);if(path==='/config'){configs.push(body);Object.assign(settings,body);return {...settings,ready};}if(path==='/health')return {...settings,ready};if(path==='/pause')state='paused';if(path==='/resume')state='playing';return {state};}};
-  const ctx:any={mode:'tui',sessionManager:{getBranch:()=>entries},ui:{onTerminalInput:(h:any)=>{keyHandlers.push(h);return()=>{keyHandlers.splice(keyHandlers.indexOf(h),1);};},custom:async(factory:any,options:any)=>{const w=factory({requestRender(){}},{fg:(_:any,t:string)=>t},{matches:()=>false},()=>{});windows.push({w,options});},notify(text:string){notices.push(text);},setStatus(_:string,text:string|undefined){renders++;statuses.push(text);}}};
-  createExtension({on:(n:string,h:any)=>hooks[n]=h,registerCommand:(_:any,c:any)=>command=c.handler,registerEntryRenderer:(_:any,r:any)=>renderer=r} as any,client,store);
+  const ctx:any={mode:'tui',sessionManager:{getBranch:()=>entries},ui:{onTerminalInput:(h:any)=>{keyHandlers.push(h);return()=>{keyHandlers.splice(keyHandlers.indexOf(h),1);};},custom:(factory:any,options:any)=>new Promise<void>(resolve=>{const entry:any={options,closed:false};entry.w=factory({requestRender(){}},{fg:(_:any,t:string)=>t},{matches:()=>false},()=>{entry.closed=true;resolve();});windows.push(entry);}),notify(text:string){notices.push(text);},setStatus(_:string,text:string|undefined){renders++;statuses.push(text);}}};
+  createExtension({on:(n:string,h:any)=>hooks[n]=h,registerCommand:(_:any,c:any)=>command=c.handler,registerEntryRenderer:(_:any,r:any)=>renderer=r} as any,client,store,clipboard);
   hooks.session_start({},ctx);
   const card=renderer(entries[1],{}, {fg:(_:any,t:string)=>t});
   return {store,windows,keyHandlers,press:(d:string)=>keyHandlers.map(h=>h(d)),client,calls,card,configs,notices,statuses,line:()=>card.render(200)[0], command:(s:string)=>command(s,ctx),set:(s:string,i:string|null='a')=>{state=s;id=i;},setReady:(value:boolean)=>{ready=value;},setError:(value:string)=>{settings.error=value;},ensures:()=>ensures,close:()=>hooks.session_shutdown({},ctx),agentStart:()=>hooks.agent_start({},ctx),fail:(value=true)=>{fail=value;},renders:()=>renders};
 }
 test('every start button column is clickable, including normal spaces and brackets',async()=>{
   for(let x=0;x<Array.from('[ ⏻ TTS ]').length;x++) {
-    const s=setup();try {await click(s.card,x);assert.equal(s.ensures(),1,`column ${x}`);assert.equal(s.line(),'[ ▶ Escuchar ] [ ⋯ ] [.⚙ ]');}finally{await s.close();}
+    const s=setup();try {await click(s.card,x);assert.equal(s.ensures(),1,`column ${x}`);assert.equal(s.line(),'[ ▶ ] [ ▶ copiado ] [ ⋯ ]');}finally{await s.close();}
   }
 });
 
@@ -28,11 +28,11 @@ test('expanded controls end with power off, release idle or playing server and a
     const s=setup();try {
       await clickAt(s,'⏻ TTS');if(playing)await s.command('play');
       assert.ok(!s.line().includes('[ ⏻ ]'));
-      await clickAt(s,'[ ⋯ ]');assert.ok(s.line().endsWith('Vel [- 1.00x +] [ ⏻ ] [.⚙ ]'));
+      await clickAt(s,'[ ⋯ ]');assert.ok(s.line().endsWith('Vel [- 1.00x +] [ ⏻ ]'));
       await clickAt(s,'[ ⏻ ]');assert.deepEqual(s.calls.filter((p:string)=>p==='/shutdown'),['/shutdown']);
-      assert.equal(s.line(),'[ ⏻ TTS ] [.⚙ ]');const count=s.calls.length;await tick();assert.equal(s.calls.length,count);
-      await clickAt(s,'⏻ TTS');assert.equal(s.line(),'[ ▶ Escuchar ] [ ⋯ ] [.⚙ ]');
-      await clickAt(s,'Escuchar');assert.ok(s.calls.includes('/speak'));assert.deepEqual(s.notices,[]);
+      assert.equal(s.line(),'[ ⏻ TTS ] [ ≡ ]');const count=s.calls.length;await tick();assert.equal(s.calls.length,count);
+      await clickAt(s,'⏻ TTS');assert.equal(s.line(),'[ ▶ ] [ ▶ copiado ] [ ⋯ ]');
+      await clickAt(s,'[ ▶ ]');assert.ok(s.calls.includes('/speak'));assert.deepEqual(s.notices,[]);
     }finally{await s.close();}
   }
 });
@@ -54,7 +54,7 @@ test('power off invalidates pending boot, readiness and playback responses',asyn
       await clickAt(s,'[ ⏻ ]');const count=s.calls.length;
       resolve(pending==='poll'?{state:'playing',id:'a'}:{ready:true,volume:1.5,speed:1.5});
       await new Promise(r=>setImmediate(r));await tick();
-      assert.equal(s.line(),'[ ⏻ TTS ] [.⚙ ]');assert.equal(s.calls.length,count);assert.deepEqual(s.notices.filter((n:string)=>n.startsWith('TTS:')),[]);
+      assert.equal(s.line(),'[ ⏻ TTS ] [ ≡ ]');assert.equal(s.calls.length,count);assert.deepEqual(s.notices.filter((n:string)=>n.startsWith('TTS:')),[]);
     }finally{await s.close();}
   }
 });
@@ -71,7 +71,7 @@ for(const [command,path] of [['speed 1.25','/config'],['model spanish_24l','/con
       await clickAt(s,'[ ⏻ ]');const count=s.calls.length;
       resolve({ready:true,volume:1.5,speed:1.25,model:'spanish_24l',voice:'lola',voices:['lola'],state:'idle'});
       await pending;
-      assert.equal(s.line(),'[ ⏻ TTS ] [.⚙ ]');assert.equal(s.calls.length,count);assert.deepEqual(s.notices,[]);
+      assert.equal(s.line(),'[ ⏻ TTS ] [ ≡ ]');assert.equal(s.calls.length,count);assert.deepEqual(s.notices,[]);
     }finally{await s.close();}
   });
 }
@@ -82,7 +82,7 @@ test('config and status commands still synchronize and report successful results
     s.client.action=async(path:string,body:any)=>({...await action(path,body),model:'spanish',voice:'lola',voices:['lola']});
     for(const [command,body] of [['speed 1.25',{speed:1.25}],['model spanish_24l',{model:'spanish_24l'}],['voice lola',{voice:'lola'}]] as const) {
       await s.command(command);assert.deepEqual(s.configs.at(-1),body);
-      assert.equal(s.line(),'[ ▶ Escuchar ] [ ⋯ ] [.⚙ ]');
+      assert.equal(s.line(),'[ ▶ ] [ ▶ copiado ] [ ⋯ ]');
       assert.equal(s.notices.at(-1),'Modelo: spanish · voz: lola · velocidad: 1.25 · volumen: 100 %');
     }
     await s.command('voice');assert.equal(s.notices.at(-1),'Voces: lola');
@@ -102,7 +102,7 @@ test('speech failure warns once and resets playback',async()=>{
     await s.command('play');s.set('idle',null);s.setError('speech failed: broken playback');
     await tick();
     assert.deepEqual(s.notices,['TTS: no se pudo reproducir: speech failed: broken playback']);
-    assert.match(s.line(),/Escuchar/);
+    assert.match(s.line(),/^\[ ▶ \] \[ ▶ copiado \]/);
     const count=s.calls.length;await tick();assert.equal(s.calls.length,count);
     assert.equal(s.notices.length,1);
   }finally{await s.close();}
@@ -114,23 +114,23 @@ test('three consecutive status failures stop playback; success resets the count'
     assert.deepEqual(s.notices,[]);assert.match(s.line(),/■/);
     s.fail(false);await tick();s.fail();await tick();await tick();
     assert.deepEqual(s.notices,[]);assert.match(s.line(),/■/);
-    await tick();assert.equal(s.line(),'[ ⏻ TTS ] [.⚙ ]');
+    await tick();assert.equal(s.line(),'[ ⏻ TTS ] [ ≡ ]');
     assert.deepEqual(s.notices,['TTS: se perdió la conexión con el servidor. Revisa logs/tehablo-server.log.']);
     const count=s.calls.length;await tick();assert.equal(s.calls.length,count);assert.equal(s.notices.length,1);
   }finally{await s.close();}
 });
 
-test('start button shows Iniciar, then Cargando, then Escuchar when the model is ready',async()=>{
+test('start button shows Iniciar, then Cargando, then play when the model is ready',async()=>{
   const s=setup();
   try {
-    assert.equal(s.line(),'[ ⏻ TTS ] [.⚙ ]');assert.equal(s.calls.length,0);assert.equal(s.ensures(),0);
+    assert.equal(s.line(),'[ ⏻ TTS ] [ ≡ ]');assert.equal(s.calls.length,0);assert.equal(s.ensures(),0);
     s.setReady(false);
     await clickAt(s,'⏻ TTS');
     assert.equal(s.ensures(),1);assert.ok(s.calls.includes('/health'));
-    assert.equal(s.line(),'[ Cargando… ] [.⚙ ]');assert.equal(s.statuses.at(-1),'TTS manual · cargando');
+    assert.equal(s.line(),'[ Cargando… ] [ ≡ ]');assert.equal(s.statuses.at(-1),'TTS manual · cargando');
     const before=s.ensures();await click(s.card,2);assert.equal(s.ensures(),before);assert.ok(!s.calls.includes('/speak'));
     s.setReady(true);await tick();
-    assert.equal(s.line(),'[ ▶ Escuchar ] [ ⋯ ] [.⚙ ]');assert.equal(s.statuses.at(-1),'TTS manual');
+    assert.equal(s.line(),'[ ▶ ] [ ▶ copiado ] [ ⋯ ]');assert.equal(s.statuses.at(-1),'TTS manual');
     assert.deepEqual(s.notices,[]);
   } finally {await s.close();}
 });
@@ -139,9 +139,9 @@ test('model load failure cancels readiness polling and warns',async()=>{
   const s=setup();
   try {
     s.setReady(false);await clickAt(s,'⏻ TTS');
-    assert.equal(s.line(),'[ Cargando… ] [.⚙ ]');
+    assert.equal(s.line(),'[ Cargando… ] [ ≡ ]');
     s.setError('model load failed: broken model');await tick();
-    assert.equal(s.line(),'[ ⏻ TTS ] [.⚙ ]');
+    assert.equal(s.line(),'[ ⏻ TTS ] [ ≡ ]');
     assert.equal(s.statuses.at(-1),'TTS manual');
     assert.deepEqual(s.notices,['TTS: el modelo no cargó: model load failed: broken model']);
     const count=s.calls.length;await tick();assert.equal(s.calls.length,count);
@@ -153,7 +153,7 @@ test('failed start returns to Iniciar and reports the error',async()=>{
   const s=setup();
   try {
     s.fail();await clickAt(s,'⏻ TTS');
-    assert.equal(s.line(),'[ ⏻ TTS ] [.⚙ ]');assert.deepEqual(s.notices,['TTS: offline']);
+    assert.equal(s.line(),'[ ⏻ TTS ] [ ≡ ]');assert.deepEqual(s.notices,['TTS: offline']);
   } finally {await s.close();}
 });
 
@@ -161,11 +161,11 @@ test('controls toggle shows and hides volume and speed',async()=>{
   const s=setup();
   try {
     await start(s);
-    assert.equal(s.line(),'[ ▶ Escuchar ] [ ⋯ ] [.⚙ ]');
+    assert.equal(s.line(),'[ ▶ ] [ ▶ copiado ] [ ⋯ ]');
     await clickAt(s,'[ ⋯ ]',2);
-    assert.equal(s.line(),'[ ▶ Escuchar ] [ → ]  Vol [- 100% +]  Vel [- 1.00x +] [ ⏻ ] [.⚙ ]');
+    assert.equal(s.line(),'[ ▶ ] [ ▶ copiado ] [ → ] : [ ≡ ]  Vol [- 100% +]  Vel [- 1.00x +] [ ⏻ ]');
     await clickAt(s,'[ → ]',2);
-    assert.equal(s.line(),'[ ▶ Escuchar ] [ ⋯ ] [.⚙ ]');assert.equal(s.configs.length,0);
+    assert.equal(s.line(),'[ ▶ ] [ ▶ copiado ] [ ⋯ ]');assert.equal(s.configs.length,0);
   } finally {await s.close();}
 });
 
@@ -188,7 +188,7 @@ test('volume and speed buttons, limits and command synchronization',async()=>{
     for(let i=0;i<8;i++)await velUp();assert.equal(s.configs.at(-1).speed,1.5);
     await s.command('speed 1.25');assert.match(s.line(),/Vel \[- 1\.25x \+\]/);
     await s.command('speed 0.9');await velDown();assert.equal(s.configs.at(-1).speed,.9);await velUp();assert.equal(s.configs.at(-1).speed,1);
-    await clickAt(s,'Escuchar');assert.ok(s.calls.includes('/speak'));
+    await clickAt(s,'[ ▶ ]');assert.ok(s.calls.includes('/speak'));
   } finally {await s.close();}
 });
 
@@ -197,18 +197,18 @@ test('active states use icons, pause/resume/stop clicks and command fallbacks',a
   try {
     await start(s);
     await s.command('play 1'); await tick();
-    assert.equal(s.line(),'[ ‖ ] [ ■ ] [ ⋯ ] [.⚙ ]');
+    assert.equal(s.line(),'[ ‖ ] [ ■ ] [ ⋯ ]');
     const before=s.calls.length;
     await click(s.card,5);await click(s.card,199);assert.equal(s.calls.length,before);
-    await click(s.card,2);assert.ok(s.calls.includes('/pause'));assert.equal(s.line(),'[ ▶ ] [ ■ ] [ ⋯ ] [.⚙ ]');
-    await click(s.card,2);assert.ok(s.calls.includes('/resume'));assert.equal(s.line(),'[ ‖ ] [ ■ ] [ ⋯ ] [.⚙ ]');
-    await clickAt(s,'[ ⋯ ]',2);assert.equal(s.line(),'[ ‖ ] [ ■ ] [ → ]  Vol [- 100% +]  Vel [- 1.00x +] [ ⏻ ] [.⚙ ]');
-    await click(s.card,8);assert.ok(s.calls.includes('/stop'));assert.equal(s.line(),'[ ▶ Escuchar ] [ → ]  Vol [- 100% +]  Vel [- 1.00x +] [ ⏻ ] [.⚙ ]');
+    await click(s.card,2);assert.ok(s.calls.includes('/pause'));assert.equal(s.line(),'[ ▶ ] [ ■ ] [ ⋯ ]');
+    await click(s.card,2);assert.ok(s.calls.includes('/resume'));assert.equal(s.line(),'[ ‖ ] [ ■ ] [ ⋯ ]');
+    await clickAt(s,'[ ⋯ ]',2);assert.equal(s.line(),'[ ‖ ] [ ■ ] [ → ] : [ ≡ ]  Vol [- 100% +]  Vel [- 1.00x +] [ ⏻ ]');
+    await click(s.card,8);assert.ok(s.calls.includes('/stop'));assert.equal(s.line(),'[ ▶ ] [ ▶ copiado ] [ → ] : [ ≡ ]  Vol [- 100% +]  Vel [- 1.00x +] [ ⏻ ]');
     for(const state of ['loading','generating','playing','paused']) {
       s.set(state);await s.command('play 1');await tick();
       assert.match(s.line(),state==='paused'?/^\[ ▶ \] \[ ■ \]/:/^\[ ‖ \] \[ ■ \]/);
     }
-    s.set('playing','other');await tick();assert.match(s.line(),/^\[ ▶ Escuchar \]/);
+    s.set('playing','other');await tick();assert.match(s.line(),/^\[ ▶ \] \[ ▶ copiado \]/);
     s.set('idle',null);await tick();const count=s.calls.length;await tick();assert.equal(s.calls.length,count);
     assert.ok(s.renders()>0);
   } finally {await s.close();}
@@ -218,18 +218,18 @@ test('play from a stopped server starts it without pressing Iniciar',async()=>{
   const s=setup();
   try {
     await s.command('play 1');assert.equal(s.ensures(),1);assert.ok(s.calls.includes('/speak'));
-    await tick();assert.equal(s.line(),'[ ‖ ] [ ■ ] [ ⋯ ] [.⚙ ]');
+    await tick();assert.equal(s.line(),'[ ‖ ] [ ■ ] [ ⋯ ]');
   } finally {await s.close();}
 });
 
 test('no polling before playback or after lifecycle stop',async()=>{
- const s=setup();try {await tick();assert.equal(s.calls.length,0);await s.command('play');await tick();s.fail();await tick();await s.agentStart();assert.match(s.line(),/Escuchar/);const n=s.calls.length;await tick();assert.equal(s.calls.length,n);}finally{await s.close();}
+ const s=setup();try {await tick();assert.equal(s.calls.length,0);await s.command('play');await tick();s.fail();await tick();await s.agentStart();assert.match(s.line(),/^\[ ▶ \] \[ ▶ copiado \]/);const n=s.calls.length;await tick();assert.equal(s.calls.length,n);}finally{await s.close();}
 });
 
-test('[.⚙ ] opens the centered settings window with the server off; choices are saved, not sent',async()=>{
+test('[ ≡ ] opens the centered settings window with the server off; choices are saved, not sent',async()=>{
   const s=setup();try {
-    assert.equal(s.line(),'[ ⏻ TTS ] [.⚙ ]');
-    await clickAt(s,'[.⚙ ]');
+    assert.equal(s.line(),'[ ⏻ TTS ] [ ≡ ]');
+    await clickAt(s,'[ ≡ ]');
     assert.equal(s.windows.length,1);assert.deepEqual(s.windows[0].options,{overlay:true,overlayOptions:{anchor:'center',width:72}});
     assert.equal(s.ensures(),0);
     const w=s.windows[0].w;
@@ -266,14 +266,32 @@ test('turning auto reading on starts a stopped server; off or already running do
     const s=setup(store);try {
       if(how==='command')await s.command('auto on');
       if(how==='shortcut')s.press('\x1ba');
-      if(how==='window'){await clickAt(s,'[.⚙ ]');s.windows[0].w.c.change('auto',true);}
+      if(how==='window'){await clickAt(s,'[ ≡ ]');s.windows[0].w.c.change('auto',true);}
       await new Promise(r=>setImmediate(r));
       assert.equal(s.store.load().auto,true,how);assert.equal(s.statuses.at(-1),'TTS auto',how);
-      assert.equal(s.ensures(),1,how);assert.equal(s.line(),'[ ▶ Escuchar ] [ ⋯ ] [.⚙ ]',how);
+      assert.equal(s.ensures(),1,how);assert.equal(s.line(),'[ ▶ ] [ ▶ copiado ] [ ⋯ ]',how);
       await s.command('auto off');await s.command('auto on');assert.equal(s.ensures(),1,how);
     }finally{await s.close();}
   }
   const s=setup();try {await s.command('off');await s.command('auto on');assert.equal(s.ensures(),0);}finally{await s.close();}
+});
+
+test('open controls: [ → ] closes them, ":" only separates, and the menu sits before Vol',async()=>{
+  const s=setup();try {
+    await start(s);assert.equal(s.line(),'[ ▶ ] [ ▶ copiado ] [ ⋯ ]');
+    await clickAt(s,'[ ⋯ ]');const open='[ ▶ ] [ ▶ copiado ] [ → ] : [ ≡ ]  Vol [- 100% +]  Vel [- 1.00x +] [ ⏻ ]';assert.equal(s.line(),open);
+    await clickAt(s,' : ',1);assert.equal(s.line(),open);assert.equal(s.calls.length,1);
+    await clickAt(s,'[ → ]');assert.equal(s.line(),'[ ▶ ] [ ▶ copiado ] [ ⋯ ]');
+    await clickAt(s,'[ ⋯ ]');await clickAt(s,'[ ≡ ]');await new Promise(r=>setImmediate(r));assert.equal(s.windows.length,1);
+  }finally{await s.close();}
+});
+
+test('the menu button closes the open settings window instead of opening another',async()=>{
+  const s=setup();try {
+    await clickAt(s,'[ ≡ ]');await new Promise(r=>setImmediate(r));assert.equal(s.windows.length,1);
+    await clickAt(s,'[ ≡ ]');await new Promise(r=>setImmediate(r));assert.equal(s.windows.length,1);assert.equal(s.windows[0].closed,true);
+    await clickAt(s,'[ ≡ ]');await new Promise(r=>setImmediate(r));assert.equal(s.windows.length,2);
+  }finally{await s.close();}
 });
 
 test('turning the server off also turns auto reading off; restart keeps it',async()=>{
@@ -283,7 +301,7 @@ test('turning the server off also turns auto reading off; restart keeps it',asyn
       await s.command('auto on');assert.equal(s.store.load().auto,true,how);
       if(how==='button'){await clickAt(s,'[ ⋯ ]');await clickAt(s,'[ ⏻ ]');}
       if(how==='shortcut'){s.press('\x1bp');await new Promise(r=>setImmediate(r));}
-      if(how==='window'||how==='restart'){await clickAt(s,'[.⚙ ]');s.windows[0].w.c.power(how==='window'?'off':'restart');await new Promise(r=>setImmediate(r));}
+      if(how==='window'||how==='restart'){await clickAt(s,'[ ⋯ ]');await clickAt(s,'[ ≡ ]');s.windows[0].w.c.power(how==='window'?'off':'restart');await new Promise(r=>setImmediate(r));}
       assert.ok(s.calls.includes('/shutdown'),how);
       const auto=how==='restart';
       assert.equal(s.store.load().auto,auto,how);assert.equal(s.statuses.at(-1),auto?'TTS auto':'TTS manual',how);
@@ -316,6 +334,15 @@ test('shortcuts run their action only when enabled, are consumed, and stop after
   assert.equal(s.keyHandlers.length,0);
 });
 
+test('the copied-text shortcut reads the clipboard in the latest bar',async()=>{
+  const store=memoryStore();store.save({...DEFAULTS,shortcutsOn:true,shortcuts:{copied:'alt+c'}});
+  const s=setup(store,async()=>'Texto copiado');try {
+    s.set('idle',null);
+    assert.deepEqual(s.press('\x1bc'),[{consume:true}]);await new Promise(r=>setImmediate(r));await new Promise(r=>setImmediate(r));
+    assert.ok(s.calls.includes('/speak'));assert.match(s.line(),/^\[ ‖ \] \[ ■ \]/);
+  }finally{await s.close();}
+});
+
 test('with shortcuts off nothing is intercepted',async()=>{
   const store=memoryStore();store.save({...DEFAULTS,shortcutsOn:false,shortcuts:{stop:'ctrl+alt+s'}});
   const s=setup(store);try {
@@ -327,7 +354,7 @@ test('with the server off the window lists the shared table and marks the start 
   const table=[{name:'lola',voice:'lola',model:'spanish',kind:'download',note:'la de siempre',downloaded:null,default:true},
     {name:'Regina',voice:'Regina',model:'phonon',kind:'account',note:'México',downloaded:null}];
   const s=setup(memoryStore(table));try {
-    await clickAt(s,'[.⚙ ]');
+    await clickAt(s,'[ ≡ ]');
     const w=s.windows[0].w;
     assert.deepEqual(w.c.voices().map((v:any)=>v.name),['lola','Regina']);
     assert.deepEqual(w.c.active(),{model:'spanish',voice:'lola'});
@@ -341,7 +368,7 @@ test('the server voice and its download states are used once known',async()=>{
     const request=s.client.request;
     s.client.request=async(path:string,body:any)=>path==='/voices'?{voices:['lola'],catalog:[{...table[0],downloaded:true}]}:
       path==='/health'?{...await request(path,body),model:'spanish',voice:'other'}:request(path,body);
-    await start(s);await clickAt(s,'[.⚙ ]');
+    await start(s);await clickAt(s,'[ ⋯ ]');await clickAt(s,'[ ≡ ]');
     const w=s.windows[0].w;
     assert.equal(w.c.voices()[0].downloaded,true);
     assert.deepEqual(w.c.active(),{model:'spanish',voice:'other'});

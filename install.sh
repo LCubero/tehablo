@@ -46,4 +46,4 @@ printf '%s\n' 'Pi encuentra el entorno automáticamente. Los modelos se descarga
     'Voz opcional más natural en Pi: Phonon 40M es (acceso restringido, uso no comercial). Para activarla:' \
     '  1. Acepta los términos en https://huggingface.co/gradium/phonon-40m-es' \
     '  2. Ejecuta: uvx hf auth login' \
-    'Pi lee con Pocket TTS (lola) mientras no la elijas; también se activa desde [.⚙ ] en Pi.'
+    'Pi lee con Pocket TTS (lola) mientras no la elijas; también se activa desde [ ≡ ] en Pi.'

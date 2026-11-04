@@ -28,7 +28,7 @@ Este archivo proyecta solo hechos verificados del proyecto: registros activos, b
 <!-- doc-role:recent-work -->
 
 - 6 voces clonadas aprobadas incluidas ya preparadas y sin token (`Facundo`, `Santiago`, `Camila`, `Javiera`, `Diego`, `Felipe`); volumen más fuerte y parejo entre voces; tabla de voces con `●` activa y *RAM aprox.* (`RH-W-0004`, `RH-W-0005`).
-- Ventana de ajustes `[.⚙ ]` en Pi (voz, volumen, velocidad, lectura automática, atajos, servidor) con ajustes guardados; Phonon 40M es elegible como voz más natural, `lola` sigue de inicio (`RH-W-0004`, `RH-W-0005`).
+- Ventana de ajustes `[ ≡ ]` en Pi (voz, volumen, velocidad, lectura automática, atajos, servidor) con ajustes guardados; Phonon 40M es elegible como voz más natural, `lola` sigue de inicio (`RH-W-0004`, `RH-W-0005`).
 - `RH-W-0026` (`completed`): en Fedora, el primer arranque real del TTS tras reiniciar quedó listo en 5,87 s; no se repitieron los ~14 s del 2026-10-31, cuya causa sigue sin conocerse. Se reabre si vuelve a pasar.
 - `RH-W-0008` (`completed`): instalación con un comando, `./install.sh` (verificado en Fedora) e `install.ps1` (verificado en Windows con PowerShell 5.1 y 7), en clones limpios, segunda ejecución, dual boot y sin `uv`.
 - `RH-W-0013` (`completed`): Pi avisa si una lectura falla o se pierde la conexión con el servidor, y un diccionario de pronunciación inválido queda en el log del servidor.
@@ -56,7 +56,7 @@ Este archivo proyecta solo hechos verificados del proyecto: registros activos, b
 
 - Registrar todo pendiente no trivial en [roadmap.md](roadmap.md), sin mantener un segundo backlog aquí.
 - `RH-W-0002` (`deferred`, P3): pronunciaciones en inglés y limpieza de símbolos aplicadas (hashes omitidos, separadores, flechas, paréntesis y barras); quedan las extensiones de archivo y la confirmación por escucha ([guía de pronunciación](../pronunciacion.md)).
-- `RH-W-0004` (`deferred`, P3): la ventana de ajustes `[.⚙ ]` de Pi ya existe (2026-11-04); quedan la guía en la TUI y la documentación, escuchar una voz antes de elegirla, la salida de audio y la robustez ante muchos clics.
+- `RH-W-0004` (`deferred`, P3): la ventana de ajustes `[ ≡ ]` de Pi ya existe (2026-11-04); quedan la guía en la TUI y la documentación, escuchar una voz antes de elegirla, la salida de audio y la robustez ante muchos clics.
 - `RH-W-0005` (`active`, P3): probadas a ciegas voces sin token y, con token, las 18 de `voices/` clonadas con Pocket TTS ([resumen y resultados](../pruebas-de-voces.md#resumen-2026-10-30)); varias suenan mejor que `lola`. Sigue la prueba con NeuTTS y el ajuste castellano; ya incorporadas Phonon y 6 clonadas aprobadas; falta decidir sobre otros motores. El 2026-11-03, en Fedora, Phonon 40M es (`Regina`, `Iker`) sonó a ciegas mucho más natural que `lola` gastando menos (303 MiB y 8 s de CPU frente a 961 MiB y 10,6 s); licencia no comercial y sin probar todavía con los ajustes de tehablo ([resultados](../pruebas-de-voces.md#phonon-40m-es-frente-a-lola-spanish_24l-y-kokoro-2026-11-03-fedora)). Corregida solo la salida nueva del descargador a PCM16 (pruebas deterministas sin red); los originales existentes siguen en coma flotante. El lector de Pocket TTS acepta una copia PCM16 donde rechaza el original, pero esta corrección no verifica una clonación completa ni añade escuchas.
 - `RH-W-0007` (`deferred`, P3): modo GPU opcional, manteniendo CPU como predeterminado.
 - `RH-W-0009` (`deferred`, P2): versión Docker y despliegue seguro en VPS; depende de `RH-W-0001` y `RH-W-0008`.

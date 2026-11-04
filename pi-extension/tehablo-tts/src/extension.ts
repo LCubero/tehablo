@@ -1,6 +1,7 @@
 import type { ExtensionAPI, ExtensionContext } from '@earendil-works/pi-coding-agent';
 import { ServerClient } from './server.ts';
-import { finalText } from './text.ts';
+import { cleanText, finalText } from './text.ts';
+import { readClipboard } from './clipboard.ts';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { ACTIONS, DEFAULTS, loadSettings, saveSettings, type Action, type Settings, type VoiceRow } from './settings.ts';
@@ -32,11 +33,13 @@ export const memoryStore = (table: VoiceRow[] = []): Store => {
 
 const ENTRY = 'tehablo-tts';
 interface Card { messageId: string; number: number }
-const help = '/tts on|off · auto on|off · play [n] · pause · resume · stop · voice [nombre] · model [phonon|spanish|spanish_24l] · speed [0.75-1.5]\n[.⚙ ] abre la ventana de ajustes; [ ⋯ ] muestra volumen y velocidad; [ ⏻ ] apaga el servidor y libera el modelo; [ ⏻ TTS ] vuelve a encenderlo.';
+const help = '/tts on|off · auto · play [n] · pause · resume · stop · voice [nombre] · model [phonon|spanish|spanish_24l] · speed [0.75-1.5]\n[ ▶ ] lee la respuesta; [ ▶ copiado ] lee lo copiado; [ ≡ ] abre la ventana de ajustes; [ ⋯ ] muestra volumen y velocidad; [ ⏻ ] apaga el servidor y libera el modelo; [ ⏻ TTS ] vuelve a encenderlo.';
 
-export function createExtension(pi: ExtensionAPI, client = new ServerClient(), store: Store = client.root ? fileStore(client.root) : memoryStore()) {
+export function createExtension(pi: ExtensionAPI, client = new ServerClient(), store: Store = client.root ? fileStore(client.root) : memoryStore(),
+  clipboard: () => Promise<string> = () => readClipboard()) {
   let settings: Settings = store.load();
   let applied = false, windowOpen = false;
+  let closeWindow: (() => void) | undefined;
   let current: {model: string; voice: string} | undefined;
   let stopKeys: (() => void) | undefined;
   const persist = () => { try { store.save(settings); } catch { /* Settings are best effort. */ } };
@@ -201,15 +204,28 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
     const entry: any = card && ctx.sessionManager.getBranch().find(e => e.id === card.messageId && e.type === 'message');
     const text = finalText(entry?.message);
     if (!text) { ctx.ui.notify('Respuesta no encontrada.', 'warning'); return; }
+    return play(card!.messageId, text);
+  };
+  /** Reads text in the bar of message `id`, so its pause and stop buttons control it. */
+  const play = async (id: string, text: string) => {
     const generation = epoch;
     await boot();
     if (generation !== epoch || !enabled) return;
-    await client.request('/speak', {id: card!.messageId, text});
+    await client.request('/speak', {id, text});
     if (generation !== epoch) return;
     started = true;
     pollFailures = 0;
-    update('generating', card!.messageId);
+    update('generating', id);
     poll();
+  };
+  /** Reads the copied text; Pi cannot see the terminal's mouse selection, so the user copies it first. */
+  const speakCopied = async (ctx: ExtensionContext, id?: string) => {
+    if (!enabled) { ctx.ui.notify('Activa TTS con /tts on.', 'warning'); return; }
+    const target = id ?? cards(ctx).at(-1)?.messageId;
+    if (!target) return;
+    const text = cleanText(await clipboard());
+    if (!text) { ctx.ui.notify('El portapapeles está vacío.', 'warning'); return; }
+    return play(target, text);
   };
   /** Live server changes when it runs; settings are always saved and applied on the next start. */
   const configure = async (body: Record<string, unknown>) => {
@@ -225,6 +241,9 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
   };
   const openSettings = async (ctx: ExtensionContext) => {
     if (ctx.mode !== 'tui') return;
+    // Clicks outside the overlay still reach the bar, so [ ≡ ] closes an open window instead of opening another.
+    if (windowOpen) { closeWindow?.(); return; }
+    windowOpen = true;
     try { await refreshVoices(); } catch { /* Keep the last known voices. */ }
     const warn = (error: unknown) => ctx.ui.notify(`TTS: ${error instanceof Error ? error.message : String(error)}`, 'warning');
     const run = (operation: () => Promise<unknown>) => { void operation().catch(warn); };
@@ -265,12 +284,12 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
         settings = {...settings, shortcuts}; persist();
       },
     };
-    windowOpen = true;
     try {
-      await ctx.ui.custom<void>((tui: any, theme: any, keybindings: any, done: () => void) =>
-      new SettingsWindow(controller, theme, keybindings, () => done(), () => tui.requestRender()) as any,
-      {overlay: true, overlayOptions: {anchor: 'center', width: 72}} as any);
-    } finally { windowOpen = false; }
+      await ctx.ui.custom<void>((tui: any, theme: any, keybindings: any, done: () => void) => {
+        closeWindow = done;
+        return new SettingsWindow(controller, theme, keybindings, () => done(), () => tui.requestRender()) as any;
+      }, {overlay: true, overlayOptions: {anchor: 'center', width: 72}} as any);
+    } finally { windowOpen = false; closeWindow = undefined; }
   };
   const shortcut = async (ctx: ExtensionContext, name: Action) => {
     switch (name) {
@@ -284,6 +303,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
       case 'pause': if (playback.state !== 'idle') return action(playback.state === 'paused' ? 'resume' : 'pause'); return;
       case 'stop': if (server !== 'off') return action('stop'); return;
       case 'settings': return openSettings(ctx);
+      case 'copied': return speakCopied(ctx);
     }
   };
   /** Shortcuts are read from raw input; only matched combinations are consumed. */
@@ -299,24 +319,24 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
     });
   };
   pi.registerEntryRenderer<Card>(ENTRY, (entry, _options, theme) => {
-    // Only single-column symbols, so click columns match Array.from lengths.
-    // [.⚙ ] goes last: some terminals draw ⚙ two columns wide, which would shift the clicks after it.
-    const withSettings = (list: {text: string; action: string; gap: string}[]) => {
-      list[list.length - 1] = {...list[list.length - 1], gap: ' '};
-      return [...list, {text: '[.⚙ ]', action: 'settings', gap: ''}];
-    };
-    const segments = () => withSettings(controls());
-    const controls = () => {
+    // Only single-column symbols, so click columns match Array.from lengths (≡ replaced ⚙, which some terminals draw two columns wide).
+    // The menu [ ≡ ] shows next to the start button when off, and inside the open controls when on.
+    const segments = () => {
       const active = playback.id === entry.data?.messageId && playback.state !== 'idle';
-      if (!active && server === 'off') return [{text: '[ ⏻ TTS ]', action: 'start', gap: ''}];
-      if (!active && server === 'loading') return [{text: '[ Cargando… ]', action: '', gap: ''}];
+      const menu = {text: '[ ≡ ]', action: 'settings', gap: ''};
+      if (!active && server === 'off') return [{text: '[ ⏻ TTS ]', action: 'start', gap: ' '}, menu];
+      if (!active && server === 'loading') return [{text: '[ Cargando… ]', action: '', gap: ' '}, menu];
       const paused = playback.state === 'paused';
+      const lead = active
+        ? [{text: paused ? '[ ▶ ]' : '[ ‖ ]', action: paused ? 'resume' : 'pause', gap: ' '}, {text: '[ ■ ]', action: 'stop', gap: ' '}]
+        : [{text: '[ ▶ ]', action: 'play', gap: ' '}, {text: '[ ▶ copiado ]', action: 'copied', gap: ' '}];
       return [
-        ...(active
-          ? [{text: paused ? '[ ▶ ]' : '[ ‖ ]', action: paused ? 'resume' : 'pause', gap: ' '}, {text: '[ ■ ]', action: 'stop', gap: ' '}]
-          : [{text: '[ ▶ Escuchar ]', action: 'play', gap: ' '}]),
-        {text: open ? '[ → ]' : '[ ⋯ ]', action: 'toggle', gap: open ? '  ' : ''},
+        ...lead,
+        {text: open ? '[ → ]' : '[ ⋯ ]', action: 'toggle', gap: open ? ' ' : ''},
         ...(open ? [
+          // ":" only separates the close button from the menu and the sound controls.
+          {text: ':', action: '', gap: ' '},
+          {...menu, gap: '  '},
           {text: 'Vol', action: '', gap: ' '},
           {text: '[-', action: 'volume-', gap: ' '},
           {text: `${Math.round(volume * 100)}%`, action: '', gap: ' '},
@@ -343,6 +363,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
               if (control.action === 'toggle') { open = !open; refresh(); return {handled: true, render: true}; }
               if (control.action === 'settings') { void safe(context, () => openSettings(context!)); return {handled: true, render: true}; }
               void safe(context, () => control.action === 'play' ? speak(context!, String(entry.data!.number))
+                : control.action === 'copied' ? speakCopied(context!, entry.data!.messageId)
                 : control.action === 'powerOff' ? turnOff()
                   : control.action === 'start' ? boot()
                   : /^(volume|speed)/.test(control.action) ? setting(context!, control.action) : action(control.action));
@@ -403,9 +424,10 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
           case 'on': enabled = true; refresh(); info('TTS activado.'); return;
           case 'off': enabled = false; epoch++; resetPlayback(); refresh(); await client.stop(); info('TTS desactivado.'); return;
           case 'auto':
-            if (!['on', 'off'].includes(value)) { ctx.ui.notify('Uso: /tts auto on|off', 'warning'); return; }
+            // Plain /tts auto toggles; on/off still work for anyone who already types them.
+            if (!['', 'on', 'off'].includes(value)) { ctx.ui.notify('Uso: /tts auto', 'warning'); return; }
             {
-              const starting = setAuto(value === 'on');
+              const starting = setAuto(value ? value === 'on' : !auto);
               info(`Lectura automática: ${auto ? 'sí' : 'no'}`); await starting; return;
             }
           case 'play': await speak(ctx, value); return;
