@@ -5,6 +5,7 @@ import {DEFAULTS, type VoiceRow} from '../src/settings.ts';
 
 const ROWS: VoiceRow[] = [
   {name: 'Regina', voice: 'Regina', model: 'phonon', kind: 'account', note: 'México', downloaded: false},
+  {name: 'Iker', voice: 'Iker', model: 'phonon', kind: 'account', note: 'España', downloaded: false},
   {name: 'rafael', voice: 'rafael', model: 'spanish', kind: 'download', note: 'España', downloaded: false},
   {name: 'lola', voice: 'lola', model: 'spanish', kind: 'download', note: 'la de siempre', downloaded: true},
   {name: 'ar-hombre-4310', voice: 'ar-hombre-4310.wav', model: 'spanish', kind: 'account', note: 'Argentina, clonada', downloaded: false},
@@ -26,6 +27,7 @@ function setup(over: Partial<Record<string, any>> = {}) {
     change: (field, value) => { calls.push(['change', field, value]); (state.settings as any)[field] = value; },
     power: action => { calls.push(['power', action]); if (action !== 'restart') state.server = action === 'on' ? 'ready' : 'off'; },
     saveToken: value => { if (value === 'bad') throw new Error('El token no es válido: copia el token completo de Hugging Face.'); calls.push(['token', value.length]); state.token = true; },
+    open: url => calls.push(['open', url]),
     setShortcut: (action, key) => { calls.push(['shortcut', action, key]); const sc = {...state.settings.shortcuts}; if (key) sc[action] = key; else delete sc[action]; state.settings = {...state.settings, shortcuts: sc}; },
   };
   const w = new SettingsWindow(c, over.theme ?? theme, kb, () => { closed = true; }, () => {});
@@ -114,6 +116,22 @@ test('choosing by type: downloaded activates, downloadable confirms, account ask
   assert.deepEqual(s.calls.at(-1), ['choose', 'Regina', 'phonon']);
 });
 
+test('the token guide keeps its short addresses and a click opens each one in the browser', () => {
+  const s = setup();
+  s.click('[ Cambiar ]'); s.click('Regina * (');
+  const lines = s.w.render(100);
+  assert.ok(lines.every(l => Array.from(l).length === 72), 'every line fits the window');
+  assert.ok(!lines.some(l => l.includes('https://')));
+  assert.ok(lines.some(l => l.includes(' 3. Token «Read-Only»:      huggingface.co/settings/tokens')), 'names the Hugging Face preset');
+  assert.ok(lines.some(l => l.includes('Enter · Esc · clic en un enlace lo abre')));
+  for (const link of ['huggingface.co/join', 'huggingface.co/gradium/phonon-40m-es', 'huggingface.co/settings/tokens']) s.click(link);
+  assert.deepEqual(s.calls, [['open', 'https://huggingface.co/join'], ['open', 'https://huggingface.co/gradium/phonon-40m-es'],
+    ['open', 'https://huggingface.co/settings/tokens']]);
+  s.click('Crea una cuenta:');
+  assert.equal(s.calls.length, 3, 'only the address is clickable');
+  assert.ok(s.text().includes('Token:'), 'the guide stays open');
+});
+
 test('an invalid token shows the error and keeps the field without revealing it', () => {
   const s = setup();
   s.click('[ Cambiar ]'); s.click('Regina * (');
@@ -128,9 +146,13 @@ test('an invalid token shows the error and keeps the field without revealing it'
 test('with a saved token, account voices skip the guide', () => {
   const s = setup({token: true});
   s.click('[ Cambiar ]');
-  assert.ok(s.text().includes('Con cuenta ✓'));
+  assert.ok(s.w.render(100).find(l => l.includes('Regina * ('))!.includes('Para descargar'));
+  assert.ok(!s.text().includes('Con cuenta ✓'));
   s.click('Regina * (');
   assert.ok(s.text().includes('[ Descargar y usar ]'));
+  assert.ok(s.text().includes(' Incluye también: Iker (España).'), 'names the voices in the same download');
+  s.key(''); s.click('rafael (');
+  assert.ok(s.text().includes('[ Descargar y usar ]') && !s.text().includes('Incluye también'), 'Pocket voices download one by one');
 });
 
 test('Editar opens the shortcuts table; keys are captured, validated and removable', () => {

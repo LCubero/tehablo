@@ -7,6 +7,7 @@ import { join } from 'node:path';
 import { ACTIONS, DEFAULTS, loadSettings, saveSettings, settingsDir, type Action, type Settings, type VoiceRow } from './settings.ts';
 import { keyOf } from './shortcuts.ts';
 import { checkToken, hasToken } from './token.ts';
+import { openUrl } from './browser.ts';
 import { SettingsWindow, type Controller } from './window.ts';
 
 /** Settings (user folder), token presence and voice table (project); tests use memory. */
@@ -297,6 +298,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
         if (key) shortcuts[name] = key; else delete shortcuts[name];
         settings = {...settings, shortcuts}; persist();
       },
+      open: url => openUrl(url),
     };
     try {
       await ctx.ui.custom<void>((tui: any, theme: any, keybindings: any, done: () => void) => {

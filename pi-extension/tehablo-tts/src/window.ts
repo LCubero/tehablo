@@ -20,6 +20,8 @@ export interface Controller {
   /** Throws an Error with a message safe to show (never the token). */
   saveToken(value: string): void;
   setShortcut(action: Action, key: string | undefined): void;
+  /** Opens a fixed help address in the browser. */
+  open(url: string): void;
 }
 interface Keys { matches(data: string, id: string): boolean; getResolvedBindings?(): Record<string, string | string[] | undefined> }
 interface Theme { fg(style: string, text: string): string }
@@ -51,7 +53,7 @@ export class SettingsWindow {
   typeLabel(v: VoiceRow) {
     if (v.downloaded) return 'Descargada';
     if (v.kind === 'download') return v.downloaded === null ? 'Sin cuenta' : 'Para descargar';
-    return this.c.state().token ? 'Con cuenta ✓' : 'Con cuenta gratis';
+    return this.c.state().token ? 'Para descargar' : 'Con cuenta gratis';
   }
   isActive(v: VoiceRow) { const a = this.c.active(); return a.voice === v.voice && a.model === v.model; }
   home() { this.page = 'main'; this.row = 0; this.col = 0; }
@@ -239,23 +241,30 @@ export class SettingsWindow {
       const v = this.target!;
       line([{text: ` ${v.name} (${v.note}) no está descargada.`}]);
       line([{text: ' Se descarga 1 sola vez al usarla y luego funciona sin internet.', style: 'dim'}]);
+      // Every Phonon voice lives in one model file, so one download brings them all (Pocket voices download one by one).
+      const also = v.model === 'phonon' ? this.c.voices().filter(o => o.model === 'phonon' && o.voice !== v.voice) : [];
+      if (also.length) line([{text: ` Incluye también: ${also.map(o => `${o.name} (${o.note})`).join(', ')}.`, style: 'dim'}]);
       line();
       line([{text: ' '}, {text: '[ Descargar y usar ]', style: this.col === 0 ? 'accent' : undefined, fn: () => this.confirm()},
         {text: ' '}, {text: '[ Volver ]', style: this.col === 1 ? 'accent' : undefined, fn: () => { this.page = 'voices'; }}]);
     } else {
       const v = this.target!;
-      for (const t of [
-        ` ${v.name} viene de Hugging Face y pide una cuenta gratis.`,
-        ' El token solo hace falta para descargarla; luego funciona sin él.', '',
-        ' 1. Crea una cuenta:        huggingface.co/join',
-        ` 2. Acepta los términos:    huggingface.co/${v.model === 'phonon' ? 'gradium/phonon-40m-es' : 'kyutai/pocket-tts'}`,
-        ' 3. Crea un token «Read»:   huggingface.co/settings/tokens',
-        ' 4. Pégalo aquí (no se guarda; solo se usa en esta sesión):', '']) line(t ? [{text: t}] : []);
+      // Short addresses keep every line inside the window; a click opens the full https link.
+      const link = (step: string, path: string) =>
+        line([{text: step}, {text: `huggingface.co/${path}`, style: 'accent', fn: () => this.c.open(`https://huggingface.co/${path}`)}]);
+      line([{text: ` ${v.name} viene de Hugging Face y pide una cuenta gratis.`}]);
+      line([{text: ' El token solo hace falta para descargarla; luego funciona sin él.'}]);
+      line();
+      link(' 1. Crea una cuenta:        ', 'join');
+      link(' 2. Acepta los términos:    ', v.model === 'phonon' ? 'gradium/phonon-40m-es' : 'kyutai/pocket-tts');
+      link(' 3. Token «Read-Only»:      ', 'settings/tokens');
+      line([{text: ' 4. Pégalo aquí (no se guarda; solo se usa en esta sesión):'}]);
+      line();
       line([{text: ' Token: '}, {text: '•'.repeat(Math.min(50, width(this.token))) + '▏', style: 'accent'}]);
       line(this.error ? [{text: ' ' + this.error, style: 'error'}] : []);
       line();
       line([{text: ' '}, {text: '[ Usar ]', style: 'accent', fn: () => this.saveToken()}, {text: ' '},
-        {text: '[ Volver ]', style: 'accent', fn: () => { this.page = 'voices'; }}, {text: '   Enter · Esc', style: 'dim'}]);
+        {text: '[ Volver ]', style: 'accent', fn: () => { this.page = 'voices'; }}, {text: '   Enter · Esc · clic en un enlace lo abre', style: 'dim'}]);
     }
     out.push(th.fg('border', '╰' + '─'.repeat(IN) + '╯'));
     return out;
