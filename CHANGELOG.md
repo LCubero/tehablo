@@ -6,6 +6,7 @@ Este archivo registra los cambios completados en orden cronológico.
 
 ## 2026-11-03
 
+- Prueba de voces en Fedora para un modo más natural sin pasar del doble del consumo actual (`RH-W-0005`): a ciegas, Phonon 40M es (`Regina` y `Iker`) sonó mucho más natural que `lola` y, con 2 hilos, gasta menos (303 MiB y 8 s de CPU frente a 961 MiB y 10,6 s); `spanish_24l` cuantizado entra justo en el doble y Kokoro int8 se pasa en CPU ([resultados](docs/pruebas-de-voces.md#phonon-40m-es-frente-a-lola-spanish_24l-y-kokoro-2026-11-03-fedora)). Todavía no se incorpora a tehablo.
 - Se cerró el arranque lento del TTS tras encender el equipo en Linux (`RH-W-0026`): tras reiniciar Fedora, el primer arranque quedó listo en 5,87 s, en el rango normal en frío; no se repitieron los ~14 s. Se reabre si vuelve a pasar.
 - En Pi, cada lectura sale por el dispositivo de audio predeterminado del sistema en ese momento: al cambiar a audífonos o Bluetooth, la siguiente lectura suena ahí (comprobado físicamente en Windows y en Linux). En Windows la lectura en curso termina en la salida anterior; en Linux (Fedora) cambia de salida incluso a mitad de la lectura (`RH-W-0017`).
 - En Linux, la persona responsable confirmó el clic físico en `[ ⏻ TTS ]` para apagar y volver a encender en la misma sesión (`RH-W-0024`).

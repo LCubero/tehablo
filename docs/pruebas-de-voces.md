@@ -13,6 +13,7 @@ Opciones de voz que quedaron bien en las escuchas a ciegas con los ajustes de te
 | Mejor calidad | `lola` con `spanish_24l` | Pocket TTS | ~1,8 GiB | 44 s | No | Muy bien: tranquila; genera a solo 1,02× tiempo real |
 | Variedad LATAM | `ar-hombre-4310`, `cl-mujer-9334`, `co-hombre-9334`, `cl-hombre-3397`, `ar-hombre-7049`, `cl-mujer-8784` (clonadas de `voices/`) | Pocket TTS | ~0,95 GiB | 17,5 s | Solo para crearlas | Iguales o mejores que `lola` |
 | Equilibrio | `lola` | Pocket TTS | ~0,95 GiB | 17,5 s | No | Referencia: bien, algo robótica, tranquila |
+| Más natural y menos consumo (uso no comercial) | `Regina` (mexicana), `Iker` (castellano) | Phonon 40M es | ~0,3 GiB (Fedora) | 8 s (Fedora) | Sí, para descargarlo | Mucho mejor que `lola` (2026-11-03) |
 | Mínimo consumo | `carlfm` (`x_low`) | Piper | ~0,3 GiB | 3,6 s | No | Igual que `lola` |
 | Mínimo consumo, uso personal | `miro` (licencia no comercial) | Piper (OpenVoiceOS) | ~0,3 GiB | 5,1 s | No | Bien: tranquila, ruido de fondo |
 
@@ -308,6 +309,23 @@ Tres escuchas a ciegas con `lola` y volumen igualado: texto técnico **sin ajust
 - **Con ajustes**, las clonadas más consistentes en las dos escuchas: `ar-hombre-4310`, `cl-mujer-9334`, `co-hombre-9334`, `cl-hombre-3397`, `ar-hombre-7049` y `cl-mujer-8784`. Las más débiles: `co-mujer-1523`, `co-hombre-8784` (omite palabras; su audio fue el más corto) y `cl-mujer-7508` (ruido o temblor).
 - Casi todas suenan tranquilas. La persona responsable echa de menos voces o modos alegres y entusiastas (registrado en `RH-W-0018`, para otro momento).
 
+## Phonon 40M es frente a `lola`, `spanish_24l` y Kokoro (2026-11-03, Fedora)
+
+Objetivo de la persona responsable: «que suene muy real, natural y que no consuma mucho, ojala como maximo el doble de ahora, pero que podamos mantener el de ahora». Mismo texto (`samples/benchmark.txt`), sin los ajustes de tehablo, Ryzen 5 5600X con Fedora 44 ([datos](measurements/voces-fedora-2026-11-03.json)); valores de las ejecuciones 2 y 3.
+
+| Opción | RAM tras hablar | CPU del texto | Primer fragmento | Velocidad | Escucha a ciegas |
+|---|---|---|---|---|---|
+| Pocket TTS `lola` (cuantizado, el actual) | 961 MiB | 10,6 s | 0,07 s | 6,4× | Muy bien: voz ligeramente quebrada, muy poco. |
+| Pocket TTS `spanish_24l` con `lola` (cuantizado) | 1504 MiB (pico 2,3 GiB al cargar) | 20,9 s | 0,22 s | 2,5× | Muy bien: como `lola`, ligeramente mejor. |
+| Kokoro `ef_dora` (ONNX int8) | 923 MiB | 39,4 s | sin streaming | 5,0× | Bien: algo ronca o sintética. |
+| **Phonon 40M es `Regina`** (2 hilos) | **303 MiB** | **8,0 s** | **0,04 s** | **~11×** | **Mucho mejor que `lola`: muy natural; acento latino.** |
+| **Phonon 40M es `Iker`** (2 hilos) | **~300 MiB** | **7,7 s** | **0,04 s** | **~11×** | **Mucho mejor que `lola`: natural; algo castellano.** |
+
+- Phonon con todos los hilos (12) gasta ~40 s de CPU para el mismo texto; con 2 hilos, 8 s y genera más rápido. Hay que fijar los hilos. Con 4 hilos: 10,3 s y ~15×.
+- Phonon no usa torch: importa en 0,1 s y carga en 0,1 s con el modelo en caché (75 MB, `q8`).
+- Kokoro con ONNX int8 baja la RAM pero no la CPU (~36–39 s); en esta escucha quedó por debajo de su resultado de octubre (fp32 en Windows).
+- Phonon dice que divide el texto por frases (la entonación no sigue entre frases) y que lee mal el texto en otros idiomas; no se comprobó todavía con los ajustes de tehablo ni con texto técnico.
+
 ## Licencias
 
 Cada opción tiene tres capas: el programa, el modelo y la voz con la que se entrenó o se clona.
@@ -320,6 +338,8 @@ Cada opción tiene tres capas: el programa, el modelo y la voz con la que se ent
 | Kokoro-82M | `kokoro-onnx` MIT; usa `espeak-ng` (GPL-3.0) a través de `espeakng-loader` (MIT) | Apache-2.0 | voces propias del modelo | Uso comercial libre del modelo; `espeak-ng` es GPL-3.0, así que distribuir un programa que lo incluya tiene la misma condición que Piper. |
 | MeloTTS | MIT | MIT | voz propia del modelo | Depende de torch, MeCab/`unidic` y NLTK. |
 | Chatterbox | MIT | MIT | clona `voices/` (CC BY-SA 4.0) | Cada audio lleva una marca de agua inaudible (Perth). Publicar audio clonado de `voices/` exige atribución y misma licencia. |
+
+| Phonon 40M es (Gradium) | `ptts` MIT o Apache-2.0 | CC BY-NC 4.0, acceso restringido en Hugging Face (aceptar términos y token) | ~100 voces propias (`gradium/phonon-voices`, CC BY-NC 4.0); sin clonación en el modelo abierto | Solo uso no comercial; el uso comercial requiere hablar con Gradium. |
 
 Licencias leídas de los archivos `LICENSE`, las fichas de Hugging Face y las `MODEL_CARD` de Piper; no es asesoría legal.
 
