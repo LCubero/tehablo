@@ -1,1 +1,9 @@
-{"type":"module"}
+{
+  "name": "tehablo-tts",
+  "private": true,
+  "type": "module",
+  "pi": {
+    "extensions": ["./index.ts"],
+    "changelogPath": ""
+  }
+}

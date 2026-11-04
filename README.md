@@ -140,7 +140,14 @@ Phonon 40M es (`Regina`, `Iker`) es opcional. Sus pesos son **CC BY-NC 4.0** (no
 
 La voz se elige en la ventana (`[ ≡ ]` o `/tts menu`); cada voz ya trae su modelo. El servidor acepta `--model` y `--voice`. Las voces de `voices/` solo son para Pocket.
 
-La extensión [`pi-extension/tehablo-tts/`](pi-extension/tehablo-tts/) lee las respuestas finales del agente con la voz local. Se carga sola al abrir Pi dentro de este repositorio (`.pi/settings.json`), después de aceptar la confianza del proyecto y ejecutar `/reload`. Para usarla en otros proyectos, añade la ruta absoluta de esa carpeta a `extensions` en tu configuración de Pi.
+La extensión [`pi-extension/tehablo-tts/`](pi-extension/tehablo-tts/) lee las respuestas finales del agente con la voz local. Se instala una vez para todos tus proyectos con la ruta absoluta de esa carpeta; Pi la usa desde ahí, sin copiarla, porque necesita el servidor y el entorno de este repositorio:
+
+```bash
+pi install E:\ruta\a\tehablo\pi-extension\tehablo-tts   # Windows
+pi install /ruta/a/tehablo/pi-extension/tehablo-tts       # Linux / macOS
+```
+
+Después abre Pi o ejecuta `/reload`. `pi list` la muestra y `pi remove <ruta>` la quita. Si usas `gentle-shell` por separado (con su propia carpeta), ábrelo con `gentle-shell --link` para que vea las extensiones de Pi.
 
 - **Manual (por defecto):** cada respuesta muestra una barra de controles que se usa con clics:
 
