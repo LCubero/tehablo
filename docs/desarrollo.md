@@ -144,6 +144,8 @@ del directorio de trabajo. `/leer` conserva las rutas relativas al directorio ac
 .venv-pocket/Scripts/python tests/test_quantize.py
 ```
 
+En cada push, GitHub Actions (`.github/workflows/tests.yml`) ejecuta en Windows y Linux estas suites, además de `test_measure_tts.py`, `test_get_voices.py`, `test_listening_skill.py` y las de la extensión de Pi. No descarga modelos ni usa audio, así que no sustituye las pruebas de integración ni la escucha.
+
 La extensión de Pi tiene sus pruebas con `node:test` (Node 24, sin dependencias):
 
 ```powershell

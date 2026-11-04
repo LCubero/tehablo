@@ -3,10 +3,13 @@ import json
 from pathlib import Path
 import re
 import shlex
+import shutil
 import subprocess
 import sys
 import unittest
 
+# Resolve bash through PATH: on Windows a bare 'bash' finds System32's WSL launcher first.
+BASH = shutil.which('bash') or 'bash'
 SKILL = Path(__file__).resolve().parents[1] / '.pi/skills/tehablo-pronunciacion/SKILL.md'
 
 
@@ -41,7 +44,7 @@ sleep() { printf 'SLEEP %s\\n' "$1" >&2; n=$((n+1)); }
         code = snippet()
         if text is not None:
             code = code[:code.index('say "fícher."')] + 'say ' + shlex.quote(text) + ' 0.6\n'
-        result = subprocess.run(['bash', '-c', 'failure=' + shlex.quote(failure) + '\nreplies=(' + ' '.join(map(shlex.quote, replies)) + ')\n' + mock + code], capture_output=True, text=True, encoding='utf-8', timeout=15)
+        result = subprocess.run([BASH, '-c', 'failure=' + shlex.quote(failure) + '\nreplies=(' + ' '.join(map(shlex.quote, replies)) + ')\n' + mock + code], capture_output=True, text=True, encoding='utf-8', timeout=15)
         calls = [line[5:] for line in result.stderr.splitlines() if line.startswith('CALL ')]
         return result, calls
 
