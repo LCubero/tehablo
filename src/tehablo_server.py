@@ -49,6 +49,9 @@ class PocketSynthesizer:
 
 def audio_sink(rate, callback):
     import sounddevice as sd
+    # PortAudio caches the device list; refresh it so a new default output is used.
+    sd._terminate()
+    sd._initialize()
     stream = sd.OutputStream(samplerate=rate, channels=1, dtype='float32', callback=callback)
     stream.start()
     return stream
@@ -263,8 +266,11 @@ class SpeechService:
                     if not self.paused:
                         self.state = 'generating'
                 try:
-                    if sink is None:
-                        sink = self.audio_factory(synth.sample_rate, self.callback)
+                    # Open the output per reading so it follows the current default device.
+                    if sink is not None:
+                        sink.close()
+                        sink = None
+                    sink = self.audio_factory(synth.sample_rate, self.callback)
                     text = self.normalize_text(text, name)
                     with self.condition:
                         speed = self.speed

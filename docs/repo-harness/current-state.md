@@ -63,7 +63,7 @@ Este archivo proyecta solo hechos verificados del proyecto: registros activos, b
 - `RH-W-0014` (`deferred`, P3): evaluar una API y la integración con CLIProxyAPI.
 - `RH-W-0015` (`proposed`, P3): añadir palabras a `pronunciaciones.json` desde la TUI o la extensión de Pi.
 - `RH-W-0016` (`proposed`, P3): ajuste para sugerir, no sugerir o añadir automáticamente pronunciaciones de términos nuevos en inglés.
-- `RH-W-0017` (`proposed`, P2): cambio de dispositivo de audio (seguir al predeterminado, elegir uno y recuperarse si desaparece).
+- `RH-W-0017` (`active`, P2): en Pi, cada lectura ya sigue la salida predeterminada del sistema (comprobado físicamente en Windows); la lectura en curso no cambia de salida. Falta comprobarlo en Linux; elegir el dispositivo queda para después.
 - `RH-W-0018` (`deferred`, P3): roles de voz (locutor, profesor, motivador y otros) con frases y muletillas propias.
 - `RH-W-0019` (`deferred`, P3): exportar audiolibros.
 - `RH-W-0020` (`excluded`): funciones de app lectora de escritorio (atajo global, portapapeles, bandeja, documentos, sonidos de fondo, plugin de navegador).

@@ -121,6 +121,23 @@ class ServerTests(unittest.TestCase):
         self.assertIsNone(self.request('/status')[1]['error'])
         self.wait(lambda: bool(self.synth.calls))
 
+    def test_each_reading_opens_a_fresh_output(self):
+        # A new output per reading follows a changed default device (RH-W-0017).
+        sinks = []
+
+        def factory(rate, callback):
+            sinks.append(Sink(rate, callback))
+            return sinks[-1]
+
+        self.server.service.audio_factory = factory
+        self.ready()
+        for count, identifier in ((1, 'one'), (2, 'two')):
+            self.assertEqual(self.request('/speak', {'id': identifier, 'text': 'hola'}), (202, {'id': identifier}))
+            self.wait(lambda: len(self.synth.calls) == count)
+        self.assertEqual(len(sinks), 2)
+        self.assertTrue(sinks[0].closed.is_set())
+        self.assertFalse(sinks[1].closed.is_set())
+
     def test_lexicon_error_logged_once_per_change(self):
         from tehablo_lexicon import Lexicon
         self.ready()

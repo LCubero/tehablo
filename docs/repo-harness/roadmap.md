@@ -208,16 +208,17 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 - **Origen:** solicitud de la persona responsable del 2026-10-29: «el cambio de dispositivos de audio en el pc, como lo maneja, que hacer, etc».
 - **Prioridad:** P2; si se cambia de altavoz a audífonos o se desconecta un dispositivo, la voz puede seguir saliendo por el anterior o fallar.
 - **Dependencias:** coordinar con `RH-W-0003` (la salida de audio queda abierta) y `RH-W-0004` (dónde se elige el dispositivo).
-- **Estado:** `proposed`.
+- **Estado:** `active`.
 - **Trabajo restante:**
-  - Comprobar qué pasa hoy al cambiar el dispositivo predeterminado o desconectarlo durante y entre reproducciones, en Windows y Linux.
-  - Decidir el comportamiento: seguir al dispositivo predeterminado del sistema, permitir elegir uno o ambos, y cómo recuperarse si desaparece.
-  - Documentar el comportamiento y sus límites.
+  - Comprobar el arreglo en Linux.
+  - Cambiar de salida a mitad de una lectura: no se hace por ahora (ver Decisión).
   - Más adelante, un menú para elegir el dispositivo de audio («incluso para mas adelante un menu de seleccion de dispositivo de audio seria muy bueno»), coordinado con `RH-W-0004`.
 - **Evidencia:** `src/tehablo_server.py` abre una sola salida con `sd.OutputStream` sobre el dispositivo predeterminado de ese momento y la conserva abierta; la TUI y la consola abren una salida por reproducción. No se ha probado un cambio de dispositivo.
 - **Revisión del código (2026-11-03):** en el servidor, la salida se crea en la primera lectura y se reutiliza en las siguientes; si una lectura falla, la salida no se cierra ni se vuelve a abrir hasta cambiar de modelo o reiniciar el servidor (`src/tehablo_server.py`, `SpeechService.run`). Inferencia sin prueba física: al cambiar a audífonos la voz podría seguir saliendo por el dispositivo anterior o quedarse muda. Posible arreglo, pequeño y sin opciones nuevas: abrir la salida en cada lectura, como la TUI y la consola, solo si la prueba física confirma el fallo. Ya hay personas usando tehablo; por eso es lo primero que se recomienda probar.
-- **Decisión:** registrar para después; no se eligió comportamiento.
-- **Condición del siguiente avance:** autorización para la prueba acotada en Windows y Linux.
+- **Prueba física (2026-11-03, Windows):** con el código anterior, tras conectar unos Bluetooth (el audio de fondo de otras aplicaciones sí se cambió), Pi volvió a leer por los parlantes. Fallo confirmado.
+- **Trabajo completado (2026-11-03):** el servidor abre la salida en cada lectura y antes refresca la lista de dispositivos de PortAudio (`sd._terminate()` y `sd._initialize()`), que si no conserva la del arranque. Prueba determinista nueva en `tests/test_server.py` (una salida nueva por lectura y la anterior cerrada). La persona responsable comprobó físicamente en Windows que la siguiente lectura suena en el dispositivo nuevo. Cuesta ~0,16 s antes de cada lectura (medido en Windows). También se reabre la salida tras una lectura fallida. Al probar, un servidor viejo abierto antes de `/reload` siguió en uso tras `[ ⏻ ]`: se cerró con `/shutdown`.
+- **Decisión:** 2026-11-03, por decisión delegada de la persona responsable («decidelo tu ... sin sobreingenieria»): seguir al dispositivo predeterminado entre lecturas. La lectura en curso termina en la salida anterior, a diferencia del navegador; seguirla en el momento exigiría vigilar los dispositivos durante la reproducción, y las lecturas son cortas. Se revisa si la persona responsable lo echa en falta.
+- **Condición del siguiente avance:** la comprobación en Linux en la próxima sesión en Fedora.
 
 ### RH-W-0018: Roles de voz
 

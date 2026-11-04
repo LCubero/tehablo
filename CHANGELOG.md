@@ -6,6 +6,7 @@ Este archivo registra los cambios completados en orden cronológico.
 
 ## 2026-11-03
 
+- En Pi, cada lectura sale por el dispositivo de audio predeterminado del sistema en ese momento: al cambiar a audífonos o Bluetooth, la siguiente lectura suena ahí (comprobado físicamente en Windows). La lectura en curso termina en la salida anterior; Linux sin comprobar (`RH-W-0017`).
 - `tests/test_get_voices.py` y `tests/test_listening_skill.py` pasan en Windows ejecutadas directamente: la primera encuentra `scripts` sin `-m` y la segunda usa UTF-8 y el mismo intérprete de Python para el ejemplo de bash. Solo cambian las pruebas; el uso de tehablo no cambia (`RH-W-0023`).
 - CI mínima en GitHub Actions: en cada push se ejecutan, en Windows y Linux, las suites sin modelo ni audio y las pruebas de la extensión de Pi; la primera corrida completa pasó en ambos sistemas. No cubre la TUI, el audio real ni la escucha ([pruebas](docs/desarrollo.md#pruebas)).
 
