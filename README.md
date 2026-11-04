@@ -147,7 +147,7 @@ pi install E:\ruta\a\tehablo\pi-extension\tehablo-tts   # Windows
 pi install /ruta/a/tehablo/pi-extension/tehablo-tts       # Linux / macOS
 ```
 
-Después abre Pi o ejecuta `/reload`. `pi list` la muestra y `pi remove <ruta>` la quita. Si usas `gentle-shell` por separado (con su propia carpeta), ábrelo con `gentle-shell --link` para que vea las extensiones de Pi.
+Después abre Pi o ejecuta `/reload`. `pi list` la muestra y `pi remove <ruta>` la quita. Si usas `gentle-shell` por separado (con su propia carpeta), instálala ahí con `gentle-shell install <ruta>`. Al terminar, `install.ps1` muestra los dos comandos con la ruta de tu equipo.
 
 - **Manual (por defecto):** cada respuesta muestra una barra de controles que se usa con clics:
 

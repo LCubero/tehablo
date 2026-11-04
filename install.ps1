@@ -21,13 +21,15 @@ uv pip install --python $python -r requirements.txt `
     --extra-index-url https://download.pytorch.org/whl/cpu --index-strategy unsafe-best-match
 if ($LASTEXITCODE -ne 0) { exit 1 }
 
-& ".\$python" -c 'import pocket_tts, sounddevice, torch; print(torch.__version__); assert torch.version.cuda is None'
+& ".\$python" -c 'import pocket_tts, ptts, sounddevice, torch; print(torch.__version__); assert torch.version.cuda is None'
 if ($LASTEXITCODE -ne 0) { exit 1 }
 
 Write-Host "Listo: $envDir"
 Write-Host "Para iniciar: .\$python src/tehablo_tui.py"
-Write-Host 'Pi encuentra el entorno automaticamente. Los modelos se descargan en el primer uso.'
-Write-Host 'Voz opcional mas natural en Pi: Phonon 40M es (acceso restringido, uso no comercial). Para activarla:'
-Write-Host '  1. Acepta los terminos en https://huggingface.co/gradium/phonon-40m-es'
-Write-Host '  2. Ejecuta: uvx hf auth login'
-Write-Host 'Pi lee con Pocket TTS (lola) mientras no la elijas; tambien se activa desde los ajustes de Pi.'
+Write-Host 'Los modelos se descargan en el primer uso.'
+Write-Host 'Para usarlo en Pi (una vez, para todos tus proyectos):'
+Write-Host "  pi install `"$PSScriptRoot\pi-extension\tehablo-tts`""
+Write-Host "  (o con gentle-shell: gentle-shell install `"$PSScriptRoot\pi-extension\tehablo-tts`")"
+Write-Host 'Voz opcional mas natural en Pi: Phonon 40M es (Regina, Iker; acceso restringido, uso no comercial).'
+Write-Host '  Acepta los terminos en https://huggingface.co/gradium/phonon-40m-es y eligela en los ajustes de Pi (/tts menu):'
+Write-Host '  pide el token solo para descargarla y no lo guarda.'
