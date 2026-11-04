@@ -86,7 +86,7 @@ La velocidad de esta tabla es de la primera ronda (texto con ajustes); la de con
 
 Mismo método y texto que la [tabla de consumo de lola](como-funciona.md#windows): `samples/benchmark.txt` (600 caracteres), un proceso nuevo por motor, modelos ya descargados y sin conexión, síntesis directa sin preprocesado ni reproducción, 3 generaciones (la primera incluye el calentamiento; Chatterbox, una). `lola` se midió con `scripts/measure_tts.py`; los demás, con los mismos campos ([datos](measurements/voces-windows-2026-10-30.json)). Equipo: Ryzen 5 5600X, 12 hilos, 32 GB.
 
-| Motor | RAM tras cargar | RAM tras hablar (pico) | CPU al generar | CPU total del texto | Velocidad | Primer sonido |
+| Motor | RAM tras cargar | RAM tras hablar (pico) | CPU al generar | CPU total del texto | Velocidad | Primer fragmento generado |
 |---|---|---|---|---|---|---|
 | Pocket TTS `lola` | 772 MiB | 947 MiB (981) | 1,7 núcleos (15 %) | 17,5 s | 3,7× | 0,14 s |
 | Pocket TTS `spanish_24l` con `lola` | 1638 MiB | 1848 MiB (2279) | 1,3 núcleos (11 %) | 44,2 s | 1,02× | 0,57 s |
@@ -203,7 +203,7 @@ Buenos días. Ya terminé de revisar tu proyecto y, la verdad, quedó bastante b
 | 3 | Supertonic `F2` | Bien: soplidos leves al final. | 0,49 s | 6,3 s |
 | 4 | `lola` | Aceptable: ligeramente robótica, algo lenta. | 0,78 s (0,12 s en streaming) | 8,7 s |
 
-- **Primer sonido:** generando frase por frase, Kokoro y Supertonic tienen lista la primera frase en menos de medio segundo; así se evita el silencio de 7–9 s que tenían generando el texto entero. No probado aún dentro del servidor de tehablo.
+- **Primera frase generada:** generando frase por frase, Kokoro y Supertonic tienen lista la primera frase en menos de medio segundo; así se evita el silencio de 7–9 s que tenían generando el texto entero. No probado aún dentro del servidor de tehablo.
 - **Resultado:** en las dos escuchas a ciegas, Kokoro supera a `lola` y `lola` queda última o casi. Kokoro gasta más: ~1,1 GiB de RAM (frente a ~0,95 GiB) y unas 2,8 veces más CPU; no necesita torch ni token, y su modelo se descarga de GitHub.
 
 ## Voces que faltaban (2026-10-30)
@@ -327,7 +327,7 @@ Licencias leídas de los archivos `LICENSE`, las fichas de Hugging Face y las `M
 
 | Opción | Motivo |
 |---|---|
-| Clonación de Pocket TTS, NeuTTS Nano Spanish, ajuste castellano de `inferencekey` | Piden token de Hugging Face (repositorios con acceso restringido). |
+| NeuTTS Nano Spanish, ajuste castellano de `inferencekey` | Piden token de Hugging Face (repositorios con acceso restringido). |
 | XTTS-v2, Silero, F5-Spanish | Licencia no comercial; F5 y XTTS además son pesados en CPU. MMS-TTS también es no comercial (CC BY-NC 4.0), pero se probó como referencia. |
 | Edge TTS | Necesita internet; no es local. |
 | Kitten TTS | Solo inglés, sin comprobar. |

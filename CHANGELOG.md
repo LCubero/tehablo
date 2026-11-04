@@ -7,6 +7,8 @@ Este archivo registra los cambios completados en orden cronológico.
 ## 2026-11-03
 
 - En Pi, cada lectura sale por el dispositivo de audio predeterminado del sistema en ese momento: al cambiar a audífonos o Bluetooth, la siguiente lectura suena ahí (comprobado físicamente en Windows y en Linux). En Windows la lectura en curso termina en la salida anterior; en Linux (Fedora) cambia de salida incluso a mitad de la lectura (`RH-W-0017`).
+- En Linux, la persona responsable confirmó el clic físico en `[ ⏻ TTS ]` para apagar y volver a encender en la misma sesión (`RH-W-0024`).
+- Documentación alineada con el código y entre sí: TEDx Spanish (OpenSLR 67) figura como CC BY-NC-ND 4.0 en `docs/voces-gratuitas.md`; el código propio figura como MIT y el diccionario de pronunciación como implementado en `docs/catalogo-gratuito.md`; las tablas de consumo dicen «primer fragmento generado» en lugar de «primer audio», porque la medición no reproduce sonido; la clonación de Pocket TTS ya no aparece como descartada sin probar.
 - `tests/test_get_voices.py` y `tests/test_listening_skill.py` pasan en Windows ejecutadas directamente: la primera encuentra `scripts` sin `-m` y la segunda usa UTF-8 y el mismo intérprete de Python para el ejemplo de bash. Solo cambian las pruebas; el uso de tehablo no cambia (`RH-W-0023`).
 - CI mínima en GitHub Actions: en cada push se ejecutan, en Windows y Linux, las suites sin modelo ni audio y las pruebas de la extensión de Pi; la primera corrida completa pasó en ambos sistemas. No cubre la TUI, el audio real ni la escucha ([pruebas](docs/desarrollo.md#pruebas)).
 

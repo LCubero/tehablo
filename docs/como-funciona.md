@@ -67,7 +67,7 @@ Medido el 2026-10-29 en el equipo de referencia: Ryzen 5 5600X (12 hilos), 32 GB
 | RAM en uso | ~870 MB (pico ~1 GB al cargar) | ~1,8 GB (pico ~2,3 GB al cargar)* |
 | CPU | ~1,8 núcleos (~15 % del equipo) | ~1,2 núcleos (~10 % del equipo) |
 | Velocidad | 36,5 s de audio en 9,9 s (3,7× tiempo real) | 36,3 s de audio en 30,2 s (1,2× tiempo real) |
-| Primer sonido | ~0,16 s | ~0,55 s |
+| Primer fragmento generado (sin reproducir) | ~0,16 s | ~0,55 s |
 | GPU | No la usa | No la usa |
 
 \* Medido en el mismo proceso después de liberar `spanish`; puede incluir unos 100–200 MB residuales.

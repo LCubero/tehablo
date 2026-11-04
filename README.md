@@ -61,7 +61,7 @@ Mismo equipo: Ryzen 5 5600X (12 hilos) con 32 GB de RAM, voz `lola` y un texto d
 | RAM | ~870 MB (pico ~1 GB) | ~1,8 GB (pico ~2,3 GB) |
 | CPU | ~1,8 núcleos (~15 %) | ~1,2 núcleos (~10 %) |
 | Velocidad | 3,7 veces más rápido que tiempo real | 1,2 veces |
-| Primer audio | ~0,16 s | ~0,55 s |
+| Primer fragmento generado (sin reproducir) | ~0,16 s | ~0,55 s |
 | GPU | No la usa | No la usa |
 
 En disco: unos 813 MB el entorno de Python y 1,2 GB los modelos descargados.
@@ -146,7 +146,7 @@ La extensión [`pi-extension/tehablo-tts/`](pi-extension/tehablo-tts/) lee las r
   | Sonando | `[ ‖ ] [ ■ ] [ ⋯ ]` |
   | En pausa | `[ ▶ ] [ ■ ] [ ⋯ ]` |
 
-  **`[ ⏻ TTS ]`** arranca el servidor y carga el modelo antes de escuchar; mientras tanto, la barra de estado muestra `TTS manual · cargando`. Las pruebas de código cubren clics en toda su superficie (corchetes, símbolo, letras y espacios normales); el problema del clic físico en el host sigue sin resolverse. Escuchar, `/tts play` y el modo automático también lo arrancan si hace falta.
+  **`[ ⏻ TTS ]`** arranca el servidor y carga el modelo antes de escuchar; mientras tanto, la barra de estado muestra `TTS manual · cargando`. Las pruebas de código cubren clics en toda su superficie (corchetes, símbolo, letras y espacios normales); la persona responsable confirmó el clic físico en toda la etiqueta en Windows y en el corchete y las letras en Linux, y apagar y volver a encender en ambos. Escuchar, `/tts play` y el modo automático también lo arrancan si hace falta.
 - **Volumen y velocidad:** `[ ⋯ ]` muestra **Vol** (10–150 %, pasos de 10 %, inicial 100 %) y **Vel** (1.00x, 1.10x, 1.15x, 1.25x y 1.50x; `/tts speed` sigue aceptando 0.75–1.5) en todas las barras; `[ → ]` los oculta. `[-` baja y `+]` sube. Solo clics, sin atajos de teclado. El volumen cambia incluso el audio en reproducción; la velocidad afecta a los siguientes trozos generados, no al audio ya almacenado. Los límites se mantienen sin error.
 - **Apagar y liberar el modelo:** `[ ⏻ ]` aparece solo al final de los controles abiertos, después del último `+]`. Detiene la lectura y cierra el servidor propio para liberar sus recursos; reinicia los controles y vuelve al modo manual. `[ ⏻ TTS ]` permite encenderlo otra vez sin cerrar Pi. No equivale a `[ ■ ]` (solo detener) ni a `/tts off` (desactivar los controles).
 - **Automático:** `/tts auto on` lee cada respuesta al terminar; `/tts auto off` vuelve al modo manual.
@@ -161,7 +161,7 @@ La extensión [`pi-extension/tehablo-tts/`](pi-extension/tehablo-tts/) lee las r
 | `/tts model [spanish\|spanish_24l]` | Cambia el modelo |
 | `/tts speed [0.75-1.5]` | Cambia la velocidad |
 
-La extensión arranca sola el servidor local [`src/tehablo_server.py`](src/tehablo_server.py) (`127.0.0.1:8765`, se cambia con `TEHABLO_PORT`) y lo apaga al cerrar Pi. Necesita el entorno `.venv-pocket` (o `.venv-pocket-<sistema>`) instalado. Los ajustes duran solo la sesión. Los mensajes y errores del servidor se guardan en `logs/tehablo-server.log`, que se reescribe en cada arranque; si el servidor no responde a tiempo, el aviso indica esa ruta. Si el modelo no carga, Pi muestra el error en lugar de quedarse en «cargando»; también avisa si una lectura falla (por ejemplo, sin dispositivo de audio) o si se pierde la conexión con el servidor. Cada lectura usa la salida de audio predeterminada del sistema en ese momento: si cambias a audífonos o Bluetooth, la siguiente lectura ya suena ahí; la que está sonando termina en la salida anterior. Por seguridad, el servidor rechaza peticiones de páginas web (cabecera `Origin`, 403) y los `POST` que no declaran JSON (415).
+La extensión arranca sola el servidor local [`src/tehablo_server.py`](src/tehablo_server.py) (`127.0.0.1:8765`, se cambia con `TEHABLO_PORT`) y lo apaga al cerrar Pi. Necesita el entorno `.venv-pocket` (o `.venv-pocket-<sistema>`) instalado. Los ajustes duran solo la sesión. Los mensajes y errores del servidor se guardan en `logs/tehablo-server.log`, que se reescribe en cada arranque; si el servidor no responde a tiempo, el aviso indica esa ruta. Si el modelo no carga, Pi muestra el error en lugar de quedarse en «cargando»; también avisa si una lectura falla (por ejemplo, sin dispositivo de audio) o si se pierde la conexión con el servidor. Cada lectura usa la salida de audio predeterminada del sistema en ese momento: si cambias a audífonos o Bluetooth, la siguiente lectura ya suena ahí. En Windows la que está sonando termina en la salida anterior; en Linux (Fedora) cambia en el momento. Por seguridad, el servidor rechaza peticiones de páginas web (cabecera `Origin`, 403) y los `POST` que no declaran JSON (415).
 
 El registro incluye líneas `Startup:` con segundos por etapa: importaciones del servidor, importaciones de TTS y carga del modelo (sin repetir el tiempo de importación de TTS). Sirven para comparar próximos arranques, no para diagnosticar retrospectivamente la demora ni atribuirla a la caché. No miden la creación del proceso Python ni el inicio de la reproducción. Guarda el registro antes de volver a arrancar: se sobrescribe. Las [mediciones de arranque en Windows y sus límites](docs/desarrollo.md#arranque-en-windows-mediciones-y-límites) quedan documentadas para futuras comparaciones.
 

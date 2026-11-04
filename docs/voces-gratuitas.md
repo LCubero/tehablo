@@ -74,7 +74,7 @@ Necesitan los pesos con clonación (token de Hugging Face; ver [README](../READM
 |---|---|---|---|
 | [CML-TTS español](https://www.openslr.org/146/) (OpenSLR 146) | Varios (audiolibros) | CC BY 4.0 | Archivo de unos **48 GB**. Hay copias filtradas en Hugging Face (`freds0/cml_tts_dataset_spanish`, `andjelajo/cml_tts_dataset_spanish-filtered-9972`), con la licencia sin verificar |
 | [CIEMPIESS](http://www.ciempiess.org/downloads) (Light, Balance, Fem…) | México | CC BY-SA 4.0 | Grabado en radio; pensado para reconocimiento de voz, no para TTS |
-| [TEDx Spanish](https://www.openslr.org/67/) (OpenSLR 67) | México, Argentina, otros | CC BY-SA 4.0 | Charlas: hay ruido de sala y expresión espontánea |
+| [TEDx Spanish](https://www.openslr.org/67/) (OpenSLR 67) | México, Argentina, otros | CC BY-NC-ND 4.0 (sin uso comercial ni obras derivadas) | Charlas: hay ruido de sala y expresión espontánea |
 | [VoxForge (es)](http://www.voxforge.org) | España, México, Argentina | **GPL** | Calidad irregular. GPL es una licencia pensada para software: consúltalo antes de un uso comercial. La usa [cami-sosa/qwen3-tts-spanish-voices](https://github.com/cami-sosa/qwen3-tts-spanish-voices) para 12 voces clonadas |
 | [Open Speech Corpus](http://openspeechcorpus.contraslash.com) | Colombia, Venezuela | MIT | Grabaciones con ruido |
 | [Kaggle: slr-latam-es-voices](https://www.kaggle.com/datasets/igortamara/slr-latam-es-voices) | 6 países LATAM | CC BY-SA 4.0 (de OpenSLR) | Remuestreado a 22,05 kHz y requiere cuenta de Kaggle. Para Pocket TTS es mejor la copia de GianDiego, a 24 kHz |
