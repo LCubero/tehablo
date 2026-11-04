@@ -37,8 +37,10 @@ def default_voice(model):
 class PhononSynthesizer:
     def __init__(self):
         import ptts
+        started = time.perf_counter()
         ptts.set_num_threads(2)
         self.model = ptts.TTS('hf://gradium/phonon-40m-es', lang='es', quant='q8')
+        print(f'Startup: model phonon loaded in {time.perf_counter() - started:.3f} s', flush=True)
         self.sample_rate = 24000
 
     def stream(self, text, voice, stop):
@@ -281,11 +283,11 @@ class SpeechService:
                             if name != 'phonon':
                                 raise
                             reason = ' '.join(str(exc).splitlines())
-                            print(f'Phonon unavailable ({reason}); using spanish with lola',
-                                  file=sys.stderr, flush=True)
                             with self.condition:
                                 if self.closed or revision != self.revision:
                                     continue
+                                print(f'Phonon unavailable ({reason}); using spanish with lola',
+                                      file=sys.stderr, flush=True)
                                 self.model_name, self.voice = 'spanish', 'lola'
                                 name = 'spanish'
                                 if self.pending:

@@ -92,6 +92,100 @@ class ServerTests(unittest.TestCase):
         self.loaded.set()
         self.wait(lambda: self.request('/health')[1]['ready'])
 
+    def test_fallback_pending_retry_and_no_pocket_fallback(self):
+        entered, release = threading.Event(), threading.Event()
+        calls = []
+
+        def load(name):
+            calls.append(name)
+            if name == 'phonon' and calls.count('phonon') == 1:
+                entered.set()
+                release.wait(3)
+                raise OSError('no access\ntry login')
+            if name == 'spanish_24l':
+                raise RuntimeError('broken 24l')
+            return self.synth
+
+        output = io.StringIO()
+        with contextlib.redirect_stderr(output):
+            server = create_server(port=0, synthesizer_factory=load, audio_factory=Sink, catalog=['lola'])
+            service = server.service
+            try:
+                self.assertTrue(entered.wait(3))
+                service.speak({'id': 'pending', 'text': 'hola'})
+                release.set()
+                self.wait(lambda: bool(self.synth.calls))
+                self.assertEqual(self.synth.calls[0], ('hola', 'lola'))
+                self.assertEqual((service.health()['model'], service.health()['voice']), ('spanish', 'lola'))
+                self.assertEqual(output.getvalue(),
+                                 'Phonon unavailable (no access try login); using spanish with lola\n')
+                service.configure({'model': 'phonon'})
+                self.wait(lambda: service.health()['ready'])
+                self.assertEqual(calls, ['phonon', 'spanish', 'phonon'])
+                self.assertEqual(service.health()['voice'], 'Regina')
+                service.configure({'model': 'spanish_24l'})
+                self.wait(lambda: service.health()['error'] is not None)
+                health = service.health()
+                self.assertEqual((health['ready'], health['model'], health['error']),
+                                 (False, 'spanish_24l', 'model load failed: broken 24l'))
+                self.assertEqual(calls, ['phonon', 'spanish', 'phonon', 'spanish_24l'])
+            finally:
+                release.set()
+                server.server_close()
+
+    def test_superseded_or_closed_phonon_failure_does_not_fallback(self):
+        for action in ('revision', 'close'):
+            with self.subTest(action=action):
+                entered, release = threading.Event(), threading.Event()
+                calls = []
+
+                def load(name):
+                    calls.append(name)
+                    if name == 'phonon':
+                        entered.set()
+                        release.wait(3)
+                        raise OSError('denied')
+                    return self.synth
+
+                output = io.StringIO()
+                with contextlib.redirect_stderr(output):
+                    server = create_server(port=0, synthesizer_factory=load, audio_factory=Sink, catalog=['lola'])
+                    service = server.service
+                    try:
+                        self.assertTrue(entered.wait(3))
+                        if action == 'revision':
+                            service.configure({'model': 'spanish_24l'})
+                        else:
+                            with service.condition:
+                                service.closed = True
+                                service.condition.notify_all()
+                        release.set()
+                        if action == 'revision':
+                            self.wait(lambda: service.health()['ready'])
+                            self.assertEqual(service.health()['model'], 'spanish_24l')
+                            self.assertEqual(calls, ['phonon', 'spanish_24l'])
+                        else:
+                            service.worker.join(3)
+                            self.assertFalse(service.worker.is_alive())
+                            self.assertEqual(calls, ['phonon'])
+                            self.assertFalse(service.health()['ready'])
+                        self.assertNotIn('Phonon unavailable', output.getvalue())
+                    finally:
+                        release.set()
+                        server.server_close()
+
+    def test_combined_config_validates_target_model(self):
+        self.ready()
+        for model, voice in (('phonon', 'Iker'), ('spanish', 'other'), ('spanish_24l', 'lola')):
+            self.assertEqual(self.request('/config', {'model': model, 'voice': voice})[0], 200)
+            self.wait(lambda: self.request('/health')[1]['ready'])
+            self.assertEqual(self.request('/health')[1]['voice'], voice)
+        for model, voice, message in (('phonon', 'lola', 'voice must be a Phonon Spanish voice name'),
+                                      ('spanish', 'Regina', 'voice must be a catalog name or a file in voices/')):
+            before = self.request('/health')
+            self.assertEqual(self.request('/config', {'model': model, 'voice': voice}), (400, {'error': message}))
+            self.assertEqual(self.request('/health'), before)
+
     def test_phonon_default(self):
         server = create_server(port=0, synthesizer_factory=lambda name: self.synth,
                                audio_factory=Sink, catalog=['lola'])
