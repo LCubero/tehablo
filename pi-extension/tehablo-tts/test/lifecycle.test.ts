@@ -17,6 +17,19 @@ test('default root is two levels above extension, POSIX python, stop only after 
   client.beginSession(); await client.ensure(); await client.shutdown(); assert.equal(commands.length,1);
 });
 
+test('start arguments are passed to the spawned server, which is then marked as spawned here',async()=>{
+  let healthy=false; const commands:any[]=[];
+  const client=new ServerClient({root:'/tehablo',platform:'linux',fetch:(async()=>{ if(!healthy) throw Error('offline'); return Response.json({ok:true}); }) as any,
+    spawn:((...args:any[])=>{commands.push(args); healthy=true; return {once(){},unref(){},kill(){}};}) as any, openLog:()=>{throw Error('no log');}});
+  assert.equal(client.spawned,false);
+  client.startArgs=['--model','phonon','--voice','Regina'];
+  await client.ensure();
+  assert.deepEqual(commands[0][1].slice(-6),['--port','8765','--model','phonon','--voice','Regina']);
+  assert.equal(client.spawned,true);
+  const reused=new ServerClient({fetch:(async()=>Response.json({ok:true})) as any});
+  await reused.ensure(); assert.equal(reused.spawned,false);
+});
+
 test('failed graceful shutdown kills owned child and reports failure',async()=>{
   let healthy=false,kills=0;
   const client=new ServerClient({fetch:(async(url:any)=>{

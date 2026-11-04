@@ -233,13 +233,12 @@ test('[.⚙ ] opens the centered settings window with the server off; choices ar
     assert.equal(s.windows.length,1);assert.deepEqual(s.windows[0].options,{overlay:true,overlayOptions:{anchor:'center',width:72}});
     assert.equal(s.ensures(),0);
     const w=s.windows[0].w;
-    w.c.change('volume',0.75);w.c.change('auto',true);
+    w.c.change('volume',0.75);
     w.c.choose({name:'Iker',voice:'Iker',model:'phonon',kind:'account',note:'España',downloaded:true});
     await tick();
     assert.equal(s.calls.length,0);assert.equal(s.ensures(),0);
     const saved=s.store.load();
-    assert.deepEqual([saved.volume,saved.auto,saved.model,saved.voice],[0.75,true,'phonon','Iker']);
-    assert.equal(s.statuses.at(-1),'TTS auto');
+    assert.deepEqual([saved.volume,saved.model,saved.voice],[0.75,'phonon','Iker']);
   }finally{await s.close();}
 });
 
@@ -250,6 +249,46 @@ test('saved voice, volume and speed are applied once after the server starts',as
     assert.deepEqual(s.configs,[{model:'phonon',voice:'Iker',volume:0.75,speed:1.25}]);
     await tick();assert.equal(s.configs.length,1);
   }finally{await s.close();}
+});
+
+test('a server started here gets the saved model and voice at launch, so no reload drops the first reading',async()=>{
+  const store=memoryStore();store.save({...DEFAULTS,model:'phonon',voice:'Regina',volume:0.75,speed:1.25});
+  const s=setup(store);s.client.ensure=async function(){this.spawned=true;};try {
+    await start(s);
+    assert.deepEqual(s.client.startArgs,['--model','phonon','--voice','Regina']);
+    assert.deepEqual(s.configs,[{volume:0.75,speed:1.25}]);
+  }finally{await s.close();}
+});
+
+test('turning auto reading on starts a stopped server; off or already running does not',async()=>{
+  for(const how of ['command','shortcut','window']) {
+    const store=memoryStore();store.save({...DEFAULTS,shortcutsOn:true,shortcuts:{auto:'alt+a'}});
+    const s=setup(store);try {
+      if(how==='command')await s.command('auto on');
+      if(how==='shortcut')s.press('\x1ba');
+      if(how==='window'){await clickAt(s,'[.⚙ ]');s.windows[0].w.c.change('auto',true);}
+      await new Promise(r=>setImmediate(r));
+      assert.equal(s.store.load().auto,true,how);assert.equal(s.statuses.at(-1),'TTS auto',how);
+      assert.equal(s.ensures(),1,how);assert.equal(s.line(),'[ ▶ Escuchar ] [ ⋯ ] [.⚙ ]',how);
+      await s.command('auto off');await s.command('auto on');assert.equal(s.ensures(),1,how);
+    }finally{await s.close();}
+  }
+  const s=setup();try {await s.command('off');await s.command('auto on');assert.equal(s.ensures(),0);}finally{await s.close();}
+});
+
+test('turning the server off also turns auto reading off; restart keeps it',async()=>{
+  for(const how of ['button','shortcut','window','restart']) {
+    const store=memoryStore();store.save({...DEFAULTS,shortcutsOn:true,shortcuts:{power:'alt+p'}});
+    const s=setup(store);try {
+      await s.command('auto on');assert.equal(s.store.load().auto,true,how);
+      if(how==='button'){await clickAt(s,'[ ⋯ ]');await clickAt(s,'[ ⏻ ]');}
+      if(how==='shortcut'){s.press('\x1bp');await new Promise(r=>setImmediate(r));}
+      if(how==='window'||how==='restart'){await clickAt(s,'[.⚙ ]');s.windows[0].w.c.power(how==='window'?'off':'restart');await new Promise(r=>setImmediate(r));}
+      assert.ok(s.calls.includes('/shutdown'),how);
+      const auto=how==='restart';
+      assert.equal(s.store.load().auto,auto,how);assert.equal(s.statuses.at(-1),auto?'TTS auto':'TTS manual',how);
+    }finally{await s.close();}
+  }
 });
 
 test('inline volume buttons and /tts commands keep the saved settings in sync',async()=>{

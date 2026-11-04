@@ -72,8 +72,10 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
   const applySaved = async (health: any) => {
     const generation = epoch;
     const body: Record<string, unknown> = {};
-    if (settings.model && settings.model !== health.model) body.model = settings.model;
-    if (settings.voice && (body.model || settings.voice !== health.voice)) body.voice = settings.voice;
+    // A server spawned here already started with the saved model and voice (startArgs); asking again
+    // would reload the model, drop a queued reading, and retry a Phonon that just fell back to lola.
+    if (!client.spawned && settings.model && settings.model !== health.model) body.model = settings.model;
+    if (!client.spawned && settings.voice && (body.model || settings.voice !== health.voice)) body.voice = settings.voice;
     if (typeof health.volume === 'number' && settings.volume !== health.volume) body.volume = settings.volume;
     if (typeof health.speed === 'number' && settings.speed !== health.speed) body.speed = settings.speed;
     if (!Object.keys(body).length) return;
@@ -107,6 +109,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
   const boot = async () => {
     const generation = epoch;
     if (server === 'off') { readyTries = 0; applied = false; setServer('loading'); }
+    client.startArgs = settings.model ? ['--model', settings.model, ...(settings.voice ? ['--voice', settings.voice] : [])] : [];
     try {
       await client.ensure();
       if (generation !== epoch) return;
@@ -117,6 +120,11 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
       cancelReady(); setServer('off');
       throw error;
     }
+  };
+  /** Auto reading needs the server, so turning it on also starts a stopped one. */
+  const setAuto = (value: boolean) => {
+    auto = value; settings = {...settings, auto}; persist(); epoch++; refresh();
+    return auto && enabled && server === 'off' ? boot() : undefined;
   };
   const setting = async (ctx: ExtensionContext, kind: string) => {
     const generation = epoch;
@@ -145,6 +153,8 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
     setServer('off'); refresh();
     await client.powerOff();
   };
+  /** Turning the server off on purpose also ends auto reading; restarts keep it. */
+  const turnOff = () => { setAuto(false); return powerOff(); };
   const poll = () => {
     cancelPoll();
     if (!started || playback.state === 'idle') return;
@@ -235,13 +245,14 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
       choose: row => { settings = {...settings, model: row.model, voice: row.voice}; persist(); run(() => configure({model: row.model, voice: row.voice})); },
       change: (field, value) => {
         settings = {...settings, [field]: value}; persist();
-        if (field === 'auto') { auto = value as boolean; refresh(); }
+        if (field === 'auto') { const starting = setAuto(value as boolean); if (starting) run(() => starting); }
         if (field === 'volume') volume = value as number;
         if (field === 'speed') speed = value as number;
         if (field === 'volume' || field === 'speed') run(() => configure({[field]: value}));
       },
       power: action => run(async () => {
-        if (action !== 'on') await powerOff();
+        if (action === 'off') await turnOff();
+        if (action === 'restart') await powerOff();
         if (action !== 'off') await boot();
       }),
       saveToken: value => {
@@ -263,10 +274,12 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
   };
   const shortcut = async (ctx: ExtensionContext, name: Action) => {
     switch (name) {
-      case 'power': return server === 'off' ? boot() : powerOff();
+      case 'power': return server === 'off' ? boot() : turnOff();
       case 'auto':
-        auto = !auto; settings = {...settings, auto}; persist(); epoch++; refresh();
-        ctx.ui.notify(`Lectura automática: ${auto ? 'sí' : 'no'}`, 'info'); return;
+      {
+        const starting = setAuto(!auto);
+        ctx.ui.notify(`Lectura automática: ${auto ? 'sí' : 'no'}`, 'info'); return starting;
+      }
       case 'play': return speak(ctx);
       case 'pause': if (playback.state !== 'idle') return action(playback.state === 'paused' ? 'resume' : 'pause'); return;
       case 'stop': if (server !== 'off') return action('stop'); return;
@@ -330,7 +343,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
               if (control.action === 'toggle') { open = !open; refresh(); return {handled: true, render: true}; }
               if (control.action === 'settings') { void safe(context, () => openSettings(context!)); return {handled: true, render: true}; }
               void safe(context, () => control.action === 'play' ? speak(context!, String(entry.data!.number))
-                : control.action === 'powerOff' ? powerOff()
+                : control.action === 'powerOff' ? turnOff()
                   : control.action === 'start' ? boot()
                   : /^(volume|speed)/.test(control.action) ? setting(context!, control.action) : action(control.action));
               return {handled: true, render: true};
@@ -391,7 +404,10 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
           case 'off': enabled = false; epoch++; resetPlayback(); refresh(); await client.stop(); info('TTS desactivado.'); return;
           case 'auto':
             if (!['on', 'off'].includes(value)) { ctx.ui.notify('Uso: /tts auto on|off', 'warning'); return; }
-            auto = value === 'on'; settings = {...settings, auto}; persist(); epoch++; refresh(); info(`Lectura automática: ${auto ? 'sí' : 'no'}`); return;
+            {
+              const starting = setAuto(value === 'on');
+              info(`Lectura automática: ${auto ? 'sí' : 'no'}`); await starting; return;
+            }
           case 'play': await speak(ctx, value); return;
           case 'stop': case 'pause': case 'resume': await action(command); return;
           case 'voice':

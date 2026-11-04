@@ -24,6 +24,10 @@ export class ServerClient {
   private ending = false;
   private poweringOff?: Promise<void>;
   private used = false;
+  /** Extra arguments for the next spawned server, such as the saved model and voice. */
+  startArgs: string[] = [];
+  /** True when this client spawned the running server, so it already started with startArgs. */
+  spawned = false;
   constructor(options: Options = {}) {
     this.options = options;
     this.root = options.root ?? process.env.TEHABLO_ROOT ?? resolve(fileURLToPath(new URL('../', import.meta.url)), '../..');
@@ -57,7 +61,7 @@ export class ServerClient {
     return envs.map(env => join(this.root, env, binary));
   }
   private async start() {
-    try { await this.request('/health'); return; } catch { /* Start only when unavailable. */ }
+    try { await this.request('/health'); this.spawned = !!this.child; return; } catch { /* Start only when unavailable. */ }
     if (this.closed) return;
     if (!this.child) {
       const candidates = this.pythonCandidates();
@@ -66,13 +70,14 @@ export class ServerClient {
       try { log = (this.options.openLog ?? openLogFile)(this.logPath); } catch { /* Logging is best effort. */ }
       let child: ReturnType<typeof nodeSpawn>;
       try {
-        child = (this.options.spawn ?? nodeSpawn)(python, [join(this.root, 'src/tehablo_server.py'), '--port', new URL(this.base).port], {
+        child = (this.options.spawn ?? nodeSpawn)(python, [join(this.root, 'src/tehablo_server.py'), '--port', new URL(this.base).port, ...this.startArgs], {
           cwd: this.root, stdio: log === undefined ? 'ignore' : ['ignore', log, log], windowsHide: true, detached: true,
         });
       } finally {
         if (log !== undefined) (this.options.closeLog ?? closeSync)(log);
       }
       this.child = child;
+      this.spawned = true;
       let spawnError: Error | undefined;
       let exited = false;
       child.once('error', error => { spawnError = error; });
