@@ -1,4 +1,10 @@
-import { SPEEDS, type Settings, type VoiceRow } from './settings.ts';
+import { ACTIONS, SPEEDS, type Action, type Settings, type VoiceRow } from './settings.ts';
+import { keyOf, label, usedByPi } from './shortcuts.ts';
+
+export const ACTION_NAMES: Record<Action, string> = {
+  power: 'Encender / apagar TTS', auto: 'Lectura automática sí/no', play: 'Escuchar la última respuesta',
+  pause: 'Pausar / seguir', stop: 'Detener', settings: 'Abrir ajustes',
+};
 
 // Floating settings window opened from [.⚙ ] (approved prototype: .repo-harness/tmp/menu-proto/proto.ts).
 // Keys come through Pi's injected keybindings, so no direct pi-tui import is needed.
@@ -11,9 +17,9 @@ export interface Controller {
   power(action: 'on' | 'off' | 'restart'): void;
   /** Throws an Error with a message safe to show (never the token). */
   saveToken(value: string): void;
-  shortcuts(): void;
+  setShortcut(action: Action, key: string | undefined): void;
 }
-interface Keys { matches(data: string, id: string): boolean }
+interface Keys { matches(data: string, id: string): boolean; getResolvedBindings?(): Record<string, string | string[] | undefined> }
 interface Theme { fg(style: string, text: string): string }
 type Seg = {text: string; style?: string; fn?: () => void};
 
@@ -24,7 +30,8 @@ const fit = (t: string, n: number) => { const a = Array.from(t); return a.length
 const nearest = (list: number[], value: number) => list.reduce((best, v, i) => Math.abs(v - value) < Math.abs(list[best] - value) ? i : best, 0);
 
 export class SettingsWindow {
-  page: 'main' | 'voices' | 'download' | 'token' = 'main';
+  page: 'main' | 'voices' | 'download' | 'token' | 'shortcuts' = 'main';
+  capturing = false; scRow = 0; scError = '';
   row = 0; col = 0; pick = 0; token = ''; error = '';
   target?: VoiceRow;
   hits: {y: number; x0: number; x1: number; fn: () => void}[] = [];
@@ -58,6 +65,18 @@ export class SettingsWindow {
     this.token = ''; this.error = ''; this.page = 'download'; this.col = 0;
   }
 
+  capture(data: string) {
+    if (this.key(data) === 'esc') { this.capturing = false; this.scError = ''; return; }
+    const key = keyOf(data);
+    const action = ACTIONS[this.scRow];
+    const shortcuts = this.c.state().settings.shortcuts;
+    const other = ACTIONS.find(a => a !== action && shortcuts[a] === key);
+    if (!key) this.scError = 'Usa Ctrl o Alt con una letra o un número.';
+    else if (usedByPi(this.kb, key)) this.scError = `Pi ya usa ${label(key)}.`;
+    else if (other) this.scError = `Ya la usa «${ACTION_NAMES[other]}».`;
+    else { this.c.setShortcut(action, key); this.capturing = false; this.scError = ''; }
+  }
+
   mainRows() {
     const {settings: s, server} = this.c.state(), on = server !== 'off';
     const active = this.c.voices().find(v => this.isActive(v));
@@ -69,7 +88,7 @@ export class SettingsWindow {
       {label: 'Velocidad', value: `${SPEEDS[spd].toFixed(2)}x`, step: (d: number) => this.c.change('speed', move(SPEEDS, spd, d))},
       {label: 'Lectura automática', value: s.auto ? 'sí' : 'no', step: () => this.c.change('auto', !s.auto)},
       {label: 'Atajos de teclado', value: s.shortcutsOn ? 'activados' : 'desactivados', step: () => this.c.change('shortcutsOn', !s.shortcutsOn),
-        buttons: [['[ Editar ]', () => this.c.shortcuts()]]},
+        buttons: [['[ Editar ]', () => { this.page = 'shortcuts'; this.scRow = 0; this.capturing = false; this.scError = ''; }]]},
       {label: on ? 'Servidor ● activo' : 'Servidor ○ apagado', buttons: [
         [on ? '[ Apagar ]' : '[ Encender ]', () => { this.c.power(on ? 'off' : 'on'); this.col = 0; }],
         ['[ Reiniciar ]', on ? () => this.c.power('restart') : undefined],
@@ -99,6 +118,16 @@ export class SettingsWindow {
   handleInput(data: string) {
     if (/^\x1b\[[\d;:]*:3u$/.test(data)) return; // kitty key release
     const k = this.key(data);
+    if (this.page === 'shortcuts') {
+      if (this.capturing) this.capture(data);
+      else if (k === 'esc') this.home();
+      else if (k === 'up') this.scRow = Math.max(0, this.scRow - 1);
+      else if (k === 'down') this.scRow = Math.min(ACTIONS.length - 1, this.scRow + 1);
+      else if (k === 'enter') { this.capturing = true; this.scError = ''; }
+      else if (k === 'back') this.c.setShortcut(ACTIONS[this.scRow], undefined);
+      this.redraw();
+      return;
+    }
     if (this.page === 'main') {
       const rows = this.mainRows(), r = rows[this.row];
       if (k === 'esc') { this.done(); return; }
@@ -151,11 +180,27 @@ export class SettingsWindow {
       }
       out.push(th.fg('border', '│') + body + ' '.repeat(Math.max(0, IN - (x - 1))) + th.fg('border', '│'));
     };
-    const titles = {main: ' tehablo · Ajustes ', voices: ' Elegir voz ', download: ' Descargar voz ', token: ' Activar voces con cuenta gratis '};
+    const titles = {shortcuts: ' Atajos de teclado ', main: ' tehablo · Ajustes ', voices: ' Elegir voz ', download: ' Descargar voz ', token: ' Activar voces con cuenta gratis '};
     const title = titles[this.page], left = Math.floor((IN - width(title)) / 2);
     out.push(th.fg('border', '╭' + '─'.repeat(left)) + th.fg('accent', title) + th.fg('border', '─'.repeat(IN - left - width(title)) + '╮'));
     line();
-    if (this.page === 'main') {
+    if (this.page === 'shortcuts') {
+      const shortcuts = this.c.state().settings.shortcuts;
+      line([{text: '   ' + fit('Acción', 30) + fit('Atajo', 14), style: 'dim'}]);
+      line([{text: '   ' + '─'.repeat(IN - 4), style: 'dim'}]);
+      ACTIONS.forEach((a, i) => {
+        const sel = i === this.scRow, change = () => { this.scRow = i; this.capturing = true; this.scError = ''; };
+        const segs: Seg[] = [{text: sel ? ' ▶ ' : '   ', style: 'accent'}, {text: fit(ACTION_NAMES[a], 30), style: sel ? 'accent' : undefined},
+          {text: fit(sel && this.capturing ? '…' : label(shortcuts[a]), 14), style: shortcuts[a] ? 'success' : 'dim'},
+          {text: '[ Cambiar ]', style: sel ? 'accent' : undefined, fn: change}];
+        if (shortcuts[a]) segs.push({text: ' '}, {text: '[ Quitar ]', fn: () => { this.scRow = i; this.c.setShortcut(a, undefined); }});
+        line(segs);
+      });
+      line();
+      line(this.capturing ? [{text: ' Presiona la combinación (Ctrl o Alt + letra o número) · Esc cancela', style: 'warning'}] : []);
+      line(this.scError ? [{text: ' ' + this.scError, style: 'error'}] : []);
+      line([{text: ' '}, {text: '[ Volver ]', style: 'accent', fn: () => this.home()}, {text: '   ↑↓ elegir · Enter cambiar · ⌫ quitar · Esc', style: 'dim'}]);
+    } else if (this.page === 'main') {
       this.mainRows().forEach((r: any, i: number) => {
         const sel = i === this.row;
         const segs: Seg[] = [{text: sel ? ' ▶ ' : '   ', style: 'accent'}, {text: fit(r.label, 21), style: sel ? 'accent' : undefined}];

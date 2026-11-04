@@ -11,7 +11,7 @@ const ROWS: VoiceRow[] = [
 ];
 const KEYS: Record<string, string> = {'\x1b[A': 'tui.select.up', '\x1b[B': 'tui.select.down', '\r': 'tui.select.confirm',
   '\x1b': 'tui.select.cancel', '\x1b[D': 'tui.editor.cursorLeft', '\x1b[C': 'tui.editor.cursorRight', '\x7f': 'tui.editor.deleteCharBackward'};
-const kb = {matches: (data: string, id: string) => KEYS[data] === id};
+const kb = {matches: (data: string, id: string) => KEYS[data] === id, getResolvedBindings: () => ({'app.model.select': 'ctrl+l'})};
 const theme = {fg: (_: string, t: string) => t};
 
 function setup(over: Partial<Record<string, any>> = {}) {
@@ -25,7 +25,7 @@ function setup(over: Partial<Record<string, any>> = {}) {
     change: (field, value) => { calls.push(['change', field, value]); (state.settings as any)[field] = value; },
     power: action => { calls.push(['power', action]); if (action !== 'restart') state.server = action === 'on' ? 'ready' : 'off'; },
     saveToken: value => { if (value === 'bad') throw new Error('El token no es válido: copia el token completo de Hugging Face.'); calls.push(['token', value.length]); state.token = true; },
-    shortcuts: () => calls.push(['shortcuts']),
+    setShortcut: (action, key) => { calls.push(['shortcut', action, key]); const sc = {...state.settings.shortcuts}; if (key) sc[action] = key; else delete sc[action]; state.settings = {...state.settings, shortcuts: sc}; },
   };
   const w = new SettingsWindow(c, theme, kb, () => { closed = true; }, () => {});
   return {w, calls, state, closed: () => closed, text: () => w.render(100).join('\n'), key: (k: string) => w.handleInput(k),
@@ -116,8 +116,28 @@ test('with a saved token, account voices skip the guide', () => {
   assert.ok(s.text().includes('[ Descargar y usar ]'));
 });
 
-test('Editar opens the shortcuts table', () => {
+test('Editar opens the shortcuts table; keys are captured, validated and removable', () => {
   const s = setup();
   s.click('[ Editar ]');
-  assert.deepEqual(s.calls, [['shortcuts']]);
+  const table = s.text();
+  for (const part of ['Atajos de teclado', 'Encender / apagar TTS', 'Lectura automática sí/no', 'Escuchar la última respuesta',
+    'Pausar / seguir', 'Detener', 'Abrir ajustes', '(sin atajo)']) assert.ok(table.includes(part), part);
+  s.key('\r');
+  assert.ok(s.text().includes('Presiona la combinación'));
+  s.key('p');
+  assert.ok(s.text().includes('Usa Ctrl o Alt con una letra o un número.'));
+  s.key('\x0c');
+  assert.ok(s.text().includes('Pi ya usa Ctrl+L.'));
+  s.key('\x1b\x10');
+  assert.deepEqual(s.calls.at(-1), ['shortcut', 'power', 'ctrl+alt+p']);
+  assert.ok(s.text().includes('Ctrl+Alt+P'));
+  s.key('\x1b[B'); s.key('\r'); s.key('\x1b\x10');
+  assert.ok(s.text().includes('Ya la usa «Encender / apagar TTS».'));
+  s.key('\x1b');
+  assert.ok(!s.text().includes('Presiona la combinación'));
+  assert.equal(s.calls.filter(c => c[0] === 'shortcut').length, 1);
+  s.click('[ Quitar ]');
+  assert.deepEqual(s.calls.at(-1), ['shortcut', 'power', undefined]);
+  s.key('\x1b');
+  assert.ok(s.text().includes('tehablo · Ajustes'));
 });

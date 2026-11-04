@@ -1,7 +1,8 @@
 import type { ExtensionAPI, ExtensionContext } from '@earendil-works/pi-coding-agent';
 import { ServerClient } from './server.ts';
 import { finalText } from './text.ts';
-import { DEFAULTS, loadSettings, saveSettings, type Settings, type VoiceRow } from './settings.ts';
+import { ACTIONS, DEFAULTS, loadSettings, saveSettings, type Action, type Settings, type VoiceRow } from './settings.ts';
+import { keyOf } from './shortcuts.ts';
 import { hasToken, saveToken } from './token.ts';
 import { SettingsWindow, type Controller } from './window.ts';
 
@@ -21,7 +22,8 @@ const help = '/tts on|off · auto on|off · play [n] · pause · resume · stop 
 
 export function createExtension(pi: ExtensionAPI, client = new ServerClient(), store: Store = client.root ? fileStore(client.root) : memoryStore()) {
   let settings: Settings = store.load();
-  let applied = false;
+  let applied = false, windowOpen = false;
+  let stopKeys: (() => void) | undefined;
   const persist = () => { try { store.save(settings); } catch { /* Settings are best effort. */ } };
   let enabled = true, auto = false, epoch = 0;
   let volume = 1, speed = 1;
@@ -219,11 +221,42 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
         store.saveToken(value);
         if (server === 'ready') run(async () => { await powerOff(); await boot(); });
       },
-      shortcuts: () => ctx.ui.notify('Atajos de teclado: próximamente.', 'info'),
+      setShortcut: (name, key) => {
+        const shortcuts = {...settings.shortcuts};
+        if (key) shortcuts[name] = key; else delete shortcuts[name];
+        settings = {...settings, shortcuts}; persist();
+      },
     };
-    await ctx.ui.custom<void>((tui: any, theme: any, keybindings: any, done: () => void) =>
+    windowOpen = true;
+    try {
+      await ctx.ui.custom<void>((tui: any, theme: any, keybindings: any, done: () => void) =>
       new SettingsWindow(controller, theme, keybindings, () => done(), () => tui.requestRender()) as any,
-    {overlay: true, overlayOptions: {anchor: 'center', width: 72}} as any);
+      {overlay: true, overlayOptions: {anchor: 'center', width: 72}} as any);
+    } finally { windowOpen = false; }
+  };
+  const shortcut = async (ctx: ExtensionContext, name: Action) => {
+    switch (name) {
+      case 'power': return server === 'off' ? boot() : powerOff();
+      case 'auto':
+        auto = !auto; settings = {...settings, auto}; persist(); epoch++; refresh();
+        ctx.ui.notify(`Lectura automática: ${auto ? 'sí' : 'no'}`, 'info'); return;
+      case 'play': return speak(ctx);
+      case 'pause': if (playback.state !== 'idle') return action(playback.state === 'paused' ? 'resume' : 'pause'); return;
+      case 'stop': if (server !== 'off') return action('stop'); return;
+      case 'settings': return openSettings(ctx);
+    }
+  };
+  /** Shortcuts are read from raw input; only matched combinations are consumed. */
+  const listenKeys = (ctx: ExtensionContext) => {
+    stopKeys?.();
+    stopKeys = ctx.ui.onTerminalInput?.(data => {
+      if (!settings.shortcutsOn || windowOpen || !enabled) return undefined;
+      const key = keyOf(data);
+      const name = key ? ACTIONS.find(a => settings.shortcuts[a] === key) : undefined;
+      if (!name) return undefined;
+      void safe(ctx, () => shortcut(ctx, name));
+      return {consume: true};
+    });
   };
   pi.registerEntryRenderer<Card>(ENTRY, (entry, _options, theme) => {
     // Only single-column symbols, so click columns match Array.from lengths.
@@ -287,6 +320,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
     settings = store.load(); applied = false;
     enabled = true; auto = settings.auto; volume = settings.volume; speed = settings.speed; epoch++; context = ctx;
     cancelReady(); server = 'off'; open = false;
+    listenKeys(ctx);
     client.beginSession();
   });
   pi.on('agent_start', (_event, ctx) => {
@@ -297,6 +331,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
   pi.on('session_shutdown', async (_event, ctx) => {
     if (ctx.mode !== 'tui') return;
     epoch++; resetPlayback(); cancelReady(); server = 'off'; context = undefined;
+    stopKeys?.(); stopKeys = undefined;
     await safe(ctx, () => client.shutdown());
   });
   pi.on('agent_settled', (event, ctx) => {

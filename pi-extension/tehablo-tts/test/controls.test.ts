@@ -4,16 +4,16 @@ import {createExtension, memoryStore} from '../src/extension.ts';
 import {DEFAULTS} from '../src/settings.ts';
 
 function setup(store=memoryStore()) {
-  const windows:any[]=[];
+  const windows:any[]=[], keyHandlers:any[]=[];
   const configs:any[]=[], notices:string[]=[], statuses:(string|undefined)[]=[], settings={volume:1,speed:1,error:null as string|null};
   const hooks:any={}, calls:string[]=[], entries:any[]=[{type:'message',id:'a',message:{role:'assistant',content:'Hola'}} ,{type:'custom',customType:'tehablo-tts',data:{messageId:'a',number:1}}];
   let renderer:any, command:any, state='playing', id:string|null='a', renders=0, fail=false, ready=true, ensures=0;
   const client:any={beginSession(){},ensure:async()=>{ensures++;},stop:async()=>{},shutdown:async()=>{},powerOff:async()=>{calls.push('/shutdown');},request:async(path:string)=>{calls.push(path);if(fail)throw Error('offline');if(path==='/health')return {...settings,ready};return {state,id,error:settings.error};},action:async(path:string,body:any)=>{calls.push(path);if(path==='/config'){configs.push(body);Object.assign(settings,body);return {...settings,ready};}if(path==='/health')return {...settings,ready};if(path==='/pause')state='paused';if(path==='/resume')state='playing';return {state};}};
-  const ctx:any={mode:'tui',sessionManager:{getBranch:()=>entries},ui:{custom:async(factory:any,options:any)=>{const w=factory({requestRender(){}},{fg:(_:any,t:string)=>t},{matches:()=>false},()=>{});windows.push({w,options});},notify(text:string){notices.push(text);},setStatus(_:string,text:string|undefined){renders++;statuses.push(text);}}};
+  const ctx:any={mode:'tui',sessionManager:{getBranch:()=>entries},ui:{onTerminalInput:(h:any)=>{keyHandlers.push(h);return()=>{keyHandlers.splice(keyHandlers.indexOf(h),1);};},custom:async(factory:any,options:any)=>{const w=factory({requestRender(){}},{fg:(_:any,t:string)=>t},{matches:()=>false},()=>{});windows.push({w,options});},notify(text:string){notices.push(text);},setStatus(_:string,text:string|undefined){renders++;statuses.push(text);}}};
   createExtension({on:(n:string,h:any)=>hooks[n]=h,registerCommand:(_:any,c:any)=>command=c.handler,registerEntryRenderer:(_:any,r:any)=>renderer=r} as any,client,store);
   hooks.session_start({},ctx);
   const card=renderer(entries[1],{}, {fg:(_:any,t:string)=>t});
-  return {store,windows,client,calls,card,configs,notices,statuses,line:()=>card.render(200)[0], command:(s:string)=>command(s,ctx),set:(s:string,i:string|null='a')=>{state=s;id=i;},setReady:(value:boolean)=>{ready=value;},setError:(value:string)=>{settings.error=value;},ensures:()=>ensures,close:()=>hooks.session_shutdown({},ctx),agentStart:()=>hooks.agent_start({},ctx),fail:(value=true)=>{fail=value;},renders:()=>renders};
+  return {store,windows,keyHandlers,press:(d:string)=>keyHandlers.map(h=>h(d)),client,calls,card,configs,notices,statuses,line:()=>card.render(200)[0], command:(s:string)=>command(s,ctx),set:(s:string,i:string|null='a')=>{state=s;id=i;},setReady:(value:boolean)=>{ready=value;},setError:(value:string)=>{settings.error=value;},ensures:()=>ensures,close:()=>hooks.session_shutdown({},ctx),agentStart:()=>hooks.agent_start({},ctx),fail:(value=true)=>{fail=value;},renders:()=>renders};
 }
 test('every start button column is clickable, including normal spaces and brackets',async()=>{
   for(let x=0;x<Array.from('[ ⏻ TTS ]').length;x++) {
@@ -256,5 +256,28 @@ test('inline volume buttons and /tts commands keep the saved settings in sync',a
     assert.equal(s.store.load().volume,1.1);
     await s.command('auto on');assert.equal(s.store.load().auto,true);
     await s.command('speed 1.25');assert.equal(s.store.load().speed,1.25);
+  }finally{await s.close();}
+});
+
+test('shortcuts run their action only when enabled, are consumed, and stop after the session ends',async()=>{
+  const store=memoryStore();store.save({...DEFAULTS,shortcutsOn:true,shortcuts:{stop:'ctrl+alt+s',settings:'ctrl+alt+o',auto:'alt+a'}});
+  const s=setup(store);try {
+    assert.equal(s.keyHandlers.length,1);
+    assert.deepEqual(s.press('x'),[undefined]);
+    s.press('\x1b\x13');await tick();assert.equal(s.ensures(),0);assert.equal(s.calls.length,0);
+    await start(s);
+    assert.deepEqual(s.press('\x1b\x13'),[{consume:true}]);await tick();
+    assert.ok(s.calls.includes('/stop'));
+    s.press('\x1ba');assert.equal(s.store.load().auto,true);assert.equal(s.statuses.at(-1),'TTS auto');
+    s.press('\x1b\x0f');await new Promise(r=>setImmediate(r));assert.equal(s.windows.length,1);
+    store.save({...store.load(),shortcutsOn:false});
+  }finally{await s.close();}
+  assert.equal(s.keyHandlers.length,0);
+});
+
+test('with shortcuts off nothing is intercepted',async()=>{
+  const store=memoryStore();store.save({...DEFAULTS,shortcutsOn:false,shortcuts:{stop:'ctrl+alt+s'}});
+  const s=setup(store);try {
+    assert.deepEqual(s.press('\x1b\x13'),[undefined]);assert.equal(s.calls.length,0);
   }finally{await s.close();}
 });
