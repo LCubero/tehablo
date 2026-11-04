@@ -206,9 +206,10 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
     if (!text) { ctx.ui.notify('Respuesta no encontrada.', 'warning'); return; }
     return play(card!.messageId, text);
   };
-  /** Reads text in the bar of message `id`, so its pause and stop buttons control it. */
-  const play = async (id: string, text: string) => {
-    const generation = epoch;
+  /** Reads text in the bar of message `id`, so its pause and stop buttons control it.
+   * `generation` is taken before any wait, so a stop or power off in between cancels the reading. */
+  const play = async (id: string, text: string, generation = epoch) => {
+    if (generation !== epoch) return;
     await boot();
     if (generation !== epoch || !enabled) return;
     await client.request('/speak', {id, text});
@@ -223,9 +224,11 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
     if (!enabled) { ctx.ui.notify('Activa TTS con /tts on.', 'warning'); return; }
     const target = id ?? cards(ctx).at(-1)?.messageId;
     if (!target) return;
+    const generation = epoch;
     const text = cleanText(await clipboard());
+    if (generation !== epoch) return;
     if (!text) { ctx.ui.notify('El portapapeles está vacío.', 'warning'); return; }
-    return play(target, text);
+    return play(target, text, generation);
   };
   /** Live server changes when it runs; settings are always saved and applied on the next start. */
   const configure = async (body: Record<string, unknown>) => {

@@ -343,6 +343,17 @@ test('the copied-text shortcut reads the clipboard in the latest bar',async()=>{
   }finally{await s.close();}
 });
 
+test('powering off while the clipboard is still being read does not restart the server or read',async()=>{
+  let release!:(text:string)=>void;
+  const s=setup(memoryStore(),()=>new Promise<string>(r=>{release=r;}));try {
+    await start(s);const ensures=s.ensures();
+    await clickAt(s,'[ ▶ copiado ]');
+    await clickAt(s,'[ ⋯ ]');await clickAt(s,'[ ⏻ ]');
+    release('Texto copiado');await new Promise(r=>setImmediate(r));await new Promise(r=>setImmediate(r));
+    assert.ok(!s.calls.includes('/speak'));assert.equal(s.ensures(),ensures);assert.equal(s.line(),'[ ⏻ TTS ] [ ≡ ]');
+  }finally{await s.close();}
+});
+
 test('with shortcuts off nothing is intercepted',async()=>{
   const store=memoryStore();store.save({...DEFAULTS,shortcutsOn:false,shortcuts:{stop:'ctrl+alt+s'}});
   const s=setup(store);try {
