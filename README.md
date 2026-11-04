@@ -134,7 +134,7 @@ La combinación comprobada en Fedora y los límites de la prueba están en [Desa
 
 ## Uso en Pi
 
-Por defecto se carga Phonon 40M es (`Regina`, también admite `Iker`). Sus pesos son **CC BY-NC 4.0** (no comercial) y requieren aceptar las condiciones en <https://huggingface.co/gradium/phonon-40m-es> e iniciar sesión con `hf auth login` para la primera descarga. Después puede funcionar desde caché. Si falta el paquete, acceso o caché, el servidor registra el motivo y usa automáticamente Pocket `spanish` con `lola`; `/health` muestra el modelo real.
+Por defecto se carga Phonon 40M es (`Regina`, también admite `Iker`). Sus pesos son **CC BY-NC 4.0** (no comercial) y requieren una cuenta gratis de Hugging Face, aceptar las condiciones en <https://huggingface.co/gradium/phonon-40m-es> y un token para la primera descarga: la ventana `[.⚙ ]` lo pide al elegir una de esas voces (o usa `hf auth login`). Después puede funcionar desde caché. Si falta el paquete, acceso o caché, el servidor registra el motivo y usa automáticamente Pocket `spanish` con `lola`; `/health` muestra el modelo real.
 
 Para elegir Pocket en Pi: `/tts model spanish` (o `spanish_24l`). Al cambiar de modelo sin indicar voz se elige `Regina` para Phonon y `lola` para Pocket. También puedes arrancar el servidor con `.venv-pocket/bin/python src/tehablo_server.py --model spanish`. Las voces de `voices/` solo son para Pocket.
 
@@ -144,17 +144,22 @@ La extensión [`pi-extension/tehablo-tts/`](pi-extension/tehablo-tts/) lee las r
 
   | Estado | Barra |
   |---|---|
-  | Apagado | `[ ⏻ TTS ]` |
-  | Cargando | `[ Cargando… ]` (no se puede pulsar) |
-  | Listo | `[ ▶ Escuchar ] [ ⋯ ]` |
-  | Listo, controles abiertos | `[ ▶ Escuchar ] [ → ]  Vol [- 100% +]  Vel [- 1.00x +] [ ⏻ ]` |
-  | Sonando | `[ ‖ ] [ ■ ] [ ⋯ ]` |
-  | En pausa | `[ ▶ ] [ ■ ] [ ⋯ ]` |
+  | Apagado | `[ ⏻ TTS ] [.⚙ ]` |
+  | Cargando | `[ Cargando… ] [.⚙ ]` (`Cargando…` no se puede pulsar) |
+  | Listo | `[ ▶ Escuchar ] [ ⋯ ] [.⚙ ]` |
+  | Listo, controles abiertos | `[ ▶ Escuchar ] [ → ]  Vol [- 100% +]  Vel [- 1.00x +] [ ⏻ ] [.⚙ ]` |
+  | Sonando | `[ ‖ ] [ ■ ] [ ⋯ ] [.⚙ ]` |
+  | En pausa | `[ ▶ ] [ ■ ] [ ⋯ ] [.⚙ ]` |
 
   **`[ ⏻ TTS ]`** arranca el servidor y carga el modelo antes de escuchar; mientras tanto, la barra de estado muestra `TTS manual · cargando`. Las pruebas de código cubren clics en toda su superficie (corchetes, símbolo, letras y espacios normales); la persona responsable confirmó el clic físico en toda la etiqueta en Windows y en el corchete y las letras en Linux, y apagar y volver a encender en ambos. Escuchar, `/tts play` y el modo automático también lo arrancan si hace falta.
-- **Volumen y velocidad:** `[ ⋯ ]` muestra **Vol** (10–150 %, pasos de 10 %, inicial 100 %) y **Vel** (1.00x, 1.10x, 1.15x, 1.25x y 1.50x; `/tts speed` sigue aceptando 0.75–1.5) en todas las barras; `[ → ]` los oculta. `[-` baja y `+]` sube. Solo clics, sin atajos de teclado. El volumen cambia incluso el audio en reproducción; la velocidad afecta a los siguientes trozos generados, no al audio ya almacenado. Los límites se mantienen sin error.
-- **Apagar y liberar el modelo:** `[ ⏻ ]` aparece solo al final de los controles abiertos, después del último `+]`. Detiene la lectura y cierra el servidor propio para liberar sus recursos; reinicia los controles y vuelve al modo manual. `[ ⏻ TTS ]` permite encenderlo otra vez sin cerrar Pi. No equivale a `[ ■ ]` (solo detener) ni a `/tts off` (desactivar los controles).
+- **Volumen y velocidad:** `[ ⋯ ]` muestra **Vol** (10–150 %, pasos de 10 %, inicial 100 %) y **Vel** (1.00x, 1.10x, 1.15x, 1.25x y 1.50x; `/tts speed` sigue aceptando 0.75–1.5) en todas las barras; `[ → ]` los oculta. `[-` baja y `+]` sube, con clics. El volumen cambia incluso el audio en reproducción; la velocidad afecta a los siguientes trozos generados, no al audio ya almacenado. Los límites se mantienen sin error.
+- **Apagar y liberar el modelo:** `[ ⏻ ]` aparece solo al final de los controles abiertos, después del último `+]`. Detiene la lectura y cierra el servidor propio para liberar sus recursos; los ajustes guardados se mantienen. `[ ⏻ TTS ]` permite encenderlo otra vez sin cerrar Pi. No equivale a `[ ■ ]` (solo detener) ni a `/tts off` (desactivar los controles).
 - **Automático:** `/tts auto on` lee cada respuesta al terminar; `/tts auto off` vuelve al modo manual.
+- **Ventana de ajustes `[.⚙ ]`:** siempre al final de la barra, con el servidor encendido o apagado. Abre una ventana centrada que se usa con clics o con el teclado (↑↓ elegir, ←→ cambiar, Enter, Esc cerrar):
+  - **Voz** y `[ Cambiar ]`: una tabla con *Voz*, *Tipo* y *Estado*. Primero las descargadas, luego las que se descargan sin cuenta y al final las que piden una cuenta gratis de Hugging Face (Phonon y las clonadas de `voices/`). Al elegir una de cuenta sin token, la ventana muestra los 4 pasos y un campo para pegarlo (se ve como `•••`); se guarda como `HF_TOKEN` en `.env` (fuera de Git, permisos solo del dueño) y el servidor se reinicia para usarlo.
+  - **Volumen**, **Velocidad** y **Lectura automática**.
+  - **Atajos de teclado**: activarlos y `[ Editar ]` para asignar Ctrl o Alt + letra o número a encender/apagar, lectura automática, escuchar, pausar/seguir, detener y abrir ajustes. No acepta combinaciones que ya usa Pi.
+  - **Servidor**: `[ Encender ]` (con `[ Reiniciar ]` en gris) o `[ Apagar ]` y `[ Reiniciar ]`.
 
 | Comando | Acción |
 |---|---|
@@ -166,7 +171,7 @@ La extensión [`pi-extension/tehablo-tts/`](pi-extension/tehablo-tts/) lee las r
 | `/tts model [phonon\|spanish\|spanish_24l]` | Cambia el modelo |
 | `/tts speed [0.75-1.5]` | Cambia la velocidad |
 
-La extensión arranca sola el servidor local [`src/tehablo_server.py`](src/tehablo_server.py) (`127.0.0.1:8765`, se cambia con `TEHABLO_PORT`) y lo apaga al cerrar Pi. Necesita el entorno `.venv-pocket` (o `.venv-pocket-<sistema>`) instalado. Los ajustes duran solo la sesión. Los mensajes y errores del servidor se guardan en `logs/tehablo-server.log`, que se reescribe en cada arranque; si el servidor no responde a tiempo, el aviso indica esa ruta. Si el modelo no carga, Pi muestra el error en lugar de quedarse en «cargando»; también avisa si una lectura falla (por ejemplo, sin dispositivo de audio) o si se pierde la conexión con el servidor. Cada lectura usa la salida de audio predeterminada del sistema en ese momento: si cambias a audífonos o Bluetooth, la siguiente lectura ya suena ahí. En Windows la que está sonando termina en la salida anterior; en Linux (Fedora) cambia en el momento. Por seguridad, el servidor rechaza peticiones de páginas web (cabecera `Origin`, 403) y los `POST` que no declaran JSON (415).
+La extensión arranca sola el servidor local [`src/tehablo_server.py`](src/tehablo_server.py) (`127.0.0.1:8765`, se cambia con `TEHABLO_PORT`) y lo apaga al cerrar Pi. Necesita el entorno `.venv-pocket` (o `.venv-pocket-<sistema>`) instalado. Los ajustes se guardan en `tehablo-settings.json` (raíz del proyecto, fuera de Git) y se aplican al encender el servidor. Los mensajes y errores del servidor se guardan en `logs/tehablo-server.log`, que se reescribe en cada arranque; si el servidor no responde a tiempo, el aviso indica esa ruta. Si el modelo no carga, Pi muestra el error en lugar de quedarse en «cargando»; también avisa si una lectura falla (por ejemplo, sin dispositivo de audio) o si se pierde la conexión con el servidor. Cada lectura usa la salida de audio predeterminada del sistema en ese momento: si cambias a audífonos o Bluetooth, la siguiente lectura ya suena ahí. En Windows la que está sonando termina en la salida anterior; en Linux (Fedora) cambia en el momento. Por seguridad, el servidor rechaza peticiones de páginas web (cabecera `Origin`, 403) y los `POST` que no declaran JSON (415).
 
 El registro incluye líneas `Startup:` con segundos por etapa: importaciones del servidor, importaciones de TTS y carga del modelo (sin repetir el tiempo de importación de TTS). Sirven para comparar próximos arranques, no para diagnosticar retrospectivamente la demora ni atribuirla a la caché. No miden la creación del proceso Python ni el inicio de la reproducción. Guarda el registro antes de volver a arrancar: se sobrescribe. Las [mediciones de arranque en Windows y sus límites](docs/desarrollo.md#arranque-en-windows-mediciones-y-límites) quedan documentadas para futuras comparaciones.
 
