@@ -7,7 +7,7 @@ import {DEFAULTS} from '../src/settings.ts';
 
 function setup(store=memoryStore(),clipboard?:()=>Promise<string>) {
   const windows:any[]=[], keyHandlers:any[]=[];
-  const configs:any[]=[], notices:string[]=[], statuses:(string|undefined)[]=[], settings={volume:1,speed:1,error:null as string|null};
+  const configs:any[]=[], notices:string[]=[], statuses:(string|undefined)[]=[], settings={volume:1,speed:1,error:null as string|null,fallback:null as string|null};
   const hooks:any={}, calls:string[]=[], entries:any[]=[{type:'message',id:'a',message:{role:'assistant',content:'Hola'}} ,{type:'custom',customType:'tehablo-tts',data:{messageId:'a',number:1}}];
   let renderer:any, command:any, state='playing', id:string|null='a', renders=0, fail=false, ready=true, ensures=0;
   const client:any={beginSession(){},ensure:async()=>{ensures++;},stop:async()=>{},shutdown:async()=>{},powerOff:async()=>{calls.push('/shutdown');},request:async(path:string)=>{calls.push(path);if(fail)throw Error('offline');if(path==='/health')return {...settings,ready};return {state,id,error:settings.error};},action:async(path:string,body:any)=>{calls.push(path);if(path==='/config'){configs.push(body);Object.assign(settings,body);return {...settings,ready};}if(path==='/health')return {...settings,ready};if(path==='/pause')state='paused';if(path==='/resume')state='playing';return {state};}};
@@ -15,7 +15,7 @@ function setup(store=memoryStore(),clipboard?:()=>Promise<string>) {
   createExtension({on:(n:string,h:any)=>hooks[n]=h,registerCommand:(_:any,c:any)=>command=c.handler,registerEntryRenderer:(_:any,r:any)=>renderer=r} as any,client,store,clipboard);
   hooks.session_start({},ctx);
   const card=renderer(entries[1],{}, {fg:(_:any,t:string)=>t});
-  return {store,windows,keyHandlers,press:(d:string)=>keyHandlers.map(h=>h(d)),client,calls,card,configs,notices,statuses,line:()=>card.render(200)[0], command:(s:string)=>command(s,ctx),set:(s:string,i:string|null='a')=>{state=s;id=i;},setReady:(value:boolean)=>{ready=value;},setError:(value:string)=>{settings.error=value;},ensures:()=>ensures,close:()=>hooks.session_shutdown({},ctx),agentStart:()=>hooks.agent_start({},ctx),fail:(value=true)=>{fail=value;},renders:()=>renders};
+  return {store,windows,keyHandlers,press:(d:string)=>keyHandlers.map(h=>h(d)),client,calls,card,configs,notices,statuses,line:()=>card.render(200)[0], command:(s:string)=>command(s,ctx),set:(s:string,i:string|null='a')=>{state=s;id=i;},setReady:(value:boolean)=>{ready=value;},setError:(value:string)=>{settings.error=value;},setFallback:(value:string|null)=>{settings.fallback=value;},ensures:()=>ensures,close:()=>hooks.session_shutdown({},ctx),agentStart:()=>hooks.agent_start({},ctx),fail:(value=true)=>{fail=value;},renders:()=>renders};
 }
 test('every start button column is clickable, including normal spaces and brackets',async()=>{
   for(let x=0;x<Array.from('[ ⏻ TTS ]').length;x++) {
@@ -154,6 +154,17 @@ test('model load failure cancels readiness polling and warns',async()=>{
     assert.deepEqual(s.notices,['TTS TeHablo: El modelo no cargó: model load failed: broken model']);
     const count=s.calls.length;await tick();assert.equal(s.calls.length,count);
     assert.ok(!s.calls.includes('/speak'));
+  } finally {await s.close();}
+});
+
+test('a voice that falls back to lola warns once with its name',async()=>{
+  const s=setup();
+  try {
+    s.setReady(false);await clickAt(s,'⏻ TTS');
+    s.setFallback('Iker');s.setReady(true);await tick();
+    assert.equal(s.line(),'[ ▶ ] [ ▶ copiado ] [ ⋯ ]');
+    await s.command('status');await tick();
+    assert.deepEqual(s.notices.filter(n=>n.includes('lola')),['TTS TeHablo: Iker no cargó; se usa lola. Detalle en logs/tehablo-server.log.']);
   } finally {await s.close();}
 });
 

@@ -4,12 +4,14 @@ import io
 import tempfile
 import http.client
 import json
+import os
 import socket
 from pathlib import Path
 import sys
 import threading
 import time
 import unittest
+from unittest import mock
 
 import numpy as np
 
@@ -201,6 +203,7 @@ class ServerTests(unittest.TestCase):
         try:
             self.assertEqual(server.service.health()['model'], 'spanish')
             self.assertEqual(server.service.health()['voice'], 'lola')
+            self.assertIsNone(server.service.health()['fallback'])
         finally:
             server.server_close()
 
@@ -222,11 +225,35 @@ class ServerTests(unittest.TestCase):
                         health = server.service.health()
                         self.assertEqual((health['model'], health['voice'], health['error']),
                                          ('spanish', 'lola', None))
+                        # Pi warns with the voice that failed; a later model change clears it.
+                        self.assertEqual(health['fallback'], 'Regina')
                         self.assertEqual(calls, ['phonon', 'spanish'])
+                        server.service.configure({'model': 'spanish', 'voice': 'lola'})
+                        self.assertIsNone(server.service.health()['fallback'])
                         self.assertEqual(output.getvalue(),
                                          f'Phonon unavailable ({error}); using spanish with lola\n')
                     finally:
                         server.server_close()
+
+    def test_cached_phonon_loads_offline_without_token(self):
+        # The repository is gated: online, Hugging Face refuses even a cached model without a token.
+        seen = []
+        class TTS:
+            def __init__(self, *args, **kwargs):
+                seen.append(os.environ.get('HF_HUB_OFFLINE'))
+        fake = type(sys)('ptts')
+        fake.TTS, fake.set_num_threads = TTS, lambda n: None
+        for token, is_cached, expected in (('', True, '1'), ('', False, None), ('hf_x', True, None)):
+            with self.subTest(token=token, cached=is_cached):
+                seen.clear()
+                with mock.patch.dict(sys.modules, {'ptts': fake}), \
+                        mock.patch.dict(os.environ, {'HF_TOKEN': token}), \
+                        mock.patch.object(tehablo_server, 'cached', lambda *a: is_cached), \
+                        contextlib.redirect_stdout(io.StringIO()):
+                    os.environ.pop('HF_HUB_OFFLINE', None)
+                    tehablo_server.PhononSynthesizer()
+                    self.assertEqual(seen, [expected])
+                    self.assertNotIn('HF_HUB_OFFLINE', os.environ)
 
     def test_voice_table_kinds_and_cache_state(self):
         seen = []

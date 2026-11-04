@@ -90,7 +90,17 @@ class PhononSynthesizer:
         import ptts
         started = time.perf_counter()
         ptts.set_num_threads(2)
-        self.model = ptts.TTS('hf://gradium/phonon-40m-es', lang='es', quant='q8')
+        # The repository is gated: without a token Hugging Face refuses even a cached model,
+        # so a cached model loads offline, from the cache only.
+        offline = (not os.environ.get('HF_TOKEN') and 'HF_HUB_OFFLINE' not in os.environ
+                   and cached('', 'phonon', 'account'))
+        if offline:
+            os.environ['HF_HUB_OFFLINE'] = '1'
+        try:
+            self.model = ptts.TTS('hf://gradium/phonon-40m-es', lang='es', quant='q8')
+        finally:
+            if offline:
+                del os.environ['HF_HUB_OFFLINE']
         print(f'Startup: model phonon loaded in {time.perf_counter() - started:.3f} s', flush=True)
         self.sample_rate = 24000
 
@@ -153,6 +163,7 @@ class SpeechService:
         self.lexicon = Lexicon(ROOT / 'pronunciaciones.json')
         self.ready = False
         self.error = None
+        self.fallback = None  # The Phonon voice that failed to load and was replaced by lola.
         self.speech_error = None
         self.lexicon_error = None
         self.state = 'loading'
@@ -236,7 +247,7 @@ class SpeechService:
         with self.condition:
             return {'ok': True, 'ready': self.ready, 'model': self.model_name,
                     'voice': self.voice, 'speed': float(self.speed), 'volume': self.volume,
-                    'error': self.error}
+                    'error': self.error, 'fallback': self.fallback}
 
     def status(self):
         with self.condition:
@@ -291,6 +302,8 @@ class SpeechService:
                 self.ready = False
                 self.error = None
                 self.state = 'loading'
+            if 'model' in body or 'voice' in body:
+                self.fallback = None  # A new choice replaces the old warning.
             self.voice = body.get('voice', default_voice(self.model_name) if reload else self.voice)
             self.speed = float(body.get('speed', self.speed))
             self.volume = float(body.get('volume', self.volume))
@@ -352,6 +365,7 @@ class SpeechService:
                                     continue
                                 print(f'Phonon unavailable ({reason}); using spanish with lola',
                                       file=sys.stderr, flush=True)
+                                self.fallback = self.voice
                                 self.model_name, self.voice = 'spanish', 'lola'
                                 name = 'spanish'
                                 if self.pending:

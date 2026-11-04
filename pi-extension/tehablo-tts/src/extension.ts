@@ -58,6 +58,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
   // Server lifecycle shown by the start button; `open` shows the volume and speed controls.
   let server: 'off' | 'loading' | 'ready' = 'off', open = false;
   let readyTimer: ReturnType<typeof setTimeout> | undefined, readyEpoch = 0, readyTries = 0;
+  let warnedFallback: string | undefined;
   const READY_TRIES = 240;
   // Status line: "TTS off" while the server is off, else "TTS manual" or "TTS auto".
   const refresh = () => context?.ui.setStatus(ENTRY, server === 'off' ? 'TTS off'
@@ -68,6 +69,10 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
     if (typeof health?.volume === 'number') volume = health.volume;
     if (typeof health?.speed === 'number') speed = health.speed;
     if (typeof health?.model === 'string' && typeof health?.voice === 'string') current = {model: health.model, voice: health.voice};
+    // The server replaced a voice that did not load with lola; say it once, not on every poll.
+    const failed = typeof health?.fallback === 'string' && health.fallback ? health.fallback : undefined;
+    if (failed && failed !== warnedFallback) say(context, `${failed} no cargó; se usa lola. Detalle en logs/tehablo-server.log.`, 'warning');
+    if (health && 'fallback' in health) warnedFallback = failed;
     if (health?.ready === true && !applied) { applied = true; void applySaved(health); }
     if (typeof health?.error === 'string' && health.error.length > 0) {
       cancelReady(); setServer('off');
