@@ -61,6 +61,8 @@ class ServerTests(unittest.TestCase):
 
         self.server = create_server(port=0, model='spanish', synthesizer_factory=load,
                                     audio_factory=Sink, catalog=['lola', 'other'])
+        # Never touch the real model cache: importing it can take longer than the HTTP timeout in CI.
+        self.server.service.cached = lambda name, model, kind: False
         self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
         self.thread.start()
 
