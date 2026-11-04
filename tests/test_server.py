@@ -14,6 +14,7 @@ import unittest
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'src'))
+import tehablo_server
 from tehablo_server import create_server
 
 
@@ -185,6 +186,12 @@ class ServerTests(unittest.TestCase):
             before = self.request('/health')
             self.assertEqual(self.request('/config', {'model': model, 'voice': voice}), (400, {'error': message}))
             self.assertEqual(self.request('/health'), before)
+
+    def test_start_voice_comes_from_the_shared_table(self):
+        table = json.loads((Path(__file__).resolve().parents[1] / 'src' / 'voice_table.json').read_text(encoding='utf-8'))
+        defaults = [v for v in table if v.get('default')]
+        self.assertEqual(len(defaults), 1)
+        self.assertEqual((tehablo_server.START_MODEL, tehablo_server.START_VOICE), (defaults[0]['model'], defaults[0]['name']))
 
     def test_pocket_lola_default(self):
         server = create_server(port=0, synthesizer_factory=lambda name: self.synth,

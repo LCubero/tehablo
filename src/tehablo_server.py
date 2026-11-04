@@ -30,20 +30,12 @@ PHONON_VOICES = {'Regina', 'Iker', 'Noa', 'Lucía-Sol', 'Candela', 'Celia', 'Alb
                  'Danae', 'Azucena'}
 
 
-# Voices offered in the Pi settings window: (name, model, kind, note).
+# Voices offered in the Pi settings window, shared with the extension (shown while the server is off).
 # kind: 'download' needs no account; 'account' needs a Hugging Face token once.
-VOICE_TABLE = [
-    ('lola', 'spanish', 'download', 'la de siempre'),
-    ('rafael', 'spanish', 'download', 'España'),
-    ('Regina', 'phonon', 'account', 'México'),
-    ('Iker', 'phonon', 'account', 'España'),
-    ('ar-hombre-4310', 'spanish', 'account', 'Argentina'),
-    ('ar-hombre-7049', 'spanish', 'account', 'Argentina'),
-    ('cl-mujer-9334', 'spanish', 'account', 'Chile'),
-    ('cl-mujer-8784', 'spanish', 'account', 'Chile'),
-    ('cl-hombre-3397', 'spanish', 'account', 'Chile'),
-    ('co-hombre-9334', 'spanish', 'account', 'Colombia'),
-]
+_TABLE = json.loads((ROOT / 'src' / 'voice_table.json').read_text(encoding='utf-8'))
+VOICE_TABLE = [(v['name'], v['model'], v['kind'], v['note']) for v in _TABLE]
+# The start voice is the one marked "default": the best free voice that works without an account.
+START_MODEL, START_VOICE = next((v['model'], v['name']) for v in _TABLE if v.get('default'))
 
 
 def cached(name, model, kind):
@@ -62,6 +54,8 @@ def cached(name, model, kind):
 
 
 def default_voice(model):
+    if model == START_MODEL:
+        return START_VOICE
     return 'Regina' if model == 'phonon' else 'lola'
 
 
@@ -494,7 +488,7 @@ class Handler(BaseHTTPRequestHandler):
             self.reply(400, {'error': str(exc)})
 
 
-def create_server(port=8765, model='spanish', voice=None, speed=1.0,
+def create_server(port=8765, model=START_MODEL, voice=None, speed=1.0,
                   synthesizer_factory=synthesizer, audio_factory=audio_sink, catalog=None):
     if catalog is None:
         started = time.perf_counter()
@@ -514,8 +508,8 @@ def create_server(port=8765, model='spanish', voice=None, speed=1.0,
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--port', type=int, default=os.environ.get('TEHABLO_PORT', '8765'))
-    parser.add_argument('--model', choices=sorted(MODELS), default='spanish',
-                        help='engine (default: spanish; also spanish_24l or phonon)')
+    parser.add_argument('--model', choices=sorted(MODELS), default=START_MODEL,
+                        help=f'engine (default: {START_MODEL}; see src/voice_table.json)')
     parser.add_argument('--voice', default=None,
                         help='voice (default: Regina for phonon, lola for Pocket)')
     parser.add_argument('--speed', type=float, default=1.0)

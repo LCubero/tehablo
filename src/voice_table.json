@@ -1,0 +1,63 @@
+[
+  {
+    "name": "lola",
+    "model": "spanish",
+    "kind": "download",
+    "note": "la de siempre",
+    "default": true
+  },
+  {
+    "name": "rafael",
+    "model": "spanish",
+    "kind": "download",
+    "note": "España"
+  },
+  {
+    "name": "Regina",
+    "model": "phonon",
+    "kind": "account",
+    "note": "México"
+  },
+  {
+    "name": "Iker",
+    "model": "phonon",
+    "kind": "account",
+    "note": "España"
+  },
+  {
+    "name": "ar-hombre-4310",
+    "model": "spanish",
+    "kind": "account",
+    "note": "Argentina"
+  },
+  {
+    "name": "ar-hombre-7049",
+    "model": "spanish",
+    "kind": "account",
+    "note": "Argentina"
+  },
+  {
+    "name": "cl-mujer-9334",
+    "model": "spanish",
+    "kind": "account",
+    "note": "Chile"
+  },
+  {
+    "name": "cl-mujer-8784",
+    "model": "spanish",
+    "kind": "account",
+    "note": "Chile"
+  },
+  {
+    "name": "cl-hombre-3397",
+    "model": "spanish",
+    "kind": "account",
+    "note": "Chile"
+  },
+  {
+    "name": "co-hombre-9334",
+    "model": "spanish",
+    "kind": "account",
+    "note": "Colombia"
+  }
+]
