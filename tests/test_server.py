@@ -219,6 +219,40 @@ class ServerTests(unittest.TestCase):
                     finally:
                         server.server_close()
 
+    def test_voice_table_kinds_and_cache_state(self):
+        seen = []
+
+        def cached(name, model, kind):
+            seen.append((name, model, kind))
+            return name in {'lola', 'Regina'}
+
+        self.server.service.cached = cached
+        status, data = self.request('/voices')
+        self.assertEqual(status, 200)
+        self.assertIn('voices', data)
+        table = {v['name']: v for v in data['catalog']}
+        self.assertEqual(table['lola'], {'name': 'lola', 'voice': 'lola', 'model': 'spanish', 'kind': 'download',
+                                         'note': 'la de siempre', 'downloaded': True})
+        self.assertEqual(table['rafael']['downloaded'], False)
+        self.assertEqual((table['Regina']['model'], table['Regina']['kind'], table['Regina']['downloaded']),
+                         ('phonon', 'account', True))
+        self.assertEqual((table['Iker']['kind'], table['Iker']['downloaded']), ('account', False))
+        self.assertEqual((table['ar-hombre-4310']['model'], table['ar-hombre-4310']['kind'], table['ar-hombre-4310']['voice']),
+                         ('spanish', 'account', 'ar-hombre-4310.wav'))
+        self.assertEqual(len(seen), len(data['catalog']))
+        for entry in data['catalog']:
+            self.assertEqual(set(entry), {'name', 'voice', 'model', 'kind', 'note', 'downloaded'})
+
+    def test_voice_table_survives_cache_errors(self):
+        def broken(name, model, kind):
+            raise OSError('cache unreadable')
+
+        self.server.service.cached = broken
+        status, data = self.request('/voices')
+        self.assertEqual(status, 200)
+        self.assertTrue(data['catalog'])
+        self.assertTrue(all(v['downloaded'] is False for v in data['catalog']))
+
     def test_model_voices_and_defaults(self):
         self.ready()
         for model, voice, invalid in [('phonon', 'Regina', 'lola'),

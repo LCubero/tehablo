@@ -30,6 +30,37 @@ PHONON_VOICES = {'Regina', 'Iker', 'Noa', 'Lucía-Sol', 'Candela', 'Celia', 'Alb
                  'Danae', 'Azucena'}
 
 
+# Voices offered in the Pi settings window: (name, model, kind, note).
+# kind: 'download' needs no account; 'account' needs a Hugging Face token once.
+VOICE_TABLE = [
+    ('lola', 'spanish', 'download', 'la de siempre'),
+    ('rafael', 'spanish', 'download', 'España'),
+    ('Regina', 'phonon', 'account', 'México'),
+    ('Iker', 'phonon', 'account', 'España'),
+    ('ar-hombre-4310', 'spanish', 'account', 'Argentina, clonada'),
+    ('ar-hombre-7049', 'spanish', 'account', 'Argentina, clonada'),
+    ('cl-mujer-9334', 'spanish', 'account', 'Chile, clonada'),
+    ('cl-mujer-8784', 'spanish', 'account', 'Chile, clonada'),
+    ('cl-hombre-3397', 'spanish', 'account', 'Chile, clonada'),
+    ('co-hombre-9334', 'spanish', 'account', 'Colombia, clonada'),
+]
+
+
+def cached(name, model, kind):
+    """Whether a voice can be used offline, checking the local cache only (no network)."""
+    from huggingface_hub import constants, try_to_load_from_cache
+    if model == 'phonon':
+        return isinstance(try_to_load_from_cache('gradium/phonon-40m-es', 'model.q8.gguf'), str)
+    if kind == 'account':
+        weights = Path(constants.HF_HUB_CACHE) / 'models--kyutai--pocket-tts' / 'snapshots'
+        return (VOICES_DIR / f'{name}.wav').is_file() and any(weights.glob('*/languages/spanish/model.safetensors'))
+    from pocket_tts.utils.utils import get_predefined_voice
+    repo, _, rest = get_predefined_voice(model, name).removeprefix('hf://').partition('/')
+    repo = f'{repo}/{rest.split("/", 1)[0]}'
+    path, _, revision = rest.split('/', 1)[1].partition('@')
+    return isinstance(try_to_load_from_cache(repo, path, revision=revision or None), str)
+
+
 def default_voice(model):
     return 'Regina' if model == 'phonon' else 'lola'
 
@@ -93,6 +124,7 @@ class SpeechService:
     def __init__(self, model, voice, speed, synthesizer_factory, audio_factory, catalog):
         self.condition = threading.Condition(threading.RLock())
         self.factory = synthesizer_factory
+        self.cached = cached
         self.audio_factory = audio_factory
         self.catalog = list(catalog)
         self.model_name, self.voice, self.speed = model, voice if voice is not None else default_voice(model), speed
@@ -126,6 +158,18 @@ class SpeechService:
                     print(f'Pronunciation dictionary error: {self.lexicon_error}', file=sys.stderr)
             return normalize_numbers(text)
         return text
+
+    def voice_table(self):
+        table = []
+        for name, model, kind, note in VOICE_TABLE:
+            try:
+                downloaded = bool(self.cached(name, model, kind))
+            except Exception:
+                downloaded = False
+            voice = f'{name}.wav' if model != 'phonon' and kind == 'account' else name
+            table.append({'name': name, 'voice': voice, 'model': model, 'kind': kind, 'note': note,
+                          'downloaded': downloaded})
+        return table
 
     def voices(self):
         if self.model_name == 'phonon':
@@ -410,7 +454,7 @@ class Handler(BaseHTTPRequestHandler):
             return
         service = self.server.service
         routes = {'/health': service.health, '/status': service.status,
-                  '/voices': lambda: {'voices': service.voices()}}
+                  '/voices': lambda: {'voices': service.voices(), 'catalog': service.voice_table()}}
         if self.path not in routes:
             self.reply(404, {'error': 'unknown path'})
             return
