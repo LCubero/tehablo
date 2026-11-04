@@ -4,6 +4,13 @@
 
 Este archivo registra los cambios completados en orden cronológico.
 
+## 2026-11-04
+
+- En Pi, el botón `[.⚙ ]` (siempre al final de la barra, con el servidor encendido o apagado) abre una ventana de ajustes centrada que se usa con clics o teclado: voz con `[ Cambiar ]`, volumen, velocidad, lectura automática, atajos de teclado y servidor (`[ Encender ]`/`[ Apagar ]`, `[ Reiniciar ]`) (`RH-W-0004`).
+- La tabla de voces muestra *Voz*, *Tipo* y *Estado*: primero las descargadas, luego las que se descargan sin cuenta y al final las que piden una cuenta gratis de Hugging Face, marcadas con `*`. Al elegir una de cuenta sin token, la ventana muestra los 4 pasos y un campo oculto (`•••`) que lo guarda como `HF_TOKEN` en `.env` (`RH-W-0005`).
+- Phonon 40M es (`Regina`, `Iker`) se puede elegir como voz más natural en Pi (2 hilos; si no carga, se usa `lola`). Pi sigue empezando con `lola`, la voz marcada `"default": true` en `src/voice_table.json`; la voz elegida se recuerda.
+- Los ajustes (voz, volumen, velocidad, lectura automática y atajos) se guardan en `tehablo-settings.json` y se aplican al encender. Los atajos (Ctrl o Alt + letra o número) se editan en la ventana y no aceptan combinaciones que ya usa Pi.
+
 ## 2026-11-03
 
 - Prueba de voces en Fedora para un modo más natural sin pasar del doble del consumo actual (`RH-W-0005`): a ciegas, Phonon 40M es (`Regina` y `Iker`) sonó mucho más natural que `lola` y, con 2 hilos, gasta menos (303 MiB y 8 s de CPU frente a 961 MiB y 10,6 s); `spanish_24l` cuantizado entra justo en el doble y Kokoro int8 se pasa en CPU ([resultados](docs/pruebas-de-voces.md#phonon-40m-es-frente-a-lola-spanish_24l-y-kokoro-2026-11-03-fedora)). Todavía no se incorpora a tehablo.
