@@ -158,7 +158,7 @@ La extensión [`pi-extension/tehablo-tts/`](pi-extension/tehablo-tts/) lee las r
 - **Apagar y liberar el modelo:** `[ ⏻ ]` aparece solo al final de los controles abiertos, después del último `+]`. Detiene la lectura y cierra el servidor propio para liberar sus recursos; los ajustes guardados se mantienen. `[ ⏻ TTS ]` permite encenderlo otra vez sin cerrar Pi. No equivale a `[ ■ ]` (solo detener) ni a `/tts off` (desactivar los controles).
 - **Automático:** `/tts auto on` lee cada respuesta al terminar; `/tts auto off` vuelve al modo manual.
 - **Ventana de ajustes `[.⚙ ]`:** siempre al final de la barra, con el servidor encendido o apagado. Abre una ventana centrada que se usa con clics o con el teclado (↑↓ elegir, ←→ cambiar, Enter, Esc cerrar):
-  - **Voz** y `[ Cambiar ]`: una tabla con *Voz*, *Tipo* y *Estado*. Primero las descargadas, luego las que se descargan sin cuenta y al final las que piden una cuenta gratis de Hugging Face (Phonon y las clonadas de `voices/`), marcadas con `*`. Al elegir una de cuenta sin token, la ventana muestra los 4 pasos y un campo para pegarlo (se ve como `•••`); se guarda como `HF_TOKEN` en `.env` (fuera de Git, permisos solo del dueño) y el servidor se reinicia para usarlo.
+  - **Voz** y `[ Cambiar ]`: una tabla con *Voz*, *Estado* (descargada, para descargar o con cuenta) y *RAM aprox.* (lo que ocupa aproximadamente el modelo de esa voz: ~0,3 GB Phonon, ~1 GB Pocket); la voz activa lleva `●` y se ve en amarillo. Primero las descargadas, luego las que se descargan sin cuenta y al final las que piden una cuenta gratis de Hugging Face (Phonon), marcadas con `*`. Al elegir una de cuenta sin token, la ventana muestra los 4 pasos y un campo para pegarlo (se ve como `•••`); se guarda como `HF_TOKEN` en `.env` (fuera de Git, permisos solo del dueño) y el servidor se reinicia para usarlo.
   - **Volumen**, **Velocidad** y **Lectura automática**.
   - **Atajos de teclado**: activarlos y `[ Editar ]` para asignar Ctrl o Alt + letra o número a encender/apagar, lectura automática, escuchar, pausar/seguir, detener y abrir ajustes. No acepta combinaciones que ya usa Pi.
   - **Servidor**: `[ Encender ]` (con `[ Reiniciar ]` en gris) o `[ Apagar ]` y `[ Reiniciar ]`.
@@ -207,6 +207,7 @@ Escribe texto y pulsa Enter. Comandos: `/leer archivo.txt`, `/multi`, `/voz <nom
 | Tipo | Cuáles | ¿Necesita token? |
 |---|---|---|
 | **Catálogo** incluido | `lola` (única nativa en español), `rafael` y unas 25 más con timbre de otros idiomas | No |
+| **Incluidas** en `voices/` | `Facundo`, `Santiago` (Argentina), `Camila`, `Javiera`, `Diego` (Chile) y `Felipe` (Colombia), elegidas por escucha (CC BY-SA 4.0, ver `voices/ATTRIBUTION.txt`) | No |
 | **Descargadas** en `voices/` | Argentina, Chile y Colombia, mujer y hombre (`scripts/get_voices.py`) | Sí |
 | **Propias** | Cualquier `.wav`, `.mp3` o `.flac` limpio de 10 a 30 s en `voices/` (F8 para recargar) | Sí |
 
@@ -221,6 +222,8 @@ Listado y licencias: [docs/pocket-tts.md](docs/pocket-tts.md#7-catálogo-de-voce
 3. Ejecuta `.\.venv-pocket\Scripts\hf auth login` y pega el token, o añade `HF_TOKEN=hf_...` a `.env`.
 
 Solo hace falta para la primera descarga; después funciona sin internet.
+
+Las voces incluidas ya vienen procesadas en `voices/<nombre>.safetensors` (unos 11 MB cada una): cargan al instante y no piden token. Solo para recrearlas desde los WAV hace falta el token: `python scripts/get_voices.py` descarga las referencias y `python scripts/get_voices.py --prepare` las vuelve a preparar.
 
 ## Qué se puede agregar, modificar o aprovechar
 

@@ -92,5 +92,82 @@ class GetVoicesTests(unittest.TestCase):
         self.assertEqual(sorted(p.name for p in self.voices.iterdir()), ["ATTRIBUTION.txt", path.name])
 
 
+
+class FakeModel:
+    def __init__(self, cloning=True):
+        self.has_voice_cloning = cloning
+        self.config = type("C", (), {"mimi": type("M", (), {"sample_rate": 24000})()})()
+        self.prompts = []
+
+    def get_state_for_audio_prompt(self, audio):
+        import torch
+        self.prompts.append(audio)
+        return {"flow": {"cache": torch.ones(2, 3)}}
+
+
+class PrepareVoicesTests(unittest.TestCase):
+    def setUp(self):
+        (ROOT / ".repo-harness" / "tmp").mkdir(parents=True, exist_ok=True)
+        self.scratch = tempfile.TemporaryDirectory(prefix="test-prepare-", dir=ROOT / ".repo-harness" / "tmp")
+        self.addCleanup(self.scratch.cleanup)
+        base = Path(self.scratch.name)
+        self.voices, self.table = base / "voices", base / "voice_table.json"
+        self.voices.mkdir()
+        self.table.write_text(
+            '[{"name": "lola", "model": "spanish", "kind": "download", "note": "x"},'
+            ' {"name": "Facundo", "model": "spanish", "kind": "account", "note": "Argentina", "source": "ar-hombre-4310"},'
+            ' {"name": "Diego", "model": "spanish", "kind": "account", "note": "Chile", "source": "cl-hombre-3397"}]',
+            encoding="utf-8",
+        )
+        # The original downloads are 32-bit float WAVs, which Pocket TTS cannot read directly.
+        self.source = self.voices / "ar-hombre-4310.wav"
+        scipy.io.wavfile.write(self.source, 48000, np.full(4800, 0.25, dtype=np.float32))
+        self.original = self.source.read_bytes()
+
+    def run_prepare(self, model):
+        stdout, stderr = io.StringIO(), io.StringIO()
+        loads = []
+        with (
+            patch.object(get_voices, "VOICES_DIR", self.voices),
+            patch.object(get_voices, "TABLE", self.table),
+            patch.object(get_voices, "load_cloning_model", side_effect=lambda: loads.append(1) or model),
+            patch("sys.argv", ["get_voices.py", "--prepare"]),
+            redirect_stdout(stdout), redirect_stderr(stderr),
+        ):
+            try:
+                code = get_voices.main()
+            except SystemExit as exit_:
+                code = exit_.code
+        return code, stdout.getvalue(), stderr.getvalue(), len(loads)
+
+    def test_prepare_exports_table_voices_from_float_wavs_once(self):
+        import safetensors.torch
+        model = FakeModel()
+        code, out, err, loads = self.run_prepare(model)
+        self.assertEqual((code, loads), (None, 1))
+        self.assertEqual(out, "Facundo.safetensors: preparada desde ar-hombre-4310.wav\n")
+        self.assertEqual(err, "falta cl-hombre-3397.wav para preparar Diego: descárgala con python scripts/get_voices.py\n")
+        self.assertEqual(len(model.prompts), 1)
+        self.assertEqual(tuple(model.prompts[0].shape), (1, 2400))  # mono, resampled 48 kHz -> 24 kHz
+        self.assertAlmostEqual(float(model.prompts[0].mean()), 0.25, places=2)
+        saved = safetensors.torch.load_file(self.voices / "Facundo.safetensors")
+        self.assertEqual(list(saved), ["flow/cache"])
+        self.assertEqual(self.source.read_bytes(), self.original)
+        before = {p.name: p.read_bytes() for p in self.voices.iterdir()}
+        code, out, err, loads = self.run_prepare(FakeModel())
+        self.assertEqual((code, loads), (None, 0))
+        self.assertEqual(out, "ya existe Facundo.safetensors\n")
+        self.assertEqual(err, "falta cl-hombre-3397.wav para preparar Diego: descárgala con python scripts/get_voices.py\n")
+        self.assertEqual(before, {p.name: p.read_bytes() for p in self.voices.iterdir()})
+
+    def test_prepare_without_token_explains_and_writes_nothing(self):
+        code, out, err, loads = self.run_prepare(FakeModel(cloning=False))
+        self.assertEqual((code, out, loads), (1, "", 1))
+        self.assertEqual(err, "falta cl-hombre-3397.wav para preparar Diego: descárgala con python scripts/get_voices.py\n"
+                              "Preparar voces necesita una cuenta gratis de Hugging Face: guarda tu token como HF_TOKEN en .env.\n")
+        self.assertEqual(sorted(p.name for p in self.voices.iterdir()), ["ar-hombre-4310.wav"])
+        self.assertEqual(self.source.read_bytes(), self.original)
+
+
 if __name__ == "__main__":
     unittest.main()

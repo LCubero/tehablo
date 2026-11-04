@@ -32,8 +32,10 @@ PHONON_VOICES = {'Regina', 'Iker', 'Noa', 'Lucía-Sol', 'Candela', 'Celia', 'Alb
 
 # Voices offered in the Pi settings window, shared with the extension (shown while the server is off).
 # kind: 'download' needs no account; 'account' needs a Hugging Face token once.
+# A voice with 'source' is included in the repository as voices/<name>.safetensors (prepared from voices/<source>.wav).
 _TABLE = json.loads((ROOT / 'src' / 'voice_table.json').read_text(encoding='utf-8'))
 VOICE_TABLE = [(v['name'], v['model'], v['kind'], v['note']) for v in _TABLE]
+INCLUDED = {v['name'] for v in _TABLE if v.get('source')}
 # The start voice is the one marked "default": the best free voice that works without an account.
 START_MODEL, START_VOICE = next((v['model'], v['name']) for v in _TABLE if v.get('default'))
 
@@ -43,9 +45,12 @@ def cached(name, model, kind):
     from huggingface_hub import constants, try_to_load_from_cache
     if model == 'phonon':
         return isinstance(try_to_load_from_cache('gradium/phonon-40m-es', 'model.q8.gguf'), str)
-    if kind == 'account':
-        weights = Path(constants.HF_HUB_CACHE) / 'models--kyutai--pocket-tts' / 'snapshots'
-        return (VOICES_DIR / f'{name}.wav').is_file() and any(weights.glob('*/languages/spanish/model.safetensors'))
+    if name in INCLUDED:
+        # A prepared voice (.safetensors) also works on the weights without voice cloning (no token).
+        hub = Path(constants.HF_HUB_CACHE)
+        weights = [p for repo in ('pocket-tts', 'pocket-tts-without-voice-cloning')
+                   for p in (hub / f'models--kyutai--{repo}' / 'snapshots').glob('*/languages/spanish/model.safetensors')]
+        return (VOICES_DIR / f'{name}.safetensors').is_file() and bool(weights)
     from pocket_tts.utils.utils import get_predefined_voice
     repo, _, rest = get_predefined_voice(model, name).removeprefix('hf://').partition('/')
     repo = f'{repo}/{rest.split("/", 1)[0]}'
@@ -160,7 +165,7 @@ class SpeechService:
                 downloaded = bool(self.cached(name, model, kind))
             except Exception:
                 downloaded = False
-            voice = f'{name}.wav' if model != 'phonon' and kind == 'account' else name
+            voice = f'{name}.safetensors' if name in INCLUDED else name
             table.append({'name': name, 'voice': voice, 'model': model, 'kind': kind, 'note': note,
                           'downloaded': downloaded})
         return table

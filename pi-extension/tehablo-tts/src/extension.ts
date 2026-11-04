@@ -19,7 +19,7 @@ export function readTable(path: string): VoiceRow[] {
   try {
     if (!existsSync(path)) return [];
     return (JSON.parse(readFileSync(path, 'utf8')) as any[]).map(v => ({
-      name: v.name, voice: v.kind === 'account' && v.model !== 'phonon' ? `${v.name}.wav` : v.name, model: v.model,
+      name: v.name, voice: v.source ? `${v.name}.safetensors` : v.name, model: v.model,
       kind: v.kind, note: v.note, downloaded: null, ...(v.default ? {default: true} : {}),
     }));
   } catch { return []; }

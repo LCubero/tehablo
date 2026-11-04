@@ -25,39 +25,45 @@
     "note": "España"
   },
   {
-    "name": "ar-hombre-4310",
+    "name": "Facundo",
     "model": "spanish",
-    "kind": "account",
-    "note": "Argentina"
+    "kind": "download",
+    "note": "Argentina",
+    "source": "ar-hombre-4310"
   },
   {
-    "name": "ar-hombre-7049",
+    "name": "Santiago",
     "model": "spanish",
-    "kind": "account",
-    "note": "Argentina"
+    "kind": "download",
+    "note": "Argentina",
+    "source": "ar-hombre-7049"
   },
   {
-    "name": "cl-mujer-9334",
+    "name": "Camila",
     "model": "spanish",
-    "kind": "account",
-    "note": "Chile"
+    "kind": "download",
+    "note": "Chile",
+    "source": "cl-mujer-9334"
   },
   {
-    "name": "cl-mujer-8784",
+    "name": "Javiera",
     "model": "spanish",
-    "kind": "account",
-    "note": "Chile"
+    "kind": "download",
+    "note": "Chile",
+    "source": "cl-mujer-8784"
   },
   {
-    "name": "cl-hombre-3397",
+    "name": "Diego",
     "model": "spanish",
-    "kind": "account",
-    "note": "Chile"
+    "kind": "download",
+    "note": "Chile",
+    "source": "cl-hombre-3397"
   },
   {
-    "name": "co-hombre-9334",
+    "name": "Felipe",
     "model": "spanish",
-    "kind": "account",
-    "note": "Colombia"
+    "kind": "download",
+    "note": "Colombia",
+    "source": "co-hombre-9334"
   }
 ]

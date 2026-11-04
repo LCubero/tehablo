@@ -17,3 +17,10 @@ co-mujer-2484.wav: speaker 2484, ylacombe/google-colombian-spanish (https://www.
 co-hombre-2121.wav: speaker 2121, ylacombe/google-colombian-spanish (https://www.openslr.org/72/)
 co-hombre-9334.wav: speaker 9334, ylacombe/google-colombian-spanish (https://www.openslr.org/72/)
 co-hombre-8784.wav: speaker 8784, ylacombe/google-colombian-spanish (https://www.openslr.org/72/)
+Included prepared voices (Pocket TTS spanish voice states, derived from the WAVs above, CC BY-SA 4.0):
+Facundo.safetensors: from ar-hombre-4310.wav
+Santiago.safetensors: from ar-hombre-7049.wav
+Camila.safetensors: from cl-mujer-9334.wav
+Javiera.safetensors: from cl-mujer-8784.wav
+Diego.safetensors: from cl-hombre-3397.wav
+Felipe.safetensors: from co-hombre-9334.wav

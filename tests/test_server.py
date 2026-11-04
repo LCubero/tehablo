@@ -246,11 +246,36 @@ class ServerTests(unittest.TestCase):
         self.assertEqual((table['Regina']['model'], table['Regina']['kind'], table['Regina']['downloaded']),
                          ('phonon', 'account', True))
         self.assertEqual((table['Iker']['kind'], table['Iker']['downloaded']), ('account', False))
-        self.assertEqual((table['ar-hombre-4310']['model'], table['ar-hombre-4310']['kind'], table['ar-hombre-4310']['voice']),
-                         ('spanish', 'account', 'ar-hombre-4310.wav'))
+        self.assertEqual((table['Facundo']['model'], table['Facundo']['kind'], table['Facundo']['voice']),
+                         ('spanish', 'download', 'Facundo.safetensors'))
+        self.assertNotIn('ar-hombre-4310', table)
         self.assertEqual(len(seen), len(data['catalog']))
         for entry in data['catalog']:
             self.assertEqual(set(entry), {'name', 'voice', 'model', 'kind', 'note', 'downloaded'})
+
+    def test_included_voice_is_cached_with_either_spanish_weights(self):
+        from unittest import mock
+        from huggingface_hub import constants
+        root = Path(__file__).resolve().parents[1] / '.repo-harness' / 'tmp'
+        root.mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=root) as tmp:
+            voices, hub = Path(tmp) / 'voices', Path(tmp) / 'hub'
+            voices.mkdir()
+            (voices / 'Facundo.wav').write_bytes(b'')
+            with mock.patch.object(tehablo_server, 'VOICES_DIR', voices), mock.patch.object(constants, 'HF_HUB_CACHE', str(hub)):
+                cached = tehablo_server.cached
+                weights = hub / 'models--kyutai--pocket-tts-without-voice-cloning' / 'snapshots' / 'abc' / 'languages' / 'spanish'
+                weights.mkdir(parents=True)
+                (weights / 'model.safetensors').write_bytes(b'')
+                self.assertFalse(cached('Facundo', 'spanish', 'download'))
+                (voices / 'Facundo.safetensors').write_bytes(b'')
+                self.assertTrue(cached('Facundo', 'spanish', 'download'))
+                (weights / 'model.safetensors').unlink()
+                self.assertFalse(cached('Facundo', 'spanish', 'download'))
+                full = hub / 'models--kyutai--pocket-tts' / 'snapshots' / 'abc' / 'languages' / 'spanish'
+                full.mkdir(parents=True)
+                (full / 'model.safetensors').write_bytes(b'')
+                self.assertTrue(cached('Facundo', 'spanish', 'download'))
 
     def test_voice_table_survives_cache_errors(self):
         def broken(name, model, kind):

@@ -11,7 +11,7 @@ Opciones de voz que quedaron bien en las escuchas a ciegas con los ajustes de te
 | Mejor calidad | `em_santa` (relatos), `ef_dora`, mezcla 70 % `em_santa` + 30 % `ef_dora` | Kokoro-82M | ~1,1 GiB | 49 s | No | Mejor que `lola` en tres escuchas |
 | Mejor calidad | `F2` | Supertonic 3 | ~0,6 GiB | 46 s | No | Mejor que `lola` |
 | Mejor calidad | `lola` con `spanish_24l` | Pocket TTS | ~1,8 GiB | 44 s | No | Muy bien: tranquila; genera a solo 1,02× tiempo real |
-| Variedad LATAM | `ar-hombre-4310`, `cl-mujer-9334`, `co-hombre-9334`, `cl-hombre-3397`, `ar-hombre-7049`, `cl-mujer-8784` (clonadas de `voices/`) | Pocket TTS | ~0,95 GiB | 17,5 s | Solo para crearlas | Iguales o mejores que `lola` |
+| Variedad LATAM | `ar-hombre-4310`, `cl-mujer-9334`, `co-hombre-9334`, `cl-hombre-3397`, `ar-hombre-7049`, `cl-mujer-8784` (clonadas de `voices/`; en Pi, desde 2026-11-04: `Facundo`, `Camila`, `Felipe`, `Diego`, `Santiago`, `Javiera`) | Pocket TTS | ~0,95 GiB | 17,5 s | Solo para crearlas | Iguales o mejores que `lola` |
 | Equilibrio | `lola` | Pocket TTS | ~0,95 GiB | 17,5 s | No | Referencia: bien, algo robótica, tranquila |
 | Más natural y menos consumo (uso no comercial) | `Regina` (mexicana), `Iker` (castellano) | Phonon 40M es | ~0,3 GiB (Fedora) | 8 s (Fedora) | Sí, para descargarlo | Mucho mejor que `lola` (2026-11-03) |
 | Mínimo consumo | `carlfm` (`x_low`) | Piper | ~0,3 GiB | 3,6 s | No | Igual que `lola` |

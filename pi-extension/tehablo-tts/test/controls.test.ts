@@ -1,6 +1,8 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {createExtension, memoryStore} from '../src/extension.ts';
+import {createExtension, memoryStore, readTable} from '../src/extension.ts';
+import {mkdtempSync, writeFileSync, rmSync, mkdirSync} from 'node:fs';
+import {join} from 'node:path';
 import {DEFAULTS} from '../src/settings.ts';
 
 function setup(store=memoryStore()) {
@@ -305,4 +307,18 @@ test('the server voice and its download states are used once known',async()=>{
     assert.equal(w.c.voices()[0].downloaded,true);
     assert.deepEqual(w.c.active(),{model:'spanish',voice:'other'});
   }finally{await s.close();}
+});
+
+test('the shared table maps included voices (with a source) to their .safetensors file', () => {
+  const base = join(process.cwd(), '.repo-harness', 'tmp');
+  mkdirSync(base, {recursive: true});
+  const dir = mkdtempSync(join(base, 'table-'));
+  try {
+    const path = join(dir, 'voice_table.json');
+    writeFileSync(path, JSON.stringify([
+      {name: 'lola', model: 'spanish', kind: 'download', note: 'la de siempre', default: true},
+      {name: 'Regina', model: 'phonon', kind: 'account', note: 'México'},
+      {name: 'Facundo', model: 'spanish', kind: 'download', note: 'Argentina', source: 'ar-hombre-4310'}]));
+    assert.deepEqual(readTable(path).map(v => v.voice), ['lola', 'Regina', 'Facundo.safetensors']);
+  } finally { rmSync(dir, {recursive: true, force: true}); }
 });

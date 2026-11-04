@@ -120,6 +120,7 @@ tehablo/
 | `docs/repo-harness/` | Estado actual, decisiones, hoja de ruta y uso del harness | Sí |
 | `voices/ATTRIBUTION.txt` | Atribución de las referencias descargadas | Sí |
 | `voices/*.wav` | Referencias recreables con `scripts/get_voices.py` | No, ignoradas |
+| `voices/*.safetensors` | Voces incluidas de la tabla, preparadas con `scripts/get_voices.py --prepare` (CC BY-SA 4.0) | Sí |
 | `pocket-out/`, `*.mp3` | Audio generado | No, ignorados; excepción: referencias `voices/*.mp3` |
 | `.env` | Secretos locales | No, ignorado |
 | `.venv*/`, `__pycache__/` | Entornos y caché Python | No, ignorados |
