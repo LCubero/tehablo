@@ -154,7 +154,7 @@ La extensión [`pi-extension/tehablo-tts/`](pi-extension/tehablo-tts/) lee las r
   | En pausa | `[ ▶ ] [ ■ ] [ ⋯ ] [.⚙ ]` |
 
   **`[ ⏻ TTS ]`** arranca el servidor y carga el modelo antes de escuchar; mientras tanto, la barra de estado muestra `TTS manual · cargando`. Las pruebas de código cubren clics en toda su superficie (corchetes, símbolo, letras y espacios normales); la persona responsable confirmó el clic físico en toda la etiqueta en Windows y en el corchete y las letras en Linux, y apagar y volver a encender en ambos. Escuchar, `/tts play` y el modo automático también lo arrancan si hace falta.
-- **Volumen y velocidad:** `[ ⋯ ]` muestra **Vol** (10–150 %, pasos de 10 %, inicial 100 %) y **Vel** (1.00x, 1.10x, 1.15x, 1.25x y 1.50x; `/tts speed` sigue aceptando 0.75–1.5) en todas las barras; `[ → ]` los oculta. `[-` baja y `+]` sube, con clics. El volumen cambia incluso el audio en reproducción; la velocidad afecta a los siguientes trozos generados, no al audio ya almacenado. Los límites se mantienen sin error.
+- **Volumen y velocidad:** `[ ⋯ ]` muestra **Vol** (10–150 %, pasos de 10 %, inicial 100 %) y **Vel** (1.00x, 1.10x, 1.15x, 1.25x y 1.50x; `/tts speed` sigue aceptando 0.75–1.5) en todas las barras; `[ → ]` los oculta. `[-` baja y `+]` sube, con clics. Todas las voces suenan más fuerte que antes: el servidor sube la salida ×1,8 (elegido por escucha) y corrige cada voz de la tabla para que suenen parecido (`gain_db` en `src/voice_table.json`); los picos fuertes se redondean en lugar de recortarse. El volumen cambia incluso el audio en reproducción; la velocidad afecta a los siguientes trozos generados, no al audio ya almacenado. Los límites se mantienen sin error.
 - **Apagar y liberar el modelo:** `[ ⏻ ]` aparece solo al final de los controles abiertos, después del último `+]`. Detiene la lectura y cierra el servidor propio para liberar sus recursos; los ajustes guardados se mantienen. `[ ⏻ TTS ]` permite encenderlo otra vez sin cerrar Pi. No equivale a `[ ■ ]` (solo detener) ni a `/tts off` (desactivar los controles).
 - **Automático:** `/tts auto on` lee cada respuesta al terminar; `/tts auto off` vuelve al modo manual.
 - **Ventana de ajustes `[.⚙ ]`:** siempre al final de la barra, con el servidor encendido o apagado. Abre una ventana centrada que se usa con clics o con el teclado (↑↓ elegir, ←→ cambiar, Enter, Esc cerrar):
@@ -167,6 +167,7 @@ La extensión [`pi-extension/tehablo-tts/`](pi-extension/tehablo-tts/) lee las r
 |---|---|
 | `/tts` | Estado y ayuda |
 | `/tts on` / `/tts off` | Activa o desactiva los controles |
+| `/tts auto on` / `/tts auto off` | Lee cada respuesta al terminar, o vuelve al modo manual |
 | `/tts play [n]` | Lee la respuesta `n` (o la última) |
 | `/tts pause` / `/tts resume` / `/tts stop` | Controla la lectura |
 | `/tts voice [nombre]` | Lista o cambia la voz |

@@ -326,6 +326,25 @@ Objetivo de la persona responsable: «que suene muy real, natural y que no consu
 - Kokoro con ONNX int8 baja la RAM pero no la CPU (~36–39 s); en esta escucha quedó por debajo de su resultado de octubre (fp32 en Windows).
 - Phonon dice que divide el texto por frases (la entonación no sigue entre frases) y que lee mal el texto en otros idiomas; no se comprobó todavía con los ajustes de tehablo ni con texto técnico.
 
+## Volumen de las voces de la tabla (2026-11-04, Fedora)
+
+Misma frase para cada voz, sin ajustes de volumen; una sola generación por voz (Pocket varía un poco entre lecturas, sobre todo los picos).
+
+| Voz | Promedio (RMS) | Pico | Corrección `gain_db` |
+|---|---|---|---|
+| `lola` | −23,3 dBFS | −3,8 dBFS | 0 (referencia) |
+| `rafael` | −25,2 | −4,9 | +2 |
+| `Facundo` | −26,1 | −10,0 | +3 |
+| `Santiago` | −24,7 | −4,6 | +1,5 |
+| `Camila` | −25,6 | −4,8 | +2,5 |
+| `Javiera` | −26,3 | −7,7 | +3 |
+| `Diego` | −25,3 | −4,2 | +2 |
+| `Felipe` | −24,1 | −1,1 | +1 |
+| `Regina` | −23,0 | −6,1 | 0 |
+| `Iker` | −22,3 | −4,1 | −1 |
+
+Todas salían bajas (lo habitual en voz es −16 a −20 dBFS). La persona responsable escuchó `lola` a ×1, ×1,5 y ×2 y eligió ×1,8 como base; la corrección por voz las iguala a `lola` y los picos por encima de 0,8 se redondean (`soft_limit` en `src/tehablo_server.py`) en lugar de recortarse. Escuchado en Pi: «suena muy bien genial».
+
 ## Licencias
 
 Cada opción tiene tres capas: el programa, el modelo y la voz con la que se entrenó o se clona.

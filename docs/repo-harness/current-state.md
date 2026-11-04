@@ -27,6 +27,7 @@ Este archivo proyecta solo hechos verificados del proyecto: registros activos, b
 
 <!-- doc-role:recent-work -->
 
+- 6 voces clonadas aprobadas incluidas ya preparadas y sin token (`Facundo`, `Santiago`, `Camila`, `Javiera`, `Diego`, `Felipe`); volumen más fuerte y parejo entre voces; tabla de voces con `●` activa y *RAM aprox.* (`RH-W-0004`, `RH-W-0005`).
 - Ventana de ajustes `[.⚙ ]` en Pi (voz, volumen, velocidad, lectura automática, atajos, servidor) con ajustes guardados; Phonon 40M es elegible como voz más natural, `lola` sigue de inicio (`RH-W-0004`, `RH-W-0005`).
 - `RH-W-0026` (`completed`): en Fedora, el primer arranque real del TTS tras reiniciar quedó listo en 5,87 s; no se repitieron los ~14 s del 2026-10-31, cuya causa sigue sin conocerse. Se reabre si vuelve a pasar.
 - `RH-W-0008` (`completed`): instalación con un comando, `./install.sh` (verificado en Fedora) e `install.ps1` (verificado en Windows con PowerShell 5.1 y 7), en clones limpios, segunda ejecución, dual boot y sin `uv`.

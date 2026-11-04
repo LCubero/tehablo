@@ -10,7 +10,8 @@
     "name": "rafael",
     "model": "spanish",
     "kind": "download",
-    "note": "España"
+    "note": "España",
+    "gain_db": 2
   },
   {
     "name": "Regina",
@@ -22,48 +23,55 @@
     "name": "Iker",
     "model": "phonon",
     "kind": "account",
-    "note": "España"
+    "note": "España",
+    "gain_db": -1
   },
   {
     "name": "Facundo",
     "model": "spanish",
     "kind": "download",
     "note": "Argentina",
-    "source": "ar-hombre-4310"
+    "source": "ar-hombre-4310",
+    "gain_db": 3
   },
   {
     "name": "Santiago",
     "model": "spanish",
     "kind": "download",
     "note": "Argentina",
-    "source": "ar-hombre-7049"
+    "source": "ar-hombre-7049",
+    "gain_db": 1.5
   },
   {
     "name": "Camila",
     "model": "spanish",
     "kind": "download",
     "note": "Chile",
-    "source": "cl-mujer-9334"
+    "source": "cl-mujer-9334",
+    "gain_db": 2.5
   },
   {
     "name": "Javiera",
     "model": "spanish",
     "kind": "download",
     "note": "Chile",
-    "source": "cl-mujer-8784"
+    "source": "cl-mujer-8784",
+    "gain_db": 3
   },
   {
     "name": "Diego",
     "model": "spanish",
     "kind": "download",
     "note": "Chile",
-    "source": "cl-hombre-3397"
+    "source": "cl-hombre-3397",
+    "gain_db": 2
   },
   {
     "name": "Felipe",
     "model": "spanish",
     "kind": "download",
     "note": "Colombia",
-    "source": "co-hombre-9334"
+    "source": "co-hombre-9334",
+    "gain_db": 1
   }
 ]

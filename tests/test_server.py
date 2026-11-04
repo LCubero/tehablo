@@ -510,10 +510,31 @@ class ServerTests(unittest.TestCase):
         self.assertEqual(self.request('/config', {'volume': 1.5})[1]['volume'], 1.5)
         output = np.zeros((2, 1), dtype=np.float32)
         service.callback(output, 2, None, None)
-        np.testing.assert_allclose(output[:, 0], [1, -1])
+        # Loud peaks are rounded by the soft limiter, never past full scale.
+        self.assertTrue(np.all(np.abs(output[:, 0]) <= 1) and output[0, 0] > .99 and output[1, 0] < -.99)
         self.request('/config', {'volume': .1})
         service.callback(output, 2, None, None)
-        np.testing.assert_allclose(output[:, 0], [.04, -.04])
+        # Every level includes the fixed 1.8x base gain (the voices come out at about -24 dBFS).
+        np.testing.assert_allclose(output[:, 0], [.072, -.072], rtol=1e-6)
+        with service.condition:
+            service.buffer.append(np.array([.25, -.25], dtype=np.float32))
+        self.request('/config', {'volume': 1.0})
+        service.callback(output, 2, None, None)
+        np.testing.assert_allclose(output[:, 0], [.45, -.45], rtol=1e-6)
+
+    def test_soft_limit_keeps_normal_samples_and_rounds_peaks(self):
+        x = np.array([0, .5, -.8, .9, -1.2, 3], dtype=np.float32)
+        y = tehablo_server.soft_limit(x)
+        np.testing.assert_allclose(y[:3], [0, .5, -.8])
+        self.assertTrue(.8 < y[3] < .9 and -1 < y[4] < -.9 and .99 < y[5] <= 1)
+        self.assertTrue(np.all(np.diff(tehablo_server.soft_limit(np.linspace(0, 4, 50))) >= 0))
+
+    def test_voice_gain_comes_from_the_table(self):
+        gain = tehablo_server.voice_gain
+        self.assertAlmostEqual(gain('Javiera.safetensors'), 10 ** (3 / 20))
+        self.assertAlmostEqual(gain(str(tehablo_server.VOICES_DIR / 'Javiera.safetensors')), 10 ** (3 / 20))
+        self.assertAlmostEqual(gain('Iker'), 10 ** (-1 / 20))
+        self.assertEqual((gain('lola'), gain('Regina'), gain('mi-voz.wav')), (1.0, 1.0, 1.0))
 
     def test_speed_changes_between_generated_chunks(self):
         from unittest.mock import patch
@@ -571,7 +592,7 @@ class ServerTests(unittest.TestCase):
         self.wait(lambda: self.request('/status')[1]['state'] == 'playing')
         output = np.zeros((100, 1), dtype=np.float32)
         callbacks[0](output, 100, None, None)
-        np.testing.assert_array_equal(output[:, 0], np.clip(np.arange(100), -1, 1))
+        np.testing.assert_array_equal(output[:, 0], tehablo_server.soft_limit(np.arange(100) * tehablo_server.BASE_GAIN))
         self.request('/pause', {})
         callbacks[0](output, 100, None, None)
         np.testing.assert_array_equal(output, 0)

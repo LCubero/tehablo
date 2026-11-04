@@ -25,6 +25,20 @@ ROOT = Path(__file__).resolve().parent.parent
 VOICES_DIR = ROOT / 'voices'
 AUDIO_EXT = {'.wav', '.mp3', '.flac', '.safetensors'}
 MODELS = {'phonon', 'spanish', 'spanish_24l'}
+# Fixed output gain under every volume level: Pocket and Phonon voices come out at about -24 dBFS
+# (peak -6 dBFS); 1.8x was chosen by listening with lola (2026-11-04).
+BASE_GAIN = 1.8
+LIMIT = 0.8
+
+
+def soft_limit(x):
+    """Leave samples up to LIMIT unchanged and round louder peaks smoothly below full scale."""
+    x = np.asarray(x, dtype=np.float32)
+    over = np.abs(x) > LIMIT
+    if over.any():
+        x = x.copy()
+        x[over] = np.sign(x[over]) * (LIMIT + (1 - LIMIT) * np.tanh((np.abs(x[over]) - LIMIT) / (1 - LIMIT)))
+    return x
 PHONON_VOICES = {'Regina', 'Iker', 'Noa', 'Lucía-Sol', 'Candela', 'Celia', 'Alba',
                  'Alicia', 'Marcos', 'Borja', 'Nuno', 'Izan', 'Guillermo', 'Rebeca',
                  'Danae', 'Azucena'}
@@ -36,6 +50,13 @@ PHONON_VOICES = {'Regina', 'Iker', 'Noa', 'Lucía-Sol', 'Candela', 'Celia', 'Alb
 _TABLE = json.loads((ROOT / 'src' / 'voice_table.json').read_text(encoding='utf-8'))
 VOICE_TABLE = [(v['name'], v['model'], v['kind'], v['note']) for v in _TABLE]
 INCLUDED = {v['name'] for v in _TABLE if v.get('source')}
+# Per-voice loudness correction ('gain_db'), measured against lola with one sentence (2026-11-04).
+VOICE_GAIN = {v['name']: 10 ** (v['gain_db'] / 20) for v in _TABLE if v.get('gain_db')}
+
+
+def voice_gain(voice):
+    name = Path(voice).stem if str(voice).endswith('.safetensors') else voice
+    return VOICE_GAIN.get(name, 1.0)
 # The start voice is the one marked "default": the best free voice that works without an account.
 START_MODEL, START_VOICE = next((v['model'], v['name']) for v in _TABLE if v.get('default'))
 
@@ -285,8 +306,8 @@ class SpeechService:
             while self.buffer and written < frames:
                 chunk = self.buffer[0]
                 count = min(frames - written, len(chunk) - self.offset)
-                outdata[written:written + count, 0] = np.clip(
-                    chunk[self.offset:self.offset + count] * self.volume, -1, 1)
+                outdata[written:written + count, 0] = soft_limit(
+                    chunk[self.offset:self.offset + count] * (self.volume * BASE_GAIN))
                 written += count
                 self.offset += count
                 if self.offset == len(chunk):
@@ -372,7 +393,9 @@ class SpeechService:
                     with self.condition:
                         speed = self.speed
                     stretch = SpeedStream(speed)
+                    gain = voice_gain(voice)
                     for chunk in synth.stream(text, self.resolve_voice(voice, name), cancel):
+                        chunk = chunk * gain
                         if cancel.is_set():
                             break
                         with self.condition:
