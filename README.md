@@ -2,7 +2,7 @@
 
 > **En desarrollo.** El proyecto todavía está en desarrollo y puede cambiar. Lo que falta está en la [hoja de ruta](docs/repo-harness/roadmap.md).
 
-Convierte texto en voz en español, en tu equipo y gratis. Usa **Pocket TTS** (Kyutai), que funciona solo con CPU: no necesita GPU, nube ni cuenta. Probado en Windows y en Linux (Fedora), con salida de audio real y [mediciones de consumo](#cuánto-gasta) en ambos. macOS no se ha verificado.
+Convierte texto en voz en español, en tu equipo y gratis. En Pi usa **Phonon 40M es**, voz **Regina**, por defecto (CPU, 2 hilos). La TUI y la consola siguen usando **Pocket TTS** (Kyutai), sin GPU, nube ni cuenta. Probado en Windows y en Linux (Fedora), con salida de audio real y [mediciones de consumo](#cuánto-gasta) en ambos. macOS no se ha verificado.
 
 El uso principal es **leer en voz alta las respuestas de [Pi](#uso-en-pi)**. La TUI y la consola sirven para probar voces, modelo y velocidad.
 
@@ -29,7 +29,7 @@ El uso principal es **leer en voz alta las respuestas de [Pi](#uso-en-pi)**. La 
 | 1. Texto técnico | Simplifica URLs, rutas, archivos e identificadores | `src/tehablo_server.py` → *tehablo sérver punto pai* |
 | 2. Términos en inglés | Los cambia por cómo suenan ([`pronunciaciones.json`](pronunciaciones.json)) | `Python` → *páiton* |
 | 3. Números | Los convierte a palabras, con su unidad | `15.000` → *quince mil*, `5,86 s` → *cinco coma ochenta y seis segundos* |
-| 4. Pocket TTS | Genera la voz a trozos | — |
+| 4. Phonon (Pi) o Pocket TTS | Genera la voz a trozos | — |
 | 5. Velocidad | Cambia el ritmo sin cambiar el tono | — |
 | 6. Altavoz | Suena mientras se genera lo siguiente | — |
 
@@ -43,7 +43,8 @@ Detalle completo: [docs/como-funciona.md](docs/como-funciona.md).
 
 | Pieza | Para qué | Licencia |
 |---|---|---|
-| **Pocket TTS** (Kyutai) | Modelo de IA que genera la voz | Código MIT, pesos CC BY 4.0 |
+| **Phonon 40M es** (`ptts`) | Voz predeterminada de Pi | Pesos CC BY-NC 4.0, acceso restringido |
+| **Pocket TTS** (Kyutai) | Voz de TUI/consola y alternativa en Pi | Código MIT, pesos CC BY 4.0 |
 | **PyTorch** solo CPU | Ejecuta el modelo | BSD |
 | **Textual** | Interfaz de la TUI | MIT |
 | **sounddevice** | Salida al altavoz | MIT |
@@ -133,6 +134,10 @@ La combinación comprobada en Fedora y los límites de la prueba están en [Desa
 
 ## Uso en Pi
 
+Por defecto se carga Phonon 40M es (`Regina`, también admite `Iker`). Sus pesos son **CC BY-NC 4.0** (no comercial) y requieren aceptar las condiciones en <https://huggingface.co/gradium/phonon-40m-es> e iniciar sesión con `hf auth login` para la primera descarga. Después puede funcionar desde caché. Si falta el paquete, acceso o caché, el servidor registra el motivo y usa automáticamente Pocket `spanish` con `lola`; `/health` muestra el modelo real.
+
+Para elegir Pocket en Pi: `/tts model spanish` (o `spanish_24l`). Al cambiar de modelo sin indicar voz se elige `Regina` para Phonon y `lola` para Pocket. También puedes arrancar el servidor con `.venv-pocket/bin/python src/tehablo_server.py --model spanish`. Las voces de `voices/` solo son para Pocket.
+
 La extensión [`pi-extension/tehablo-tts/`](pi-extension/tehablo-tts/) lee las respuestas finales del agente con la voz local. Se carga sola al abrir Pi dentro de este repositorio (`.pi/settings.json`), después de aceptar la confianza del proyecto y ejecutar `/reload`. Para usarla en otros proyectos, añade la ruta absoluta de esa carpeta a `extensions` en tu configuración de Pi.
 
 - **Manual (por defecto):** cada respuesta muestra una barra de controles que se usa con clics:
@@ -158,7 +163,7 @@ La extensión [`pi-extension/tehablo-tts/`](pi-extension/tehablo-tts/) lee las r
 | `/tts play [n]` | Lee la respuesta `n` (o la última) |
 | `/tts pause` / `/tts resume` / `/tts stop` | Controla la lectura |
 | `/tts voice [nombre]` | Lista o cambia la voz |
-| `/tts model [spanish\|spanish_24l]` | Cambia el modelo |
+| `/tts model [phonon\|spanish\|spanish_24l]` | Cambia el modelo |
 | `/tts speed [0.75-1.5]` | Cambia la velocidad |
 
 La extensión arranca sola el servidor local [`src/tehablo_server.py`](src/tehablo_server.py) (`127.0.0.1:8765`, se cambia con `TEHABLO_PORT`) y lo apaga al cerrar Pi. Necesita el entorno `.venv-pocket` (o `.venv-pocket-<sistema>`) instalado. Los ajustes duran solo la sesión. Los mensajes y errores del servidor se guardan en `logs/tehablo-server.log`, que se reescribe en cada arranque; si el servidor no responde a tiempo, el aviso indica esa ruta. Si el modelo no carga, Pi muestra el error en lugar de quedarse en «cargando»; también avisa si una lectura falla (por ejemplo, sin dispositivo de audio) o si se pierde la conexión con el servidor. Cada lectura usa la salida de audio predeterminada del sistema en ese momento: si cambias a audífonos o Bluetooth, la siguiente lectura ya suena ahí. En Windows la que está sonando termina en la salida anterior; en Linux (Fedora) cambia en el momento. Por seguridad, el servidor rechaza peticiones de páginas web (cabecera `Origin`, 403) y los `POST` que no declaran JSON (415).

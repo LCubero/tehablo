@@ -58,7 +58,7 @@ class ServerTests(unittest.TestCase):
             self.loaded.wait(3)
             return self.synth
 
-        self.server = create_server(port=0, synthesizer_factory=load,
+        self.server = create_server(port=0, model='spanish', synthesizer_factory=load,
                                     audio_factory=Sink, catalog=['lola', 'other'])
         self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
         self.thread.start()
@@ -91,6 +91,54 @@ class ServerTests(unittest.TestCase):
     def ready(self):
         self.loaded.set()
         self.wait(lambda: self.request('/health')[1]['ready'])
+
+    def test_phonon_default(self):
+        server = create_server(port=0, synthesizer_factory=lambda name: self.synth,
+                               audio_factory=Sink, catalog=['lola'])
+        try:
+            self.assertEqual(server.service.health()['model'], 'phonon')
+            self.assertEqual(server.service.health()['voice'], 'Regina')
+        finally:
+            server.server_close()
+
+    def test_phonon_fallback(self):
+        for error in (ImportError('missing'), OSError('gated'), RuntimeError('broken')):
+            with self.subTest(error=error):
+                calls = []
+                def load(name):
+                    calls.append(name)
+                    if name == 'phonon':
+                        raise error
+                    return self.synth
+                output = io.StringIO()
+                with contextlib.redirect_stderr(output):
+                    server = create_server(port=0, model='phonon', synthesizer_factory=load,
+                                           audio_factory=Sink, catalog=['lola'])
+                    try:
+                        self.wait(lambda: server.service.health()['ready'])
+                        health = server.service.health()
+                        self.assertEqual((health['model'], health['voice'], health['error']),
+                                         ('spanish', 'lola', None))
+                        self.assertEqual(calls, ['phonon', 'spanish'])
+                        self.assertEqual(output.getvalue(),
+                                         f'Phonon unavailable ({error}); using spanish with lola\n')
+                    finally:
+                        server.server_close()
+
+    def test_model_voices_and_defaults(self):
+        self.ready()
+        for model, voice, invalid in [('phonon', 'Regina', 'lola'),
+                                       ('spanish', 'lola', 'Regina'),
+                                       ('spanish_24l', 'lola', 'Regina')]:
+            self.assertEqual(self.request('/config', {'model': model})[0], 200)
+            self.wait(lambda: self.request('/health')[1]['ready'])
+            before = self.request('/health')
+            self.assertEqual(before[1]['voice'], voice)
+            self.assertIn(voice, self.request('/voices')[1]['voices'])
+            self.assertEqual(self.request('/config', {'voice': voice})[0], 200)
+            self.assertEqual(self.request('/config', {'voice': invalid})[0], 400)
+            self.assertEqual(self.request('/health'), before)
+            self.assertEqual(self.synth.calls, [])
 
     def test_speech_failures_are_visible_and_clearable(self):
         self.ready()
@@ -282,6 +330,7 @@ class ServerTests(unittest.TestCase):
                 got = self.server.service.normalize_text(source, 'spanish')
                 self.assertEqual(got, expected)
                 self.assertEqual(self.server.service.normalize_text(source, 'spanish_24l'), expected)
+                self.assertEqual(self.server.service.normalize_text(source, 'phonon'), expected)
                 self.assertEqual(self.server.service.normalize_text(source, 'english'), source)
                 print('PIPELINE ' + json.dumps([source, got], ensure_ascii=True))
 

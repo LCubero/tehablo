@@ -36,7 +36,7 @@ class StartupTests(unittest.TestCase):
                 contextlib.redirect_stdout(output):
             instance = server.create_server(port=0, synthesizer_factory=lambda name: model)
             try:
-                self.assertEqual(instance.service.health()['voice'], 'lola')
+                self.assertEqual(instance.service.health()['voice'], 'Regina')
                 self.assertIsNone(instance.service.health()['error'])
             finally:
                 instance.server_close()
@@ -51,7 +51,7 @@ class StartupTests(unittest.TestCase):
             instance = server.create_server(port=0, catalog=['lola'],
                                             synthesizer_factory=lambda name: model)
             try:
-                self.assertEqual(instance.service.health()['model'], 'spanish')
+                self.assertEqual(instance.service.health()['model'], 'phonon')
             finally:
                 instance.server_close()
         clock.assert_not_called()

@@ -1,6 +1,6 @@
 # Cómo funciona tehablo y qué recursos usa
 
-Todo se ejecuta **en el equipo local**: sin API externa, sin nube, sin cuenta, sin coste por uso y **sin GPU**. Solo usa CPU y RAM.
+Todo se ejecuta **en el equipo local**: sin API externa, sin nube, sin coste por uso y **sin GPU**. Solo usa CPU y RAM. Pi usa Phonon 40M es con Regina (2 hilos); requiere acceso autorizado de Hugging Face para descargar sus pesos CC BY-NC 4.0. Si no carga, usa Pocket `spanish` con `lola` y registra el motivo. `/tts model spanish` o `--model spanish` en el servidor selecciona Pocket. La TUI y la consola siguen en Pocket, sin cuenta.
 
 ## Índice
 
@@ -36,7 +36,7 @@ Texto escrito
 5. Altavoz                 sounddevice                                     suena mientras se genera lo siguiente
 ```
 
-- Los pasos 0, 1 y 2 solo se aplican con los modelos `spanish` y `spanish_24l`.
+- Los pasos 0, 1 y 2 se aplican con `spanish`, `spanish_24l` y también con `phonon` en Pi.
 - Los pasos 0, 1, 2 y 4 son código propio y casi no consumen recursos.
 - El paso 3 es la parte pesada.
 
@@ -211,7 +211,7 @@ HF_HUB_OFFLINE=1 .venv-pocket/bin/python scripts/measure_tts.py \
 | GPU | Se instala PyTorch solo CPU (~200 MB frente a ~3 GB con CUDA); funciona en equipos sin tarjeta gráfica |
 | Internet | Solo en la primera ejecución, para descargar los modelos; después funciona sin conexión |
 
-La única excepción es la **clonación de voces** de `voices/`. Requiere un token gratuito de Hugging Face para la primera descarga de los pesos con clonación. Ver [README](../README.md#activar-la-clonación-de-voces-token-de-hugging-face).
+Además del acceso inicial a Phonon en Pi, otra excepción es la **clonación de voces** de `voices/`. Requiere un token gratuito de Hugging Face para la primera descarga de los pesos con clonación. Ver [README](../README.md#activar-la-clonación-de-voces-token-de-hugging-face).
 
 ---
 

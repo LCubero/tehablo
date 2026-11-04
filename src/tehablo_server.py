@@ -24,7 +24,37 @@ from tehablo_speed import SpeedStream
 ROOT = Path(__file__).resolve().parent.parent
 VOICES_DIR = ROOT / 'voices'
 AUDIO_EXT = {'.wav', '.mp3', '.flac', '.safetensors'}
-MODELS = {'spanish', 'spanish_24l'}
+MODELS = {'phonon', 'spanish', 'spanish_24l'}
+PHONON_VOICES = {'Regina', 'Iker', 'Noa', 'Lucía-Sol', 'Candela', 'Celia', 'Alba',
+                 'Alicia', 'Marcos', 'Borja', 'Nuno', 'Izan', 'Guillermo', 'Rebeca',
+                 'Danae', 'Azucena'}
+
+
+def default_voice(model):
+    return 'Regina' if model == 'phonon' else 'lola'
+
+
+class PhononSynthesizer:
+    def __init__(self):
+        import ptts
+        ptts.set_num_threads(2)
+        self.model = ptts.TTS('hf://gradium/phonon-40m-es', lang='es', quant='q8')
+        self.sample_rate = 24000
+
+    def stream(self, text, voice, stop):
+        if stop.is_set():
+            return
+        with self.model.stream(text, voice=voice) as audio:
+            if audio.sample_rate != self.sample_rate:
+                raise ValueError('unexpected Phonon sample rate')
+            for chunk in audio:
+                if stop.is_set():
+                    return
+                yield np.asarray(chunk, dtype=np.float32).reshape(-1)
+
+
+def synthesizer(name):
+    return PhononSynthesizer() if name == 'phonon' else PocketSynthesizer(name)
 
 
 class PocketSynthesizer:
@@ -63,9 +93,9 @@ class SpeechService:
         self.factory = synthesizer_factory
         self.audio_factory = audio_factory
         self.catalog = list(catalog)
-        self.model_name, self.voice, self.speed = model, voice, speed
+        self.model_name, self.voice, self.speed = model, voice if voice is not None else default_voice(model), speed
         self.volume = 1.0
-        self.validate({'model': model, 'voice': voice, 'speed': speed})
+        self.validate({'model': model, 'voice': self.voice, 'speed': speed})
         self.lexicon = Lexicon(ROOT / 'pronunciaciones.json')
         self.ready = False
         self.error = None
@@ -96,11 +126,17 @@ class SpeechService:
         return text
 
     def voices(self):
+        if self.model_name == 'phonon':
+            return sorted(PHONON_VOICES)
         local = sorted(p for p in VOICES_DIR.iterdir()
                        if p.is_file() and p.suffix.lower() in AUDIO_EXT) if VOICES_DIR.is_dir() else []
         return [str(p) for p in local] + sorted(self.catalog)
 
-    def resolve_voice(self, value):
+    def resolve_voice(self, value, model=None):
+        if (model or self.model_name) == 'phonon':
+            if not isinstance(value, str) or value not in PHONON_VOICES:
+                raise ValueError('voice must be a Phonon Spanish voice name')
+            return value
         if not isinstance(value, str):
             raise ValueError('voice must be a catalog name or a file in voices/')
         if value in self.catalog:
@@ -117,9 +153,9 @@ class SpeechService:
         if set(body) - {'model', 'voice', 'speed', 'volume'}:
             raise ValueError('unknown config field')
         if 'model' in body and (not isinstance(body['model'], str) or body['model'] not in MODELS):
-            raise ValueError('model must be spanish or spanish_24l')
+            raise ValueError('model must be phonon, spanish or spanish_24l')
         if 'voice' in body:
-            self.resolve_voice(body['voice'])
+            self.resolve_voice(body['voice'], body.get('model', self.model_name))
         if 'speed' in body:
             value = body['speed']
             if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or not .75 <= value <= 1.5:
@@ -189,7 +225,7 @@ class SpeechService:
                 self.ready = False
                 self.error = None
                 self.state = 'loading'
-            self.voice = body.get('voice', self.voice)
+            self.voice = body.get('voice', default_voice(self.model_name) if reload else self.voice)
             self.speed = float(body.get('speed', self.speed))
             self.volume = float(body.get('volume', self.volume))
             self.condition.notify_all()
@@ -239,7 +275,23 @@ class SpeechService:
                         sink.close()
                         sink = None
                     try:
-                        synth = self.factory(name)
+                        try:
+                            synth = self.factory(name)
+                        except Exception as exc:
+                            if name != 'phonon':
+                                raise
+                            reason = ' '.join(str(exc).splitlines())
+                            print(f'Phonon unavailable ({reason}); using spanish with lola',
+                                  file=sys.stderr, flush=True)
+                            with self.condition:
+                                if self.closed or revision != self.revision:
+                                    continue
+                                self.model_name, self.voice = 'spanish', 'lola'
+                                name = 'spanish'
+                                if self.pending:
+                                    text, cancel, _, speed = self.pending
+                                    self.pending = (text, cancel, 'lola', speed)
+                            synth = self.factory(name)
                     except Exception as exc:
                         print(f'Model load failed: {exc}', file=sys.stderr)
                         with self.condition:
@@ -275,7 +327,7 @@ class SpeechService:
                     with self.condition:
                         speed = self.speed
                     stretch = SpeedStream(speed)
-                    for chunk in synth.stream(text, self.resolve_voice(voice), cancel):
+                    for chunk in synth.stream(text, self.resolve_voice(voice, name), cancel):
                         if cancel.is_set():
                             break
                         with self.condition:
@@ -396,8 +448,8 @@ class Handler(BaseHTTPRequestHandler):
             self.reply(400, {'error': str(exc)})
 
 
-def create_server(port=8765, model='spanish', voice='lola', speed=1.0,
-                  synthesizer_factory=PocketSynthesizer, audio_factory=audio_sink, catalog=None):
+def create_server(port=8765, model='phonon', voice=None, speed=1.0,
+                  synthesizer_factory=synthesizer, audio_factory=audio_sink, catalog=None):
     if catalog is None:
         started = time.perf_counter()
         from tehablo_tts import VOICES
@@ -416,8 +468,10 @@ def create_server(port=8765, model='spanish', voice='lola', speed=1.0,
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--port', type=int, default=os.environ.get('TEHABLO_PORT', '8765'))
-    parser.add_argument('--model', choices=sorted(MODELS), default='spanish')
-    parser.add_argument('--voice', default='lola')
+    parser.add_argument('--model', choices=sorted(MODELS), default='phonon',
+                        help='engine (default: phonon; Pocket: spanish or spanish_24l)')
+    parser.add_argument('--voice', default=None,
+                        help='voice (default: Regina for phonon, lola for Pocket)')
     parser.add_argument('--speed', type=float, default=1.0)
     args = parser.parse_args()
     print(f'Startup: server imports completed in {time.perf_counter() - IMPORT_STARTED:.3f} s', flush=True)
