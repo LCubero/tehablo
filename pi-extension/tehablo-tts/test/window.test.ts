@@ -28,7 +28,7 @@ function setup(over: Partial<Record<string, any>> = {}) {
     saveToken: value => { if (value === 'bad') throw new Error('El token no es válido: copia el token completo de Hugging Face.'); calls.push(['token', value.length]); state.token = true; },
     setShortcut: (action, key) => { calls.push(['shortcut', action, key]); const sc = {...state.settings.shortcuts}; if (key) sc[action] = key; else delete sc[action]; state.settings = {...state.settings, shortcuts: sc}; },
   };
-  const w = new SettingsWindow(c, theme, kb, () => { closed = true; }, () => {});
+  const w = new SettingsWindow(c, over.theme ?? theme, kb, () => { closed = true; }, () => {});
   return {w, calls, state, closed: () => closed, text: () => w.render(100).join('\n'), key: (k: string) => w.handleInput(k),
     click: (label: string) => {
       const lines = w.render(100);
@@ -77,6 +77,18 @@ test('voice table orders downloaded, downloadable, then account voices and marks
   assert.ok(lines[order[0]].includes('Descargada') && lines[order[0]].includes('● activa'));
   assert.ok(lines[order[1]].includes('Para descargar'));
   assert.ok(lines[order[2]].includes('Con cuenta gratis'));
+});
+
+test('voice table shows the active voice name in yellow (warning), also under the cursor', () => {
+  const s = setup({theme: {fg: (st: string, t: string) => `<${st}>${t}</${st}>`}});
+  s.key('\r');
+  const lines = s.w.render(100);
+  const row = (n: string) => lines.find(l => l.includes(n + ' (') || l.includes(n + ' * ('))!;
+  assert.match(row('lola'), /<warning>lola \(la de siempre\)\s*<\/warning>/);
+  for (const n of ['rafael', 'Regina', 'ar-hombre-4310']) assert.ok(!row(n).includes(`<warning>${n}`), n);
+  s.key('\x1b[B');
+  assert.match(s.w.render(100).find(l => l.includes('lola ('))!, /<warning>lola \(/);
+  assert.match(s.w.render(100).find(l => l.includes('rafael ('))!, /<accent>rafael \(/);
 });
 
 test('choosing by type: downloaded activates, downloadable confirms, account asks for the token first', () => {

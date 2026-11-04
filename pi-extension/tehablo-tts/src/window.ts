@@ -227,7 +227,7 @@ export class SettingsWindow {
         const sel = i === this.pick, pickIt = () => { this.pick = i; this.choose(v); };
         const style = v.downloaded ? 'success' : v.kind === 'account' && !this.c.state().token ? 'warning' : 'dim';
         line([{text: sel ? ' ▶ ' : '   ', style: 'accent', fn: pickIt},
-          {text: fit(`${v.name}${v.kind === 'account' ? ' *' : ''} (${v.note})`, 34), style: sel ? 'accent' : undefined, fn: pickIt},
+          {text: fit(`${v.name}${v.kind === 'account' ? ' *' : ''} (${v.note})`, 34), style: this.isActive(v) ? 'warning' : sel ? 'accent' : undefined, fn: pickIt},
           {text: fit(this.typeLabel(v), 22), style, fn: pickIt},
           {text: this.isActive(v) ? '● activa' : '', style: 'success', fn: pickIt}]);
       });
