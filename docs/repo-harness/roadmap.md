@@ -309,24 +309,24 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 - **Decisión:** 2026-10-30, por decisión delegada de la persona responsable («decidelo tu ... sin sobreingenieria»): adoptar la cuantización donde se midió más rápida; no se eligió aún el resto del alcance «lite».
 - **Condición del siguiente avance:** la instalación (`RH-W-0008`) quedó completada el 2026-10-30; la versión lite va al final del plan por decisión de la persona responsable (2026-10-30). Ya están las mediciones (`RH-W-0003`) y la cuantización en Linux. Puede bastar con un modo de bajo consumo en la misma versión (cuantización, liberar el modelo en reposo) o con el binario `pocket-tts` de Kyutai, que no necesita Python ni PyTorch (no comprobado con los modelos en español).
 
+## Registros resueltos
+<!-- doc-role:resolved-records -->
+
 ### RH-W-0026: Arranque lento del TTS tras encender el equipo en Linux
 
 - **Origen:** observación de la persona responsable del 2026-10-31 en Fedora: «dura mucho cargando el actual tts de pi en linux».
 - **Prioridad:** P2; es la primera espera que se nota al usar tehablo desde Pi cada día.
 - **Dependencias:** ninguna.
-- **Estado:** `proposed`.
-- **Trabajo restante:**
-  - Medir el primer arranque real tras encender el equipo, antes de abrir Pi: tiempo desde lanzar `src/tehablo_server.py` hasta que `/health` responde `ready: true`, y anotar si vuelve a tardar ~14 s.
-  - Si se repite, buscar la causa fuera de la caché de disco (por ejemplo, carga del equipo justo después de iniciar sesión o arranque del audio); no mover el entorno de Python por ahora.
+- **Estado:** `completed`.
+- **Trabajo restante:** none.
 - **Evidencia (2026-10-31, Fedora):** el primer arranque tras encender el equipo tardó al menos ~13,4 s hasta cargar el modelo (inicio del proceso 12:10:36, última escritura del log durante la carga 12:10:49,97; el equipo encendió a las 11:55:30). Dos arranques siguientes, ya con caché: responde en ~2,4 s y queda listo en ~3,5 s. `.venv-pocket` ocupa 1,1 GB en 22 666 archivos y está en `/mnt/SSD` (`ntfs3`); la caché de modelos de Hugging Face está en btrfs. Primera hipótesis: leer el entorno desde NTFS en frío.
 - **Comprobación (2026-10-31):** con la caché de disco vaciada (`drop_caches`, verificando con `fincore` que `libtorch_cpu.so` no estaba en memoria), dos arranques en frío por entorno en orden alternado: `.venv-pocket` en NTFS quedó listo en 5,39 y 5,69 s; una copia idéntica en btrfs, en 4,49 y 4,48 s; en caliente, 3,5 s. NTFS cuesta ~1 s en frío, pero ningún arranque se acercó a ~14 s. La carga del modelo no usa la red (revisiones fijadas; cero conexiones medidas) y `HF_HUB_OFFLINE=1` no cambia el tiempo. La causa de los ~14 s sigue sin conocerse; vaciar la caché no reproduce todo lo que pasa tras encender el equipo. Scripts y log en `.repo-harness/tmp/linux-start/` (ignorado por Git).
 - **Medición con Pi abierto (2026-10-31 17:37, Fedora):** primer arranque del TTS de esa sesión, ~29 min después de encender el equipo y con Pi ya abierto (`probe_start.py`, sin otro `tehablo_server` en marcha): responde en 4,03 s y queda listo en 5,86 s, sin error. Es parecido al arranque en frío con NTFS (5,4–5,7 s) y lejos de ~14 s: tener Pi abierto no explica la demora. Falta la medición justo después de encender, antes de abrir Pi.
 - **Observación de apoyo (2026-11-02, Windows):** el log separa importaciones y carga del modelo; diferir dos importaciones exclusivas de consola ahorró tiempo en una sonda, pero no confirmó una mejora del arranque real ([mediciones y límites](../desarrollo.md#arranque-en-windows-mediciones-y-límites)). No explica el primer arranque de Linux: se mantienen `proposed` y la condición de medirlo tras encender el equipo.
+- **Medición tras reiniciar (2026-11-03, Fedora):** primer arranque del TTS después de reiniciar, antes de abrir Pi, ~6,5 min después de encender el equipo (encendió a las 22:04:13, se lanzó a las 22:10:42; `src/tehablo_server.py --port 8766` hasta `/health` con `ready: true`): listo en 5,87 s, sin error. Está en el rango normal en frío (4–6 s), no se repitieron los ~14 s y la causa de aquella vez sigue sin conocerse.
 - **Decisión:** 2026-10-31: no mover el entorno de Linux fuera de NTFS por ~1 s; antes, medir un primer arranque real.
-- **Condición del siguiente avance:** la medición del primer arranque tras el próximo encendido del equipo en Linux.
-
-## Registros resueltos
-<!-- doc-role:resolved-records -->
+  2026-11-03: cerrado por la persona responsable («dale»): el primer arranque real tras reiniciar no repitió los ~14 s. Si vuelve a pasar, se reabre y se busca la causa fuera de la caché de disco (por ejemplo, carga del equipo justo después de iniciar sesión o arranque del audio).
+- **Condición del siguiente avance:** ninguna; se reabre solo si el primer arranque vuelve a acercarse a ~14 s.
 
 ### RH-W-0027: Leer bien siglas, símbolos e inglés frecuente con la misma voz
 

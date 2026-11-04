@@ -6,6 +6,7 @@ Este archivo registra los cambios completados en orden cronológico.
 
 ## 2026-11-03
 
+- Se cerró el arranque lento del TTS tras encender el equipo en Linux (`RH-W-0026`): tras reiniciar Fedora, el primer arranque quedó listo en 5,87 s, en el rango normal en frío; no se repitieron los ~14 s. Se reabre si vuelve a pasar.
 - En Pi, cada lectura sale por el dispositivo de audio predeterminado del sistema en ese momento: al cambiar a audífonos o Bluetooth, la siguiente lectura suena ahí (comprobado físicamente en Windows y en Linux). En Windows la lectura en curso termina en la salida anterior; en Linux (Fedora) cambia de salida incluso a mitad de la lectura (`RH-W-0017`).
 - En Linux, la persona responsable confirmó el clic físico en `[ ⏻ TTS ]` para apagar y volver a encender en la misma sesión (`RH-W-0024`).
 - Los nombres de archivo con un número largo (mayor que `9999999`, como una fecha y hora pegadas) ya no se leen como una cantidad gigante: se dice «archivo», su tipo y «terminado en» con sus últimos cuatro caracteres (`.md` → «archivo Markdown terminado en a cuatro dos efe»; `.txt` texto; `.pdf` y `.html` deletreados en español). `.pdf` se reconoce como extensión. Los demás nombres de archivo, números y cantidades no cambian ([reglas](docs/pronunciacion.md#identificadores-numéricos-largos)).

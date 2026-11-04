@@ -27,6 +27,7 @@ Este archivo proyecta solo hechos verificados del proyecto: registros activos, b
 
 <!-- doc-role:recent-work -->
 
+- `RH-W-0026` (`completed`): en Fedora, el primer arranque real del TTS tras reiniciar quedó listo en 5,87 s; no se repitieron los ~14 s del 2026-10-31, cuya causa sigue sin conocerse. Se reabre si vuelve a pasar.
 - `RH-W-0008` (`completed`): instalación con un comando, `./install.sh` (verificado en Fedora) e `install.ps1` (verificado en Windows con PowerShell 5.1 y 7), en clones limpios, segunda ejecución, dual boot y sin `uv`.
 - `RH-W-0013` (`completed`): Pi avisa si una lectura falla o se pierde la conexión con el servidor, y un diccionario de pronunciación inválido queda en el log del servidor.
 - `RH-W-0001` (`completed`): el servidor rechaza peticiones de páginas web (`Origin`) y las que no son JSON, e informa si el modelo no carga; Pi lo avisa en lugar de quedarse en «cargando».
@@ -69,7 +70,6 @@ Este archivo proyecta solo hechos verificados del proyecto: registros activos, b
 - `RH-W-0020` (`excluded`): funciones de app lectora de escritorio (atajo global, portapapeles, bandeja, documentos, sonidos de fondo, plugin de navegador).
 - `RH-W-0022` (`proposed`, P3): opciones de lectura (bloques de código, pausas, aviso al terminar, retroceder o repetir, historial).
 - `RH-W-0023` (`proposed`, P2): CI mínima en Windows y Linux entregada el 2026-11-03; quedan revisión de seguridad, buenas prácticas (linter), control (límites) y rendimiento (medición de regresiones); dependencias limitadas a versiones probadas el 2026-10-30.
-- `RH-W-0026` (`proposed`, P2): en Fedora, el primer arranque del TTS tras encender el equipo tardó ~14 s (luego ~3,5 s); en frío con la caché vaciada no pasa de ~5,7 s y NTFS solo suma ~1 s, así que la causa sigue sin conocerse; falta medir un primer arranque real.
 - `RH-W-0025` (`deferred`, P2): versión lite de mínimo consumo; cuantización predeterminada en Linux entregada; el resto queda para el final del plan.
 
 ## Siguiente paso
