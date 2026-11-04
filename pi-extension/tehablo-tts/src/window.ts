@@ -11,6 +11,8 @@ export const ACTION_NAMES: Record<Action, string> = {
 export interface WindowState { settings: Settings; server: 'off' | 'loading' | 'ready'; token: boolean }
 export interface Controller {
   state(): WindowState;
+  /** The voice in use: the chosen one, else the server's, else the start voice. */
+  active(): {model: string; voice: string};
   voices(): VoiceRow[];
   choose(row: VoiceRow): void;
   change(field: 'volume' | 'speed' | 'auto' | 'shortcutsOn', value: number | boolean): void;
@@ -41,20 +43,21 @@ export class SettingsWindow {
   }
 
   order() {
-    const rank = (v: VoiceRow) => v.downloaded ? 0 : v.kind === 'download' ? 1 : 2;
+    const rank = (v: VoiceRow) => v.downloaded ? 0 : v.kind === 'download' ? 1 : 2;  // unknown counts as not downloaded
     return this.c.voices().map((v, i) => ({v, i})).sort((a, b) => rank(a.v) - rank(b.v) || a.i - b.i).map(x => x.v);
   }
   typeLabel(v: VoiceRow) {
     if (v.downloaded) return 'Descargada';
-    if (v.kind === 'download') return 'Para descargar';
+    if (v.kind === 'download') return v.downloaded === null ? 'Sin cuenta' : 'Para descargar';
     return this.c.state().token ? 'Con cuenta ✓' : 'Con cuenta gratis';
   }
-  isActive(v: VoiceRow) { const s = this.c.state().settings; return s.voice === v.voice && (s.model || v.model) === v.model; }
+  isActive(v: VoiceRow) { const a = this.c.active(); return a.voice === v.voice && a.model === v.model; }
   home() { this.page = 'main'; this.row = 0; this.col = 0; }
   choose(v: VoiceRow) {
     this.target = v;
-    if (v.downloaded) { this.c.choose(v); this.home(); }
-    else if (v.kind === 'account' && !this.c.state().token) { this.token = ''; this.error = ''; this.page = 'token'; }
+    const token = this.c.state().token;
+    if (v.downloaded || (v.downloaded === null && (v.kind === 'download' || token))) { this.c.choose(v); this.home(); }
+    else if (v.kind === 'account' && !token) { this.token = ''; this.error = ''; this.page = 'token'; }
     else { this.page = 'download'; this.col = 0; }
   }
   confirm() { if (this.target) this.c.choose(this.target); this.home(); }
@@ -83,7 +86,7 @@ export class SettingsWindow {
     const vol = nearest(VOLUMES, s.volume), spd = nearest(SPEEDS, s.speed);
     const move = (list: number[], i: number, d: number) => list[Math.min(list.length - 1, Math.max(0, i + d))];
     return [
-      {label: 'Voz', text: active ? `${active.name} · ${active.note}` : s.voice || 'predeterminada', buttons: [['[ Cambiar ]', () => { this.page = 'voices'; this.pick = 0; }]]},
+      {label: 'Voz', text: active ? `${active.name} · ${active.note}` : this.c.active().voice, buttons: [['[ Cambiar ]', () => { this.page = 'voices'; this.pick = 0; }]]},
       {label: 'Volumen', value: `${Math.round(VOLUMES[vol] * 100)} %`, step: (d: number) => this.c.change('volume', move(VOLUMES, vol, d))},
       {label: 'Velocidad', value: `${SPEEDS[spd].toFixed(2)}x`, step: (d: number) => this.c.change('speed', move(SPEEDS, spd, d))},
       {label: 'Lectura automática', value: s.auto ? 'sí' : 'no', step: () => this.c.change('auto', !s.auto)},

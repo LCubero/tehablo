@@ -1,19 +1,33 @@
 import type { ExtensionAPI, ExtensionContext } from '@earendil-works/pi-coding-agent';
 import { ServerClient } from './server.ts';
 import { finalText } from './text.ts';
+import { existsSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { ACTIONS, DEFAULTS, loadSettings, saveSettings, type Action, type Settings, type VoiceRow } from './settings.ts';
 import { keyOf } from './shortcuts.ts';
 import { hasToken, saveToken } from './token.ts';
 import { SettingsWindow, type Controller } from './window.ts';
 
 /** Where settings and the token live; the real one uses the project root, tests use memory. */
-export interface Store { load(): Settings; save(s: Settings): void; hasToken(): boolean; saveToken(value: string): void }
+export interface Store { load(): Settings; save(s: Settings): void; hasToken(): boolean; saveToken(value: string): void; table(): VoiceRow[] }
 export const fileStore = (root: string): Store => ({
   load: () => loadSettings(root), save: s => saveSettings(root, s), hasToken: () => hasToken(root), saveToken: v => saveToken(root, v),
+  table: () => readTable(join(root, 'src', 'voice_table.json')),
 });
-export const memoryStore = (): Store => {
+/** The shared voice list (src/voice_table.json), with an unknown download state. */
+export function readTable(path: string): VoiceRow[] {
+  try {
+    if (!existsSync(path)) return [];
+    return (JSON.parse(readFileSync(path, 'utf8')) as any[]).map(v => ({
+      name: v.name, voice: v.kind === 'account' && v.model !== 'phonon' ? `${v.name}.wav` : v.name, model: v.model,
+      kind: v.kind, note: v.note, downloaded: null, ...(v.default ? {default: true} : {}),
+    }));
+  } catch { return []; }
+}
+export const memoryStore = (table: VoiceRow[] = []): Store => {
   let saved: Settings = {...DEFAULTS, shortcuts: {}, voices: []}, token = false;
-  return {load: () => structuredClone(saved), save: s => { saved = structuredClone(s); }, hasToken: () => token, saveToken: () => { token = true; }};
+  return {load: () => structuredClone(saved), save: s => { saved = structuredClone(s); }, hasToken: () => token, saveToken: () => { token = true; },
+    table: () => structuredClone(table)};
 };
 
 const ENTRY = 'tehablo-tts';
@@ -23,6 +37,7 @@ const help = '/tts on|off · auto on|off · play [n] · pause · resume · stop 
 export function createExtension(pi: ExtensionAPI, client = new ServerClient(), store: Store = client.root ? fileStore(client.root) : memoryStore()) {
   let settings: Settings = store.load();
   let applied = false, windowOpen = false;
+  let current: {model: string; voice: string} | undefined;
   let stopKeys: (() => void) | undefined;
   const persist = () => { try { store.save(settings); } catch { /* Settings are best effort. */ } };
   let enabled = true, auto = false, epoch = 0;
@@ -43,6 +58,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
   const sync = (health: any) => {
     if (typeof health?.volume === 'number') volume = health.volume;
     if (typeof health?.speed === 'number') speed = health.speed;
+    if (typeof health?.model === 'string' && typeof health?.voice === 'string') current = {model: health.model, voice: health.voice};
     if (health?.ready === true && !applied) { applied = true; void applySaved(health); }
     if (typeof health?.error === 'string' && health.error.length > 0) {
       cancelReady(); setServer('off');
@@ -204,7 +220,18 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
     const run = (operation: () => Promise<unknown>) => { void operation().catch(warn); };
     const controller: Controller = {
       state: () => ({settings, server, token: store.hasToken()}),
-      voices: () => settings.voices,
+      // Shared table order and notes; download states from the server once known.
+      voices: () => {
+        const known = new Map(settings.voices.map(v => [v.name, v]));
+        const table = store.table();
+        return table.length ? table.map(v => ({...v, downloaded: known.get(v.name)?.downloaded ?? null})) : settings.voices;
+      },
+      active: () => {
+        if (settings.voice) return {model: settings.model || current?.model || 'spanish', voice: settings.voice};
+        if (current) return current;
+        const start = store.table().find(v => (v as any).default);
+        return start ? {model: start.model, voice: start.voice} : {model: 'spanish', voice: 'lola'};
+      },
       choose: row => { settings = {...settings, model: row.model, voice: row.voice}; persist(); run(() => configure({model: row.model, voice: row.voice})); },
       change: (field, value) => {
         settings = {...settings, [field]: value}; persist();

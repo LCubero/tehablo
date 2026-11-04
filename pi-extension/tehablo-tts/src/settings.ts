@@ -6,7 +6,8 @@ export const ACTIONS = ['power', 'auto', 'play', 'pause', 'stop', 'settings'] as
 export type Action = typeof ACTIONS[number];
 export const MODELS = ['phonon', 'spanish', 'spanish_24l'];
 export const SPEEDS = [1, 1.1, 1.15, 1.25, 1.5];
-export interface VoiceRow { name: string; voice: string; model: string; kind: string; note: string; downloaded: boolean }
+/** downloaded is null when unknown (server off and never seen). */
+export interface VoiceRow { name: string; voice: string; model: string; kind: string; note: string; downloaded: boolean | null }
 export interface Settings {
   /** Empty model/voice means "use the server default". */
   model: string; voice: string; volume: number; speed: number; auto: boolean;
@@ -18,7 +19,7 @@ export const DEFAULTS: Settings = {model: '', voice: '', volume: 1, speed: 1, au
 
 const FILE = 'tehablo-settings.json';
 const isRow = (v: any): v is VoiceRow => v && ['name', 'voice', 'model', 'kind', 'note'].every(k => typeof v[k] === 'string')
-  && typeof v.downloaded === 'boolean';
+  && (typeof v.downloaded === 'boolean' || v.downloaded === null);
 
 export function loadSettings(root: string): Settings {
   let raw: any = {};

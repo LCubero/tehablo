@@ -20,6 +20,7 @@ function setup(over: Partial<Record<string, any>> = {}) {
   const state = {settings: {...DEFAULTS, voice: 'lola', model: 'spanish'}, server: 'off' as 'off' | 'loading' | 'ready', token: false, ...over};
   const c: Controller = {
     state: () => state as any,
+    active: () => state.settings.voice ? {model: state.settings.model, voice: state.settings.voice} : {model: 'spanish', voice: 'lola'},
     voices: () => ROWS,
     choose: row => { calls.push(['choose', row.voice, row.model]); state.settings = {...state.settings, voice: row.voice, model: row.model}; },
     change: (field, value) => { calls.push(['change', field, value]); (state.settings as any)[field] = value; },
@@ -140,4 +141,22 @@ test('Editar opens the shortcuts table; keys are captured, validated and removab
   assert.deepEqual(s.calls.at(-1), ['shortcut', 'power', undefined]);
   s.key('\x1b');
   assert.ok(s.text().includes('tehablo · Ajustes'));
+});
+
+test('with the server off, unknown download state is shown by kind and chosen without a download step', () => {
+  const rows = [{name: 'lola', voice: 'lola', model: 'spanish', kind: 'download', note: 'la de siempre', downloaded: null},
+    {name: 'Regina', voice: 'Regina', model: 'phonon', kind: 'account', note: 'México', downloaded: null}];
+  const s = setup({settings: {...DEFAULTS}});
+  (s.w.c as any).voices = () => rows;
+  s.click('[ Cambiar ]');
+  const text = s.text();
+  assert.ok(text.includes('Sin cuenta') && text.includes('Con cuenta gratis'));
+  assert.match(text.split('\n').find(l => l.includes('lola ('))!, /● activa/);
+  s.click('lola (');
+  assert.deepEqual(s.calls.at(-1), ['choose', 'lola', 'spanish']);
+});
+
+test('the main row names the active voice even when none was chosen', () => {
+  const s = setup({settings: {...DEFAULTS}});
+  assert.ok(s.text().includes('lola · la de siempre'));
 });

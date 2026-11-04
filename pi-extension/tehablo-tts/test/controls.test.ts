@@ -281,3 +281,28 @@ test('with shortcuts off nothing is intercepted',async()=>{
     assert.deepEqual(s.press('\x1b\x13'),[undefined]);assert.equal(s.calls.length,0);
   }finally{await s.close();}
 });
+
+test('with the server off the window lists the shared table and marks the start voice',async()=>{
+  const table=[{name:'lola',voice:'lola',model:'spanish',kind:'download',note:'la de siempre',downloaded:null,default:true},
+    {name:'Regina',voice:'Regina',model:'phonon',kind:'account',note:'México',downloaded:null}];
+  const s=setup(memoryStore(table));try {
+    await clickAt(s,'[.⚙ ]');
+    const w=s.windows[0].w;
+    assert.deepEqual(w.c.voices().map((v:any)=>v.name),['lola','Regina']);
+    assert.deepEqual(w.c.active(),{model:'spanish',voice:'lola'});
+    w.c.choose(table[1]);assert.deepEqual(w.c.active(),{model:'phonon',voice:'Regina'});
+  }finally{await s.close();}
+});
+
+test('the server voice and its download states are used once known',async()=>{
+  const table=[{name:'lola',voice:'lola',model:'spanish',kind:'download',note:'la de siempre',downloaded:null,default:true}];
+  const s=setup(memoryStore(table));try {
+    const request=s.client.request;
+    s.client.request=async(path:string,body:any)=>path==='/voices'?{voices:['lola'],catalog:[{...table[0],downloaded:true}]}:
+      path==='/health'?{...await request(path,body),model:'spanish',voice:'other'}:request(path,body);
+    await start(s);await clickAt(s,'[.⚙ ]');
+    const w=s.windows[0].w;
+    assert.equal(w.c.voices()[0].downloaded,true);
+    assert.deepEqual(w.c.active(),{model:'spanish',voice:'other'});
+  }finally{await s.close();}
+});
