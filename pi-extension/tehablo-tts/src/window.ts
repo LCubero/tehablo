@@ -66,7 +66,7 @@ export class SettingsWindow {
   saveToken() {
     const value = this.token.trim();
     if (!value) return;
-    try { this.c.saveToken(value); } catch (e) { this.error = e instanceof Error ? e.message : 'No se pudo guardar el token.'; return; }
+    try { this.c.saveToken(value); } catch (e) { this.error = e instanceof Error ? e.message : 'No se pudo usar el token.'; return; }
     this.token = ''; this.error = ''; this.page = 'download'; this.col = 0;
   }
 
@@ -246,15 +246,15 @@ export class SettingsWindow {
       const v = this.target!;
       for (const t of [
         ` ${v.name} viene de Hugging Face y pide una cuenta gratis.`,
-        ' Se hace 1 sola vez y sirve para todas las voces «Con cuenta».', '',
+        ' El token solo hace falta para descargarla; luego funciona sin él.', '',
         ' 1. Crea una cuenta:        huggingface.co/join',
         ` 2. Acepta los términos:    huggingface.co/${v.model === 'phonon' ? 'gradium/phonon-40m-es' : 'kyutai/pocket-tts'}`,
         ' 3. Crea un token «Read»:   huggingface.co/settings/tokens',
-        ' 4. Pégalo aquí (se guarda en .env, solo en este equipo):', '']) line(t ? [{text: t}] : []);
+        ' 4. Pégalo aquí (no se guarda; solo se usa en esta sesión):', '']) line(t ? [{text: t}] : []);
       line([{text: ' Token: '}, {text: '•'.repeat(Math.min(50, width(this.token))) + '▏', style: 'accent'}]);
       line(this.error ? [{text: ' ' + this.error, style: 'error'}] : []);
       line();
-      line([{text: ' '}, {text: '[ Guardar ]', style: 'accent', fn: () => this.saveToken()}, {text: ' '},
+      line([{text: ' '}, {text: '[ Usar ]', style: 'accent', fn: () => this.saveToken()}, {text: ' '},
         {text: '[ Volver ]', style: 'accent', fn: () => { this.page = 'voices'; }}, {text: '   Enter · Esc', style: 'dim'}]);
     }
     out.push(th.fg('border', '╰' + '─'.repeat(IN) + '╯'));

@@ -26,6 +26,8 @@ export class ServerClient {
   private used = false;
   /** Extra arguments for the next spawned server, such as the saved model and voice. */
   startArgs: string[] = [];
+  /** Hugging Face token for the next spawned server, kept only in memory and passed in its environment. */
+  token?: string;
   /** True when this client spawned the running server, so it already started with startArgs. */
   spawned = false;
   constructor(options: Options = {}) {
@@ -71,7 +73,7 @@ export class ServerClient {
       let child: ReturnType<typeof nodeSpawn>;
       try {
         child = (this.options.spawn ?? nodeSpawn)(python, [join(this.root, 'src/tehablo_server.py'), '--port', new URL(this.base).port, ...this.startArgs], {
-          cwd: this.root, stdio: log === undefined ? 'ignore' : ['ignore', log, log], windowsHide: true, detached: true,
+          cwd: this.root, env: this.token ? {...process.env, HF_TOKEN: this.token} : undefined, stdio: log === undefined ? 'ignore' : ['ignore', log, log], windowsHide: true, detached: true,
         });
       } finally {
         if (log !== undefined) (this.options.closeLog ?? closeSync)(log);

@@ -30,6 +30,19 @@ test('start arguments are passed to the spawned server, which is then marked as 
   await reused.ensure(); assert.equal(reused.spawned,false);
 });
 
+test('a token is passed only in the environment of the spawned server, never as an argument',async()=>{
+  for(const token of [undefined,'hf_secret']) {
+    let healthy=false; const commands:any[]=[];
+    const client=new ServerClient({root:'/tehablo',platform:'linux',fetch:(async()=>{ if(!healthy) throw Error('offline'); return Response.json({ok:true}); }) as any,
+      spawn:((...args:any[])=>{commands.push(args); healthy=true; return {once(){},unref(){},kill(){}};}) as any, openLog:()=>{throw Error('no log');}});
+    client.token=token;
+    await client.ensure();
+    assert.ok(!commands[0][1].includes('hf_secret'));
+    if(token) assert.equal(commands[0][2].env.HF_TOKEN,'hf_secret');
+    else assert.equal(commands[0][2].env,undefined);
+  }
+});
+
 test('failed graceful shutdown kills owned child and reports failure',async()=>{
   let healthy=false,kills=0;
   const client=new ServerClient({fetch:(async(url:any)=>{

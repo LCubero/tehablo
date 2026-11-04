@@ -1,7 +1,9 @@
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { homedir } from 'node:os';
 import { join } from 'node:path';
 
-// Settings of the Pi settings window, kept in tehablo-settings.json at the project root (gitignored).
+// Settings of the Pi settings window, kept per user in ~/.tehablo/settings.json, so each user and each
+// system of a dual boot has its own. The old project file (tehablo-settings.json) is only read as a start.
 export const ACTIONS = ['power', 'auto', 'play', 'pause', 'stop', 'settings', 'copied'] as const;
 export type Action = typeof ACTIONS[number];
 export const MODELS = ['phonon', 'spanish', 'spanish_24l'];
@@ -17,13 +19,17 @@ export interface Settings {
 }
 export const DEFAULTS: Settings = {model: '', voice: '', volume: 1, speed: 1, auto: false, shortcutsOn: false, shortcuts: {}, voices: []};
 
-const FILE = 'tehablo-settings.json';
+const FILE = 'settings.json';
+const OLD_FILE = 'tehablo-settings.json';
+/** The user folder for tehablo settings. */
+export const settingsDir = () => join(homedir(), '.tehablo');
 const isRow = (v: any): v is VoiceRow => v && ['name', 'voice', 'model', 'kind', 'note'].every(k => typeof v[k] === 'string')
   && (typeof v.downloaded === 'boolean' || v.downloaded === null);
 
-export function loadSettings(root: string): Settings {
+export function loadSettings(dir: string, project?: string): Settings {
   let raw: any = {};
-  try { if (existsSync(join(root, FILE))) raw = JSON.parse(readFileSync(join(root, FILE), 'utf8')); } catch { raw = {}; }
+  const file = existsSync(join(dir, FILE)) || !project ? join(dir, FILE) : join(project, OLD_FILE);
+  try { if (existsSync(file)) raw = JSON.parse(readFileSync(file, 'utf8')); } catch { raw = {}; }
   if (!raw || typeof raw !== 'object') raw = {};
   const s: Settings = {...DEFAULTS, shortcuts: {}, voices: []};
   if (typeof raw.model === 'string' && MODELS.includes(raw.model)) s.model = raw.model;
@@ -38,6 +44,7 @@ export function loadSettings(root: string): Settings {
   return s;
 }
 
-export function saveSettings(root: string, settings: Settings): void {
-  writeFileSync(join(root, FILE), JSON.stringify(settings, null, 2) + '\n');
+export function saveSettings(dir: string, settings: Settings): void {
+  mkdirSync(dir, {recursive: true, mode: 0o700});
+  writeFileSync(join(dir, FILE), JSON.stringify(settings, null, 2) + '\n');
 }

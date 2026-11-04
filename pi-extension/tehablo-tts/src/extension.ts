@@ -4,15 +4,15 @@ import { cleanText, finalText } from './text.ts';
 import { readClipboard } from './clipboard.ts';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { ACTIONS, DEFAULTS, loadSettings, saveSettings, type Action, type Settings, type VoiceRow } from './settings.ts';
+import { ACTIONS, DEFAULTS, loadSettings, saveSettings, settingsDir, type Action, type Settings, type VoiceRow } from './settings.ts';
 import { keyOf } from './shortcuts.ts';
-import { hasToken, saveToken } from './token.ts';
+import { checkToken, hasToken } from './token.ts';
 import { SettingsWindow, type Controller } from './window.ts';
 
-/** Where settings and the token live; the real one uses the project root, tests use memory. */
-export interface Store { load(): Settings; save(s: Settings): void; hasToken(): boolean; saveToken(value: string): void; table(): VoiceRow[] }
-export const fileStore = (root: string): Store => ({
-  load: () => loadSettings(root), save: s => saveSettings(root, s), hasToken: () => hasToken(root), saveToken: v => saveToken(root, v),
+/** Settings (user folder), token presence and voice table (project); tests use memory. */
+export interface Store { load(): Settings; save(s: Settings): void; hasToken(): boolean; table(): VoiceRow[] }
+export const fileStore = (root: string, dir = settingsDir()): Store => ({
+  load: () => loadSettings(dir, root), save: s => saveSettings(dir, s), hasToken: () => hasToken(root),
   table: () => readTable(join(root, 'src', 'voice_table.json')),
 });
 /** The shared voice list (src/voice_table.json), with an unknown download state. */
@@ -26,8 +26,8 @@ export function readTable(path: string): VoiceRow[] {
   } catch { return []; }
 }
 export const memoryStore = (table: VoiceRow[] = []): Store => {
-  let saved: Settings = {...DEFAULTS, shortcuts: {}, voices: []}, token = false;
-  return {load: () => structuredClone(saved), save: s => { saved = structuredClone(s); }, hasToken: () => token, saveToken: () => { token = true; },
+  let saved: Settings = {...DEFAULTS, shortcuts: {}, voices: []};
+  return {load: () => structuredClone(saved), save: s => { saved = structuredClone(s); }, hasToken: () => false,
     table: () => structuredClone(table)};
 };
 
@@ -41,7 +41,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
   clipboard: () => Promise<string> = () => readClipboard()) {
   let settings: Settings = store.load();
   let applied = false, windowOpen = false;
-  let closeWindow: (() => void) | undefined;
+  let closeWindow: (() => void) | undefined, redrawWindow: (() => void) | undefined;
   let current: {model: string; voice: string} | undefined;
   let stopKeys: (() => void) | undefined;
   const persist = () => { try { store.save(settings); } catch { /* Settings are best effort. */ } };
@@ -72,7 +72,12 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
       cancelReady(); setServer('off');
       say(context, `El modelo no cargó: ${health.error}`, 'warning');
     }
-    else if (health?.ready === true) { cancelReady(); setServer('ready'); }
+    else if (health?.ready === true) {
+      cancelReady();
+      // An open window learns the download states as soon as the server can tell them.
+      if (server !== 'ready' && windowOpen) { setServer('ready'); void refreshVoices().then(() => redrawWindow?.(), () => {}); }
+      setServer('ready');
+    }
     else if (health?.ready === false) { if (server !== 'loading') readyTries = 0; setServer('loading'); waitReady(); }
     refresh();
   };
@@ -254,7 +259,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
     const warn = (error: unknown) => say(ctx, `${error instanceof Error ? error.message : String(error)}`, 'warning');
     const run = (operation: () => Promise<unknown>) => { void operation().catch(warn); };
     const controller: Controller = {
-      state: () => ({settings, server, token: store.hasToken()}),
+      state: () => ({settings, server, token: !!client.token || store.hasToken()}),
       // Shared table order and notes; download states from the server once known.
       voices: () => {
         const known = new Map(settings.voices.map(v => [v.name, v]));
@@ -280,9 +285,12 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
         if (action === 'restart') await powerOff();
         if (action !== 'off') await boot();
       }),
+      // Only needed to download an account voice, so it stays in memory and is never written.
       saveToken: value => {
-        store.saveToken(value);
-        if (server === 'ready') run(async () => { await powerOff(); await boot(); });
+        checkToken(value);
+        client.token = value;
+        // A running or loading server got its environment at spawn, so it restarts to see the token.
+        if (server !== 'off') run(async () => { await powerOff(); await boot(); });
       },
       setShortcut: (name, key) => {
         const shortcuts = {...settings.shortcuts};
@@ -292,10 +300,10 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
     };
     try {
       await ctx.ui.custom<void>((tui: any, theme: any, keybindings: any, done: () => void) => {
-        closeWindow = done;
+        closeWindow = done; redrawWindow = () => tui.requestRender();
         return new SettingsWindow(controller, theme, keybindings, () => done(), () => tui.requestRender()) as any;
       }, {overlay: true, overlayOptions: {anchor: 'center', width: 72}} as any);
-    } finally { windowOpen = false; closeWindow = undefined; }
+    } finally { windowOpen = false; closeWindow = undefined; redrawWindow = undefined; }
   };
   const shortcut = async (ctx: ExtensionContext, name: Action) => {
     switch (name) {

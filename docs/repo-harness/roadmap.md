@@ -316,6 +316,18 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 - **Decisión:** 2026-10-30, por decisión delegada de la persona responsable («decidelo tu ... sin sobreingenieria»): adoptar la cuantización donde se midió más rápida; no se eligió aún el resto del alcance «lite».
 - **Condición del siguiente avance:** la instalación (`RH-W-0008`) quedó completada el 2026-10-30; la versión lite va al final del plan por decisión de la persona responsable (2026-10-30). Ya están las mediciones (`RH-W-0003`) y la cuantización en Linux. Puede bastar con un modo de bajo consumo en la misma versión (cuantización, liberar el modelo en reposo) o con el binario `pocket-tts` de Kyutai, que no necesita Python ni PyTorch (no comprobado con los modelos en español).
 
+### RH-W-0028: Decidir instalación global o por proyecto
+
+- **Origen:** pregunta de la persona responsable del 2026-11-04 al pasar de Linux a Windows con la misma carpeta: «deberiamos pensar en esto ya a lo instlado global y/o proyecto, seria mejor usar cosas como .tehablo para global».
+- **Prioridad:** P3; hoy todo funciona desde el repositorio y los ajustes de Pi ya son por usuario.
+- **Dependencias:** coordinar con `RH-W-0008` (instalación), `RH-W-0011` (portabilidad) y `RH-W-0025` (versión lite).
+- **Estado:** `deferred`.
+- **Trabajo restante:** decidir si el entorno, el servidor y la extensión de Pi se instalan una vez por usuario (`~/.tehablo/`) para usarse en cualquier proyecto, o si se quedan en el repositorio.
+- **Trabajo completado (2026-11-04):** los ajustes de Pi pasan a `~/.tehablo/settings.json` (uno por usuario y por sistema; el `tehablo-settings.json` del proyecto solo se lee la primera vez) y el token de Hugging Face ya no se guarda: se usa en memoria para descargar las voces con cuenta, que luego funcionan desde la caché sin él.
+- **Exclusiones:** no se movió el entorno, los modelos ni las voces; la caché de Hugging Face sigue en la carpeta del usuario de cada sistema.
+- **Decisión:** 2026-11-04, decisión delegada de la persona responsable («tu decidelo ... sin sobreingenieria»): hacer ahora solo los ajustes por usuario y el token sin guardar; dejar la instalación global para cuando se trabaje la instalación o la versión lite.
+- **Condición del siguiente avance:** que la persona responsable quiera usar tehablo desde otros proyectos o retome `RH-W-0008`/`RH-W-0025`.
+
 ## Registros resueltos
 <!-- doc-role:resolved-records -->
 

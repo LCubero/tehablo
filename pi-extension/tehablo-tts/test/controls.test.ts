@@ -400,6 +400,48 @@ test('the server voice and its download states are used once known',async()=>{
   }finally{await s.close();}
 });
 
+test('an open window gets the download states when the server becomes ready',async()=>{
+  const table=[{name:'lola',voice:'lola',model:'spanish',kind:'download',note:'la de siempre',downloaded:null,default:true}];
+  const s=setup(memoryStore(table));try {
+    const request=s.client.request;
+    s.client.request=async(path:string,body:any)=>path==='/voices'?{voices:['lola'],catalog:[{...table[0],downloaded:true}]}:request(path,body);
+    s.setReady(false);
+    await clickAt(s,'⏻ TTS');await clickAt(s,'[ ≡ ]');
+    const w=s.windows[0].w;
+    assert.equal(w.c.voices()[0].downloaded,null);
+    s.setReady(true);await tick();
+    assert.equal(w.c.voices()[0].downloaded,true);
+  }finally{await s.close();}
+});
+
+test('a token typed in the window is kept only in memory for the next server start',async()=>{
+  const store=memoryStore();
+  const s=setup(store);try {
+    await start(s);await clickAt(s,'[ ⋯ ]');await clickAt(s,'[ ≡ ]');
+    const w=s.windows[0].w;
+    assert.equal(w.c.state().token,false);
+    assert.throws(()=>w.c.saveToken('hf bad'),{message:'El token no es válido: copia el token completo de Hugging Face.'});
+    assert.equal(s.client.token,undefined);
+    w.c.saveToken('hf_secret');
+    assert.equal(s.client.token,'hf_secret');
+    assert.equal(w.c.state().token,true);
+    await tick();
+    assert.ok(s.calls.includes('/shutdown'));
+    assert.ok(!JSON.stringify(store.load()).includes('hf_secret'));
+  }finally{await s.close();}
+});
+
+test('a token typed while the server loads also restarts it, so the new server gets the token',async()=>{
+  const s=setup();try {
+    s.setReady(false);
+    await clickAt(s,'⏻ TTS');await clickAt(s,'[ ≡ ]');
+    s.windows[0].w.c.saveToken('hf_secret');
+    await tick();
+    assert.ok(s.calls.includes('/shutdown'));
+    assert.ok(s.ensures()>=2);
+  }finally{await s.close();}
+});
+
 test('the shared table maps included voices (with a source) to their .safetensors file', () => {
   const base = join(process.cwd(), '.repo-harness', 'tmp');
   mkdirSync(base, {recursive: true});
