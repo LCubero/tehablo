@@ -37,12 +37,12 @@ VOICE_TABLE = [
     ('rafael', 'spanish', 'download', 'España'),
     ('Regina', 'phonon', 'account', 'México'),
     ('Iker', 'phonon', 'account', 'España'),
-    ('ar-hombre-4310', 'spanish', 'account', 'Argentina, clonada'),
-    ('ar-hombre-7049', 'spanish', 'account', 'Argentina, clonada'),
-    ('cl-mujer-9334', 'spanish', 'account', 'Chile, clonada'),
-    ('cl-mujer-8784', 'spanish', 'account', 'Chile, clonada'),
-    ('cl-hombre-3397', 'spanish', 'account', 'Chile, clonada'),
-    ('co-hombre-9334', 'spanish', 'account', 'Colombia, clonada'),
+    ('ar-hombre-4310', 'spanish', 'account', 'Argentina'),
+    ('ar-hombre-7049', 'spanish', 'account', 'Argentina'),
+    ('cl-mujer-9334', 'spanish', 'account', 'Chile'),
+    ('cl-mujer-8784', 'spanish', 'account', 'Chile'),
+    ('cl-hombre-3397', 'spanish', 'account', 'Chile'),
+    ('co-hombre-9334', 'spanish', 'account', 'Colombia'),
 ]
 
 

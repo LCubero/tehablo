@@ -25,3 +25,6 @@ voices/*.wav
 
 # Local server log (pi-extension/tehablo-tts)
 logs/
+
+# Pi settings window (pi-extension/tehablo-tts)
+tehablo-settings.json

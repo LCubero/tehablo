@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createExtension } from '../src/extension.ts';
+import { createExtension, memoryStore } from '../src/extension.ts';
 import { ServerClient } from '../src/server.ts';
 import { cleanText } from '../src/text.ts';
 
@@ -19,7 +19,7 @@ function setup(mode = 'tui') {
   const pi: any = {on:(n:any,h:any)=>hooks[n]=h, registerCommand:(n:any,c:any)=>commands[n]=c,
     registerEntryRenderer:(n:any,r:any)=>renderers[n]=r,
     appendEntry:(customType:any,data:any)=>entries.push({type:'custom',customType,data})};
-  createExtension(pi, client);
+  createExtension(pi, client, memoryStore());
   const emit = async (name:string,event:any={})=>{ await hooks[name](event,ctx); await new Promise(resolve=>setImmediate(resolve)); };
   const command = (args:string)=>commands.tts.handler(args,ctx);
   const finish = async (text='**Hola** [mundo](https://example.org)', stopReason='stop')=>{
@@ -59,10 +59,10 @@ test('manual controls and numbered/latest playback; off hides controls',async()=
   const s=setup(); await s.finish(); await s.finish('Segunda');
   assert.equal(s.cards().length,2); assert.equal(s.calls.length,0);
   const component=s.renderers['tehablo-tts'](s.cards()[0],{}, {fg:(_:any,t:any)=>t});
-  assert.equal(component.render(100)[0],'[ ⏻ TTS ]');assert.doesNotMatch(component.render(100)[0],/\/tts|\b1\b(?!\.\d)/);
+  assert.equal(component.render(100)[0],'[ ⏻ TTS ] [.⚙ ]');assert.doesNotMatch(component.render(100)[0],/\/tts|\b1\b(?!\.\d)/);
   await s.command('play 1'); assert.deepEqual(s.calls.at(-1),['/speak',{id:'0',text:'Hola mundo'}]);
   await s.command('play'); assert.equal(s.calls.at(-1)[1].text,'Segunda');
-  assert.equal(component.render(100)[0],'[ ▶ Escuchar ] [ ⋯ ]');
+  assert.equal(component.render(100)[0],'[ ▶ Escuchar ] [ ⋯ ] [.⚙ ]');
   await s.command('off'); assert.deepEqual(component.render(100),[]);
 });
 test('auto toggles, skips errors/aborts/empty; new prompt stops',async()=>{

@@ -1,12 +1,28 @@
 import type { ExtensionAPI, ExtensionContext } from '@earendil-works/pi-coding-agent';
 import { ServerClient } from './server.ts';
 import { finalText } from './text.ts';
+import { DEFAULTS, loadSettings, saveSettings, type Settings, type VoiceRow } from './settings.ts';
+import { hasToken, saveToken } from './token.ts';
+import { SettingsWindow, type Controller } from './window.ts';
+
+/** Where settings and the token live; the real one uses the project root, tests use memory. */
+export interface Store { load(): Settings; save(s: Settings): void; hasToken(): boolean; saveToken(value: string): void }
+export const fileStore = (root: string): Store => ({
+  load: () => loadSettings(root), save: s => saveSettings(root, s), hasToken: () => hasToken(root), saveToken: v => saveToken(root, v),
+});
+export const memoryStore = (): Store => {
+  let saved: Settings = {...DEFAULTS, shortcuts: {}, voices: []}, token = false;
+  return {load: () => structuredClone(saved), save: s => { saved = structuredClone(s); }, hasToken: () => token, saveToken: () => { token = true; }};
+};
 
 const ENTRY = 'tehablo-tts';
 interface Card { messageId: string; number: number }
-const help = '/tts on|off · auto on|off · play [n] · pause · resume · stop · voice [nombre] · model [spanish|spanish_24l] · speed [0.75-1.5]\n[ ⋯ ] abre los ajustes; [ ⏻ ] al final apaga el servidor y libera el modelo; [ ⏻ TTS ] vuelve a encenderlo.';
+const help = '/tts on|off · auto on|off · play [n] · pause · resume · stop · voice [nombre] · model [phonon|spanish|spanish_24l] · speed [0.75-1.5]\n[.⚙ ] abre la ventana de ajustes; [ ⋯ ] muestra volumen y velocidad; [ ⏻ ] apaga el servidor y libera el modelo; [ ⏻ TTS ] vuelve a encenderlo.';
 
-export function createExtension(pi: ExtensionAPI, client = new ServerClient()) {
+export function createExtension(pi: ExtensionAPI, client = new ServerClient(), store: Store = client.root ? fileStore(client.root) : memoryStore()) {
+  let settings: Settings = store.load();
+  let applied = false;
+  const persist = () => { try { store.save(settings); } catch { /* Settings are best effort. */ } };
   let enabled = true, auto = false, epoch = 0;
   let volume = 1, speed = 1;
   const speeds = [1, 1.1, 1.15, 1.25, 1.5];
@@ -25,6 +41,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient()) {
   const sync = (health: any) => {
     if (typeof health?.volume === 'number') volume = health.volume;
     if (typeof health?.speed === 'number') speed = health.speed;
+    if (health?.ready === true && !applied) { applied = true; void applySaved(health); }
     if (typeof health?.error === 'string' && health.error.length > 0) {
       cancelReady(); setServer('off');
       context?.ui.notify(`TTS: el modelo no cargó: ${health.error}`, 'warning');
@@ -32,6 +49,22 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient()) {
     else if (health?.ready === true) { cancelReady(); setServer('ready'); }
     else if (health?.ready === false) { if (server !== 'loading') readyTries = 0; setServer('loading'); waitReady(); }
     refresh();
+  };
+  /** Sends the saved voice, volume and speed to a freshly started server. */
+  const applySaved = async (health: any) => {
+    const generation = epoch;
+    const body: Record<string, unknown> = {};
+    if (settings.model && settings.model !== health.model) body.model = settings.model;
+    if (settings.voice && (body.model || settings.voice !== health.voice)) body.voice = settings.voice;
+    if (typeof health.volume === 'number' && settings.volume !== health.volume) body.volume = settings.volume;
+    if (typeof health.speed === 'number' && settings.speed !== health.speed) body.speed = settings.speed;
+    if (!Object.keys(body).length) return;
+    try {
+      const result = await client.action('/config', body);
+      if (generation === epoch) sync(result);
+    } catch (error) {
+      if (generation === epoch) context?.ui.notify(`TTS: no se aplicaron los ajustes guardados: ${error instanceof Error ? error.message : String(error)}`, 'warning');
+    }
   };
   /** Polls /health until the model is loaded, bounded to READY_TRIES attempts of 500 ms. */
   const waitReady = () => {
@@ -55,7 +88,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient()) {
   /** Starts the server when needed and reports its readiness. */
   const boot = async () => {
     const generation = epoch;
-    if (server === 'off') { readyTries = 0; setServer('loading'); }
+    if (server === 'off') { readyTries = 0; applied = false; setServer('loading'); }
     try {
       await client.ensure();
       if (generation !== epoch) return;
@@ -79,6 +112,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient()) {
         : (speeds.findLast(v => v < speed) ?? speed);
     const configured = await client.action('/config', {[field]: value});
     if (generation !== epoch) return;
+    if (typeof configured?.[field] === 'number') { settings = {...settings, [field]: configured[field]}; persist(); }
     sync(configured);
     ctx.ui.notify(field === 'volume' ? `Volumen: ${Math.round(volume * 100)} %` : `Velocidad: ${speedLabel(speed)}`, 'info');
   };
@@ -89,7 +123,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient()) {
   const resetPlayback = () => { cancelPoll(); started = false; pollFailures = 0; update('idle', null); };
   const powerOff = async () => {
     epoch++; resetPlayback(); cancelReady();
-    open = false; auto = false; volume = 1; speed = 1;
+    open = false; volume = settings.volume; speed = settings.speed;
     setServer('off'); refresh();
     await client.powerOff();
   };
@@ -149,9 +183,57 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient()) {
     update('generating', card!.messageId);
     poll();
   };
+  /** Live server changes when it runs; settings are always saved and applied on the next start. */
+  const configure = async (body: Record<string, unknown>) => {
+    if (server !== 'ready') return;
+    const generation = epoch;
+    const result = await client.action('/config', body);
+    if (generation === epoch) sync(result);
+  };
+  const refreshVoices = async () => {
+    if (server !== 'ready') return;
+    const data = await client.request('/voices');
+    if (Array.isArray(data?.catalog)) { settings = {...settings, voices: data.catalog as VoiceRow[]}; persist(); }
+  };
+  const openSettings = async (ctx: ExtensionContext) => {
+    if (ctx.mode !== 'tui') return;
+    try { await refreshVoices(); } catch { /* Keep the last known voices. */ }
+    const warn = (error: unknown) => ctx.ui.notify(`TTS: ${error instanceof Error ? error.message : String(error)}`, 'warning');
+    const run = (operation: () => Promise<unknown>) => { void operation().catch(warn); };
+    const controller: Controller = {
+      state: () => ({settings, server, token: store.hasToken()}),
+      voices: () => settings.voices,
+      choose: row => { settings = {...settings, model: row.model, voice: row.voice}; persist(); run(() => configure({model: row.model, voice: row.voice})); },
+      change: (field, value) => {
+        settings = {...settings, [field]: value}; persist();
+        if (field === 'auto') { auto = value as boolean; refresh(); }
+        if (field === 'volume') volume = value as number;
+        if (field === 'speed') speed = value as number;
+        if (field === 'volume' || field === 'speed') run(() => configure({[field]: value}));
+      },
+      power: action => run(async () => {
+        if (action !== 'on') await powerOff();
+        if (action !== 'off') await boot();
+      }),
+      saveToken: value => {
+        store.saveToken(value);
+        if (server === 'ready') run(async () => { await powerOff(); await boot(); });
+      },
+      shortcuts: () => ctx.ui.notify('Atajos de teclado: próximamente.', 'info'),
+    };
+    await ctx.ui.custom<void>((tui: any, theme: any, keybindings: any, done: () => void) =>
+      new SettingsWindow(controller, theme, keybindings, () => done(), () => tui.requestRender()) as any,
+    {overlay: true, overlayOptions: {anchor: 'center', width: 72}} as any);
+  };
   pi.registerEntryRenderer<Card>(ENTRY, (entry, _options, theme) => {
     // Only single-column symbols, so click columns match Array.from lengths.
-    const segments = () => {
+    // [.⚙ ] goes last: some terminals draw ⚙ two columns wide, which would shift the clicks after it.
+    const withSettings = (list: {text: string; action: string; gap: string}[]) => {
+      list[list.length - 1] = {...list[list.length - 1], gap: ' '};
+      return [...list, {text: '[.⚙ ]', action: 'settings', gap: ''}];
+    };
+    const segments = () => withSettings(controls());
+    const controls = () => {
       const active = playback.id === entry.data?.messageId && playback.state !== 'idle';
       if (!active && server === 'off') return [{text: '[ ⏻ TTS ]', action: 'start', gap: ''}];
       if (!active && server === 'loading') return [{text: '[ Cargando… ]', action: '', gap: ''}];
@@ -186,6 +268,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient()) {
             const end = start + Array.from(control.text).length;
             if (control.action && event.x >= start && event.x < end) {
               if (control.action === 'toggle') { open = !open; refresh(); return {handled: true, render: true}; }
+              if (control.action === 'settings') { void safe(context, () => openSettings(context!)); return {handled: true, render: true}; }
               void safe(context, () => control.action === 'play' ? speak(context!, String(entry.data!.number))
                 : control.action === 'powerOff' ? powerOff()
                   : control.action === 'start' ? boot()
@@ -201,7 +284,8 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient()) {
   pi.on('session_start', (_event, ctx) => {
     if (ctx.mode !== 'tui') return;
     resetPlayback();
-    enabled = true; auto = false; volume = 1; speed = 1; epoch++; context = ctx;
+    settings = store.load(); applied = false;
+    enabled = true; auto = settings.auto; volume = settings.volume; speed = settings.speed; epoch++; context = ctx;
     cancelReady(); server = 'off'; open = false;
     client.beginSession();
   });
@@ -236,13 +320,16 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient()) {
         const value = rest.join(' ');
         const generation = epoch;
         const info = (text: string) => ctx.ui.notify(text, 'info');
-        const applied = (h: any) => { if (generation !== epoch) return; sync(h); info(`Modelo: ${h.model} · voz: ${h.voice} · velocidad: ${h.speed} · volumen: ${Math.round(volume * 100)} %`); };
+        const applied = (h: any) => { if (generation !== epoch) return;
+          settings = {...settings, model: h.model ?? settings.model, voice: h.voice ?? settings.voice, speed: h.speed ?? settings.speed}; persist();
+          sync(h);
+          info(`Modelo: ${h.model} · voz: ${h.voice} · velocidad: ${h.speed} · volumen: ${Math.round(volume * 100)} %`); };
         switch (command) {
           case 'on': enabled = true; refresh(); info('TTS activado.'); return;
           case 'off': enabled = false; epoch++; resetPlayback(); refresh(); await client.stop(); info('TTS desactivado.'); return;
           case 'auto':
             if (!['on', 'off'].includes(value)) { ctx.ui.notify('Uso: /tts auto on|off', 'warning'); return; }
-            auto = value === 'on'; epoch++; refresh(); info(`Lectura automática: ${auto ? 'sí' : 'no'}`); return;
+            auto = value === 'on'; settings = {...settings, auto}; persist(); epoch++; refresh(); info(`Lectura automática: ${auto ? 'sí' : 'no'}`); return;
           case 'play': await speak(ctx, value); return;
           case 'stop': case 'pause': case 'resume': await action(command); return;
           case 'voice':
