@@ -11,6 +11,8 @@ Emoji are dropped, the degree sign is read, and questions missing an opening
 ¿ receive one at their sentence start. Comparison and math symbols are read
 (= igual a, < menor que, ≥ mayor o igual que, 1,7× veces, 3×4 por, ~14
 aproximadamente), -> and => become pauses, and #350 is read "número 350".
+A file name holding a number above 9999999 is read as "archivo", its type
+(Markdown, texto, pe de efe...) and "terminado en" plus its last four characters.
 Hyphens stay intact so configurable lexicon terms such as pi-tts still match.
 """
 import re
@@ -29,8 +31,11 @@ EXTENSIONS = {
     'mp3': 'eme pe tres', 'flac': 'flac', 'toml': 'te o eme ele',
     'yaml': 'yámel', 'yml': 'yámel', 'html': 'hache te eme ele',
     'css': 'ce ese ese', 'sh': 'ese hache', 'ps1': 'pe ese uno',
-    'exe': 'e equis e', 'lock': 'loc',
+    'exe': 'e equis e', 'lock': 'loc', 'pdf': 'pe de efe',
 }
+# File types named in the shortened form; the lexicon pronounces the English names.
+FILE_TYPES = {'md': 'Markdown', 'txt': 'texto', 'py': 'Python', 'ts': 'TypeScript',
+              'js': 'JavaScript', 'json': 'JSON'}
 LETTERS = dict(zip('ABCDEFGHIJKLMNOPQRSTUVWXYZ', (
     'a', 'be', 'ce', 'de', 'e', 'efe', 'ge', 'hache', 'i', 'jota',
     'ka', 'ele', 'eme', 'ene', 'o', 'pe', 'cu', 'erre', 'ese', 'te',
@@ -60,6 +65,17 @@ def _long_id(number: str) -> str:
     return 'terminación en ' + ' '.join(_DIGIT_WORDS[int(c)] for c in number[-4:])
 
 
+def _file_name(match: re.Match) -> str:
+    """Read a file name; a name holding a long ID keeps only its last characters."""
+    stem, extension = match[1], match[2].lower()
+    if not any(len(run.lstrip('0')) > 7 for run in re.findall(r'[0-9]+', stem)):
+        return re.sub(r'[_-]', ' ', stem) + ' punto ' + EXTENSIONS[extension]
+    tail = re.sub(r'[\W_]', '', stem)[-4:]
+    kind = FILE_TYPES.get(extension, EXTENSIONS[extension])
+    return (f'archivo {kind} terminado en ' + ' '.join(
+        _DIGIT_WORDS[int(c)] if c.isdigit() else LETTERS.get(c.upper(), c) for c in tail))
+
+
 def _quantity_after(text: str, end: int) -> bool:
     tail = text[end:]
     return bool(re.match(r'(?:[.,][0-9]|\s*[/\\=+*×÷<>%$₡€£:−-]|\s+[xX]\s+[0-9])', tail)
@@ -84,8 +100,7 @@ def _plain(text: str) -> str:
 
     text = re.sub(r'[+\-=*_~#]{3,}', ' ', text)
     text = TOKEN.sub(path, text)
-    text = FILE.sub(lambda m: re.sub(r'[_-]', ' ', m[1]) + ' punto '
-                    + EXTENSIONS[m[2].lower()], text)
+    text = FILE.sub(_file_name, text)
 
     # Omit mixed hexadecimal hashes before considering digit-only references.
     text = HASH.sub(lambda m: '' if re.search('[a-f]', m[0])

@@ -20,6 +20,8 @@ Antes del diccionario, se abrevian los identificadores técnicos explícitos con
 
 Se reconocen IDs estructurados como `ABC-12345678` o `RH-W-12340007`, `#12345678` incluso solo, y referencias `issue`, `PR`, `pull request` o `commit` seguidas del número (con `ID` o `#` opcionales). Para `prueba`, `test`, `run`, `feat` y `feature` se exige `ID` o `#`: `test ID 12345678` se abrevia, pero `tests 12345678 passed` no.
 
+Un nombre de archivo que contiene un número mayor que `9999999` se lee como «archivo», su tipo y «terminado en» con los últimos cuatro caracteres del nombre: `20261103T204945-0600-close-01a1a42f.md` → «archivo Markdown terminado en a cuatro dos efe» (el diccionario lo pronuncia «márkdaun»). Tipos con nombre: `.md` Markdown, `.txt` texto, `.py` Python, `.ts` TypeScript, `.js` JavaScript y `.json` JSON; las demás extensiones se deletrean en español (`.pdf` «pe de efe», `.html` «hache te eme ele»). La persona responsable lo escuchó el 2026-11-03 con `.md`, `.txt`, `.pdf` y `.html`: «sonaron bien». Los demás nombres de archivo no cambian (`informe-2026.md` → «informe 2026 punto eme de»).
+
 Los números sueltos, cantidades, medidas, porcentajes, decimales y puntuaciones como `test 12345678/12345678 passed` mantienen su lectura anterior. Ante sintaxis de unidades u operaciones junto al ID, no se abrevia. Los IDs cortos tampoco cambian; los hashes hexadecimales mixtos que ya se omitían siguen omitiéndose. Es una regla textual acotada, no una interpretación del significado ni una escucha confirmada.
 
 ## Letras en inglés

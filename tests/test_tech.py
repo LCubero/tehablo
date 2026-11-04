@@ -19,6 +19,10 @@ RULE_CASES = [
      'tests 12345678 passed; test 12345678/12345678 passed; 12345678; resultado igual a 12345678; $12345678; 12345678kg; 12345678%'),
     ('ID quantity exclusions', 'issue 12345678/2; PR 12345678.5; #12345678,5; test ID 12345678 kg; commit 12345678%; issue 12345678 + 2',
      'issue 12345678/2; PR 12345678.5; número 12345678,5; test ID 12345678 kg; commit 12345678%; issue 12345678 + 2'),
+    ('file names with long IDs', 'Respaldo `20261103T204945-0600-close-01a1a42f.md`, notas-12345678.txt y informe-2026.md.',
+     'Respaldo `archivo Markdown terminado en a cuatro dos efe`, archivo texto terminado en cinco seis siete ocho y informe 2026 punto eme de.'),
+    ('file types with long IDs', 'a-12345678.pdf b-12345678.html c-12345678.py d-12345678.wav informe.pdf',
+     'archivo pe de efe terminado en cinco seis siete ocho archivo hache te eme ele terminado en cinco seis siete ocho archivo Python terminado en cinco seis siete ocho archivo uve doble a uve terminado en cinco seis siete ocho informe punto pe de efe'),
     ('labelled hash still omitted', 'commit 12345678abc issue 12345678abc', 'commit issue'),
     ('question opening', 'Alguna suena a pregunta? Y si es así, cuál?',
      '¿Alguna suena a pregunta? ¿Y si es así, cuál?'),
@@ -93,7 +97,7 @@ EXTENSIONS = {'py':'pai', 'ts':'te ese', 'js':'jota ese', 'json':'yéison',
               'mp3':'eme pe tres', 'flac':'flac', 'toml':'te o eme ele',
               'yaml':'yámel', 'yml':'yámel', 'html':'hache te eme ele',
               'css':'ce ese ese', 'sh':'ese hache', 'ps1':'pe ese uno',
-              'exe':'e equis e', 'lock':'loc'}
+              'exe':'e equis e', 'lock':'loc', 'pdf':'pe de efe'}
 CASES += [(f'name.{ext}', f'name punto {spoken}') for ext, spoken in EXTENSIONS.items()]
 
 
