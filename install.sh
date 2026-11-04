@@ -43,7 +43,7 @@ fi
 printf 'Listo: %s\n' "$env_dir"
 printf 'Para iniciar: %s/bin/python src/tehablo_tui.py\n' "$env_dir"
 printf '%s\n' 'Pi encuentra el entorno automáticamente. Los modelos se descargan en el primer uso.' \
-    'Voz principal de Pi: Phonon 40M es (acceso restringido, uso no comercial). Para activarla:' \
+    'Voz opcional más natural en Pi: Phonon 40M es (acceso restringido, uso no comercial). Para activarla:' \
     '  1. Acepta los términos en https://huggingface.co/gradium/phonon-40m-es' \
     '  2. Ejecuta: uvx hf auth login' \
-    'Hasta entonces Pi lee con Pocket TTS (lola).'
+    'Pi lee con Pocket TTS (lola) mientras no la elijas; también se activa desde [.⚙ ] en Pi.'

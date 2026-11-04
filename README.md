@@ -2,7 +2,7 @@
 
 > **En desarrollo.** El proyecto todavía está en desarrollo y puede cambiar. Lo que falta está en la [hoja de ruta](docs/repo-harness/roadmap.md).
 
-Convierte texto en voz en español, en tu equipo y gratis. En Pi usa **Phonon 40M es**, voz **Regina**, por defecto (CPU, 2 hilos). La TUI y la consola siguen usando **Pocket TTS** (Kyutai), sin GPU, nube ni cuenta. Probado en Windows y en Linux (Fedora), con salida de audio real y [mediciones de consumo](#cuánto-gasta) en ambos. macOS no se ha verificado.
+Convierte texto en voz en español, en tu equipo y gratis. Usa **Pocket TTS** (Kyutai) con la voz `lola`, sin GPU, nube ni cuenta. En Pi también se puede elegir **Phonon 40M es** (más natural, pide una cuenta gratis de Hugging Face) desde la ventana de ajustes. Probado en Windows y en Linux (Fedora), con salida de audio real y [mediciones de consumo](#cuánto-gasta) en ambos. macOS no se ha verificado.
 
 El uso principal es **leer en voz alta las respuestas de [Pi](#uso-en-pi)**. La TUI y la consola sirven para probar voces, modelo y velocidad.
 
@@ -43,7 +43,7 @@ Detalle completo: [docs/como-funciona.md](docs/como-funciona.md).
 
 | Pieza | Para qué | Licencia |
 |---|---|---|
-| **Phonon 40M es** (`ptts`) | Voz predeterminada de Pi | Pesos CC BY-NC 4.0, acceso restringido |
+| **Phonon 40M es** (`ptts`) | Voz opcional en Pi, más natural | Pesos CC BY-NC 4.0, acceso restringido |
 | **Pocket TTS** (Kyutai) | Voz de TUI/consola y alternativa en Pi | Código MIT, pesos CC BY 4.0 |
 | **PyTorch** solo CPU | Ejecuta el modelo | BSD |
 | **Textual** | Interfaz de la TUI | MIT |
@@ -134,9 +134,11 @@ La combinación comprobada en Fedora y los límites de la prueba están en [Desa
 
 ## Uso en Pi
 
-Por defecto se carga Phonon 40M es (`Regina`, también admite `Iker`). Sus pesos son **CC BY-NC 4.0** (no comercial) y requieren una cuenta gratis de Hugging Face, aceptar las condiciones en <https://huggingface.co/gradium/phonon-40m-es> y un token para la primera descarga: la ventana `[.⚙ ]` lo pide al elegir una de esas voces (o usa `hf auth login`). Después puede funcionar desde caché. Si falta el paquete, acceso o caché, el servidor registra el motivo y usa automáticamente Pocket `spanish` con `lola`; `/health` muestra el modelo real.
+Pi empieza con la voz marcada `"default": true` en [`src/voice_table.json`](src/voice_table.json): hoy `lola` (Pocket `spanish`), la mejor que funciona gratis y sin cuenta. Si aparece una mejor que se pueda distribuir, se cambia esa marca. La voz que elijas en la ventana de ajustes se guarda y se usa en las sesiones siguientes.
 
-Para elegir Pocket en Pi: `/tts model spanish` (o `spanish_24l`). Al cambiar de modelo sin indicar voz se elige `Regina` para Phonon y `lola` para Pocket. También puedes arrancar el servidor con `.venv-pocket/bin/python src/tehablo_server.py --model spanish`. Las voces de `voices/` solo son para Pocket.
+Phonon 40M es (`Regina`, `Iker`) es opcional. Sus pesos son **CC BY-NC 4.0** (no comercial) y requieren una cuenta gratis de Hugging Face, aceptar las condiciones en <https://huggingface.co/gradium/phonon-40m-es> y un token para la primera descarga: la ventana `[.⚙ ]` lo pide al elegir una de esas voces (o usa `hf auth login`). Después puede funcionar desde caché. Si eliges Phonon y falta el paquete, el acceso o la caché, el servidor registra el motivo y usa Pocket `spanish` con `lola`; `/health` muestra el modelo real.
+
+También con comandos: `/tts model phonon` (o `spanish`, `spanish_24l`). Al cambiar de modelo sin indicar voz se elige `Regina` para Phonon y `lola` para Pocket. El servidor acepta `--model` y `--voice`. Las voces de `voices/` solo son para Pocket.
 
 La extensión [`pi-extension/tehablo-tts/`](pi-extension/tehablo-tts/) lee las respuestas finales del agente con la voz local. Se carga sola al abrir Pi dentro de este repositorio (`.pi/settings.json`), después de aceptar la confianza del proyecto y ejecutar `/reload`. Para usarla en otros proyectos, añade la ruta absoluta de esa carpeta a `extensions` en tu configuración de Pi.
 
