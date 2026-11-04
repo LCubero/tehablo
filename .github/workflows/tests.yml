@@ -1,0 +1,41 @@
+# Deterministic suites only: no model download, no audio device, no network calls.
+name: tests
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Install CPU-only dependencies
+        run: |
+          python -m pip install "torch<2.16" --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install -r requirements.txt
+      - name: Python suites
+        run: |
+          for t in tech numbers lexicon speed server startup console_imports quantize measure_tts get_voices listening_skill; do
+            echo "::group::test_$t"
+            python "tests/test_$t.py"
+            echo "::endgroup::"
+          done
+      - name: Pi extension
+        run: node --test pi-extension/tehablo-tts/test/*.test.ts

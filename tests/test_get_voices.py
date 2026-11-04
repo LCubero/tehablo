@@ -20,6 +20,7 @@ from scripts import get_voices  # noqa: E402
 
 class GetVoicesTests(unittest.TestCase):
     def setUp(self):
+        (ROOT / ".repo-harness" / "tmp").mkdir(parents=True, exist_ok=True)
         self.scratch = tempfile.TemporaryDirectory(
             prefix="test-get-voices-", dir=ROOT / ".repo-harness" / "tmp"
         )
