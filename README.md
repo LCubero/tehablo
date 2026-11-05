@@ -94,7 +94,52 @@ Los ajustes se guardan por usuario en `~/.tehablo/settings.json`. [Detalles de P
 | [`Camila`](https://cdn.jsdelivr.net/gh/LCubero/tehablo@master/docs/samples/Camila.mp3), [`Javiera`](https://cdn.jsdelivr.net/gh/LCubero/tehablo@master/docs/samples/Javiera.mp3), [`Diego`](https://cdn.jsdelivr.net/gh/LCubero/tehablo@master/docs/samples/Diego.mp3) (Chile), [`Felipe`](https://cdn.jsdelivr.net/gh/LCubero/tehablo@master/docs/samples/Felipe.mp3) (Colombia) | Pocket `spanish` | No | Pesos CC BY 4.0; voces CC BY-SA 4.0 |
 | [`Regina`](https://cdn.jsdelivr.net/gh/LCubero/tehablo@master/docs/samples/Regina.mp3) (México), [`Iker`](https://cdn.jsdelivr.net/gh/LCubero/tehablo@master/docs/samples/Iker.mp3) (España) | Phonon 40M es | Gratis, solo para descargar | CC BY-NC 4.0: no comercial |
 
-Haz clic en un nombre para escuchar una muestra de unos 6 s (archivos en [`docs/samples/`](docs/samples/), con el mismo volumen que en Pi).
+<details>
+<summary><b>▶ Escuchar las voces aquí</b></summary>
+
+**lola** · la de siempre · Pocket
+
+<!-- Arrastra aquí lola.mp4 (.repo-harness/tmp/videos/) y deja el enlace en su propia línea. -->
+
+**rafael** · España · Pocket
+
+<!-- Arrastra aquí rafael.mp4 (.repo-harness/tmp/videos/) y deja el enlace en su propia línea. -->
+
+**Regina** · México · Phonon
+
+<!-- Arrastra aquí Regina.mp4 (.repo-harness/tmp/videos/) y deja el enlace en su propia línea. -->
+
+**Iker** · España · Phonon
+
+<!-- Arrastra aquí Iker.mp4 (.repo-harness/tmp/videos/) y deja el enlace en su propia línea. -->
+
+**Facundo** · Argentina · Pocket
+
+<!-- Arrastra aquí Facundo.mp4 (.repo-harness/tmp/videos/) y deja el enlace en su propia línea. -->
+
+**Santiago** · Argentina · Pocket
+
+<!-- Arrastra aquí Santiago.mp4 (.repo-harness/tmp/videos/) y deja el enlace en su propia línea. -->
+
+**Camila** · Chile · Pocket
+
+<!-- Arrastra aquí Camila.mp4 (.repo-harness/tmp/videos/) y deja el enlace en su propia línea. -->
+
+**Javiera** · Chile · Pocket
+
+<!-- Arrastra aquí Javiera.mp4 (.repo-harness/tmp/videos/) y deja el enlace en su propia línea. -->
+
+**Diego** · Chile · Pocket
+
+<!-- Arrastra aquí Diego.mp4 (.repo-harness/tmp/videos/) y deja el enlace en su propia línea. -->
+
+**Felipe** · Colombia · Pocket
+
+<!-- Arrastra aquí Felipe.mp4 (.repo-harness/tmp/videos/) y deja el enlace en su propia línea. -->
+
+</details>
+
+También puedes hacer clic en un nombre para escuchar una muestra de unos 6 s (archivos en [`docs/samples/`](docs/samples/), con el mismo volumen que en Pi).
 
 Phonon es opcional: al elegirlo, los ajustes te guían para aceptar las condiciones de Hugging Face y pegar un token de solo lectura. El token queda en memoria durante esa sesión; después de descargarlo no hace falta. Si no carga, se usa `lola` y Pi avisa.
 
