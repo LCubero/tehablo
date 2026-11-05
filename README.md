@@ -89,10 +89,12 @@ Los ajustes se guardan por usuario en `~/.tehablo/settings.json`. [Detalles de P
 
 | Nombre | Modelo en Pi | ¿Cuenta? | Licencia de pesos / voz |
 |---|---|---|---|
-| `lola` (inicial), `rafael` | Pocket `spanish` | No | CC BY 4.0 |
-| `Facundo`, `Santiago` (Argentina) | Pocket `spanish` | No | Pesos CC BY 4.0; voces CC BY-SA 4.0 |
-| `Camila`, `Javiera`, `Diego` (Chile), `Felipe` (Colombia) | Pocket `spanish` | No | Pesos CC BY 4.0; voces CC BY-SA 4.0 |
-| `Regina` (México), `Iker` (España) | Phonon 40M es | Gratis, solo para descargar | CC BY-NC 4.0: no comercial |
+| [`lola`](https://cdn.jsdelivr.net/gh/LCubero/tehablo@master/docs/samples/lola.mp3) (inicial), [`rafael`](https://cdn.jsdelivr.net/gh/LCubero/tehablo@master/docs/samples/rafael.mp3) | Pocket `spanish` | No | CC BY 4.0 |
+| [`Facundo`](https://cdn.jsdelivr.net/gh/LCubero/tehablo@master/docs/samples/Facundo.mp3), [`Santiago`](https://cdn.jsdelivr.net/gh/LCubero/tehablo@master/docs/samples/Santiago.mp3) (Argentina) | Pocket `spanish` | No | Pesos CC BY 4.0; voces CC BY-SA 4.0 |
+| [`Camila`](https://cdn.jsdelivr.net/gh/LCubero/tehablo@master/docs/samples/Camila.mp3), [`Javiera`](https://cdn.jsdelivr.net/gh/LCubero/tehablo@master/docs/samples/Javiera.mp3), [`Diego`](https://cdn.jsdelivr.net/gh/LCubero/tehablo@master/docs/samples/Diego.mp3) (Chile), [`Felipe`](https://cdn.jsdelivr.net/gh/LCubero/tehablo@master/docs/samples/Felipe.mp3) (Colombia) | Pocket `spanish` | No | Pesos CC BY 4.0; voces CC BY-SA 4.0 |
+| [`Regina`](https://cdn.jsdelivr.net/gh/LCubero/tehablo@master/docs/samples/Regina.mp3) (México), [`Iker`](https://cdn.jsdelivr.net/gh/LCubero/tehablo@master/docs/samples/Iker.mp3) (España) | Phonon 40M es | Gratis, solo para descargar | CC BY-NC 4.0: no comercial |
+
+Haz clic en un nombre para escuchar una muestra de unos 6 s (archivos en [`docs/samples/`](docs/samples/), con el mismo volumen que en Pi).
 
 Phonon es opcional: al elegirlo, los ajustes te guían para aceptar las condiciones de Hugging Face y pegar un token de solo lectura. El token queda en memoria durante esa sesión; después de descargarlo no hace falta. Si no carga, se usa `lola` y Pi avisa.
 

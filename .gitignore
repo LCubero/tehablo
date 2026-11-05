@@ -11,6 +11,7 @@ __pycache__/
 pocket-out/
 *.mp3
 !voices/*.mp3
+!docs/samples/*.mp3
 
 # Downloaded reference voices (re-create with scripts/get_voices.py)
 voices/*.wav
