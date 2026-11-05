@@ -96,42 +96,52 @@ Los ajustes se guardan por usuario en `~/.tehablo/settings.json`. [Detalles de P
 <summary><b>▶ Escuchar las voces aquí</b></summary>
 
 **Lola** · la de siempre · Pocket
+
 https://github.com/user-attachments/assets/cb9ec0aa-0ccc-4104-a309-1a17ae2fb6d5
 
 
 **Rafael** · España · Pocket
+
 https://github.com/user-attachments/assets/db843874-b49a-4a1a-9106-8032db1b9c84
 
 
 **Regina** · México · Phonon
+
 https://github.com/user-attachments/assets/03e02dc6-7ede-4499-b85e-f8dd64d81e07
 
 
 **Iker** · España · Phonon
+
 https://github.com/user-attachments/assets/f0bac7f9-5182-4f02-a975-b3946e65ecc9
 
 
 **Facundo** · Argentina · Pocket
+
 https://github.com/user-attachments/assets/23782567-b111-4253-943c-414fb36a9c6b
 
 
 **Santiago** · Argentina · Pocket
+
 https://github.com/user-attachments/assets/9dc2ac02-4b7f-4ffd-9e5b-5174c409c38f
 
 
 **Camila** · Chile · Pocket
+
 https://github.com/user-attachments/assets/19f07f13-be0c-42ae-b54c-d95b520dc00a
 
 
 **Javiera** · Chile · Pocket
+
 https://github.com/user-attachments/assets/ffbd2396-c67b-412d-8ac3-702e31c4c99c
 
 
 **Diego** · Chile · Pocket
+
 https://github.com/user-attachments/assets/34025bfe-438a-47f2-b0ef-4af05b3ee493
 
 
 **Felipe** · Colombia · Pocket
+
 https://github.com/user-attachments/assets/d44264cc-69c8-4a47-89f2-b24463895593
 
 
