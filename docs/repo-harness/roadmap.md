@@ -354,11 +354,11 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 - **Origen:** solicitud de la persona responsable del 2026-11-04: «apenas inicia pi no hay respuestas, por lo que no se muestra la barra, deberia mostrarse si no se dejó oculta la ultima vez diría yo».
 - **Prioridad:** P2; uso diario.
 - **Dependencias:** ninguna.
-- **Estado:** `active`.
-- **Trabajo restante:** mostrar la barra al abrir Pi aunque no haya respuestas, salvo que se dejara oculta con `/tts toolbar`.
+- **Estado:** `completed`.
+- **Trabajo restante:** none.
 - **Evidencia:** la barra se dibuja como entrada pegada a una respuesta (`registerEntryRenderer` en `pi-extension/tehablo-tts/src/extension.ts`); sin respuestas no hay barra.
-- **Trabajo completado (2026-11-04):** antes de la primera respuesta la barra se muestra sobre el editor (`ctx.ui.setWidget`), sin `[ ▶ ]`, y desaparece con la primera respuesta; `/tts toolbar` se guarda como `toolbar` en `~/.tehablo/settings.json`. Pruebas deterministas de la extensión 94/94; falta la comprobación física en Pi, incluido el clic sobre la barra del editor.
-- **Condición del siguiente avance:** comprobación física de la persona responsable en Pi.
+- **Trabajo completado (2026-11-04):** antes de la primera respuesta la barra se muestra sobre el editor (`ctx.ui.setWidget`), sin `[ ▶ ]`, y desaparece con la primera respuesta; `/tts toolbar` se guarda como `toolbar` en `~/.tehablo/settings.json`. Las barras llevan una columna de margen como el texto de Pi y la de inicio deja una línea libre antes del editor. Pruebas deterministas de la extensión 94/94. En Windows, la persona responsable comprobó físicamente en una sesión nueva que la barra aparece sobre el editor, que el clic funciona y la posición («ahora si»).
+- **Condición del siguiente avance:** none; se reabre si la barra de inicio falla en Linux.
 
 ## Registros resueltos
 <!-- doc-role:resolved-records -->
