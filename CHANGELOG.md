@@ -4,6 +4,11 @@
 
 Este archivo registra los cambios completados en orden cronológico.
 
+## 2026-11-05
+
+- El nombre visible del producto pasa a ser **teHablo**: título del README, avisos de Pi (`TTS teHablo: …`), ventana de ajustes (`teHablo · Ajustes`) y descripción del comando `/tts`. Rutas, comandos, carpetas y nombres técnicos no cambian.
+- README: video de demostración al principio (encender, leer una respuesta, controles, ajustes, voces y comandos) y el desplegable «▶ Escuchar las voces aquí» justo debajo del consumo aproximado.
+
 ## 2026-11-04
 
 - Cada voz tiene su reproductor dentro del README: un desplegable «▶ Escuchar las voces aquí» con un video corto por voz (subido desde GitHub), una tabla con el peso de cada voz y la RAM en uso, y una nota de que GitHub los muestra silenciados (`RH-W-0030`).
