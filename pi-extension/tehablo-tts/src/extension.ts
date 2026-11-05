@@ -34,7 +34,7 @@ export const memoryStore = (table: VoiceRow[] = []): Store => {
 
 const ENTRY = 'tehablo-tts';
 /** Every message from this extension starts with this prefix. */
-const say = (c: ExtensionContext | undefined, text: string, level: 'info' | 'warning') => c?.ui.notify(`TTS TeHablo: ${text}`, level);
+const say = (c: ExtensionContext | undefined, text: string, level: 'info' | 'warning') => c?.ui.notify(`TTS teHablo: ${text}`, level);
 interface Card { messageId: string; number: number }
 const help = '/tts · auto · play [n] · copy · pause · stop · toolbar · menu · dict · status\n/tts enciende o apaga el servidor; play sin número lee la última respuesta y play 3 la tercera de la sesión; toolbar muestra u oculta la barra; menu abre los ajustes; dict activa o desactiva el diccionario de pronunciación (pronunciaciones.json) para la voz actual.';
 
@@ -456,7 +456,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
     });
   });
   pi.registerCommand('tts', {
-    description: 'Leer respuestas con tehablo local',
+    description: 'Leer respuestas con teHablo local',
     handler: async (args, ctx) => {
       if (ctx.mode !== 'tui') return;
       context = ctx;

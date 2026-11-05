@@ -46,7 +46,7 @@ function setup(over: Partial<Record<string, any>> = {}) {
 test('main window shows active voice, sound, auto, shortcuts and server buttons', () => {
   const s = setup();
   const text = s.text();
-  for (const part of ['tehablo · Ajustes', 'lola · la de siempre', '[ Cambiar ]', '◀ 100 % ▶', '◀ 1.00x ▶', 'Lectura automática',
+  for (const part of ['teHablo · Ajustes', 'lola · la de siempre', '[ Cambiar ]', '◀ 100 % ▶', '◀ 1.00x ▶', 'Lectura automática',
     'Atajos de teclado', '[ Editar ]', 'Servidor ○ apagado', '[ Encender ]', '[ Reiniciar ]', '[ Cerrar ]']) assert.ok(text.includes(part), part);
   s.click('[ Reiniciar ]');
   assert.deepEqual(s.calls, []);
@@ -199,7 +199,7 @@ test('Editar opens the shortcuts table; keys are captured, validated and removab
   s.click('[ Quitar ]');
   assert.deepEqual(s.calls.at(-1), ['shortcut', 'power', undefined]);
   s.key('\x1b');
-  assert.ok(s.text().includes('tehablo · Ajustes'));
+  assert.ok(s.text().includes('teHablo · Ajustes'));
 });
 
 test('with the server off, unknown download state is shown by kind and chosen without a download step', () => {

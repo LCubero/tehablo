@@ -191,7 +191,7 @@ export class SettingsWindow {
       }
       out.push(th.fg('border', '│') + body + ' '.repeat(Math.max(0, IN - (x - 1))) + th.fg('border', '│'));
     };
-    const titles = {shortcuts: ' Atajos de teclado ', main: ' tehablo · Ajustes ', voices: ' Elegir voz ', download: ' Descargar voz ', token: ' Activar voces con cuenta gratis '};
+    const titles = {shortcuts: ' Atajos de teclado ', main: ' teHablo · Ajustes ', voices: ' Elegir voz ', download: ' Descargar voz ', token: ' Activar voces con cuenta gratis '};
     const title = titles[this.page], left = Math.floor((IN - width(title)) / 2);
     out.push(th.fg('border', '╭' + '─'.repeat(left)) + th.fg('accent', title) + th.fg('border', '─'.repeat(IN - left - width(title)) + '╮'));
     line();

@@ -37,11 +37,11 @@ test('dict defaults, per-voice toggle persistence, request payload and status',a
     const initial=model!=='phonon';
     assert.equal(s.calls.at(-1)[1].lexicon,initial);
     await s.command('dict');
-    assert.deepEqual(s.notices.at(-1),[`TTS TeHablo: Dict (diccionario de pronunciación) para ${voice}: ${initial?'no':'sí'}`,'info']);
+    assert.deepEqual(s.notices.at(-1),[`TTS teHablo: Dict (diccionario de pronunciación) para ${voice}: ${initial?'no':'sí'}`,'info']);
     assert.deepEqual(s.store.load().dict,{[voice]:!initial});
     const before=s.calls.length;
     await s.command('dict extra');
-    assert.deepEqual(s.notices.at(-1),['TTS TeHablo: Uso: /tts dict','warning']);
+    assert.deepEqual(s.notices.at(-1),['TTS teHablo: Uso: /tts dict','warning']);
     assert.equal(s.calls.length,before);
     assert.deepEqual(s.store.load().dict,{[voice]:!initial});
     await s.command('play'); assert.equal(s.calls.at(-1)[1].lexicon,!initial);
@@ -104,9 +104,9 @@ test('[ Leer copiado ] reads the copied text in that bar; an empty or unreadable
   await press(); assert.deepEqual(s.calls.at(-1),['/speak',{id:'0',text:'Hola copiado',lexicon:true}]);
   assert.match(component.render(100)[0],/^ \[ ‖ \] \[ ■ \]/);
   await s.command('stop'); const speaks=()=>s.calls.filter(c=>c[0]==='/speak').length; const before=speaks();
-  copied='  '; await press(); assert.deepEqual(s.notices.at(-1),['TTS TeHablo: El portapapeles está vacío.','warning']);
+  copied='  '; await press(); assert.deepEqual(s.notices.at(-1),['TTS teHablo: El portapapeles está vacío.','warning']);
   copied=new Error('No se pudo leer el portapapeles: instala wl-clipboard o xclip.'); await press();
-  assert.deepEqual(s.notices.at(-1),['TTS TeHablo: No se pudo leer el portapapeles: instala wl-clipboard o xclip.','warning']);
+  assert.deepEqual(s.notices.at(-1),['TTS teHablo: No se pudo leer el portapapeles: instala wl-clipboard o xclip.','warning']);
   assert.equal(speaks(),before);
 });
 test('before the first response the bar shows above the editor, and a hidden bar stays hidden on reopen',async()=>{
@@ -130,11 +130,11 @@ test('a hidden toolbar only hides the bar: auto reading and play still work',asy
   assert.ok(!s.calls.some(c=>c[0]==='/stop'));
 });
 test('/tts auto alone toggles auto reading',async()=>{
-  const s=setup(); await s.command('auto'); assert.equal(s.notices.at(-1)[0],'TTS TeHablo: Lectura automática: sí');
+  const s=setup(); await s.command('auto'); assert.equal(s.notices.at(-1)[0],'TTS teHablo: Lectura automática: sí');
   await s.finish(); assert.equal(s.calls.filter(c=>c[0]==='/speak').length,1);
-  await s.command('auto'); assert.equal(s.notices.at(-1)[0],'TTS TeHablo: Lectura automática: no');
+  await s.command('auto'); assert.equal(s.notices.at(-1)[0],'TTS teHablo: Lectura automática: no');
   await s.finish('Manual'); assert.equal(s.calls.filter(c=>c[0]==='/speak').length,1);
-  await s.command('auto x'); assert.equal(s.notices.at(-1)[0],'TTS TeHablo: Uso: /tts auto');
+  await s.command('auto x'); assert.equal(s.notices.at(-1)[0],'TTS teHablo: Uso: /tts auto');
 });
 test('playback endpoints and status',async()=>{
   const s=setup(); await s.command('pause'); await s.command('stop'); assert.equal(s.calls.length,0);

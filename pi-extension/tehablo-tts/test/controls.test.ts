@@ -83,19 +83,19 @@ test('/tts toggles the server like the bar; status, menu, copy, pause, toolbar; 
     await s.command('auto');assert.equal(s.store.load().auto,true);
     await s.command('');assert.ok(s.calls.includes('/shutdown'));assert.equal(s.line(),'[ ⏻ TTS ] [ ≡ ]');assert.equal(s.statuses.at(-1),'TTS off');assert.equal(s.store.load().auto,false);
     await s.command('');assert.equal(s.ensures(),2);
-    await s.command('status');assert.match(s.notices.at(-1)!,/^TTS TeHablo: Barra visible · automático: no\nServidor: idle · listo: sí\n/);
+    await s.command('status');assert.match(s.notices.at(-1)!,/^TTS teHablo: Barra visible · automático: no\nServidor: idle · listo: sí\n/);
     assert.match(s.notices.at(-1)!,/\/tts · auto · play \[n\] · copy · pause · stop · toolbar · menu · dict · status/);
     await s.command('copy');assert.ok(s.calls.includes('/speak'));
     s.set('playing','a');await s.command('pause');assert.equal(s.calls.at(-1),'/pause');
     s.set('paused','a');await tick();await s.command('pause');assert.equal(s.calls.at(-1),'/resume');
     await s.command('menu');await new Promise(r=>setImmediate(r));assert.equal(s.windows.length,1);s.windows[0].w.c.power('restart');
     await s.command('play');s.set('playing','a');await tick();const stops=s.calls.filter((p:string)=>p==='/stop').length;
-    await s.command('toolbar');assert.equal(s.line(),undefined);assert.equal(s.notices.at(-1),'TTS TeHablo: Barra oculta.');
+    await s.command('toolbar');assert.equal(s.line(),undefined);assert.equal(s.notices.at(-1),'TTS teHablo: Barra oculta.');
     await tick();assert.equal(s.calls.filter((p:string)=>p==='/stop').length,stops);
-    await s.command('toolbar');assert.match(s.line(),/^\[ ‖ \] \[ ■ \]/);assert.equal(s.notices.at(-1),'TTS TeHablo: Barra visible.');
+    await s.command('toolbar');assert.match(s.line(),/^\[ ‖ \] \[ ■ \]/);assert.equal(s.notices.at(-1),'TTS teHablo: Barra visible.');
     for(const removed of ['on','off','voice','voice lola','model spanish','speed 1.25','resume']) {
       const n=s.calls.length;await s.command(removed);
-      assert.match(s.notices.at(-1)!,/^TTS TeHablo: Uso: \/tts · auto · play \[n\]/,removed);assert.equal(s.calls.length,n,removed);
+      assert.match(s.notices.at(-1)!,/^TTS teHablo: Uso: \/tts · auto · play \[n\]/,removed);assert.equal(s.calls.length,n,removed);
     }
   }finally{await s.close();}
 });
@@ -109,7 +109,7 @@ test('speech failure warns once and resets playback',async()=>{
   const s=setup();try {
     await s.command('play');s.set('idle',null);s.setError('speech failed: broken playback');
     await tick();
-    assert.deepEqual(s.notices,['TTS TeHablo: No se pudo reproducir: speech failed: broken playback']);
+    assert.deepEqual(s.notices,['TTS teHablo: No se pudo reproducir: speech failed: broken playback']);
     assert.match(s.line(),/^\[ ▶ \] \[ ▶ copiado \]/);
     const count=s.calls.length;await tick();assert.equal(s.calls.length,count);
     assert.equal(s.notices.length,1);
@@ -123,7 +123,7 @@ test('three consecutive status failures stop playback; success resets the count'
     s.fail(false);await tick();s.fail();await tick();await tick();
     assert.deepEqual(s.notices,[]);assert.match(s.line(),/■/);
     await tick();assert.equal(s.line(),'[ ⏻ TTS ] [ ≡ ]');
-    assert.deepEqual(s.notices,['TTS TeHablo: Se perdió la conexión con el servidor. Revisa logs/tehablo-server.log.']);
+    assert.deepEqual(s.notices,['TTS teHablo: Se perdió la conexión con el servidor. Revisa logs/tehablo-server.log.']);
     const count=s.calls.length;await tick();assert.equal(s.calls.length,count);assert.equal(s.notices.length,1);
   }finally{await s.close();}
 });
@@ -151,7 +151,7 @@ test('model load failure cancels readiness polling and warns',async()=>{
     s.setError('model load failed: broken model');await tick();
     assert.equal(s.line(),'[ ⏻ TTS ] [ ≡ ]');
     assert.equal(s.statuses.at(-1),'TTS off');
-    assert.deepEqual(s.notices,['TTS TeHablo: El modelo no cargó: model load failed: broken model']);
+    assert.deepEqual(s.notices,['TTS teHablo: El modelo no cargó: model load failed: broken model']);
     const count=s.calls.length;await tick();assert.equal(s.calls.length,count);
     assert.ok(!s.calls.includes('/speak'));
   } finally {await s.close();}
@@ -164,7 +164,7 @@ test('a voice that falls back to lola warns once with its name',async()=>{
     s.setFallback('Iker');s.setReady(true);await tick();
     assert.equal(s.line(),'[ ▶ ] [ ▶ copiado ] [ ⋯ ]');
     await s.command('status');await tick();
-    assert.deepEqual(s.notices.filter(n=>n.includes('lola')),['TTS TeHablo: Iker no cargó; se usa lola. Detalle en logs/tehablo-server.log.']);
+    assert.deepEqual(s.notices.filter(n=>n.includes('lola')),['TTS teHablo: Iker no cargó; se usa lola. Detalle en logs/tehablo-server.log.']);
   } finally {await s.close();}
 });
 
@@ -172,7 +172,7 @@ test('failed start returns to Iniciar and reports the error',async()=>{
   const s=setup();
   try {
     s.fail();await clickAt(s,'⏻ TTS');
-    assert.equal(s.line(),'[ ⏻ TTS ] [ ≡ ]');assert.deepEqual(s.notices,['TTS TeHablo: offline']);
+    assert.equal(s.line(),'[ ⏻ TTS ] [ ≡ ]');assert.deepEqual(s.notices,['TTS teHablo: offline']);
   } finally {await s.close();}
 });
 
@@ -193,9 +193,9 @@ test('volume and speed buttons, limits and command synchronization',async()=>{
   const volDown=()=>clickAt(s,'Vol [-',5), volUp=()=>clickAt(s,'% +]',2), velDown=()=>clickAt(s,'Vel [-',5), velUp=()=>clickAt(s,'x +]',2);
   try {
     await start(s);await clickAt(s,'[ ⋯ ]',2);
-    await volDown();assert.deepEqual(s.configs.at(-1),{volume:.9});assert.ok(s.notices.includes('TTS TeHablo: Volumen: 90 %'));assert.match(s.line(),/Vol \[- 90% \+\]/);
+    await volDown();assert.deepEqual(s.configs.at(-1),{volume:.9});assert.ok(s.notices.includes('TTS teHablo: Volumen: 90 %'));assert.match(s.line(),/Vol \[- 90% \+\]/);
     await volUp();assert.deepEqual(s.configs.at(-1),{volume:1});
-    await velUp();assert.deepEqual(s.configs.at(-1),{speed:1.1});assert.ok(s.notices.includes('TTS TeHablo: Velocidad: 1.10x'));
+    await velUp();assert.deepEqual(s.configs.at(-1),{speed:1.1});assert.ok(s.notices.includes('TTS teHablo: Velocidad: 1.10x'));
     await velUp();assert.deepEqual(s.configs.at(-1),{speed:1.15});
     await velDown();await velDown();assert.deepEqual(s.configs.at(-1),{speed:1});
     const n=s.configs.length;
