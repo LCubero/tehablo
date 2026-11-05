@@ -6,6 +6,8 @@ Este archivo registra los cambios completados en orden cronológico.
 
 ## 2026-11-05
 
+- Pi: **Esperar** avisa con un bip suave sin interrumpir la lectura actual; cada lectura que sale de la cola empieza con una pausa de unos 0,6 s y el mismo bip, generado en memoria y ajustado al volumen. Una lectura copiada que empieza deja de mostrar «En espera» aunque haya otra copia de la misma tarjeta en la cola.
+
 - Pi: los ajustes se comparten en vivo entre sesiones, también con el servidor apagado; la barra y la ventana abierta se actualizan sin `/reload`. Cada guardado combina solo los campos cambiados con el archivo actual y lo reemplaza de forma atómica; un archivo ilegible conserva los últimos ajustes válidos. La lectura automática queda solo en cada sesión y ya no se guarda.
 
 - Pi: los ajustes `[ ≡ ]` permiten elegir **Detener** (predeterminado) o **Esperar** cuando llega otra lectura, tanto manual y copiada como automática. La cola compartida admite 10 lecturas, muestra «En espera», permite cancelar cada una y avisa cuando empieza a sonar. Empezar otro turno cancela solo las lecturas de esa sesión; detener globalmente vacía la cola. El menú también permite mostrar u ocultar la barra, igual que `/tts toolbar`; ambas elecciones se recuerdan (`RH-W-0041`).

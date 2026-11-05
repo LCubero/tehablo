@@ -99,6 +99,57 @@ class ServerTests(unittest.TestCase):
         self.loaded.set()
         self.wait(lambda: self.request('/health')[1]['ready'])
 
+    def test_queue_cues_mix_and_prefix_promoted_audio(self):
+        sinks = []
+
+        class ManualSink:
+            def __init__(self, rate, callback):
+                self.callback = callback
+                sinks.append(self)
+
+            def read(self, frames):
+                output = np.zeros((frames, 1), dtype=np.float32)
+                self.callback(output, frames, None, None)
+                return output[:, 0]
+
+            def close(self):
+                pass
+
+        class ShortSynth:
+            sample_rate = 24000
+
+            def stream(self, text, voice, stop):
+                yield np.full(24000, .1, dtype=np.float32)
+
+        self.synth = ShortSynth()
+        self.audio_factory = ManualSink
+        self.ready()
+        self.request('/speak', {'id': 'a', 'text': 'first'})
+        self.wait(lambda: bool(sinks) and self.request('/status')[1]['state'] == 'playing')
+        baseline = sinks[0].read(3600)
+        self.assertTrue(np.all(baseline == baseline[0]))
+        self.request('/speak', {'id': 'b', 'text': 'second', 'policy': 'wait'})
+        self.request('/config', {'volume': .5})
+        mixed = sinks[0].read(3600)
+        with self.subTest(spec='S2 mixing'):
+            self.assertGreater(float(np.ptp(mixed)), .001)
+        self.assertGreater(float(mixed.min()), 0)
+        self.assertLess(float(np.max(np.abs(mixed - baseline * .5))), .018)
+        self.assertEqual(self.request('/status')[1]['id'], 'a')
+        self.assertTrue(np.all(sinks[0].read(1000) == baseline[0] * .5))
+        sinks[0].read(24000)
+        self.wait(lambda: len(sinks) == 2 and self.request('/status')[1]['state'] == 'playing')
+        prefix = sinks[-1].read(18000)
+        with self.subTest(spec='S3 promotion pause'):
+            self.assertTrue(np.all(prefix[:14400] == 0))
+        self.assertGreater(float(np.ptp(prefix[14400:])), .001)
+        np.testing.assert_allclose(prefix[14400:], mixed - baseline * .5, atol=1e-7)
+        speech = sinks[-1].read(2400)
+        self.assertTrue(np.all(speech == baseline[0] * .5))
+        self.request('/speak', {'id': 'replacement', 'text': 'replacement', 'policy': 'stop'})
+        self.wait(lambda: len(sinks) == 3 and self.request('/status')[1]['state'] == 'playing')
+        self.assertTrue(np.all(sinks[-1].read(2400) == baseline[0] * .5))
+
     def test_queue_promotions_are_reported_after_completion_and_bounded(self):
         self.assertNotIn('promoted', self.request('/status')[1])
         self.request('/speak', {'id': 'first', 'text': 'first'})

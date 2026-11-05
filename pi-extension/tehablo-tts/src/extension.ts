@@ -78,6 +78,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
   let playback = {state: 'idle', id: null as string | null};
   const owned = new Map<string, string>(), queued = new Set<string>(), inFlight = new Set<string>();
   let readingNumber = 0;
+  let promotedReading: string | null = null;
   let timer: ReturnType<typeof setTimeout> | undefined;
   let pollEpoch = 0, started = false, pollFailures = 0;
   // Server lifecycle shown by the start button; `open` shows the volume and speed controls.
@@ -236,7 +237,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
     if (state !== playback.state || id !== playback.id) { playback = {state, id}; refresh(); }
   };
   const cancelPoll = () => { pollEpoch++; if (timer) clearTimeout(timer); timer = undefined; };
-  const resetPlayback = () => { cancelPoll(); owned.clear(); queued.clear(); started = false; pollFailures = 0; update('idle', null); };
+  const resetPlayback = () => { cancelPoll(); owned.clear(); queued.clear(); promotedReading = null; started = false; pollFailures = 0; update('idle', null); };
   const powerOff = async () => {
     epoch++; resetPlayback(); cancelReady();
     open = false; volume = settings.volume; speed = settings.speed;
@@ -259,6 +260,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
         const queue = Array.isArray(status.queue) ? status.queue : [];
         for (const id of queued) if (owned.has(id) && (id === status.id || (!queue.includes(id) && promoted.includes(id)))) {
           queued.delete(id);
+          if (id === status.id) promotedReading = id;
           say(context, 'Suena la lectura en espera.', 'info');
         }
         for (const id of owned.keys()) if (!inFlight.has(id) && id !== status.id && !queue.includes(id)) { owned.delete(id); queued.delete(id); }
@@ -293,6 +295,13 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
     queued.delete(id); owned.delete(id);
     if (playback.id === id) update('idle', null);
     if (!owned.size) resetPlayback(); else poll();
+  };
+  const stopCard = async (messageId: string) => {
+    const ids = [...owned.keys()].filter(id => owned.get(id) === messageId);
+    const current = ids.find(id => id === playback.id);
+    // Cancel waiting copies before the current one, so stopping cannot promote them.
+    for (const id of ids.filter(id => id !== current)) await cancelReading(id);
+    if (current) await cancelReading(current);
   };
   const setToolbar = (visible: boolean, ctx: ExtensionContext) => {
     barVisible = visible; settings = {...settings, toolbar: visible}; persist(); refresh(); showStart(ctx);
@@ -456,7 +465,8 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
     // Only single-column symbols, so click columns match Array.from lengths (≡ replaced ⚙, which some terminals draw two columns wide).
     // The menu [ ≡ ] shows next to the start button when off, and inside the open controls when on.
     const segments = () => {
-      const waiting = [...queued].find(id => owned.get(id) === card.messageId);
+      const promotedHere = playback.id === promotedReading && owned.get(playback.id!) === card.messageId;
+      const waiting = !promotedHere && [...queued].find(id => owned.get(id) === card.messageId);
       const active = (owned.get(playback.id!) ?? playback.id) === card.messageId && playback.state !== 'idle' && !waiting;
       const menu = {text: '[ ≡ ]', action: 'settings', gap: ''};
       if (!active && !waiting && server === 'off') return [{text: '[ ⏻ TTS ]', action: 'start', gap: ' '}, menu];
@@ -503,6 +513,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
               void safe(context, () => control.action === 'play' ? speak(context!, String(card.number))
                 : control.action === 'copied' ? speakCopied(context!, card.messageId)
                 : control.action === 'cancelQueued' ? cancelReading([...queued].find(id => owned.get(id) === card.messageId)!)
+                : control.action === 'stop' ? stopCard(card.messageId)
                 : control.action === 'powerOff' ? turnOff()
                   : control.action === 'start' ? boot()
                   : /^(volume|speed)/.test(control.action) ? setting(context!, control.action) : action(control.action));

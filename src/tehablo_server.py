@@ -178,6 +178,11 @@ class SpeechService:
         self.offset = 0
         self.done = False
         self.paused = False
+        self.cue = np.empty(0, dtype=np.float32)
+        self.cue_rate = None
+        self.cue_pending = 0
+        self.cue_offset = 0
+        self.queue_prefix = False
         self.worker = threading.Thread(target=self.run, name='speech-worker', daemon=True)
         self.worker.start()
 
@@ -268,6 +273,8 @@ class SpeechService:
         self.done = False
         self.paused = False
         self.id = None
+        self.cue_pending = self.cue_offset = 0
+        self.queue_prefix = False
 
     def start_reading(self, item):
         identifier, text, voice, speed, lexicon = item
@@ -282,6 +289,7 @@ class SpeechService:
         if self.queue and not self.closed and self.error is None:
             item = self.queue.popleft()
             self.start_reading(item)
+            self.queue_prefix = True
             self.promoted.append(item[0])
 
     def speak(self, body):
@@ -302,6 +310,7 @@ class SpeechService:
             self.promoted = deque((id for id in self.promoted if id != identifier), maxlen=self.promoted.maxlen)
             if policy == 'wait' and self.id is not None:
                 self.queue.append(item)
+                self.cue_pending += 1
                 return {'id': identifier, 'state': 'queued'}
             self.start_reading(item)
         return {'id': identifier}
@@ -363,6 +372,16 @@ class SpeechService:
                 if self.offset == len(chunk):
                     self.buffer.popleft()
                     self.offset = 0
+            position = 0
+            while self.cue_pending and self.cue.size and position < frames:
+                count = min(frames - position, len(self.cue) - self.cue_offset)
+                outdata[position:position + count, 0] += self.cue[self.cue_offset:self.cue_offset + count] * self.volume
+                position += count
+                self.cue_offset += count
+                if self.cue_offset == len(self.cue):
+                    self.cue_pending -= 1
+                    self.cue_offset = 0
+            np.clip(outdata, -1, 1, out=outdata)
             if self.done and not self.buffer:
                 self.done = False
                 self.state, self.id = 'idle', None
@@ -442,6 +461,15 @@ class SpeechService:
                     if sink is not None:
                         sink.close()
                         sink = None
+                    with self.condition:
+                        if self.cue_rate != synth.sample_rate:
+                            self.cue_rate = synth.sample_rate
+                            phase = np.arange(round(.15 * self.cue_rate), dtype=np.float32) / self.cue_rate
+                            self.cue = (.035 * np.sin(2 * np.pi * 660 * phase) * np.sin(np.pi * phase / .15) ** 2).astype(np.float32)
+                        if self.queue_prefix and not cancel.is_set():
+                            self.buffer.append(np.zeros(round(.6 * self.cue_rate), dtype=np.float32))
+                            self.buffer.append(self.cue / BASE_GAIN)
+                            self.queue_prefix = False
                     sink = self.audio_factory(synth.sample_rate, self.callback)
                     text = self.normalize_text(text, name, lexicon)
                     with self.condition:

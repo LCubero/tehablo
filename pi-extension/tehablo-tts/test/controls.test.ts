@@ -78,6 +78,62 @@ test('S5: two sessions keep independent auto, including the open window and exte
   } finally { await a.close(); await b.close(); rmSync(dir, {recursive: true, force: true}); }
 });
 
+test('a promoted copied reading shows playing controls even with another copy of the same card queued',async()=>{
+  const store=memoryStore();store.save({...store.load(),policy:'wait'} as any);
+  const s=setup(store,async()=>'Copied');const ids:string[]=[];
+  let current='foreign',queue:string[]=[];
+  const request=s.client.request;
+  s.client.request=async(path:string,body:any)=>{
+    if(path==='/speak'){ids.push(body.id);queue.push(body.id);return {id:body.id,state:'queued'};}
+    if(path==='/status')return {state:'playing',id:current,queue};
+    return request(path,body);
+  };
+  try{
+    await clickAt(s,'[ ⏻ TTS ]');
+    await clickAt(s,'[ ▶ copiado ]');await s.command('copy');
+    assert.notEqual(ids[0],ids[1]);assert.match(s.line(),/En espera/);
+    current=ids[0];queue=[ids[1]];await tick();
+    assert.doesNotMatch(s.line(),/En espera/);assert.match(s.line(),/\[ ‖ \]/);
+    assert.equal(s.notices.filter(n=>n.includes('Suena')).length,1);
+    current=ids[1];queue=[];await tick();
+    current='foreign';await tick();
+    await s.command('copy');assert.equal(ids[2],ids[0]);assert.match(s.line(),/En espera/);
+    current=ids[2];queue=[];await tick();
+    assert.doesNotMatch(s.line(),/En espera/);assert.match(s.line(),/\[ ‖ \]/);
+    assert.equal(s.notices.filter(n=>n.includes('Suena')).length,3);
+  }finally{await s.close();}
+});
+
+test('playing copied card stop scopes current and queued copies without stopping foreign readings',async()=>{
+  const store=memoryStore();store.save({...store.load(),policy:'wait'} as any);
+  const s=setup(store,async()=>'Copied');const ids:string[]=[],stops:any[]=[];
+  let current='foreign',queue:string[]=['foreign-queued'];
+  const request=s.client.request,action=s.client.action;
+  s.client.request=async(path:string,body:any)=>{
+    if(path==='/speak'){ids.push(body.id);queue.push(body.id);return {id:body.id,state:'queued'};}
+    if(path==='/status')return {state:'playing',id:current,queue};
+    return request(path,body);
+  };
+  s.client.action=async(path:string,body:any)=>{
+    if(path==='/stop'){
+      stops.push({path,body});
+      queue=queue.filter(id=>id!==body.id);
+      if(current===body.id)current='foreign';
+      return {state:'playing'};
+    }
+    return action(path,body);
+  };
+  try{
+    await s.command('copy');await s.command('copy');
+    current=ids[0];queue=['foreign-queued',ids[1]];await tick();
+    assert.match(s.line(),/\[ ‖ \]/);assert.doesNotMatch(s.line(),/En espera/);
+    await clickAt(s,'[ ■ ]');
+    assert.deepEqual(stops,[{path:'/stop',body:{id:ids[1]}},{path:'/stop',body:{id:ids[0]}}]);
+    assert.equal(current,'foreign');assert.deepEqual(queue,['foreign-queued']);
+    assert.doesNotMatch(s.line(),/\[ ‖ \]|En espera/);
+  }finally{await s.close();}
+});
+
 test('a status snapshot cannot discard ownership of a pending speak',async()=>{
   const store=memoryStore();store.save({...store.load(),policy:'wait'} as any);
   const s=setup(store);const ids:string[]=[],stopped:string[]=[];
