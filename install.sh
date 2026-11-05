@@ -23,7 +23,7 @@ fi
 uv pip install --python "$env_dir/bin/python" -r requirements.txt \
     --extra-index-url https://download.pytorch.org/whl/cpu --index-strategy unsafe-best-match
 
-if output=$("$env_dir/bin/python" -c 'import pocket_tts, sounddevice, torch; print(torch.__version__); assert torch.version.cuda is None' 2>&1); then
+if output=$("$env_dir/bin/python" -c 'import pocket_tts, ptts, sounddevice, torch; print(torch.__version__); assert torch.version.cuda is None' 2>&1); then
     printf '%s\n' "$output"
 else
     printf '%s\n' "$output" >&2
@@ -42,8 +42,11 @@ else
 fi
 printf 'Listo: %s\n' "$env_dir"
 printf 'Para iniciar: %s/bin/python src/tehablo_tui.py\n' "$env_dir"
-printf '%s\n' 'Pi encuentra el entorno automáticamente. Los modelos se descargan en el primer uso.' \
-    'Voz opcional más natural en Pi: Phonon 40M es (acceso restringido, uso no comercial). Para activarla:' \
-    '  1. Acepta los términos en https://huggingface.co/gradium/phonon-40m-es' \
-    '  2. Ejecuta: uvx hf auth login' \
-    'Pi lee con Pocket TTS (lola) mientras no la elijas; también se activa desde [ ≡ ] en Pi.'
+extension="$PWD/pi-extension/tehablo-tts"
+printf '%s\n' 'Los modelos se descargan en el primer uso.' \
+    'Para usarlo en Pi (una vez, para todos tus proyectos):' \
+    "  pi install \"$extension\"" \
+    "  (o con gentle-shell: gentle-shell install \"$extension\")" \
+    'Voz opcional más natural en Pi: Phonon 40M es (Regina, Iker; acceso restringido, uso no comercial).' \
+    '  Acepta los términos en https://huggingface.co/gradium/phonon-40m-es y elígela en los ajustes de Pi (/tts menu):' \
+    '  pide el token solo para descargarla y no lo guarda.'
