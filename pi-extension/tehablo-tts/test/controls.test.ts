@@ -17,6 +17,68 @@ function setup(store=memoryStore(),clipboard?:()=>Promise<string>,watchMs=0) {
   const card=renderer(entries[1],{}, {fg:(_:any,t:string)=>t});
   return {entries,hooks,ctx,store,windows,keyHandlers,press:(d:string)=>keyHandlers.map(h=>h(d)),client,calls,card,configs,notices,statuses,line:()=>{const l=card.render(200)[0];if(l!==undefined)assert.equal(l[0],' ');return l?.slice(1);}, command:(s:string)=>command(s,ctx),set:(s:string,i:string|null='a')=>{state=s;id=i;},setReady:(value:boolean)=>{ready=value;},setError:(value:string)=>{settings.error=value;},setFallback:(value:string|null)=>{settings.fallback=value;},ensures:()=>ensures,close:()=>hooks.session_shutdown({},ctx),agentStart:()=>hooks.agent_start({},ctx),fail:(value=true)=>{fail=value;},renders:()=>renders};
 }
+function deferred<T>() {
+  let resolve!: (value: T) => void, reject!: (error: Error) => void;
+  const promise = new Promise<T>((yes, no) => { resolve = yes; reject = no; });
+  return {promise, resolve, reject};
+}
+
+test('copied pending S2/S3: immediate feedback, duplicate suppression and accepted queue', async () => {
+  const clip = deferred<string>(), accepted = deferred<any>();
+  let reads = 0, speaks = 0;
+  const s = setup(memoryStore(), () => { reads++; return clip.promise; });
+  const request = s.client.request;
+  s.client.request = async (path: string, body: any) => path === '/speak'
+    ? (speaks++, accepted.promise) : request(path, body);
+  try {
+    await s.command('');
+    await clickAt(s, '[ ▶ copiado ]');
+    assert.match(s.line(), /Preparando…/);
+    assert.doesNotMatch(s.line(), /En espera/);
+    await s.command('copy');
+    assert.equal(reads, 1);
+    clip.resolve('Copied');
+    await new Promise(r => setImmediate(r));
+    assert.match(s.line(), /Preparando…/);
+    assert.equal(speaks, 1);
+    accepted.resolve({state: 'queued'});
+    await new Promise(r => setImmediate(r));
+    assert.match(s.line(), /\[ ■ \] En espera/);
+    assert.doesNotMatch(s.line(), /Preparando/);
+  } finally { await s.close(); }
+});
+
+for (const ending of ['empty', 'clipboard error', 'speak error', 'off', 'stop', 'turn'] as const) {
+  test(`copied pending S3: clears on ${ending}`, async () => {
+    const clip = deferred<string>();
+    const s = setup(memoryStore(), () => clip.promise);
+    try {
+      await s.command('');
+      const pending = s.command('copy');
+      assert.match(s.line(), /Preparando…/);
+      if (ending === 'off') await s.command('');
+      if (ending === 'stop') await s.command('stop');
+      if (ending === 'turn') s.agentStart();
+      if (ending === 'clipboard error') clip.reject(Error('clipboard unavailable'));
+      else {
+        if (ending === 'speak error') {
+          const request = s.client.request;
+          s.client.request = async (path: string, body: any) => {
+            if (path === '/speak') throw Error('speak unavailable');
+            return request(path, body);
+          };
+        }
+        clip.resolve(ending === 'empty' ? '' : 'Copied');
+      }
+      await pending;
+      assert.doesNotMatch(s.line() ?? '', /Preparando|En espera/);
+      if (ending === 'empty') assert.ok(s.notices.includes('TTS teHablo: El portapapeles está vacío.'));
+      if (ending.endsWith('error')) assert.ok(s.notices.some(n => n.includes('unavailable')));
+      if (['off', 'stop', 'turn'].includes(ending)) assert.ok(!s.calls.includes('/speak'));
+    } finally { await s.close(); }
+  });
+}
+
 test('S1/S4: shared settings refresh the bar and open window on the existing tick while off', async () => {
   const dir = mkdtempSync(join(process.env.TEMP || '/tmp', 'tehablo-live-'));
   const store = fileStore(dir, dir), other = fileStore(dir, dir);

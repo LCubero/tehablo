@@ -122,6 +122,7 @@ Pi empieza con el servidor **apagado**, en modo manual. Pulsa `[ ⏻ TTS ]` para
 | Controles abiertos | `[ ▶ ] [ ▶ copiado ] [ → ] : [ ≡ ] Vol [- 100% +] Vel [- 1.00x +] [ ⏻ ]` |
 | Sonando | `[ ‖ ] [ ■ ] [ ⋯ ]` |
 | En pausa | `[ ▶ ] [ ■ ] [ ⋯ ]` |
+| Preparando copiado | `[ ■ ] Preparando… [ ⋯ ]` |
 | En espera | `[ ■ ] En espera [ ⋯ ]` |
 
 - `[ ▶ ]` lee esa respuesta; en pausa, continúa. `[ ■ ]` detiene solo las lecturas de esa respuesta (la que suena y las que esperan); si hay otra en espera, empieza. `/tts stop` detiene todo y vacía la cola.

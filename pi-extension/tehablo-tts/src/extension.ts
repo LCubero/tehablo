@@ -77,6 +77,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
   let context: ExtensionContext | undefined;
   let playback = {state: 'idle', id: null as string | null};
   const owned = new Map<string, string>(), queued = new Set<string>(), inFlight = new Set<string>();
+  const preparing = new Map<string, object>();
   let readingNumber = 0;
   let promotedReading: string | null = null;
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -237,7 +238,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
     if (state !== playback.state || id !== playback.id) { playback = {state, id}; refresh(); }
   };
   const cancelPoll = () => { pollEpoch++; if (timer) clearTimeout(timer); timer = undefined; };
-  const resetPlayback = () => { cancelPoll(); owned.clear(); queued.clear(); promotedReading = null; started = false; pollFailures = 0; update('idle', null); };
+  const resetPlayback = () => { cancelPoll(); preparing.clear(); owned.clear(); queued.clear(); promotedReading = null; started = false; pollFailures = 0; update('idle', null); };
   const powerOff = async () => {
     epoch++; resetPlayback(); cancelReady();
     open = false; volume = settings.volume; speed = settings.speed;
@@ -297,6 +298,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
     if (!owned.size) resetPlayback(); else poll();
   };
   const stopCard = async (messageId: string) => {
+    if (preparing.has(messageId)) { epoch++; preparing.clear(); refresh(); }
     const ids = [...owned.keys()].filter(id => owned.get(id) === messageId);
     const current = ids.find(id => id === playback.id);
     // Cancel waiting copies before the current one, so stopping cannot promote them.
@@ -349,12 +351,18 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
   /** Reads the copied text; Pi cannot see the terminal's mouse selection, so the user copies it first. */
   const speakCopied = async (ctx: ExtensionContext, id?: string) => {
     const target = id ?? cards(ctx).at(-1)?.messageId;
-    if (!target) return;
-    const generation = epoch;
-    const text = cleanText(await clipboard());
-    if (generation !== epoch) return;
-    if (!text) { say(ctx, 'El portapapeles está vacío.', 'warning'); return; }
-    return play(target, text, generation);
+    if (!target || preparing.has(target)) return;
+    const generation = epoch, pending = {};
+    preparing.set(target, pending); refresh();
+    try {
+      const text = cleanText(await clipboard());
+      if (generation !== epoch) return;
+      if (!text) { say(ctx, 'El portapapeles está vacío.', 'warning'); return; }
+      await play(target, text, generation);
+    } finally {
+      // An older completion must not clear a newer reading after cancellation.
+      if (preparing.get(target) === pending) { preparing.delete(target); refresh(); }
+    }
   };
   /** Live server changes when it runs; settings are always saved and applied on the next start. */
   const configure = async (body: Record<string, unknown>) => {
@@ -437,7 +445,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
       }
       case 'play': return speak(ctx);
       case 'pause': if (playback.state !== 'idle') return action(playback.state === 'paused' ? 'resume' : 'pause'); return;
-      case 'stop': if (server !== 'off') return action('stop'); return;
+      case 'stop': if (server !== 'off' || preparing.size) return action('stop'); return;
       case 'settings': return openSettings(ctx);
       case 'copied': return speakCopied(ctx);
     }
@@ -465,14 +473,16 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
     // Only single-column symbols, so click columns match Array.from lengths (≡ replaced ⚙, which some terminals draw two columns wide).
     // The menu [ ≡ ] shows next to the start button when off, and inside the open controls when on.
     const segments = () => {
+      const pending = preparing.has(card.messageId);
       const promotedHere = playback.id === promotedReading && owned.get(playback.id!) === card.messageId;
       const waiting = !promotedHere && [...queued].find(id => owned.get(id) === card.messageId);
       const active = (owned.get(playback.id!) ?? playback.id) === card.messageId && playback.state !== 'idle' && !waiting;
       const menu = {text: '[ ≡ ]', action: 'settings', gap: ''};
-      if (!active && !waiting && server === 'off') return [{text: '[ ⏻ TTS ]', action: 'start', gap: ' '}, menu];
-      if (!active && !waiting && server === 'loading') return [{text: '[ Cargando… ]', action: '', gap: ' '}, menu];
+      if (!pending && !active && !waiting && server === 'off') return [{text: '[ ⏻ TTS ]', action: 'start', gap: ' '}, menu];
+      if (!pending && !active && !waiting && server === 'loading') return [{text: '[ Cargando… ]', action: '', gap: ' '}, menu];
       const paused = playback.state === 'paused';
-      const lead = waiting ? [{text: '[ ■ ]', action: 'cancelQueued', gap: ' '}, {text: 'En espera', action: '', gap: ' '}]
+      const lead = pending ? [{text: '[ ■ ]', action: 'stop', gap: ' '}, {text: 'Preparando…', action: '', gap: ' '}]
+        : waiting ? [{text: '[ ■ ]', action: 'cancelQueued', gap: ' '}, {text: 'En espera', action: '', gap: ' '}]
         : active
         ? [{text: paused ? '[ ▶ ]' : '[ ‖ ]', action: paused ? 'resume' : 'pause', gap: ' '}, {text: '[ ■ ]', action: 'stop', gap: ' '}]
         : [...(card === START ? [] : [{text: '[ ▶ ]', action: 'play', gap: ' '}]), {text: '[ ▶ copiado ]', action: 'copied', gap: ' '}];
@@ -595,7 +605,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
           case 'play': await speak(ctx, value); return;
           case 'copy': await speakCopied(ctx); return;
           case 'pause': if (playback.state !== 'idle') await action(playback.state === 'paused' ? 'resume' : 'pause'); return;
-          case 'stop': if (server !== 'off') await action('stop'); return;
+          case 'stop': if (server !== 'off' || preparing.size) await action('stop'); return;
           // Not awaited: the window stays open until closed, and the command should return now.
           case 'menu': void safe(ctx, () => openSettings(ctx)); return;
           case 'status': break;

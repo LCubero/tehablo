@@ -6,6 +6,8 @@ Este archivo registra los cambios completados en orden cronológico.
 
 ## 2026-11-05
 
+- Pi: leer copiado muestra «Preparando…» inmediatamente, hasta que el servidor acepta la lectura; ignora clics repetidos mientras prepara y limpia el estado al cancelar o fallar.
+
 - Pi: **Esperar** avisa con un bip suave sin interrumpir la lectura actual; cada lectura que sale de la cola empieza con una pausa de unos 0,6 s y el mismo bip, generado en memoria y ajustado al volumen. Una lectura copiada que empieza deja de mostrar «En espera» aunque haya otra copia de la misma tarjeta en la cola.
 
 - Pi: los ajustes se comparten en vivo entre sesiones, también con el servidor apagado; la barra y la ventana abierta se actualizan sin `/reload`. Cada guardado combina solo los campos cambiados con el archivo actual y lo reemplaza de forma atómica; un archivo ilegible conserva los últimos ajustes válidos. La lectura automática queda solo en cada sesión y ya no se guarda.
