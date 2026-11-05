@@ -6,6 +6,7 @@ Este archivo registra los cambios completados en orden cronológico.
 
 ## 2026-11-04
 
+- Cada voz tiene su reproductor dentro del README: un desplegable «▶ Escuchar las voces aquí» con un video corto por voz (subido desde GitHub), una tabla con el peso de cada voz y la RAM en uso, y una nota de que GitHub los muestra silenciados (`RH-W-0030`).
 - Muestras de las 10 voces de Pi en `docs/samples/` (mp3 de unos 6 s, ~400 KB en total, con el mismo volumen que en Pi): en la tabla de voces del README, un clic en el nombre la reproduce en el navegador (GitHub no tiene reproductor de audio en el README, así que el enlace pasa por jsDelivr). La persona responsable las escuchó: «suenan bien» (`RH-W-0030`).
 - README reorganizado para entender primero el producto, su consumo aproximado y el uso en Pi; las mediciones completas, la instalación manual y los detalles de uso se conservan en las guías existentes (`RH-W-0030`).
 - En Pi, `/tts dict` activa o desactiva los arreglos del diccionario de pronunciación y recuerda la elección por voz; la tabla de voces de la ventana `[ ≡ ]` muestra la columna *Dict* para cambiarlo en cada voz (clic o ←→); por defecto están apagados en Phonon y encendidos en las demás. `/tts status` muestra el valor efectivo. Cada lectura envía `lexicon` al servidor: desactivarlo conserva la normalización técnica y de números, sin cambiar la configuración del servidor (`RH-W-0010`).
