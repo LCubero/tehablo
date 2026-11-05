@@ -363,6 +363,24 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 - **Trabajo completado (2026-11-04):** antes de la primera respuesta la barra se muestra sobre el editor (`ctx.ui.setWidget`), sin `[ ▶ ]`, y desaparece con la primera respuesta; `/tts toolbar` se guarda como `toolbar` en `~/.tehablo/settings.json`. Las barras llevan una columna de margen como el texto de Pi y la de inicio deja una línea libre antes del editor. Pruebas deterministas de la extensión 94/94. En Windows, la persona responsable comprobó físicamente en una sesión nueva que la barra aparece sobre el editor, que el clic funciona y la posición («ahora si»).
 - **Condición del siguiente avance:** none; se reabre si la barra de inicio falla en Linux.
 
+### RH-W-0032: Icono de pausa que se vea bien y del mismo tamaño que el de play
+
+- **Origen:** solicitud de la persona responsable del 2026-11-05, al ver el video del README: «el icono de pausa se me muy mal en el showreel» y «quiza usa esto [ || ], pal show reel, o buscar un icono o algo que sirva se vea centrado y del mismo tamañao o parecido que el de play. para que no se vea raro al cambiar (regla del bar)».
+- **Prioridad:** sin asignar; se ordena en la revisión de prioridades.
+- **Dependencias:** ninguna; volver a subir el video del README lo hace la persona responsable.
+- **Estado:** `proposed`.
+- **Trabajo restante:** ver por qué `‖` se ve como una raya fina en la grabación (supuesta causa sin comprobar: la fuente de la grabación no tiene ese carácter); elegir un icono que se vea centrado y de tamaño parecido a `▶`. La regla de la barra pide símbolos de una sola columna para que los clics coincidan; `[ || ]` ocupa una columna más y movería los botones al cambiar entre pausa y play. Decidir si el cambio es solo para el video o también para Pi; luego volver a grabar.
+- **Condición del siguiente avance:** revisión de prioridades del 2026-11-06.
+
+### RH-W-0033: Qué pasa con el TTS cuando hay varias sesiones de Pi abiertas
+
+- **Origen:** pregunta de la persona responsable del 2026-11-05: «que pasa cuando tengo activo el tts en una session y tengo varias sessiones más abiertas, que pasa cuando otra session enciendo el tts y que pasa cuando detengo el tts (en esa segunda session) y que pasa en la primera o demás».
+- **Prioridad:** sin asignar; se ordena en la revisión de prioridades.
+- **Dependencias:** ninguna.
+- **Estado:** `proposed`.
+- **Trabajo restante:** comprobar con varias sesiones de Pi abiertas a la vez qué pasa al encender el TTS en una segunda sesión mientras otra lo tiene encendido, al apagarlo o detenerlo en esa segunda sesión, y cómo afecta a la primera y a las demás (servidor y puerto compartidos, lectura en curso, cierre de Pi). Documentar el resultado y corregir lo que falle.
+- **Condición del siguiente avance:** revisión de prioridades del 2026-11-06.
+
 ## Registros resueltos
 <!-- doc-role:resolved-records -->
 

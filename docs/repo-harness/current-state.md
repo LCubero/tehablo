@@ -78,9 +78,13 @@ Este archivo proyecta solo hechos verificados del proyecto: registros activos, b
 - `RH-W-0028` (`deferred`, P3): decidir si tehablo se instala una vez por usuario (`~/.tehablo/`) o se queda en el repositorio; ya entregados los ajustes de Pi por usuario y el token sin guardar (2026-11-04). En Windows, la persona responsable comprobó físicamente `install.ps1` con `ptts`, la descarga de Regina con el token pegado en la ventana y el TTS apagado (Iker quedó descargada con el mismo archivo), y que tras cerrar y abrir Pi Regina e Iker leen sin token; `/health` mostró `phonon`/`Regina` sin error. Esa prueba probablemente reusó un servidor vivo con el token: con un servidor nuevo sin token, Phonon pasaba a `lola`; corregido el mismo día (carga desde el caché) y comprobado con un servidor nuevo sin token. `install.sh` ya comprueba `ptts` y muestra el comando `pi install`, como `install.ps1` (solo se comprobó el texto final y la sintaxis). Linux sigue sin comprobarse.
 - `RH-W-0029` (`proposed`, P3): voces por API externa (ElevenLabs, Google…) como extra apagado.
 - `RH-W-0031` (`completed`): la barra de Pi aparece al iniciar, sobre el editor, salvo que se dejara oculta; comprobada físicamente en Windows.
+- `RH-W-0032` (`proposed`): icono de pausa que se vea centrado y del tamaño del de play (en el video del README se ve mal).
+- `RH-W-0033` (`proposed`): comprobar qué pasa con el TTS al encenderlo o apagarlo en una sesión de Pi mientras hay otras abiertas.
 
 ## Siguiente paso
 
 <!-- doc-role:next-step -->
+
+Primero en la sesión del 2026-11-06, a petición de la persona responsable: reordenar las prioridades del trabajo pendiente (incluidos `RH-W-0032`, `RH-W-0033` y la revisión R3-001 de la prueba de Phonon sin conexión).
 
 Plan aprobado el 2026-10-30: (0) base confiable, completada; (1) medir con `RH-W-0003`, completado; (2) endurecer el servidor (`RH-W-0001`, completado) y los errores (`RH-W-0013`, completado) y la instalación (`RH-W-0008`, completado el 2026-10-30); (3) al final, la versión lite (`RH-W-0025`): mínimo consumo, el modelo que funcione bien gastando menos y las funciones mínimas (cambio de orden pedido por la persona responsable el 2026-10-30). La investigación y los deseos grandes quedan `deferred` hasta entonces.
