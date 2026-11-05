@@ -4,7 +4,9 @@
 
 > **En desarrollo.** El proyecto todavía está en desarrollo y puede cambiar. Lo que falta está en la [hoja de ruta](docs/repo-harness/roadmap.md).
 
-<!-- VIDEO: arrastra aquí el MP4 del showreel; el enlace debe quedar solo en su línea -->
+
+https://github.com/user-attachments/assets/ddaaee48-467e-4d6e-a643-2af885896b61
+
 
 ## Consumo aproximado
 
