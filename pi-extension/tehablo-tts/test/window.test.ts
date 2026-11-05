@@ -28,6 +28,8 @@ function setup(over: Partial<Record<string, any>> = {}) {
     power: action => { calls.push(['power', action]); if (action !== 'restart') state.server = action === 'on' ? 'ready' : 'off'; },
     saveToken: value => { if (value === 'bad') throw new Error('El token no es válido: copia el token completo de Hugging Face.'); calls.push(['token', value.length]); state.token = true; },
     open: url => calls.push(['open', url]),
+    dict: row => state.settings.dict[row.voice] ?? row.model !== 'phonon',
+    toggleDict: row => { calls.push(['dict', row.voice]); state.settings = {...state.settings, dict: {...state.settings.dict, [row.voice]: !c.dict(row)}}; },
     setShortcut: (action, key) => { calls.push(['shortcut', action, key]); const sc = {...state.settings.shortcuts}; if (key) sc[action] = key; else delete sc[action]; state.settings = {...state.settings, shortcuts: sc}; },
   };
   const w = new SettingsWindow(c, over.theme ?? theme, kb, () => { closed = true; }, () => {});
@@ -76,13 +78,29 @@ test('voice table orders downloaded, downloadable, then account voices and marks
   const lines = s.w.render(100);
   const order = ['lola', 'rafael', 'Regina', 'ar-hombre-4310'].map(n => lines.findIndex(l => l.includes(n + ' (') || l.includes(n + ' * (')));
   assert.deepEqual([...order].sort((a, b) => a - b), order);
-  assert.ok(lines.some(l => /Voz\s+Estado\s+RAM aprox\.\s*│$/.test(l)) && !lines.some(l => l.includes('Tipo')));
+  assert.ok(lines.some(l => /Voz\s+Estado\s+RAM aprox\.\s+Arreglos\s*│$/.test(l)) && !lines.some(l => l.includes('Tipo')));
   assert.ok(lines[order[0]].includes('● lola (') && lines[order[0]].includes('Descargada') && lines[order[0]].includes('~1 GB'));
   assert.ok(lines[order[1]].includes('  rafael (') && lines[order[1]].includes('~1 GB'));
   assert.ok(lines[order[2]].includes('  Regina * (') && lines[order[2]].includes('~0,3 GB'));
   assert.ok(!lines.some(l => l.includes('activa')));
   assert.ok(lines[order[1]].includes('Para descargar'));
   assert.ok(lines[order[2]].includes('Con cuenta gratis'));
+});
+
+test('each voice row shows and toggles its own pronunciation fixes by click or ←→, without choosing it', () => {
+  const s = setup();
+  s.click('[ Cambiar ]');
+  const row = (n: string) => s.w.render(100).find(l => l.includes(n + ' (') || l.includes(n + ' * ('))!;
+  assert.match(row('lola'), /~1 GB\s+sí\s*│$/);
+  assert.match(row('Regina'), /~0,3 GB\s+no\s*│$/);
+  s.key('[C');
+  assert.match(row('lola'), /\s+no\s*│$/);
+  const lines = s.w.render(100), y = lines.indexOf(row('Regina'));
+  s.w.handleMouse({type: 'click', button: 'left', x: Array.from(lines[y]).length - 4, y});
+  assert.match(row('Regina'), /\s+sí\s*│$/);
+  assert.deepEqual(s.calls, [['dict', 'lola'], ['dict', 'Regina']]);
+  assert.equal(s.w.page, 'voices');
+  assert.match(s.text(), /←→ arreglos/);
 });
 
 test('voice table shows the active voice name in yellow (warning), also under the cursor', () => {

@@ -15,11 +15,12 @@ export interface Settings {
   model: string; voice: string; volume: number; speed: number; auto: boolean;
   /** The bar stays hidden on the next start when /tts toolbar hid it. */
   toolbar: boolean;
+  dict: Record<string, boolean>;
   shortcutsOn: boolean; shortcuts: Partial<Record<Action, string>>;
   /** Last voice table seen from the server, shown while it is off. */
   voices: VoiceRow[];
 }
-export const DEFAULTS: Settings = {model: '', voice: '', volume: 1, speed: 1, auto: false, toolbar: true, shortcutsOn: false, shortcuts: {}, voices: []};
+export const DEFAULTS: Settings = {model: '', voice: '', volume: 1, speed: 1, auto: false, toolbar: true, shortcutsOn: false, shortcuts: {}, voices: [], dict: {}};
 
 const FILE = 'settings.json';
 const OLD_FILE = 'tehablo-settings.json';
@@ -33,7 +34,7 @@ export function loadSettings(dir: string, project?: string): Settings {
   const file = existsSync(join(dir, FILE)) || !project ? join(dir, FILE) : join(project, OLD_FILE);
   try { if (existsSync(file)) raw = JSON.parse(readFileSync(file, 'utf8')); } catch { raw = {}; }
   if (!raw || typeof raw !== 'object') raw = {};
-  const s: Settings = {...DEFAULTS, shortcuts: {}, voices: []};
+  const s: Settings = {...DEFAULTS, shortcuts: {}, voices: [], dict: {}};
   if (typeof raw.model === 'string' && MODELS.includes(raw.model)) s.model = raw.model;
   if (typeof raw.voice === 'string') s.voice = raw.voice;
   if (typeof raw.volume === 'number' && raw.volume >= 0.1 && raw.volume <= 1.5) s.volume = raw.volume;
@@ -43,6 +44,8 @@ export function loadSettings(dir: string, project?: string): Settings {
   if (typeof raw.shortcutsOn === 'boolean') s.shortcutsOn = raw.shortcutsOn;
   if (raw.shortcuts && typeof raw.shortcuts === 'object')
     for (const action of ACTIONS) if (typeof raw.shortcuts[action] === 'string') s.shortcuts[action] = raw.shortcuts[action];
+  if (raw.dict && typeof raw.dict === 'object' && !Array.isArray(raw.dict))
+    s.dict = Object.fromEntries(Object.entries(raw.dict).filter(([, value]) => typeof value === 'boolean')) as Record<string, boolean>;
   if (Array.isArray(raw.voices)) s.voices = raw.voices.filter(isRow);
   return s;
 }

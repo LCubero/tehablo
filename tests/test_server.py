@@ -463,6 +463,26 @@ class ServerTests(unittest.TestCase):
         self.assertEqual(self.request('/speak', {'id': 'retry', 'text': 'hola'}), (202, {'id': 'retry'}))
         self.wait(lambda: bool(self.synth.calls))
 
+    def test_request_lexicon_control(self):
+        before = self.request('/status')
+        for value in (None, 0, 1, 'false', [], {}):
+            self.assertEqual(self.request('/speak', {'id': 'bad', 'text': 'hola', 'lexicon': value}),
+                             (400, {'error': 'lexicon must be a boolean'}))
+            self.assertEqual(self.request('/status'), before)
+        self.ready()
+        for count, value in enumerate((False, True), 1):
+            self.request('/speak', {'id': str(count), 'text': 'Python 15.000 README.md', 'lexicon': value})
+            self.wait(lambda: len(self.synth.calls) == count)
+            self.assertEqual(self.synth.calls[-1][0],
+                             'páiton quince mil rídmi punto eme de' if value else 'Python quince mil README punto eme de')
+        self.assertEqual(self.request('/config', {'lexicon': False})[0], 400)
+
+    def test_speak_defaults_to_lexicon(self):
+        self.ready()
+        self.request('/speak', {'id': 'default', 'text': 'Python 15.000'})
+        self.wait(lambda: bool(self.synth.calls))
+        self.assertEqual(self.synth.calls[0][0], 'páiton quince mil')
+
     def test_loading_queue_pipeline_and_latest(self):
         self.assertFalse(self.request('/health')[1]['ready'])
         self.assertEqual(self.request('/status')[1]['state'], 'loading')

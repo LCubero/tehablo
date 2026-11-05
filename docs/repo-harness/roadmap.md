@@ -132,14 +132,13 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 - **Origen:** solicitud de la persona responsable del 2026-10-29: «quiero hacer Que se pueda escoger entre usar el diccionario de pronunciación d terminos en inglés o no».
 - **Prioridad:** P3; opción de uso, sin impedir la síntesis de voz.
 - **Dependencias:** coordinar dónde se expone la opción con `RH-W-0004`.
-- **Estado:** `proposed`.
-- **Trabajo restante:**
-  - Decidir dónde se elige: TUI, consola, extensión de Pi o todas, y si la elección se guarda.
-  - Implementar la opción con el diccionario activo por defecto y probarla.
+- **Estado:** `active`.
+- **Trabajo restante:** comprobación física en Pi y escucha con Phonon; la TUI y la consola siguen aplicando siempre el diccionario.
 - **Evidencia:** el diccionario siempre se aplica: `Lexicon(ROOT / 'pronunciaciones.json')` en `src/tehablo_server.py` y `src/tehablo_tts.py`.
 - **Adición (2026-11-04):** la persona responsable lo amplía: «una opcion para activar o no los arreglos/diccionarios, me gustaría. y para dejarlo default para las voces que yo quiera. configurtable es bonito (arreglos/diccionario)». Motivo: con Phonon (`Regina`, `Iker`) algunas escrituras del diccionario, pensadas para Pocket, suenan raras (por ejemplo «GitHub» → «guítjab»); inferencia pendiente de confirmar por escucha. La opción se expone en los ajustes de Pi y se guarda; cada voz puede traerla activada o no por defecto.
 - **Decisión:** registrar como trabajo propio; el 2026-11-04 se eligió exponerla en los ajustes de Pi con valor por voz.
-- **Condición del siguiente avance:** terminar `RH-W-0031` (barra al iniciar Pi), que va primero por orden acordado.
+- **Trabajo completado (2026-11-04):** en Pi, `/tts dict` y la columna *Arreglos* de la tabla de voces (clic o ←→) activan o desactivan los arreglos por voz y se guardan en `dict` de `~/.tehablo/settings.json`; por defecto apagados en Phonon y encendidos en Pocket; el servidor acepta `lexicon` en `/speak` (por petición). Comando elegido por delegación de la persona responsable («en la barra no, comandos si», «dale dale y menu, cada voz debe podersele activar eso o no, individual, y debe guardarse el seting»). Pruebas deterministas: servidor y extensión (97/97).
+- **Condición del siguiente avance:** comprobación física en Pi y escucha de «GitHub» con Regina con y sin arreglos para confirmar el valor por defecto de Phonon.
 
 ### RH-W-0011: Comprobar la portabilidad en arquitecturas y entornos
 

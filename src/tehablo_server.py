@@ -179,10 +179,12 @@ class SpeechService:
         self.worker = threading.Thread(target=self.run, name='speech-worker', daemon=True)
         self.worker.start()
 
-    def normalize_text(self, text, model):
+    def normalize_text(self, text, model, lexicon=True):
         """Prepare Spanish speech in technical → lexicon → numbers order."""
         if model in MODELS:
-            text = self.lexicon.apply(normalize_technical(text))
+            text = normalize_technical(text)
+            if lexicon:
+                text = self.lexicon.apply(text)
             if self.lexicon.error != self.lexicon_error:
                 self.lexicon_error = self.lexicon.error
                 if self.lexicon_error:
@@ -267,13 +269,15 @@ class SpeechService:
         text, identifier = body.get('text'), body.get('id')
         if not isinstance(text, str) or not text.strip() or not isinstance(identifier, str):
             raise ValueError('id and nonempty text must be strings')
+        if not isinstance(body.get('lexicon', True), bool):
+            raise ValueError('lexicon must be a boolean')
         with self.condition:
             if self.error is not None:
                 raise RuntimeError(self.error)
             self.clear()
             self.cancel = threading.Event()
             self.id = identifier
-            self.pending = (text, self.cancel, self.voice, self.speed)
+            self.pending = (text, self.cancel, self.voice, self.speed, body.get('lexicon', True))
             self.state = 'generating' if self.ready else 'loading'
             self.condition.notify_all()
         return {'id': identifier}
@@ -369,8 +373,8 @@ class SpeechService:
                                 self.model_name, self.voice = 'spanish', 'lola'
                                 name = 'spanish'
                                 if self.pending:
-                                    text, cancel, _, speed = self.pending
-                                    self.pending = (text, cancel, 'lola', speed)
+                                    text, cancel, _, speed, lexicon = self.pending
+                                    self.pending = (text, cancel, 'lola', speed, lexicon)
                             synth = self.factory(name)
                     except Exception as exc:
                         print(f'Model load failed: {exc}', file=sys.stderr)
@@ -393,7 +397,7 @@ class SpeechService:
                 with self.condition:
                     if not self.pending or revision != self.revision:
                         continue
-                    text, cancel, voice, speed = self.pending
+                    text, cancel, voice, speed, lexicon = self.pending
                     self.pending = None
                     if not self.paused:
                         self.state = 'generating'
@@ -403,7 +407,7 @@ class SpeechService:
                         sink.close()
                         sink = None
                     sink = self.audio_factory(synth.sample_rate, self.callback)
-                    text = self.normalize_text(text, name)
+                    text = self.normalize_text(text, name, lexicon)
                     with self.condition:
                         speed = self.speed
                     stretch = SpeedStream(speed)

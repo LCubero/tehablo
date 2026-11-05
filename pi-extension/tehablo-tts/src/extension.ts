@@ -36,7 +36,7 @@ const ENTRY = 'tehablo-tts';
 /** Every message from this extension starts with this prefix. */
 const say = (c: ExtensionContext | undefined, text: string, level: 'info' | 'warning') => c?.ui.notify(`TTS TeHablo: ${text}`, level);
 interface Card { messageId: string; number: number }
-const help = '/tts · auto · play [n] · copy · pause · stop · toolbar · menu · status\n/tts enciende o apaga el servidor; play sin número lee la última respuesta y play 3 la tercera de la sesión; toolbar muestra u oculta la barra; menu abre los ajustes.';
+const help = '/tts · auto · play [n] · copy · pause · stop · toolbar · menu · dict · status\n/tts enciende o apaga el servidor; play sin número lee la última respuesta y play 3 la tercera de la sesión; toolbar muestra u oculta la barra; menu abre los ajustes; dict activa o desactiva los arreglos de pronunciación para la voz actual.';
 
 export function createExtension(pi: ExtensionAPI, client = new ServerClient(), store: Store = client.root ? fileStore(client.root) : memoryStore(),
   clipboard: () => Promise<string> = () => readClipboard()) {
@@ -45,6 +45,20 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
   let closeWindow: (() => void) | undefined, redrawWindow: (() => void) | undefined;
   let current: {model: string; voice: string} | undefined;
   let stopKeys: (() => void) | undefined;
+  const activeVoice = () => {
+    if (current) return current;
+    if (settings.voice) return {model: settings.model || 'spanish', voice: settings.voice};
+    const start = store.table().find(v => (v as any).default);
+    return start ? {model: start.model, voice: start.voice} : {model: 'spanish', voice: 'lola'};
+  };
+  // Pronunciation fixes were tuned listening to Pocket, so Phonon voices start without them.
+  const dictFor = (voice: string, model: string) => Object.hasOwn(settings.dict, voice) ? settings.dict[voice] : model !== 'phonon';
+  const dictEnabled = () => { const {voice, model} = activeVoice(); return dictFor(voice, model); };
+  const toggleDict = (voice: string, model: string) => {
+    const enabled = !dictFor(voice, model);
+    settings = {...settings, dict: {...settings.dict, [voice]: enabled}}; persist();
+    return enabled;
+  };
   const persist = () => { try { store.save(settings); } catch { /* Settings are best effort. */ } };
   // barVisible only hides the bar (/tts toolbar); reading, auto and shortcuts keep working.
   let barVisible = true, auto = false, epoch = 0;
@@ -227,7 +241,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
     if (generation !== epoch) return;
     await boot();
     if (generation !== epoch) return;
-    await client.request('/speak', {id, text});
+    await client.request('/speak', {id, text, lexicon: dictEnabled()});
     if (generation !== epoch) return;
     started = true;
     pollFailures = 0;
@@ -278,6 +292,8 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
         const start = store.table().find(v => (v as any).default);
         return start ? {model: start.model, voice: start.voice} : {model: 'spanish', voice: 'lola'};
       },
+      dict: row => dictFor(row.voice, row.model),
+      toggleDict: row => { toggleDict(row.voice, row.model); },
       choose: row => { settings = {...settings, model: row.model, voice: row.voice}; persist(); run(() => configure({model: row.model, voice: row.voice})); },
       change: (field, value) => {
         settings = {...settings, [field]: value}; persist();
@@ -462,6 +478,13 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
               const starting = setAuto(value ? value === 'on' : !auto);
               info(`Lectura automática: ${auto ? 'sí' : 'no'}`); await starting; return;
             }
+          case 'dict': {
+            if (rest.length) { say(ctx, 'Uso: /tts dict', 'warning'); return; }
+            const {voice, model} = activeVoice();
+            const enabled = toggleDict(voice, model);
+            info(`Arreglos de pronunciación para ${voice}: ${enabled ? 'sí' : 'no'}`);
+            return;
+          }
           case 'play': await speak(ctx, value); return;
           case 'copy': await speakCopied(ctx); return;
           case 'pause': if (playback.state !== 'idle') await action(playback.state === 'paused' ? 'resume' : 'pause'); return;
@@ -476,7 +499,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
         sync(health);
         const status = await client.action('/status');
         if (generation !== epoch) return;
-        info(`Barra ${barVisible ? 'visible' : 'oculta'} · automático: ${auto ? 'sí' : 'no'}\nServidor: ${status.state} · listo: ${health.ready ? 'sí' : 'no'}\nModelo: ${health.model} · voz: ${health.voice} · velocidad: ${health.speed} · volumen: ${Math.round(volume * 100)} %\n${help}`);
+        info(`Barra ${barVisible ? 'visible' : 'oculta'} · automático: ${auto ? 'sí' : 'no'}\nServidor: ${status.state} · listo: ${health.ready ? 'sí' : 'no'}\nModelo: ${health.model} · voz: ${health.voice} · velocidad: ${health.speed} · volumen: ${Math.round(volume * 100)} %\nArreglos de pronunciación: ${dictEnabled() ? 'sí' : 'no'}\n${help}`);
       });
     },
   });

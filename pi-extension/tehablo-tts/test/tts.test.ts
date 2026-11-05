@@ -4,7 +4,7 @@ import { createExtension, memoryStore } from '../src/extension.ts';
 import { ServerClient } from '../src/server.ts';
 import { cleanText } from '../src/text.ts';
 
-function setup(mode = 'tui', clipboard?: () => Promise<string>) {
+function setup(mode = 'tui', clipboard?: () => Promise<string>, health = {model:'spanish', voice:'voz'}) {
   const hooks: any = {}, commands: any = {}, renderers: any = {};
   const entries: any[] = [], calls: any[] = [], notices: any[] = [];
   const fetcher = async (url: any, init: any) => {
@@ -12,14 +12,15 @@ function setup(mode = 'tui', clipboard?: () => Promise<string>) {
     const body = init?.body && JSON.parse(init.body);
     calls.push([path, body]);
     if (path === '/config' && body.speed > 1.5) return new Response(JSON.stringify({error:'Velocidad fuera de rango'}), {status:400});
-    return Response.json({ok:true, ready:true, state:'idle', model:'spanish', voice:'voz', speed:1, voices:['voz']});
+    return Response.json({ok:true, ready:true, state:'idle', ...health, speed:1, voices:['voz']});
   };
   const client = new ServerClient({fetch:fetcher as any});
   const ctx: any = {mode, sessionManager:{getBranch:()=>entries}, ui:{notify:(...args:any[])=>notices.push(args), setStatus(){}, setWidget(){}}};
   const pi: any = {on:(n:any,h:any)=>hooks[n]=h, registerCommand:(n:any,c:any)=>commands[n]=c,
     registerEntryRenderer:(n:any,r:any)=>renderers[n]=r,
     appendEntry:(customType:any,data:any)=>entries.push({type:'custom',customType,data})};
-  createExtension(pi, client, memoryStore(), clipboard);
+  const store = memoryStore();
+  createExtension(pi, client, store, clipboard);
   const emit = async (name:string,event:any={})=>{ await hooks[name](event,ctx); await new Promise(resolve=>setImmediate(resolve)); };
   const command = (args:string)=>commands.tts.handler(args,ctx);
   const finish = async (text='**Hola** [mundo](https://example.org)', stopReason='stop')=>{
@@ -27,8 +28,27 @@ function setup(mode = 'tui', clipboard?: () => Promise<string>) {
     await emit('agent_settled',{aborted:false});
   };
   const cards = ()=>entries.filter(e=>e.type==='custom');
-  return {calls,notices,emit,command,finish,cards,renderers,ctx};
+  return {calls,notices,emit,command,finish,cards,renderers,ctx,store};
 }
+test('dict defaults, per-voice toggle persistence, request payload and status',async()=>{
+  for (const [model,voice] of [['spanish','lola'],['spanish_24l','other'],['phonon','Regina'],['phonon','Iker']]) {
+    const s=setup('tui',undefined,{model,voice});
+    await s.finish(); await s.command('play');
+    const initial=model!=='phonon';
+    assert.equal(s.calls.at(-1)[1].lexicon,initial);
+    await s.command('dict');
+    assert.deepEqual(s.notices.at(-1),[`TTS TeHablo: Arreglos de pronunciación para ${voice}: ${initial?'no':'sí'}`,'info']);
+    assert.deepEqual(s.store.load().dict,{[voice]:!initial});
+    const before=s.calls.length;
+    await s.command('dict extra');
+    assert.deepEqual(s.notices.at(-1),['TTS TeHablo: Uso: /tts dict','warning']);
+    assert.equal(s.calls.length,before);
+    assert.deepEqual(s.store.load().dict,{[voice]:!initial});
+    await s.command('play'); assert.equal(s.calls.at(-1)[1].lexicon,!initial);
+    await s.command('status'); assert.ok(s.notices.at(-1)[0].includes(`Arreglos de pronunciación: ${initial?'no':'sí'}`));
+    await s.emit('session_shutdown');
+  }
+});
 test('clean Markdown, code, links, empty and length',()=>{
   assert.equal(cleanText('# Hola\n```ts\nx()\n```\n- [mundo](https://x.org) y `voz` **clara**'),'Hola. mundo y voz clara');
   assert.equal(cleanText('```solo código```'),'');
@@ -60,7 +80,7 @@ test('manual controls and numbered/latest playback; off hides controls',async()=
   assert.equal(s.cards().length,2); assert.equal(s.calls.length,0);
   const component=s.renderers['tehablo-tts'](s.cards()[0],{}, {fg:(_:any,t:any)=>t});
   assert.equal(component.render(100)[0],' [ ⏻ TTS ] [ ≡ ]');assert.doesNotMatch(component.render(100)[0],/\/tts|\b1\b(?!\.\d)/);
-  await s.command('play 1'); assert.deepEqual(s.calls.at(-1),['/speak',{id:'0',text:'Hola mundo'}]);
+  await s.command('play 1'); assert.deepEqual(s.calls.at(-1),['/speak',{id:'0',text:'Hola mundo',lexicon:true}]);
   await s.command('play'); assert.equal(s.calls.at(-1)[1].text,'Segunda');
   assert.equal(component.render(100)[0],' [ ▶ ] [ ▶ copiado ] [ ⋯ ]');
   await s.command('toolbar'); assert.deepEqual(component.render(100),[]);
@@ -81,7 +101,7 @@ test('[ Leer copiado ] reads the copied text in that bar; an empty or unreadable
   const press=async()=>{const line=component.render(100)[0]; assert.ok(line.includes('[ ▶ copiado ]'),line);
     component.handleMouse({type:'click',button:'left',x:Array.from(line.slice(0,line.indexOf('▶ copiado'))).length,y:0});
     await new Promise(r=>setImmediate(r)); await new Promise(r=>setImmediate(r));};
-  await press(); assert.deepEqual(s.calls.at(-1),['/speak',{id:'0',text:'Hola copiado'}]);
+  await press(); assert.deepEqual(s.calls.at(-1),['/speak',{id:'0',text:'Hola copiado',lexicon:true}]);
   assert.match(component.render(100)[0],/^ \[ ‖ \] \[ ■ \]/);
   await s.command('stop'); const speaks=()=>s.calls.filter(c=>c[0]==='/speak').length; const before=speaks();
   copied='  '; await press(); assert.deepEqual(s.notices.at(-1),['TTS TeHablo: El portapapeles está vacío.','warning']);

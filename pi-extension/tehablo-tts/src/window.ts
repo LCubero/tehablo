@@ -22,6 +22,9 @@ export interface Controller {
   setShortcut(action: Action, key: string | undefined): void;
   /** Opens a fixed help address in the browser. */
   open(url: string): void;
+  /** Whether pronunciation fixes (pronunciaciones.json) apply to this voice, and switching them, saved per voice. */
+  dict(row: VoiceRow): boolean;
+  toggleDict(row: VoiceRow): void;
 }
 interface Keys { matches(data: string, id: string): boolean; getResolvedBindings?(): Record<string, string | string[] | undefined> }
 interface Theme { fg(style: string, text: string): string }
@@ -154,6 +157,7 @@ export class SettingsWindow {
       else if (k === 'up') this.pick = Math.max(0, this.pick - 1);
       else if (k === 'down') this.pick = Math.min(list.length - 1, this.pick + 1);
       else if (k === 'enter' && list[this.pick]) this.choose(list[this.pick]);
+      else if ((k === 'left' || k === 'right') && list[this.pick]) this.c.toggleDict(list[this.pick]);
     } else if (this.page === 'download') {
       if (k === 'esc') this.page = 'voices';
       else if (k === 'left' || k === 'right') this.col = k === 'right' ? 1 : 0;
@@ -225,18 +229,20 @@ export class SettingsWindow {
       line();
       line([{text: ' '}, {text: '[ Cerrar ]', style: 'accent', fn: () => this.done()}, {text: '   ↑↓ elegir · ←→ cambiar · Enter · Esc', style: 'dim'}]);
     } else if (this.page === 'voices') {
-      line([{text: '   ' + fit('Voz', 34) + fit('Estado', 22) + 'RAM aprox.', style: 'dim'}]);
+      line([{text: '   ' + fit('Voz', 31) + fit('Estado', 19) + fit('RAM aprox.', 11) + 'Arreglos', style: 'dim'}]);
       line([{text: '   ' + '─'.repeat(IN - 4), style: 'dim'}]);
       this.order().forEach((v, i) => {
         const sel = i === this.pick, pickIt = () => { this.pick = i; this.choose(v); };
         const style = v.downloaded ? 'success' : v.kind === 'account' && !this.c.state().token ? 'warning' : 'dim';
         line([{text: sel ? ' ▶ ' : '   ', style: 'accent', fn: pickIt},
-          {text: fit(`${this.isActive(v) ? '●' : ' '} ${v.name}${v.kind === 'account' ? ' *' : ''} (${v.note})`, 34), style: this.isActive(v) ? 'warning' : sel ? 'accent' : undefined, fn: pickIt},
-          {text: fit(this.typeLabel(v), 22), style, fn: pickIt},
-          {text: RAM[v.model] ?? '', style: 'dim', fn: pickIt}]);
+          {text: fit(`${this.isActive(v) ? '●' : ' '} ${v.name}${v.kind === 'account' ? ' *' : ''} (${v.note})`, 31), style: this.isActive(v) ? 'warning' : sel ? 'accent' : undefined, fn: pickIt},
+          {text: fit(this.typeLabel(v), 19), style, fn: pickIt},
+          {text: fit(RAM[v.model] ?? '', 11), style: 'dim', fn: pickIt},
+          // A click here switches this voice's pronunciation fixes without choosing the voice.
+          {text: fit(this.c.dict(v) ? 'sí' : 'no', 6), style: sel ? 'accent' : 'dim', fn: () => { this.pick = i; this.c.toggleDict(v); }}]);
       });
       line([{text: '   * necesita una cuenta gratis de Hugging Face (1 sola vez)', style: 'dim'}]);
-      line([{text: ' '}, {text: '[ Volver ]', style: 'accent', fn: () => this.home()}, {text: '   ↑↓ elegir · Enter usar · Esc', style: 'dim'}]);
+      line([{text: ' '}, {text: '[ Volver ]', style: 'accent', fn: () => this.home()}, {text: '   ↑↓ elegir · Enter usar · ←→ arreglos · Esc', style: 'dim'}]);
     } else if (this.page === 'download') {
       const v = this.target!;
       line([{text: ` ${v.name} (${v.note}) no está descargada.`}]);

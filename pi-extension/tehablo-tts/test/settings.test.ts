@@ -44,6 +44,14 @@ test('invalid JSON or wrong types fall back field by field without throwing', ()
   assert.deepEqual(loadSettings(dir, project), {...DEFAULTS, shortcutsOn: true, shortcuts: {pause: 'ctrl+alt+p'}});
 }));
 
+test('dict loads boolean overrides field by field', () => withDirs((dir, project) => {
+  for (const dict of [null, 'bad', [], 4, {lola:false, Regina:true, Iker:'no', other:1}]) {
+    saveSettings(dir, {...DEFAULTS, dict} as any);
+    assert.deepEqual(loadSettings(dir, project).dict,
+      dict && !Array.isArray(dict) && typeof dict === 'object' ? {lola:false, Regina:true} : {});
+  }
+}));
+
 test('known voice table entries survive a reload', () => withDirs((dir, project) => {
   const voices = [{name: 'lola', voice: 'lola', model: 'spanish', kind: 'download', note: 'la de siempre', downloaded: true}];
   saveSettings(dir, {...DEFAULTS, voices});
