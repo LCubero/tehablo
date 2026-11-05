@@ -20,8 +20,9 @@ test('missing file gives defaults and saving creates the folder and settings.jso
   const s = {...DEFAULTS, voice: 'Iker', model: 'phonon', volume: 0.75, speed: 1.25, auto: true, toolbar: false, shortcutsOn: true,
     shortcuts: {pause: 'ctrl+alt+p'}};
   saveSettings(dir, s);
-  assert.deepEqual(JSON.parse(readFileSync(join(dir, 'settings.json'), 'utf8')), s);
-  assert.deepEqual(loadSettings(dir, project), s);
+  const {auto, ...shared} = s;
+  assert.deepEqual(JSON.parse(readFileSync(join(dir, 'settings.json'), 'utf8')), shared);
+  assert.deepEqual(loadSettings(dir, project), {...s, auto: false});
   assert.equal(existsSync(join(project, 'tehablo-settings.json')), false);
 }));
 

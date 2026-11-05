@@ -1,4 +1,5 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync, renameSync, unlinkSync } from 'node:fs';
+import { randomUUID } from 'node:crypto';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 
@@ -30,17 +31,16 @@ export const settingsDir = () => join(homedir(), '.tehablo');
 const isRow = (v: any): v is VoiceRow => v && ['name', 'voice', 'model', 'kind', 'note'].every(k => typeof v[k] === 'string')
   && (typeof v.downloaded === 'boolean' || v.downloaded === null);
 
-export function loadSettings(dir: string, project?: string): Settings {
+export function loadSettings(dir: string, project?: string, fallback: Settings = DEFAULTS): Settings {
   let raw: any = {};
   const file = existsSync(join(dir, FILE)) || !project ? join(dir, FILE) : join(project, OLD_FILE);
-  try { if (existsSync(file)) raw = JSON.parse(readFileSync(file, 'utf8')); } catch { raw = {}; }
-  if (!raw || typeof raw !== 'object') raw = {};
+  try { raw = JSON.parse(readFileSync(file, 'utf8')); } catch { return structuredClone(fallback); }
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return structuredClone(fallback);
   const s: Settings = {...DEFAULTS, shortcuts: {}, voices: [], dict: {}};
   if (typeof raw.model === 'string' && MODELS.includes(raw.model)) s.model = raw.model;
   if (typeof raw.voice === 'string') s.voice = raw.voice;
   if (typeof raw.volume === 'number' && raw.volume >= 0.1 && raw.volume <= 1.5) s.volume = raw.volume;
   if (SPEEDS.includes(raw.speed)) s.speed = raw.speed;
-  if (typeof raw.auto === 'boolean') s.auto = raw.auto;
   if (typeof raw.toolbar === 'boolean') s.toolbar = raw.toolbar;
   if (raw.policy === 'wait' || raw.policy === 'stop') s.policy = raw.policy;
   if (typeof raw.shortcutsOn === 'boolean') s.shortcutsOn = raw.shortcutsOn;
@@ -52,7 +52,29 @@ export function loadSettings(dir: string, project?: string): Settings {
   return s;
 }
 
-export function saveSettings(dir: string, settings: Settings): void {
+/** Merge only this session's edits into the latest file; voice and model form one choice. */
+export function saveSettings(dir: string, settings: Settings, previous?: Settings): void {
+  const merged = previous ? loadSettings(dir, undefined, previous) : structuredClone(settings);
+  if (previous) {
+    for (const key of ['volume', 'speed', 'toolbar', 'policy', 'shortcutsOn', 'voices'] as const)
+      if (JSON.stringify(settings[key]) !== JSON.stringify(previous[key])) (merged as any)[key] = settings[key];
+    if (settings.model !== previous.model || settings.voice !== previous.voice) {
+      merged.model = settings.model; merged.voice = settings.voice;
+    }
+    for (const key of ['dict', 'shortcuts'] as const) {
+      const before = previous[key], after = settings[key];
+      for (const entry of new Set([...Object.keys(before), ...Object.keys(after)])) {
+        if ((before as any)[entry] === (after as any)[entry]) continue;
+        if (Object.hasOwn(after, entry)) (merged[key] as any)[entry] = (after as any)[entry];
+        else delete (merged[key] as any)[entry];
+      }
+    }
+  }
+  const {auto: _auto, ...shared} = merged;
   mkdirSync(dir, {recursive: true, mode: 0o700});
-  writeFileSync(join(dir, FILE), JSON.stringify(settings, null, 2) + '\n');
+  const temporary = join(dir, `${FILE}.${randomUUID()}.tmp`);
+  try {
+    writeFileSync(temporary, JSON.stringify(shared, null, 2) + '\n', {mode: 0o600, flag: 'wx'});
+    renameSync(temporary, join(dir, FILE));
+  } finally { if (existsSync(temporary)) unlinkSync(temporary); }
 }

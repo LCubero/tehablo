@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {createExtension, memoryStore, readTable} from '../src/extension.ts';
+import {createExtension, fileStore, memoryStore, readTable} from '../src/extension.ts';
 import {mkdtempSync, writeFileSync, rmSync, mkdirSync} from 'node:fs';
 import {join} from 'node:path';
 import {DEFAULTS} from '../src/settings.ts';
@@ -11,12 +11,73 @@ function setup(store=memoryStore(),clipboard?:()=>Promise<string>,watchMs=0) {
   const hooks:any={}, calls:string[]=[], entries:any[]=[{type:'message',id:'a',message:{role:'assistant',content:'Hola'}} ,{type:'custom',customType:'tehablo-tts',data:{messageId:'a',number:1}}];
   let renderer:any, command:any, state='playing', id:string|null='a', renders=0, fail=false, ready=true, ensures=0;
   const client:any={beginSession(){},ensure:async()=>{ensures++;},stop:async()=>{},shutdown:async()=>{},powerOff:async()=>{calls.push('/shutdown');},request:async(path:string)=>{calls.push(path);if(fail)throw Error('offline');if(path==='/health')return {...settings,ready};return {state,id,error:settings.error};},action:async(path:string,body:any)=>{calls.push(path);if(path==='/config'){configs.push(body);Object.assign(settings,body);return {...settings,ready};}if(path==='/health')return {...settings,ready};if(path==='/pause')state='paused';if(path==='/resume')state='playing';return {state};}};
-  const ctx:any={mode:'tui',sessionManager:{getBranch:()=>entries},ui:{onTerminalInput:(h:any)=>{keyHandlers.push(h);return()=>{keyHandlers.splice(keyHandlers.indexOf(h),1);};},custom:(factory:any,options:any)=>new Promise<void>(resolve=>{const entry:any={options,closed:false};entry.w=factory({requestRender(){}},{fg:(_:any,t:string)=>t},{matches:()=>false},()=>{entry.closed=true;resolve();});windows.push(entry);}),notify(text:string){notices.push(text);},setStatus(_:string,text:string|undefined){renders++;statuses.push(text);},setWidget(){}}};
+  const ctx:any={mode:'tui',sessionManager:{getBranch:()=>entries},ui:{onTerminalInput:(h:any)=>{keyHandlers.push(h);return()=>{keyHandlers.splice(keyHandlers.indexOf(h),1);};},custom:(factory:any,options:any)=>new Promise<void>(resolve=>{const entry:any={options,closed:false};entry.renders=0;entry.w=factory({requestRender(){entry.renders++;}},{fg:(_:any,t:string)=>t},{matches:()=>false},()=>{entry.closed=true;resolve();});windows.push(entry);}),notify(text:string){notices.push(text);},setStatus(_:string,text:string|undefined){renders++;statuses.push(text);},setWidget(){}}};
   createExtension({appendEntry:(customType:string,data:any)=>entries.push({type:'custom',customType,data}),on:(n:string,h:any)=>hooks[n]=h,registerCommand:(_:any,c:any)=>command=c.handler,registerEntryRenderer:(_:any,r:any)=>renderer=r} as any,client,store,clipboard,watchMs);
   hooks.session_start({},ctx);
   const card=renderer(entries[1],{}, {fg:(_:any,t:string)=>t});
   return {entries,hooks,ctx,store,windows,keyHandlers,press:(d:string)=>keyHandlers.map(h=>h(d)),client,calls,card,configs,notices,statuses,line:()=>{const l=card.render(200)[0];if(l!==undefined)assert.equal(l[0],' ');return l?.slice(1);}, command:(s:string)=>command(s,ctx),set:(s:string,i:string|null='a')=>{state=s;id=i;},setReady:(value:boolean)=>{ready=value;},setError:(value:string)=>{settings.error=value;},setFallback:(value:string|null)=>{settings.fallback=value;},ensures:()=>ensures,close:()=>hooks.session_shutdown({},ctx),agentStart:()=>hooks.agent_start({},ctx),fail:(value=true)=>{fail=value;},renders:()=>renders};
 }
+test('S1/S4: shared settings refresh the bar and open window on the existing tick while off', async () => {
+  const dir = mkdtempSync(join(process.env.TEMP || '/tmp', 'tehablo-live-'));
+  const store = fileStore(dir, dir), other = fileStore(dir, dir);
+  store.save({...DEFAULTS, toolbar: true});
+  let loads = 0;
+  const load = store.load; store.load = () => { loads++; return load(); };
+  const s = setup(store, undefined, 10);
+  try {
+    s.fail();
+    const initialLoads = loads;
+    await new Promise(r => setTimeout(r, 50));
+    assert.equal(loads, initialLoads, 'unchanged ticks do not reload settings');
+    await s.command('menu'); await new Promise(r => setImmediate(r));
+    const before = s.windows[0].w.render(100).join('\n');
+    const saved = other.load();
+    const voices = [{name: 'Iker', voice: 'Iker', model: 'phonon', kind: 'account', note: '', downloaded: true}];
+    other.save({...saved, toolbar: false, volume: 0.7, speed: 1.25, shortcutsOn: true, shortcuts: {stop: 'alt+s'},
+      dict: {Iker: false}, voices, policy: 'wait', model: 'phonon', voice: 'Iker'});
+    for (let i = 0; i < 50 && s.line() !== undefined; i++) await new Promise(r => setTimeout(r, 10));
+    assert.equal(s.line(), undefined, 'toolbar visibility follows the shared file even while offline');
+    const after = s.windows[0].w.render(100).join('\n');
+    assert.notEqual(after, before);
+    assert.match(after, /75 %/); // The window rounds to its existing volume steps.
+    assert.match(after, /1.25x/);
+    assert.match(after, /Iker/);
+    assert.match(after, /Esperar/);
+    assert.ok(s.windows[0].renders > 0, 'an open overlay is explicitly redrawn');
+    const controller = s.windows[0].w.c;
+    assert.deepEqual(controller.state().settings.shortcuts, {stop: 'alt+s'});
+    assert.equal(controller.dict(voices[0]), false);
+    assert.deepEqual(controller.voices(), voices);
+    s.fail(false);
+    other.save({...other.load(), toolbar: true, volume: 0.8, speed: 1.5});
+    for (let i = 0; i < 50 && !s.line()?.includes('[ ⋯ ]'); i++) await new Promise(r => setTimeout(r, 10));
+    await clickAt(s, '[ ⋯ ]');
+    assert.match(s.line(), /80%/);
+    assert.match(s.line(), /1.50x/);
+    assert.equal(s.configs.length, 0);
+    assert.equal(s.notices.length, 0);
+  } finally { await s.close(); rmSync(dir, {recursive: true, force: true}); }
+});
+
+test('S5: two sessions keep independent auto, including the open window and external reloads', async () => {
+  const dir = mkdtempSync(join(process.env.TEMP || '/tmp', 'tehablo-auto-'));
+  const a = setup(fileStore(dir, dir), undefined, 10), b = setup(fileStore(dir, dir), undefined, 10);
+  try {
+    await a.command('menu'); await b.command('menu'); await new Promise(r => setImmediate(r));
+    a.windows[0].w.c.change('auto', true); await new Promise(r => setImmediate(r));
+    assert.equal(a.windows[0].w.c.state().settings.auto, true);
+    assert.equal(b.windows[0].w.c.state().settings.auto, false);
+    const other = fileStore(dir, dir); const saved = other.load(); other.save({...saved, speed: 1.25});
+    for (let i = 0; i < 50 && a.windows[0].w.c.state().settings.speed !== 1.25; i++) await new Promise(r => setTimeout(r, 10));
+    assert.equal(a.windows[0].w.c.state().settings.speed, 1.25);
+    assert.equal(a.windows[0].w.c.state().settings.auto, true);
+    assert.equal(b.windows[0].w.c.state().settings.auto, false);
+    b.windows[0].w.c.change('auto', true); await new Promise(r => setImmediate(r));
+    a.windows[0].w.c.change('auto', false);
+    assert.equal(b.windows[0].w.c.state().settings.auto, true);
+  } finally { await a.close(); await b.close(); rmSync(dir, {recursive: true, force: true}); }
+});
+
 test('a status snapshot cannot discard ownership of a pending speak',async()=>{
   const store=memoryStore();store.save({...store.load(),policy:'wait'} as any);
   const s=setup(store);const ids:string[]=[],stopped:string[]=[];
@@ -275,7 +336,7 @@ test('/tts toggles the server like the bar; status, menu, copy, pause, toolbar; 
   const s=setup(memoryStore(),async()=>'Texto copiado');try {
     s.set('idle',null);
     await s.command('');assert.equal(s.ensures(),1);assert.equal(s.line(),'[ ▶ ] [ ▶ copiado ] [ ⋯ ]');
-    await s.command('auto');assert.equal(s.store.load().auto,true);
+    await s.command('auto');assert.equal(s.statuses.at(-1),'TTS auto');assert.equal(s.store.load().auto,false);
     await s.command('');assert.ok(s.calls.includes('/shutdown'));assert.equal(s.line(),'[ ⏻ TTS ] [ ≡ ]');assert.equal(s.statuses.at(-1),'TTS off');assert.equal(s.store.load().auto,false);
     await s.command('');assert.equal(s.ensures(),2);
     await s.command('status');assert.match(s.notices.at(-1)!,/^TTS teHablo: Barra visible · automático: no\nServidor: idle · listo: sí\n/);
@@ -480,7 +541,7 @@ test('turning auto reading on starts a stopped server, also with the bar hidden;
       if(how==='shortcut')s.press('\x1ba');
       if(how==='window'){await clickAt(s,'[ ≡ ]');s.windows[0].w.c.change('auto',true);}
       await new Promise(r=>setImmediate(r));
-      assert.equal(s.store.load().auto,true,how);assert.equal(s.statuses.at(-1),'TTS auto',how);
+      assert.equal(s.store.load().auto,false,how);assert.equal(s.statuses.at(-1),'TTS auto',how);
       assert.equal(s.ensures(),1,how);assert.equal(s.line(),'[ ▶ ] [ ▶ copiado ] [ ⋯ ]',how);
       await s.command('auto off');await s.command('auto on');assert.equal(s.ensures(),1,how);
     }finally{await s.close();}
@@ -510,13 +571,13 @@ test('turning the server off also turns auto reading off; restart keeps it',asyn
   for(const how of ['button','shortcut','window','restart']) {
     const store=memoryStore();store.save({...DEFAULTS,shortcutsOn:true,shortcuts:{power:'alt+p'}});
     const s=setup(store);try {
-      await s.command('auto on');assert.equal(s.store.load().auto,true,how);
+      await s.command('auto on');assert.equal(s.statuses.at(-1),'TTS auto',how);
       if(how==='button'){await clickAt(s,'[ ⋯ ]');await clickAt(s,'[ ⏻ ]');}
       if(how==='shortcut'){s.press('\x1bp');await new Promise(r=>setImmediate(r));}
       if(how==='window'||how==='restart'){await clickAt(s,'[ ⋯ ]');await clickAt(s,'[ ≡ ]');s.windows[0].w.c.power(how==='window'?'off':'restart');await new Promise(r=>setImmediate(r));}
       assert.ok(s.calls.includes('/shutdown'),how);
       const auto=how==='restart';
-      assert.equal(s.store.load().auto,auto,how);assert.equal(s.statuses.at(-1),auto?'TTS auto':'TTS off',how);
+      assert.equal(s.store.load().auto,false,how);assert.equal(s.statuses.at(-1),auto?'TTS auto':'TTS off',how);
     }finally{await s.close();}
   }
 });
@@ -525,7 +586,7 @@ test('inline volume buttons and /tts commands keep the saved settings in sync',a
   const s=setup();try {
     await start(s);await clickAt(s,'[ ⋯ ]',2);await clickAt(s,'% +]',2);
     assert.equal(s.store.load().volume,1.1);
-    await s.command('auto on');assert.equal(s.store.load().auto,true);
+    await s.command('auto on');assert.equal(s.store.load().auto,false);assert.equal(s.statuses.at(-1),'TTS auto');
   }finally{await s.close();}
 });
 
@@ -538,7 +599,7 @@ test('shortcuts run their action only when enabled, are consumed, and stop after
     await start(s);
     assert.deepEqual(s.press('\x1b\x13'),[{consume:true}]);await tick();
     assert.ok(s.calls.includes('/stop'));
-    s.press('\x1ba');assert.equal(s.store.load().auto,true);assert.equal(s.statuses.at(-1),'TTS auto');
+    s.press('\x1ba');assert.equal(s.store.load().auto,false);assert.equal(s.statuses.at(-1),'TTS auto');
     s.press('\x1b\x0f');await new Promise(r=>setImmediate(r));assert.equal(s.windows.length,1);
     store.save({...store.load(),shortcutsOn:false});
   }finally{await s.close();}
@@ -568,7 +629,7 @@ test('powering off while the clipboard is still being read does not restart the 
 test('Pi start or /reload shows TTS off at once, and a stopped server never keeps auto reading',async()=>{
   const store=memoryStore();store.save({...DEFAULTS,auto:true});
   const s=setup(store);try {
-    assert.equal(s.statuses.at(-1),'TTS off');assert.equal(s.store.load().auto,false);
+    assert.equal(s.statuses.at(-1),'TTS off');assert.equal(s.store.load().auto,true, 'startup does not write session auto to the store');
     await s.command('auto');assert.equal(s.statuses.at(-1),'TTS auto');
     await s.command('auto');assert.equal(s.statuses.at(-1),'TTS manual');
   }finally{await s.close();}

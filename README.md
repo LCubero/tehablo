@@ -156,7 +156,7 @@ Elige **voz**, **volumen**, **velocidad**, **lectura automática** y **atajos de
 
 La tabla muestra el estado de descarga, la RAM aproximada y **Dict** por voz. El diccionario adapta términos como «Python»; desactivarlo no cambia la lectura de números ni la limpieza del texto. Por defecto está apagado en Phonon y encendido en Pocket.
 
-Los ajustes se guardan por usuario en `~/.tehablo/settings.json`. [Detalles de Pi, portapapeles y diagnóstico](docs/desarrollo.md#uso-en-pi).
+Los ajustes se guardan por usuario en `~/.tehablo/settings.json` y se comparten entre todas las sesiones de Pi: voz/modelo, volumen, velocidad, Dict por voz, atajos, política de lectura, barra y caché de voces. Los cambios aparecen en unos segundos en la barra y en los ajustes abiertos, sin `/reload`, incluso con el servidor apagado. Solo la **lectura automática** es de cada sesión: empieza desactivada y no se guarda. [Detalles de Pi, portapapeles y diagnóstico](docs/desarrollo.md#uso-en-pi).
 
 ## Voces
 

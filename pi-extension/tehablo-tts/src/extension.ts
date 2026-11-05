@@ -2,7 +2,7 @@ import type { ExtensionAPI, ExtensionContext } from '@earendil-works/pi-coding-a
 import { ServerClient } from './server.ts';
 import { cleanText, finalText } from './text.ts';
 import { readClipboard } from './clipboard.ts';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { ACTIONS, DEFAULTS, loadSettings, saveSettings, settingsDir, type Action, type Settings, type VoiceRow } from './settings.ts';
 import { keyOf } from './shortcuts.ts';
@@ -11,11 +11,20 @@ import { openUrl } from './browser.ts';
 import { SettingsWindow, type Controller } from './window.ts';
 
 /** Settings (user folder), token presence and voice table (project); tests use memory. */
-export interface Store { load(): Settings; save(s: Settings): void; hasToken(): boolean; table(): VoiceRow[] }
-export const fileStore = (root: string, dir = settingsDir()): Store => ({
-  load: () => loadSettings(dir, root), save: s => saveSettings(dir, s), hasToken: () => hasToken(root),
-  table: () => readTable(join(root, 'src', 'voice_table.json')),
-});
+export interface Store { load(): Settings; save(s: Settings): void; changed?(): boolean; hasToken(): boolean; table(): VoiceRow[] }
+export const fileStore = (root: string, dir = settingsDir()): Store => {
+  const stamp = () => {
+    try { const s = statSync(join(dir, 'settings.json')); return `${s.mtimeMs}:${s.size}`; }
+    catch { return 'missing'; }
+  };
+  let signature = stamp(), saved = loadSettings(dir, root);
+  return {
+    changed: () => stamp() !== signature,
+    load: () => { signature = stamp(); saved = loadSettings(dir, root, saved); return structuredClone(saved); },
+    save: s => { saveSettings(dir, s, saved); saved = structuredClone(s); },
+    hasToken: () => hasToken(root), table: () => readTable(join(root, 'src', 'voice_table.json')),
+  };
+};
 /** The shared voice list (src/voice_table.json), with an unknown download state. */
 export function readTable(path: string): VoiceRow[] {
   try {
@@ -152,6 +161,11 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
     const next = () => {
       watchTimer = setTimeout(async () => {
         watchTimer = undefined;
+        if (store.changed?.()) {
+          settings = {...store.load(), auto};
+          barVisible = settings.toolbar; volume = settings.volume; speed = settings.speed;
+          refresh(); if (context) showStart(context); redrawWindow?.();
+        }
         const before = epoch;
         let observed: typeof server;
         try {
@@ -199,7 +213,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
   };
   /** Auto reading needs the server, so turning it on also starts a stopped one. */
   const setAuto = (value: boolean) => {
-    auto = value; settings = {...settings, auto}; persist(); epoch++; refresh();
+    auto = value; settings = {...settings, auto}; epoch++; refresh();
     return auto && server === 'off' ? boot() : undefined;
   };
   const setting = async (ctx: ExtensionContext, kind: string) => {
@@ -371,7 +385,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
       toggleDict: row => { toggleDict(row.voice, row.model); },
       choose: row => { settings = {...settings, model: row.model, voice: row.voice}; persist(); run(() => configure({model: row.model, voice: row.voice})); },
       change: (field, value) => {
-        settings = {...settings, [field]: value}; persist();
+        settings = {...settings, [field]: value}; if (field !== 'auto') persist();
         if (field === 'toolbar') setToolbar(value as boolean, ctx);
         if (field === 'auto') { const starting = setAuto(value as boolean); if (starting) run(() => starting); }
         if (field === 'volume') volume = value as number;
@@ -505,7 +519,8 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
     resetPlayback();
     settings = store.load(); applied = false;
     // The server starts off, and an off server has no auto reading (turning auto on starts it).
-    barVisible = settings.toolbar; auto = false; if (settings.auto) { settings = {...settings, auto: false}; persist(); } volume = settings.volume; speed = settings.speed; epoch++; context = ctx;
+    settings = {...settings, auto: false};
+    barVisible = settings.toolbar; auto = false; volume = settings.volume; speed = settings.speed; epoch++; context = ctx;
     cancelReady(); server = 'off'; open = false;
     refresh(); showStart(ctx);
     listenKeys(ctx);
