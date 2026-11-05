@@ -149,7 +149,7 @@ pi install /ruta/a/tehablo/pi-extension/tehablo-tts       # Linux / macOS
 
 Después abre Pi o ejecuta `/reload`. `pi list` la muestra y `pi remove <ruta>` la quita. Si usas `gentle-shell` por separado (con su propia carpeta), instálala ahí con `gentle-shell install <ruta>`. Al terminar, `install.sh` e `install.ps1` muestran los dos comandos con la ruta de tu equipo.
 
-- **Manual (por defecto):** cada respuesta muestra una barra de controles que se usa con clics:
+- **Manual (por defecto):** cada respuesta muestra una barra de controles que se usa con clics. Antes de la primera respuesta, la barra aparece sobre el editor, sin `[ ▶ ]` (todavía no hay nada que leer):
 
   | Estado | Barra |
   |---|---|
@@ -181,7 +181,7 @@ Después abre Pi o ejecuta `/reload`. `pi list` la muestra y `pi remove <ruta>` 
 | `/tts copy` | Lee el texto copiado, como `[ ▶ copiado ]` |
 | `/tts pause` | Pausa o sigue la lectura |
 | `/tts stop` | Detiene la lectura |
-| `/tts toolbar` | Muestra u oculta la barra (la lectura, el modo automático y los atajos siguen funcionando) |
+| `/tts toolbar` | Muestra u oculta la barra y lo recuerda al abrir Pi (la lectura, el modo automático y los atajos siguen funcionando) |
 | `/tts menu` | Abre la ventana de ajustes |
 | `/tts status` | Estado y ayuda |
 

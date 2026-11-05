@@ -339,18 +339,25 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
       return {consume: true};
     });
   };
-  pi.registerEntryRenderer<Card>(ENTRY, (entry, _options, theme) => {
+  // Before the first response there is no entry to draw the bar on, so it shows above the editor.
+  const START: Card = {messageId: 'tehablo-start', number: 0};
+  const showStart = (ctx: ExtensionContext) => ctx.ui.setWidget(ENTRY, barVisible && !cards(ctx).length
+    ? (_tui: any, theme: any) => bar(START, () => !!context && !cards(context).length, theme) : undefined);
+  pi.registerEntryRenderer<Card>(ENTRY, (entry, _options, theme) =>
+    bar(entry.data!, () => !!entry.data && !!context && cards(context).some(c => c.messageId === entry.data!.messageId), theme));
+  /** The bar of one response (`card`), or of the start bar while there is none; `current` says whether to draw it. */
+  function bar(card: Card, current: () => boolean, theme: any) {
     // Only single-column symbols, so click columns match Array.from lengths (≡ replaced ⚙, which some terminals draw two columns wide).
     // The menu [ ≡ ] shows next to the start button when off, and inside the open controls when on.
     const segments = () => {
-      const active = playback.id === entry.data?.messageId && playback.state !== 'idle';
+      const active = playback.id === card.messageId && playback.state !== 'idle';
       const menu = {text: '[ ≡ ]', action: 'settings', gap: ''};
       if (!active && server === 'off') return [{text: '[ ⏻ TTS ]', action: 'start', gap: ' '}, menu];
       if (!active && server === 'loading') return [{text: '[ Cargando… ]', action: '', gap: ' '}, menu];
       const paused = playback.state === 'paused';
       const lead = active
         ? [{text: paused ? '[ ▶ ]' : '[ ‖ ]', action: paused ? 'resume' : 'pause', gap: ' '}, {text: '[ ■ ]', action: 'stop', gap: ' '}]
-        : [{text: '[ ▶ ]', action: 'play', gap: ' '}, {text: '[ ▶ copiado ]', action: 'copied', gap: ' '}];
+        : [...(card === START ? [] : [{text: '[ ▶ ]', action: 'play', gap: ' '}]), {text: '[ ▶ copiado ]', action: 'copied', gap: ' '}];
       return [
         ...lead,
         {text: open ? '[ → ]' : '[ ⋯ ]', action: 'toggle', gap: open ? ' ' : ''},
@@ -370,7 +377,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
         ] : []),
       ];
     };
-    const label = () => context?.mode === 'tui' && barVisible && entry.data && cards(context).some(c => c.messageId === entry.data!.messageId)
+    const label = () => context?.mode === 'tui' && barVisible && current()
       ? segments().map(c => c.text + c.gap).join('') : '';
     return {
       render: (width: number) => label() && width > 0 ? [theme.fg('accent', Array.from(label()).slice(0, width).join(''))] : [],
@@ -383,8 +390,8 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
             if (control.action && event.x >= start && event.x < end) {
               if (control.action === 'toggle') { open = !open; refresh(); return {handled: true, render: true}; }
               if (control.action === 'settings') { void safe(context, () => openSettings(context!)); return {handled: true, render: true}; }
-              void safe(context, () => control.action === 'play' ? speak(context!, String(entry.data!.number))
-                : control.action === 'copied' ? speakCopied(context!, entry.data!.messageId)
+              void safe(context, () => control.action === 'play' ? speak(context!, String(card.number))
+                : control.action === 'copied' ? speakCopied(context!, card.messageId)
                 : control.action === 'powerOff' ? turnOff()
                   : control.action === 'start' ? boot()
                   : /^(volume|speed)/.test(control.action) ? setting(context!, control.action) : action(control.action));
@@ -395,15 +402,15 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
         }
       },
     };
-  });
+  }
   pi.on('session_start', (_event, ctx) => {
     if (ctx.mode !== 'tui') return;
     resetPlayback();
     settings = store.load(); applied = false;
     // The server starts off, and an off server has no auto reading (turning auto on starts it).
-    barVisible = true; auto = false; if (settings.auto) { settings = {...settings, auto: false}; persist(); } volume = settings.volume; speed = settings.speed; epoch++; context = ctx;
+    barVisible = settings.toolbar; auto = false; if (settings.auto) { settings = {...settings, auto: false}; persist(); } volume = settings.volume; speed = settings.speed; epoch++; context = ctx;
     cancelReady(); server = 'off'; open = false;
-    refresh();
+    refresh(); showStart(ctx);
     listenKeys(ctx);
     client.beginSession();
   });
@@ -426,6 +433,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
       if (!last || !finalText(last.message) || cards(ctx).some(c => c.messageId === last.id)) return;
       const number = Math.max(0, ...cards(ctx).map(c => c.number)) + 1;
       pi.appendEntry(ENTRY, {messageId: last.id, number});
+      showStart(ctx);
       if (auto) return speak(ctx, String(number));
     });
   });
@@ -443,7 +451,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
           // Plain /tts turns the server on or off, like [ ⏻ TTS ] and [ ⏻ ] in the bar.
           case '': return server === 'off' ? boot() : turnOff();
           case 'toolbar':
-            barVisible = !barVisible; refresh(); info(barVisible ? 'Barra visible.' : 'Barra oculta.');
+            barVisible = !barVisible; settings = {...settings, toolbar: barVisible}; persist(); refresh(); showStart(ctx); info(barVisible ? 'Barra visible.' : 'Barra oculta.');
             return;
           case 'auto':
             // Plain /tts auto toggles; on/off still work for anyone who already types them.

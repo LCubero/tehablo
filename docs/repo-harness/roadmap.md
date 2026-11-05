@@ -357,6 +357,7 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 - **Estado:** `active`.
 - **Trabajo restante:** mostrar la barra al abrir Pi aunque no haya respuestas, salvo que se dejara oculta con `/tts toolbar`.
 - **Evidencia:** la barra se dibuja como entrada pegada a una respuesta (`registerEntryRenderer` en `pi-extension/tehablo-tts/src/extension.ts`); sin respuestas no hay barra.
+- **Trabajo completado (2026-11-04):** antes de la primera respuesta la barra se muestra sobre el editor (`ctx.ui.setWidget`), sin `[ ▶ ]`, y desaparece con la primera respuesta; `/tts toolbar` se guarda como `toolbar` en `~/.tehablo/settings.json`. Pruebas deterministas de la extensión 94/94; falta la comprobación física en Pi, incluido el clic sobre la barra del editor.
 - **Condición del siguiente avance:** comprobación física de la persona responsable en Pi.
 
 ## Registros resueltos

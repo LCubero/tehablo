@@ -17,7 +17,7 @@ test('settings live in .tehablo inside the user folder', () => {
 
 test('missing file gives defaults and saving creates the folder and settings.json', () => withDirs((dir, project) => {
   assert.deepEqual(loadSettings(dir, project), DEFAULTS);
-  const s = {...DEFAULTS, voice: 'Iker', model: 'phonon', volume: 0.75, speed: 1.25, auto: true, shortcutsOn: true,
+  const s = {...DEFAULTS, voice: 'Iker', model: 'phonon', volume: 0.75, speed: 1.25, auto: true, toolbar: false, shortcutsOn: true,
     shortcuts: {pause: 'ctrl+alt+p'}};
   saveSettings(dir, s);
   assert.deepEqual(JSON.parse(readFileSync(join(dir, 'settings.json'), 'utf8')), s);
@@ -39,7 +39,7 @@ test('invalid JSON or wrong types fall back field by field without throwing', ()
   writeFileSync(join(dir, 'settings.json'), '{not json');
   assert.deepEqual(loadSettings(dir, project), DEFAULTS);
   writeFileSync(join(dir, 'settings.json'), JSON.stringify({
-    voice: 5, model: 'gpt', volume: 9, speed: 0.3, auto: 'yes', shortcutsOn: true,
+    voice: 5, model: 'gpt', volume: 9, speed: 0.3, auto: 'yes', toolbar: 'no', shortcutsOn: true,
     shortcuts: {pause: 'ctrl+alt+p', bad: 3, unknown: 'ctrl+x'}, voices: 'x'}));
   assert.deepEqual(loadSettings(dir, project), {...DEFAULTS, shortcutsOn: true, shortcuts: {pause: 'ctrl+alt+p'}});
 }));

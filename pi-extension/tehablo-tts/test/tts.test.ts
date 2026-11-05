@@ -15,7 +15,7 @@ function setup(mode = 'tui', clipboard?: () => Promise<string>) {
     return Response.json({ok:true, ready:true, state:'idle', model:'spanish', voice:'voz', speed:1, voices:['voz']});
   };
   const client = new ServerClient({fetch:fetcher as any});
-  const ctx: any = {mode, sessionManager:{getBranch:()=>entries}, ui:{notify:(...args:any[])=>notices.push(args), setStatus(){}}};
+  const ctx: any = {mode, sessionManager:{getBranch:()=>entries}, ui:{notify:(...args:any[])=>notices.push(args), setStatus(){}, setWidget(){}}};
   const pi: any = {on:(n:any,h:any)=>hooks[n]=h, registerCommand:(n:any,c:any)=>commands[n]=c,
     registerEntryRenderer:(n:any,r:any)=>renderers[n]=r,
     appendEntry:(customType:any,data:any)=>entries.push({type:'custom',customType,data})};
@@ -88,6 +88,20 @@ test('[ Leer copiado ] reads the copied text in that bar; an empty or unreadable
   copied=new Error('No se pudo leer el portapapeles: instala wl-clipboard o xclip.'); await press();
   assert.deepEqual(s.notices.at(-1),['TTS TeHablo: No se pudo leer el portapapeles: instala wl-clipboard o xclip.','warning']);
   assert.equal(speaks(),before);
+});
+test('before the first response the bar shows above the editor, and a hidden bar stays hidden on reopen',async()=>{
+  const s=setup(), widgets:any={}, theme={fg:(_:any,t:any)=>t};
+  s.ctx.ui.setWidget=(key:string,content:any)=>{widgets[key]=content;}; s.ctx.ui.onTerminalInput=()=>()=>{};
+  const startBar=()=>widgets['tehablo-tts']?.({},theme).render(100);
+  await s.emit('session_start');
+  assert.deepEqual(startBar(),['[ ⏻ TTS ] [ ≡ ]']);
+  // Nothing to read yet, so the start bar offers only the copied text.
+  await s.command(''); assert.deepEqual(startBar(),['[ ▶ copiado ] [ ⋯ ]']);
+  await s.finish(); assert.equal(widgets['tehablo-tts'],undefined); assert.equal(s.cards().length,1);
+  await s.command('toolbar'); await s.emit('session_start');
+  const component=s.renderers['tehablo-tts'](s.cards()[0],{},theme);
+  assert.deepEqual(component.render(100),[]); assert.equal(widgets['tehablo-tts'],undefined);
+  await s.command('toolbar'); assert.equal(component.render(100)[0],'[ ⏻ TTS ] [ ≡ ]');
 });
 test('a hidden toolbar only hides the bar: auto reading and play still work',async()=>{
   const s=setup(); await s.command('toolbar'); await s.command('auto'); await s.finish();
