@@ -331,7 +331,11 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 - **Dependencias:** ninguna.
 - **Estado:** `proposed`.
 - **Trabajo restante:** comprobar con varias sesiones de Pi abiertas a la vez qué pasa al encender el TTS en una segunda sesión mientras otra lo tiene encendido, al apagarlo o detenerlo en esa segunda sesión, y cómo afecta a la primera y a las demás (servidor y puerto compartidos, lectura en curso, cierre de Pi). Documentar el resultado y corregir lo que falle.
-- **Condición del siguiente avance:** autorización para comprobarlo.
+- **Prueba física (2026-11-05, Windows, dos sesiones de Pi):** la persona responsable comprobó: (1) encender en la segunda sesión mientras la primera sonaba fue «rapidisimo» y no cortó nada (inferencia: reusa el servidor ya levantado); (2-3) cada sesión lee bien por su cuenta; (4) si una sesión suena y se pulsa play en otra, se detiene la primera y suena la nueva; (5) apagar en una sesión apaga el servidor para todas, incluso a mitad de una lectura en otra; (6) encender en una sesión lo enciende para todas, pero la barra de las demás no lo refleja. No se probó cerrar Pi en una sesión con el TTS encendido.
+- **Decisión (2026-11-05):** la persona responsable eligió la opción simple («si la simple»): apagar en una sesión apaga el servidor para todas y todas las barras lo muestran; play en otra sesión sigue cortando la lectura en curso.
+- **Trabajo completado (2026-11-05):** cada sesión consulta `/health` cada 2 s y cambia su barra tras dos observaciones iguales, sin arrancar el servidor, aplicar ajustes ni avisar (`pi-extension/tehablo-tts/src/extension.ts`); `[ ⏻ ]` envía `/shutdown` también cuando el servidor lo arrancó otra sesión, mientras que cerrar una sesión que no lo arrancó lo deja vivo para las demás (`src/server.ts`). Una verificación independiente encontró que un servidor que aún respondía una vez tras `[ ⏻ ]` podía volver a encender la barra; corregido reiniciando la cuenta tras cada acción. README y CHANGELOG actualizados. Pruebas de la extensión 100/100 (tres nuevas, vistas fallar antes de cada cambio; las del vigilante usan esperas reales cortas). Inferencia sin comprobar: cerrar Pi en la sesión que arrancó el servidor lo apaga para todas, y sus barras lo muestran.
+- **Trabajo restante:** comprobación física de la persona responsable con dos sesiones.
+- **Condición del siguiente avance:** esa comprobación.
 
 ### RH-W-0035: Completar la prueba de Phonon sin conexión (R3-001)
 

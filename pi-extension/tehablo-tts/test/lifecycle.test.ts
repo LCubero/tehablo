@@ -161,3 +161,14 @@ test('an unwritable log falls back to ignored output',async()=>{
   await client.ensure();
   assert.equal(spawned[0][2].stdio,'ignore');
 });
+
+test('power off shuts down a server another Pi session started; closing this session leaves it running',async()=>{
+  for(const end of ['powerOff','shutdown'] as const) {
+    const calls:string[]=[];let spawns=0;
+    const client=new ServerClient({root:'/tehablo',platform:'linux',fetch:(async(url:any)=>{calls.push(new URL(url).pathname);return Response.json({ok:true,ready:true});}) as any,
+      spawn:(()=>{spawns++;return {once(){},unref(){},kill(){}};}) as any});
+    await client.ensure();assert.equal(spawns,0);
+    await client[end]();
+    assert.deepEqual(calls.slice(-2),end==='powerOff'?['/stop','/shutdown']:['/health','/stop'],end);
+  }
+});

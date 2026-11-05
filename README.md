@@ -127,6 +127,7 @@ Pi empieza con el servidor **apagado**, en modo manual. Pulsa `[ ⏻ TTS ]` para
 - Para leer una selección, **cópiala primero** y pulsa `[ ▶ copiado ]`: Pi no ve la selección del ratón.
 - `[ ⋯ ]` abre volumen, velocidad y ajustes; `[ → ]` los oculta.
 - `[ ⏻ ]` apaga el servidor y libera el modelo, sin perder tus ajustes.
+- Con varias sesiones de Pi abiertas, todas usan el mismo servidor: encenderlo o apagarlo en una lo hace en todas, y la barra de las demás lo muestra en unos segundos. Leer en una sesión detiene la lectura de otra.
 - Antes de la primera respuesta, la barra aparece sobre el editor sin el botón de leer respuesta.
 
 ### Comandos

@@ -79,7 +79,7 @@ Este archivo proyecta solo hechos verificados del proyecto: registros activos, b
 - `RH-W-0029` (`proposed`, P3): voces por API externa (ElevenLabs, Google…) como extra apagado; su condición ya se cumplió y queda después del release.
 - `RH-W-0031` (`completed`): la barra de Pi aparece al iniciar, sobre el editor, salvo que se dejara oculta; comprobada físicamente en Windows.
 - `RH-W-0032` (`proposed`, P2): iconos de pausa y encendido que se vean bien (la pausa se ve pegada en el video; `⏻` sale como un cuadro en el README).
-- `RH-W-0033` (`proposed`, P1): comprobar qué pasa con el TTS al encenderlo o apagarlo en una sesión de Pi mientras hay otras abiertas.
+- `RH-W-0033` (`proposed`, P1): con varias sesiones de Pi, el servidor es uno solo: apagar en una apaga todas (también a mitad de lectura), encender en una no se refleja en la barra de las demás y play en otra sesión corta la lectura en curso (comprobado en Windows el 2026-11-05). Elegida la opción simple y aplicada: apagar sigue apagando todas y cada barra muestra el estado real en unos segundos; falta la comprobación física.
 - `RH-W-0035` (`proposed`, P2): completar la prueba de Phonon sin conexión (aviso R3-001).
 - `RH-W-0036` (`proposed`, P2): README y video: encabezado «¿Cuenta?», nota de Hugging Face para Phonon, aviso de sonido, miniatura y la app de GitHub para Android.
 - `RH-W-0037` (`proposed`, P1): instalador con elección (Pi, Gentle Shell, TUI, consola) en Linux, Windows y macOS, instalación por comando y actualizaciones; primero el análisis.

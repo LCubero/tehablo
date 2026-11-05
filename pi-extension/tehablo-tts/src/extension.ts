@@ -39,7 +39,7 @@ interface Card { messageId: string; number: number }
 const help = '/tts · auto · play [n] · copy · pause · stop · toolbar · menu · dict · status\n/tts enciende o apaga el servidor; play sin número lee la última respuesta y play 3 la tercera de la sesión; toolbar muestra u oculta la barra; menu abre los ajustes; dict activa o desactiva el diccionario de pronunciación (pronunciaciones.json) para la voz actual.';
 
 export function createExtension(pi: ExtensionAPI, client = new ServerClient(), store: Store = client.root ? fileStore(client.root) : memoryStore(),
-  clipboard: () => Promise<string> = () => readClipboard()) {
+  clipboard: () => Promise<string> = () => readClipboard(), watchMs = 0) {
   let settings: Settings = store.load();
   let applied = false, windowOpen = false;
   let closeWindow: (() => void) | undefined, redrawWindow: (() => void) | undefined;
@@ -138,8 +138,49 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
     }, 500);
     readyTimer.unref?.();
   };
+  /** Other Pi sessions share the server, so the bar watches /health to show when one of them turns it on or off.
+   * Only the state changes, after two equal observations; it never starts the server, applies settings or warns. */
+  let watchTimer: ReturnType<typeof setTimeout> | undefined, watchEpoch = 0, booting = 0;
+  let seen: typeof server | undefined, seenCount = 0, seenEpoch = 0;
+  const stopWatch = () => { watchEpoch++; if (watchTimer) clearTimeout(watchTimer); watchTimer = undefined; seen = undefined; };
+  const watch = () => {
+    stopWatch();
+    if (!watchMs) return;
+    const generation = watchEpoch;
+    const next = () => {
+      watchTimer = setTimeout(async () => {
+        watchTimer = undefined;
+        const before = epoch;
+        let observed: typeof server;
+        try {
+          const health = await client.request('/health');
+          observed = typeof health?.error === 'string' && health.error ? 'off' : health?.ready === true ? 'ready' : 'loading';
+        } catch { observed = 'off'; }
+        if (generation !== watchEpoch) return;
+        // This session's own boot, readiness wait or power off owns the state meanwhile.
+        // A power off or other action since the last observation starts the count again, so a dying
+        // server that still answers once cannot turn the bar back on.
+        if (before !== seenEpoch) { seen = undefined; seenEpoch = before; }
+        if (before !== epoch || booting || readyTimer) seen = undefined;
+        else {
+          seenCount = observed === seen ? seenCount + 1 : 1; seen = observed;
+          if (seenCount >= 2 && observed !== server) {
+            if (observed === 'off') { resetPlayback(); open = false; }
+            setServer(observed);
+          }
+        }
+        next();
+      }, watchMs);
+      watchTimer.unref?.();
+    };
+    next();
+  };
   /** Starts the server when needed and reports its readiness. */
   const boot = async () => {
+    booting++;
+    try { await bootOnce(); } finally { booting--; }
+  };
+  const bootOnce = async () => {
     const generation = epoch;
     if (server === 'off') { readyTries = 0; applied = false; setServer('loading'); }
     client.startArgs = settings.model ? ['--model', settings.model, ...(settings.voice ? ['--voice', settings.voice] : [])] : [];
@@ -431,6 +472,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
     refresh(); showStart(ctx);
     listenKeys(ctx);
     client.beginSession();
+    watch();
   });
   pi.on('agent_start', (_event, ctx) => {
     if (ctx.mode !== 'tui') return;
@@ -439,7 +481,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
   });
   pi.on('session_shutdown', async (_event, ctx) => {
     if (ctx.mode !== 'tui') return;
-    epoch++; resetPlayback(); cancelReady(); server = 'off'; context = undefined;
+    epoch++; resetPlayback(); cancelReady(); stopWatch(); server = 'off'; context = undefined;
     stopKeys?.(); stopKeys = undefined;
     await safe(ctx, () => client.shutdown());
   });

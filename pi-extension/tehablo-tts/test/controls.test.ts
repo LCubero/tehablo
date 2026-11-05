@@ -5,14 +5,14 @@ import {mkdtempSync, writeFileSync, rmSync, mkdirSync} from 'node:fs';
 import {join} from 'node:path';
 import {DEFAULTS} from '../src/settings.ts';
 
-function setup(store=memoryStore(),clipboard?:()=>Promise<string>) {
+function setup(store=memoryStore(),clipboard?:()=>Promise<string>,watchMs=0) {
   const windows:any[]=[], keyHandlers:any[]=[];
   const configs:any[]=[], notices:string[]=[], statuses:(string|undefined)[]=[], settings={volume:1,speed:1,error:null as string|null,fallback:null as string|null};
   const hooks:any={}, calls:string[]=[], entries:any[]=[{type:'message',id:'a',message:{role:'assistant',content:'Hola'}} ,{type:'custom',customType:'tehablo-tts',data:{messageId:'a',number:1}}];
   let renderer:any, command:any, state='playing', id:string|null='a', renders=0, fail=false, ready=true, ensures=0;
   const client:any={beginSession(){},ensure:async()=>{ensures++;},stop:async()=>{},shutdown:async()=>{},powerOff:async()=>{calls.push('/shutdown');},request:async(path:string)=>{calls.push(path);if(fail)throw Error('offline');if(path==='/health')return {...settings,ready};return {state,id,error:settings.error};},action:async(path:string,body:any)=>{calls.push(path);if(path==='/config'){configs.push(body);Object.assign(settings,body);return {...settings,ready};}if(path==='/health')return {...settings,ready};if(path==='/pause')state='paused';if(path==='/resume')state='playing';return {state};}};
   const ctx:any={mode:'tui',sessionManager:{getBranch:()=>entries},ui:{onTerminalInput:(h:any)=>{keyHandlers.push(h);return()=>{keyHandlers.splice(keyHandlers.indexOf(h),1);};},custom:(factory:any,options:any)=>new Promise<void>(resolve=>{const entry:any={options,closed:false};entry.w=factory({requestRender(){}},{fg:(_:any,t:string)=>t},{matches:()=>false},()=>{entry.closed=true;resolve();});windows.push(entry);}),notify(text:string){notices.push(text);},setStatus(_:string,text:string|undefined){renders++;statuses.push(text);},setWidget(){}}};
-  createExtension({on:(n:string,h:any)=>hooks[n]=h,registerCommand:(_:any,c:any)=>command=c.handler,registerEntryRenderer:(_:any,r:any)=>renderer=r} as any,client,store,clipboard);
+  createExtension({on:(n:string,h:any)=>hooks[n]=h,registerCommand:(_:any,c:any)=>command=c.handler,registerEntryRenderer:(_:any,r:any)=>renderer=r} as any,client,store,clipboard,watchMs);
   hooks.session_start({},ctx);
   const card=renderer(entries[1],{}, {fg:(_:any,t:string)=>t});
   return {store,windows,keyHandlers,press:(d:string)=>keyHandlers.map(h=>h(d)),client,calls,card,configs,notices,statuses,line:()=>{const l=card.render(200)[0];if(l!==undefined)assert.equal(l[0],' ');return l?.slice(1);}, command:(s:string)=>command(s,ctx),set:(s:string,i:string|null='a')=>{state=s;id=i;},setReady:(value:boolean)=>{ready=value;},setError:(value:string)=>{settings.error=value;},setFallback:(value:string|null)=>{settings.fallback=value;},ensures:()=>ensures,close:()=>hooks.session_shutdown({},ctx),agentStart:()=>hooks.agent_start({},ctx),fail:(value=true)=>{fail=value;},renders:()=>renders};
@@ -465,4 +465,31 @@ test('the shared table maps included voices (with a source) to their .safetensor
       {name: 'Facundo', model: 'spanish', kind: 'download', note: 'Argentina', source: 'ar-hombre-4310'}]));
     assert.deepEqual(readTable(path).map(v => v.voice), ['lola', 'Regina', 'Facundo.safetensors']);
   } finally { rmSync(dir, {recursive: true, force: true}); }
+});
+
+test('the bar follows another Pi session turning the shared server on and off, without starting it or warning',async()=>{
+  const s=setup(memoryStore(),undefined,40);const wait=(ms:number)=>new Promise(r=>setTimeout(r,ms));
+  try {
+    s.set('idle',null);assert.equal(s.line(),'[ ⏻ TTS ] [ ≡ ]');
+    await wait(200);
+    assert.equal(s.line(),'[ ▶ ] [ ▶ copiado ] [ ⋯ ]');assert.equal(s.statuses.at(-1),'TTS manual');assert.equal(s.ensures(),0);
+    s.fail();await wait(200);
+    assert.equal(s.line(),'[ ⏻ TTS ] [ ≡ ]');assert.equal(s.statuses.at(-1),'TTS off');
+    assert.deepEqual(s.notices,[]);assert.equal(s.ensures(),0);
+    assert.ok(s.calls.every((p:string)=>p==='/health'),s.calls.join());
+  }finally{await s.close();}
+  const n=s.calls.length;await new Promise(r=>setTimeout(r,150));assert.equal(s.calls.length,n);
+});
+
+test('a dying server answering once after power off does not turn the bar back on',async()=>{
+  const s=setup(memoryStore(),undefined,40);const wait=(ms:number)=>new Promise(r=>setTimeout(r,ms));
+  try {
+    s.set('idle',null);await wait(200);assert.equal(s.line(),'[ ▶ ] [ ▶ copiado ] [ ⋯ ]');
+    await clickAt(s,'[ ⋯ ]');
+    const request=s.client.request;let answers=1;
+    s.client.request=async(path:string)=>{if(path==='/health'&&answers--<=0)throw Error('offline');return request(path);};
+    await clickAt(s,'[ ⏻ ]');const from=s.statuses.length;
+    await wait(300);
+    assert.deepEqual(s.statuses.slice(from-1),['TTS off']);assert.equal(s.line(),'[ ⏻ TTS ] [ ≡ ]');
+  }finally{await s.close();}
 });

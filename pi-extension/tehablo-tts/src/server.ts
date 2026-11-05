@@ -109,12 +109,12 @@ export class ServerClient {
     return this.request(path, body);
   }
   async stop() { if (this.used && !this.closed) await this.request('/stop', {}); }
-  /** Release the owned server without closing this Pi session. */
+  /** Turn the shared server off for every Pi session, without closing this one. */
   powerOff(): Promise<void> {
     if (!this.poweringOff) {
       // The shutdown response precedes process exit; do not reconnect to that dying server.
       const exited = this.child && new Promise<void>(resolve => this.child!.once('exit', () => resolve()));
-      this.poweringOff = this.close().finally(async () => {
+      this.poweringOff = this.close(true).finally(async () => {
         await exited;
         this.poweringOff = undefined;
         if (!this.ending) this.beginSession();
@@ -127,7 +127,8 @@ export class ServerClient {
     await this.poweringOff;
     await this.close();
   }
-  private async close() {
+  /** `shared` also shuts down a server another Pi session started; closing a session leaves it to them. */
+  private async close(shared = false) {
     if (this.closed) return;
     this.closed = true;
     await this.starting?.catch(() => {});
@@ -137,6 +138,8 @@ export class ServerClient {
       try { await this.request('/shutdown', {}); }
       catch (error) { this.child.kill(); failure = error; }
       this.child = undefined;
+    } else if (shared) {
+      try { await this.request('/shutdown', {}); } catch { /* Not running, so already off. */ }
     }
     if (failure) throw failure;
   }
