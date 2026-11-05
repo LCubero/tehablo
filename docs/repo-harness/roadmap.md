@@ -345,11 +345,12 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 - **Origen:** solicitud de la persona responsable del 2026-11-04: «el readme no cumple con la carga cognitiva», «y que haga sentido y se entienda el producto y sus consumos aproximados», «el gif para mostrar el uso, menu, opciones, shobar, etc. las voces hay que hacer unos archivos de sonidop para subir y que puedan dar clic para el preview (si es posible)».
 - **Prioridad:** P2; es lo primero que ve quien llega al proyecto.
 - **Dependencias:** después de `RH-W-0031`, para que el GIF muestre la barra ya corregida.
-- **Estado:** `active`.
+- **Estado:** `completed` (2026-11-05).
 - **Trabajo restante:** reordenar el README (qué es, instalar, usar en Pi, voces, consumo aproximado de disco y RAM) y mover el detalle a `docs/`; grabar un GIF corto de la barra y el menú; generar una muestra breve por voz y comprobar si GitHub permite escucharla desde la página.
 - **Trabajo completado (2026-11-04):** README reorganizado (qué es, consumo aproximado, instalación, uso en Pi, voces, TUI y consola, documentación) de 3339 a ~1050 palabras; el detalle pasó a `docs/como-funciona.md` y `docs/desarrollo.md`; enlaces y anclas comprobados (52, sin errores). Disco de Phonon (~0,15 GB) medido en la caché de Windows el mismo día.
 - **Trabajo completado (2026-11-04, muestras):** una muestra mp3 por voz en `docs/samples/`, enlazada desde la tabla de voces por jsDelivr (GitHub no reproduce audio en el README); aprobadas por escucha («suenan bien»).
-- **Condición del siguiente avance:** GIF de uso grabado por la persona responsable.
+- **Trabajo completado (2026-11-05, demostración):** en lugar del GIF, un video corto con voz grabado de forma automática (Pi real en una terminal sin datos personales: encender, leer una respuesta con audio, controles, ajustes, voces y comandos), aprobado por la persona responsable («genial, perfecto») y subido por ella al README, debajo del título; GitHub lo muestra como reproductor (silenciado por defecto). El desplegable de las voces pasó justo debajo del consumo aproximado y el nombre visible pasó a ser **teHablo** (README y textos de Pi). Las herramientas de grabación quedaron fuera del repositorio, a petición de la persona responsable.
+- **Fuera de alcance:** posible desajuste visto dos veces al grabar y sin investigar: tras subir el volumen desde la barra (110 %), la ventana de ajustes seguía mostrando 100 %.
 
 ### RH-W-0031: Mostrar la barra de Pi al iniciar
 

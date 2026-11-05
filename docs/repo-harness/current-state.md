@@ -27,6 +27,7 @@ Este archivo proyecta solo hechos verificados del proyecto: registros activos, b
 
 <!-- doc-role:recent-work -->
 
+- `RH-W-0030` (`completed`, 2026-11-05): README con video de demostración con voz debajo del título (subido por la persona responsable; GitHub lo muestra como reproductor), voces justo debajo del consumo aproximado y nombre visible **teHablo** en el README y en Pi (`TTS teHablo: `, `teHablo · Ajustes`); las 97 pruebas de la extensión pasan.
 - Pi (2026-11-04, tercera parte): arranca con la voz guardada; barra más corta `[ ▶ ] [ ▶ copiado ] [ ⋯ ]` con el menú `[ ≡ ]` dentro de los controles; lectura de lo copiado sin dependencias nuevas; comandos simplificados (`/tts` enciende o apaga, `auto`, `play [n]`, `copy`, `pause`, `stop`, `toolbar`, `menu`, `status`); mensajes con «TTS TeHablo: »; `TTS off` en la barra de estado y sin auto con el servidor apagado (`RH-W-0004`).
 - 6 voces clonadas aprobadas incluidas ya preparadas y sin token (`Facundo`, `Santiago`, `Camila`, `Javiera`, `Diego`, `Felipe`); volumen más fuerte y parejo entre voces; tabla de voces con `●` activa y *RAM aprox.* (`RH-W-0004`, `RH-W-0005`).
 - Ventana de ajustes `[ ≡ ]` en Pi (voz, volumen, velocidad, lectura automática, atajos, servidor) con ajustes guardados; Phonon 40M es elegible como voz más natural, `lola` sigue de inicio (`RH-W-0004`, `RH-W-0005`).
@@ -76,7 +77,6 @@ Este archivo proyecta solo hechos verificados del proyecto: registros activos, b
 - `RH-W-0025` (`deferred`, P2): versión lite de mínimo consumo; cuantización predeterminada en Linux entregada; el resto queda para el final del plan.
 - `RH-W-0028` (`deferred`, P3): decidir si tehablo se instala una vez por usuario (`~/.tehablo/`) o se queda en el repositorio; ya entregados los ajustes de Pi por usuario y el token sin guardar (2026-11-04). En Windows, la persona responsable comprobó físicamente `install.ps1` con `ptts`, la descarga de Regina con el token pegado en la ventana y el TTS apagado (Iker quedó descargada con el mismo archivo), y que tras cerrar y abrir Pi Regina e Iker leen sin token; `/health` mostró `phonon`/`Regina` sin error. Esa prueba probablemente reusó un servidor vivo con el token: con un servidor nuevo sin token, Phonon pasaba a `lola`; corregido el mismo día (carga desde el caché) y comprobado con un servidor nuevo sin token. `install.sh` ya comprueba `ptts` y muestra el comando `pi install`, como `install.ps1` (solo se comprobó el texto final y la sintaxis). Linux sigue sin comprobarse.
 - `RH-W-0029` (`proposed`, P3): voces por API externa (ElevenLabs, Google…) como extra apagado.
-- `RH-W-0030` (`active`, P2): README reorganizado (producto, consumo aproximado, instalación, uso); muestras de voz incluidas; falta el GIF de uso.
 - `RH-W-0031` (`completed`): la barra de Pi aparece al iniciar, sobre el editor, salvo que se dejara oculta; comprobada físicamente en Windows.
 
 ## Siguiente paso
