@@ -37,7 +37,7 @@ test('dict defaults, per-voice toggle persistence, request payload and status',a
     const initial=model!=='phonon';
     assert.equal(s.calls.at(-1)[1].lexicon,initial);
     await s.command('dict');
-    assert.deepEqual(s.notices.at(-1),[`TTS TeHablo: Arreglos de pronunciación para ${voice}: ${initial?'no':'sí'}`,'info']);
+    assert.deepEqual(s.notices.at(-1),[`TTS TeHablo: Dict (diccionario de pronunciación) para ${voice}: ${initial?'no':'sí'}`,'info']);
     assert.deepEqual(s.store.load().dict,{[voice]:!initial});
     const before=s.calls.length;
     await s.command('dict extra');
@@ -45,7 +45,7 @@ test('dict defaults, per-voice toggle persistence, request payload and status',a
     assert.equal(s.calls.length,before);
     assert.deepEqual(s.store.load().dict,{[voice]:!initial});
     await s.command('play'); assert.equal(s.calls.at(-1)[1].lexicon,!initial);
-    await s.command('status'); assert.ok(s.notices.at(-1)[0].includes(`Arreglos de pronunciación: ${initial?'no':'sí'}`));
+    await s.command('status'); assert.ok(s.notices.at(-1)[0].includes(`Dict (diccionario de pronunciación): ${initial?'no':'sí'}`));
     await s.emit('session_shutdown');
   }
 });

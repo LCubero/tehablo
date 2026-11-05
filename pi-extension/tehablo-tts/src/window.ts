@@ -229,7 +229,7 @@ export class SettingsWindow {
       line();
       line([{text: ' '}, {text: '[ Cerrar ]', style: 'accent', fn: () => this.done()}, {text: '   ↑↓ elegir · ←→ cambiar · Enter · Esc', style: 'dim'}]);
     } else if (this.page === 'voices') {
-      line([{text: '   ' + fit('Voz', 31) + fit('Estado', 19) + fit('RAM aprox.', 11) + 'Arreglos', style: 'dim'}]);
+      line([{text: '   ' + fit('Voz', 31) + fit('Estado', 19) + fit('RAM aprox.', 11) + 'Dict', style: 'dim'}]);
       line([{text: '   ' + '─'.repeat(IN - 4), style: 'dim'}]);
       this.order().forEach((v, i) => {
         const sel = i === this.pick, pickIt = () => { this.pick = i; this.choose(v); };
@@ -242,7 +242,7 @@ export class SettingsWindow {
           {text: fit(this.c.dict(v) ? 'sí' : 'no', 6), style: sel ? 'accent' : 'dim', fn: () => { this.pick = i; this.c.toggleDict(v); }}]);
       });
       line([{text: '   * necesita una cuenta gratis de Hugging Face (1 sola vez)', style: 'dim'}]);
-      line([{text: ' '}, {text: '[ Volver ]', style: 'accent', fn: () => this.home()}, {text: '   ↑↓ elegir · Enter usar · ←→ arreglos · Esc', style: 'dim'}]);
+      line([{text: ' '}, {text: '[ Volver ]', style: 'accent', fn: () => this.home()}, {text: '   ↑↓ elegir · Enter usar · ←→ dict · Esc', style: 'dim'}]);
     } else if (this.page === 'download') {
       const v = this.target!;
       line([{text: ` ${v.name} (${v.note}) no está descargada.`}]);

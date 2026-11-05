@@ -78,7 +78,7 @@ test('voice table orders downloaded, downloadable, then account voices and marks
   const lines = s.w.render(100);
   const order = ['lola', 'rafael', 'Regina', 'ar-hombre-4310'].map(n => lines.findIndex(l => l.includes(n + ' (') || l.includes(n + ' * (')));
   assert.deepEqual([...order].sort((a, b) => a - b), order);
-  assert.ok(lines.some(l => /Voz\s+Estado\s+RAM aprox\.\s+Arreglos\s*│$/.test(l)) && !lines.some(l => l.includes('Tipo')));
+  assert.ok(lines.some(l => /Voz\s+Estado\s+RAM aprox\.\s+Dict\s*│$/.test(l)) && !lines.some(l => l.includes('Tipo')));
   assert.ok(lines[order[0]].includes('● lola (') && lines[order[0]].includes('Descargada') && lines[order[0]].includes('~1 GB'));
   assert.ok(lines[order[1]].includes('  rafael (') && lines[order[1]].includes('~1 GB'));
   assert.ok(lines[order[2]].includes('  Regina * (') && lines[order[2]].includes('~0,3 GB'));
@@ -100,7 +100,10 @@ test('each voice row shows and toggles its own pronunciation fixes by click or �
   assert.match(row('Regina'), /\s+sí\s*│$/);
   assert.deepEqual(s.calls, [['dict', 'lola'], ['dict', 'Regina']]);
   assert.equal(s.w.page, 'voices');
-  assert.match(s.text(), /←→ arreglos/);
+  assert.match(s.text(), /←→ dict/);
+  // Every line keeps the window frame: same width, closed on both sides.
+  const frame = s.w.render(100).map(l => Array.from(l).length);
+  assert.ok(frame.every(n => n === frame[0]), String(frame));
 });
 
 test('voice table shows the active voice name in yellow (warning), also under the cursor', () => {
