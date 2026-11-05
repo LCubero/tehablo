@@ -59,10 +59,10 @@ test('manual controls and numbered/latest playback; off hides controls',async()=
   const s=setup(); await s.finish(); await s.finish('Segunda');
   assert.equal(s.cards().length,2); assert.equal(s.calls.length,0);
   const component=s.renderers['tehablo-tts'](s.cards()[0],{}, {fg:(_:any,t:any)=>t});
-  assert.equal(component.render(100)[0],'[ ⏻ TTS ] [ ≡ ]');assert.doesNotMatch(component.render(100)[0],/\/tts|\b1\b(?!\.\d)/);
+  assert.equal(component.render(100)[0],' [ ⏻ TTS ] [ ≡ ]');assert.doesNotMatch(component.render(100)[0],/\/tts|\b1\b(?!\.\d)/);
   await s.command('play 1'); assert.deepEqual(s.calls.at(-1),['/speak',{id:'0',text:'Hola mundo'}]);
   await s.command('play'); assert.equal(s.calls.at(-1)[1].text,'Segunda');
-  assert.equal(component.render(100)[0],'[ ▶ ] [ ▶ copiado ] [ ⋯ ]');
+  assert.equal(component.render(100)[0],' [ ▶ ] [ ▶ copiado ] [ ⋯ ]');
   await s.command('toolbar'); assert.deepEqual(component.render(100),[]);
 });
 test('auto toggles, skips errors/aborts/empty; new prompt stops',async()=>{
@@ -82,7 +82,7 @@ test('[ Leer copiado ] reads the copied text in that bar; an empty or unreadable
     component.handleMouse({type:'click',button:'left',x:Array.from(line.slice(0,line.indexOf('▶ copiado'))).length,y:0});
     await new Promise(r=>setImmediate(r)); await new Promise(r=>setImmediate(r));};
   await press(); assert.deepEqual(s.calls.at(-1),['/speak',{id:'0',text:'Hola copiado'}]);
-  assert.match(component.render(100)[0],/^\[ ‖ \] \[ ■ \]/);
+  assert.match(component.render(100)[0],/^ \[ ‖ \] \[ ■ \]/);
   await s.command('stop'); const speaks=()=>s.calls.filter(c=>c[0]==='/speak').length; const before=speaks();
   copied='  '; await press(); assert.deepEqual(s.notices.at(-1),['TTS TeHablo: El portapapeles está vacío.','warning']);
   copied=new Error('No se pudo leer el portapapeles: instala wl-clipboard o xclip.'); await press();
@@ -94,14 +94,14 @@ test('before the first response the bar shows above the editor, and a hidden bar
   s.ctx.ui.setWidget=(key:string,content:any)=>{widgets[key]=content;}; s.ctx.ui.onTerminalInput=()=>()=>{};
   const startBar=()=>widgets['tehablo-tts']?.({},theme).render(100);
   await s.emit('session_start');
-  assert.deepEqual(startBar(),['[ ⏻ TTS ] [ ≡ ]']);
+  assert.deepEqual(startBar(),[' [ ⏻ TTS ] [ ≡ ]','']);
   // Nothing to read yet, so the start bar offers only the copied text.
-  await s.command(''); assert.deepEqual(startBar(),['[ ▶ copiado ] [ ⋯ ]']);
+  await s.command(''); assert.deepEqual(startBar(),[' [ ▶ copiado ] [ ⋯ ]','']);
   await s.finish(); assert.equal(widgets['tehablo-tts'],undefined); assert.equal(s.cards().length,1);
   await s.command('toolbar'); await s.emit('session_start');
   const component=s.renderers['tehablo-tts'](s.cards()[0],{},theme);
   assert.deepEqual(component.render(100),[]); assert.equal(widgets['tehablo-tts'],undefined);
-  await s.command('toolbar'); assert.equal(component.render(100)[0],'[ ⏻ TTS ] [ ≡ ]');
+  await s.command('toolbar'); assert.equal(component.render(100)[0],' [ ⏻ TTS ] [ ≡ ]');
 });
 test('a hidden toolbar only hides the bar: auto reading and play still work',async()=>{
   const s=setup(); await s.command('toolbar'); await s.command('auto'); await s.finish();

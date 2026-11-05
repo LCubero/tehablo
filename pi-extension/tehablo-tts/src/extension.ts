@@ -379,12 +379,14 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
     };
     const label = () => context?.mode === 'tui' && barVisible && current()
       ? segments().map(c => c.text + c.gap).join('') : '';
+    // One column of padding, like Pi's own transcript text; the start bar also leaves a blank line above the editor.
     return {
-      render: (width: number) => label() && width > 0 ? [theme.fg('accent', Array.from(label()).slice(0, width).join(''))] : [],
+      render: (width: number) => label() && width > 1
+        ? [theme.fg('accent', ' ' + Array.from(label()).slice(0, width - 1).join('')), ...(card === START ? [''] : [])] : [],
       invalidate() {},
       handleMouse(event: {type: string; button: string; x: number; y: number}) {
-        if (label() && event.type === 'click' && event.button === 'left' && event.y === 0 && event.x >= 0 && context) {
-          let start = 0;
+        if (label() && event.type === 'click' && event.button === 'left' && event.y === 0 && event.x >= 1 && context) {
+          let start = 1;
           for (const control of segments()) {
             const end = start + Array.from(control.text).length;
             if (control.action && event.x >= start && event.x < end) {
