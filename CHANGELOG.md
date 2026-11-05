@@ -6,6 +6,8 @@ Este archivo registra los cambios completados en orden cronológico.
 
 ## 2026-11-05
 
+- Pi: solo en **Esperar**, cada lectura que sale de la cola dice «Siguiente lectura.» con la misma voz después de la pausa y el bip; se sintetiza junto con el texto, sin una pasada adicional.
+
 - Pi: leer copiado muestra «Preparando…» inmediatamente, hasta que el servidor acepta la lectura; ignora clics repetidos mientras prepara y limpia el estado al cancelar o fallar.
 
 - Pi: **Esperar** avisa con un bip suave sin interrumpir la lectura actual; cada lectura que sale de la cola empieza con una pausa de unos 0,6 s y el mismo bip, generado en memoria y ajustado al volumen. Una lectura copiada que empieza deja de mostrar «En espera» aunque haya otra copia de la misma tarjeta en la cola.

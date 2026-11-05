@@ -288,7 +288,8 @@ class SpeechService:
     def next_reading(self):
         if self.queue and not self.closed and self.error is None:
             item = self.queue.popleft()
-            self.start_reading(item)
+            identifier, text, voice, speed, lexicon = item
+            self.start_reading((identifier, 'Siguiente lectura. ' + text, voice, speed, lexicon))
             self.queue_prefix = True
             self.promoted.append(item[0])
 

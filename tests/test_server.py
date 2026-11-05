@@ -115,10 +115,13 @@ class ServerTests(unittest.TestCase):
             def close(self):
                 pass
 
+        synthesized = []
+
         class ShortSynth:
             sample_rate = 24000
 
             def stream(self, text, voice, stop):
+                synthesized.append((text, voice))
                 yield np.full(24000, .1, dtype=np.float32)
 
         self.synth = ShortSynth()
@@ -144,11 +147,34 @@ class ServerTests(unittest.TestCase):
             self.assertTrue(np.all(prefix[:14400] == 0))
         self.assertGreater(float(np.ptp(prefix[14400:])), .001)
         np.testing.assert_allclose(prefix[14400:], mixed - baseline * .5, atol=1e-7)
+        self.assertEqual(synthesized, [('first', 'lola'), ('Siguiente lectura. second', 'lola')])
         speech = sinks[-1].read(2400)
         self.assertTrue(np.all(speech == baseline[0] * .5))
         self.request('/speak', {'id': 'replacement', 'text': 'replacement', 'policy': 'stop'})
         self.wait(lambda: len(sinks) == 3 and self.request('/status')[1]['state'] == 'playing')
         self.assertTrue(np.all(sinks[-1].read(2400) == baseline[0] * .5))
+        self.assertEqual(synthesized[-1], ('replacement', 'lola'))
+
+    def test_promoted_reading_announces_before_normalized_text(self):
+        self.ready()
+        for lexicon, expected in ((True, 'páiton quince mil'),
+                                  (False, 'Python quince mil')):
+            with self.subTest(lexicon=lexicon):
+                count = len(self.synth.calls)
+                self.request('/speak', {'id': 'first', 'text': 'Python 15.000',
+                                        'policy': 'wait', 'lexicon': lexicon})
+                self.wait(lambda: len(self.synth.calls) == count + 1)
+                self.assertEqual(self.synth.calls[-1][0], expected)
+                self.request('/speak', {'id': 'queued', 'text': 'Python 15.000',
+                                        'policy': 'wait', 'lexicon': lexicon})
+                self.request('/stop', {'id': 'first'})
+                self.wait(lambda: len(self.synth.calls) == count + 2)
+                self.assertEqual(self.synth.calls[-1][0], 'Siguiente lectura. ' + expected)
+                self.request('/speak', {'id': 'replacement', 'text': 'Python 15.000',
+                                        'policy': 'stop', 'lexicon': lexicon})
+                self.wait(lambda: len(self.synth.calls) == count + 3)
+                self.assertEqual(self.synth.calls[-1][0], expected)
+                self.request('/stop', {})
 
     def test_queue_promotions_are_reported_after_completion_and_bounded(self):
         self.assertNotIn('promoted', self.request('/status')[1])
@@ -191,7 +217,7 @@ class ServerTests(unittest.TestCase):
         self.assertEqual(self.request('/config', {'model': 'spanish_24l'})[0], 200)
         self.ready()
         self.wait(lambda: bool(self.synth.calls))
-        self.assertEqual(self.synth.calls[0][0], 'next')
+        self.assertEqual(self.synth.calls[0][0], 'Siguiente lectura. next')
         self.assertEqual(self.request('/status')[1]['id'], 'next')
         self.assertEqual(self.request('/status')[1]['queue'], ['last'])
 
@@ -232,7 +258,7 @@ class ServerTests(unittest.TestCase):
         self.assertEqual(len(self.synth.calls), 1)
         self.request('/resume', {})
         self.wait(lambda: len(self.synth.calls) == 2)
-        self.assertEqual(self.synth.calls[1][0], 'second')
+        self.assertEqual(self.synth.calls[1][0], 'Siguiente lectura. second')
         self.wait(lambda: self.request('/status')[1]['state'] == 'idle')
         self.assertNotIn('queue', self.request('/status')[1])
 
@@ -259,7 +285,7 @@ class ServerTests(unittest.TestCase):
 
             def stream(self, text, voice, stop):
                 self.calls.append(text)
-                if text == 'broken':
+                if text == 'Siguiente lectura. broken':
                     raise RuntimeError('broken queued reading')
                 yield np.ones(2400, dtype=np.float32)
                 self.finished.set()
@@ -281,7 +307,7 @@ class ServerTests(unittest.TestCase):
             return len(synth.calls) == 3
 
         self.wait(drain_first)
-        self.assertEqual(synth.calls, ['first', 'broken', 'last'])
+        self.assertEqual(synth.calls, ['first', 'Siguiente lectura. broken', 'Siguiente lectura. last'])
         self.assertEqual(self.request('/status')[1]['id'], 'c')
         self.assertNotIn('queue', self.request('/status')[1])
         self.wait(lambda: (sinks[-1].drain(), self.request('/status')[1]['state'] == 'idle')[1])
@@ -778,7 +804,6 @@ class ServerTests(unittest.TestCase):
     def test_speed_changes_between_generated_chunks(self):
         from unittest.mock import patch
         events = []
-        service = self.server.service
 
         class Stretch:
             def __init__(self, speed):
@@ -802,7 +827,8 @@ class ServerTests(unittest.TestCase):
         with patch('tehablo_server.SpeedStream', Stretch):
             self.ready()
             self.request('/speak', {'id': 'speed', 'text': 'hola'})
-            self.wait(lambda: service.done)
+            # Queue completion consumes the internal done flag; idle remains observable.
+            self.wait(lambda: self.request('/status')[1]['state'] == 'idle')
         self.assertEqual(events, [('new', 1.0), ('process', 1.0), ('flush', 1.0),
                                   ('new', 1.25), ('process', 1.25), ('flush', 1.25)])
 
