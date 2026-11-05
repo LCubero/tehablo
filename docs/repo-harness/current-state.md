@@ -61,7 +61,7 @@ Este archivo proyecta solo hechos verificados del proyecto: registros activos, b
 - `RH-W-0005` (`active`, P3): probadas a ciegas voces sin token y, con token, las 18 de `voices/` clonadas con Pocket TTS ([resumen y resultados](../pruebas-de-voces.md#resumen-2026-10-30)); varias suenan mejor que `lola`. Sigue la prueba con NeuTTS y el ajuste castellano; ya incorporadas Phonon y 6 clonadas aprobadas; falta decidir sobre otros motores. El 2026-11-03, en Fedora, Phonon 40M es (`Regina`, `Iker`) sonó a ciegas mucho más natural que `lola` gastando menos (303 MiB y 8 s de CPU frente a 961 MiB y 10,6 s); licencia no comercial y sin probar todavía con los ajustes de tehablo ([resultados](../pruebas-de-voces.md#phonon-40m-es-frente-a-lola-spanish_24l-y-kokoro-2026-11-03-fedora)). Corregida solo la salida nueva del descargador a PCM16 (pruebas deterministas sin red); los originales existentes siguen en coma flotante. El lector de Pocket TTS acepta una copia PCM16 donde rechaza el original, pero esta corrección no verifica una clonación completa ni añade escuchas.
 - `RH-W-0007` (`deferred`, P3): modo GPU opcional, manteniendo CPU como predeterminado.
 - `RH-W-0009` (`deferred`, P2): versión Docker y despliegue seguro en VPS; depende de `RH-W-0001` y `RH-W-0008`.
-- `RH-W-0010` (`proposed`, P3): elegir si se usa el diccionario de pronunciación en inglés.
+- `RH-W-0010` (`proposed`, P3): activar o no los arreglos de pronunciación desde los ajustes de Pi, con valor por defecto por voz (ampliado el 2026-11-04).
 - `RH-W-0011` (`proposed`, P2): comprobar portabilidad en arm64, Raspberry Pi, Oracle Cloud Free Tier, macOS, WSL, VM, Proxmox y VPS.
 - `RH-W-0012` (`deferred`, P3): motor o modelo propio y fine-tuning, al final con la optimización.
 - `RH-W-0014` (`deferred`, P3): evaluar una API y la integración con CLIProxyAPI.
@@ -75,6 +75,9 @@ Este archivo proyecta solo hechos verificados del proyecto: registros activos, b
 - `RH-W-0023` (`proposed`, P2): CI mínima en Windows y Linux entregada el 2026-11-03; quedan revisión de seguridad, buenas prácticas (linter), control (límites) y rendimiento (medición de regresiones); dependencias limitadas a versiones probadas el 2026-10-30.
 - `RH-W-0025` (`deferred`, P2): versión lite de mínimo consumo; cuantización predeterminada en Linux entregada; el resto queda para el final del plan.
 - `RH-W-0028` (`deferred`, P3): decidir si tehablo se instala una vez por usuario (`~/.tehablo/`) o se queda en el repositorio; ya entregados los ajustes de Pi por usuario y el token sin guardar (2026-11-04). En Windows, la persona responsable comprobó físicamente `install.ps1` con `ptts`, la descarga de Regina con el token pegado en la ventana y el TTS apagado (Iker quedó descargada con el mismo archivo), y que tras cerrar y abrir Pi Regina e Iker leen sin token; `/health` mostró `phonon`/`Regina` sin error. Esa prueba probablemente reusó un servidor vivo con el token: con un servidor nuevo sin token, Phonon pasaba a `lola`; corregido el mismo día (carga desde el caché) y comprobado con un servidor nuevo sin token. `install.sh` ya comprueba `ptts` y muestra el comando `pi install`, como `install.ps1` (solo se comprobó el texto final y la sintaxis). Linux sigue sin comprobarse.
+- `RH-W-0029` (`proposed`, P3): voces por API externa (ElevenLabs, Google…) como extra apagado.
+- `RH-W-0030` (`proposed`, P2): README claro con producto, consumo aproximado, GIF de uso y muestras de voz.
+- `RH-W-0031` (`active`, P2): mostrar la barra de Pi al iniciar, salvo que se dejara oculta.
 
 ## Siguiente paso
 

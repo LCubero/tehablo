@@ -137,8 +137,9 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
   - Decidir dónde se elige: TUI, consola, extensión de Pi o todas, y si la elección se guarda.
   - Implementar la opción con el diccionario activo por defecto y probarla.
 - **Evidencia:** el diccionario siempre se aplica: `Lexicon(ROOT / 'pronunciaciones.json')` en `src/tehablo_server.py` y `src/tehablo_tts.py`.
-- **Decisión:** registrar como trabajo propio; no se eligió dónde se expone.
-- **Condición del siguiente avance:** decisión de la persona responsable sobre dónde se elige la opción.
+- **Adición (2026-11-04):** la persona responsable lo amplía: «una opcion para activar o no los arreglos/diccionarios, me gustaría. y para dejarlo default para las voces que yo quiera. configurtable es bonito (arreglos/diccionario)». Motivo: con Phonon (`Regina`, `Iker`) algunas escrituras del diccionario, pensadas para Pocket, suenan raras (por ejemplo «GitHub» → «guítjab»); inferencia pendiente de confirmar por escucha. La opción se expone en los ajustes de Pi y se guarda; cada voz puede traerla activada o no por defecto.
+- **Decisión:** registrar como trabajo propio; el 2026-11-04 se eligió exponerla en los ajustes de Pi con valor por voz.
+- **Condición del siguiente avance:** terminar `RH-W-0031` (barra al iniciar Pi), que va primero por orden acordado.
 
 ### RH-W-0011: Comprobar la portabilidad en arquitecturas y entornos
 
@@ -327,6 +328,36 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 - **Exclusiones:** publicar la extensión como paquete npm en la galería de pi.dev quedó descartado por ahora («como instalable desde esos pi.dev mejor no», 2026-11-04): el paquete tendría que instalar por su cuenta Python, el entorno y los modelos. Tampoco se usa `gentle-shell --link` («abrirlo con --link no quiero»); con `gentle-shell` se instala con `gentle-shell install <ruta>`. No se movió el entorno, los modelos ni las voces; la caché de Hugging Face sigue en la carpeta del usuario de cada sistema.
 - **Decisión:** 2026-11-04, decisión delegada de la persona responsable («tu decidelo ... sin sobreingenieria»): hacer ahora solo los ajustes por usuario y el token sin guardar; dejar la instalación global para cuando se trabaje la instalación o la versión lite.
 - **Condición del siguiente avance:** que la persona responsable quiera usar tehablo desde otros proyectos o retome `RH-W-0008`/`RH-W-0025`.
+
+### RH-W-0029: Voces por API externa como extra apagado
+
+- **Origen:** solicitud de la persona responsable del 2026-11-04: «agregar la opcion de poner api de elevenlabs, google, etc api voz» y, tras recordarle que el proyecto es local y gratis, «correcto es un extra apagado para usar si la persona quiere, no lo veo mal. (y que venga la opciond e aplicar los arreglos/diccionarios o no)».
+- **Prioridad:** P3; extra opcional que no cambia el uso local y gratuito por defecto.
+- **Dependencias:** `RH-W-0010` (aplicar o no los arreglos a estas voces); revisar seguridad de la clave con `RH-W-0023`.
+- **Estado:** `proposed`.
+- **Trabajo restante:** elegir proveedores, dónde se guarda la clave sin exponerla, cómo se elige en la ventana de voces y avisar que el texto sale del equipo y puede tener coste.
+- **Exclusiones:** activarlo por defecto; cualquier dependencia nueva obligatoria para quien no lo use.
+- **Decisión:** 2026-11-04, aceptado como extra apagado por la persona responsable.
+- **Condición del siguiente avance:** terminar `RH-W-0031`, `RH-W-0010` y `RH-W-0030`, o que la persona responsable lo adelante.
+
+### RH-W-0030: README claro con demostración y muestras de voz
+
+- **Origen:** solicitud de la persona responsable del 2026-11-04: «el readme no cumple con la carga cognitiva», «y que haga sentido y se entienda el producto y sus consumos aproximados», «el gif para mostrar el uso, menu, opciones, shobar, etc. las voces hay que hacer unos archivos de sonidop para subir y que puedan dar clic para el preview (si es posible)».
+- **Prioridad:** P2; es lo primero que ve quien llega al proyecto.
+- **Dependencias:** después de `RH-W-0031`, para que el GIF muestre la barra ya corregida.
+- **Estado:** `proposed`.
+- **Trabajo restante:** reordenar el README (qué es, instalar, usar en Pi, voces, consumo aproximado de disco y RAM) y mover el detalle a `docs/`; grabar un GIF corto de la barra y el menú; generar una muestra breve por voz y comprobar si GitHub permite escucharla desde la página.
+- **Condición del siguiente avance:** terminar `RH-W-0031`.
+
+### RH-W-0031: Mostrar la barra de Pi al iniciar
+
+- **Origen:** solicitud de la persona responsable del 2026-11-04: «apenas inicia pi no hay respuestas, por lo que no se muestra la barra, deberia mostrarse si no se dejó oculta la ultima vez diría yo».
+- **Prioridad:** P2; uso diario.
+- **Dependencias:** ninguna.
+- **Estado:** `active`.
+- **Trabajo restante:** mostrar la barra al abrir Pi aunque no haya respuestas, salvo que se dejara oculta con `/tts toolbar`.
+- **Evidencia:** la barra se dibuja como entrada pegada a una respuesta (`registerEntryRenderer` en `pi-extension/tehablo-tts/src/extension.ts`); sin respuestas no hay barra.
+- **Condición del siguiente avance:** comprobación física de la persona responsable en Pi.
 
 ## Registros resueltos
 <!-- doc-role:resolved-records -->
