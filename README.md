@@ -122,12 +122,13 @@ Pi empieza con el servidor **apagado**, en modo manual. Pulsa `[ ⏻ TTS ]` para
 | Controles abiertos | `[ ▶ ] [ ▶ copiado ] [ → ] : [ ≡ ] Vol [- 100% +] Vel [- 1.00x +] [ ⏻ ]` |
 | Sonando | `[ ‖ ] [ ■ ] [ ⋯ ]` |
 | En pausa | `[ ▶ ] [ ■ ] [ ⋯ ]` |
+| En espera | `[ ■ ] En espera [ ⋯ ]` |
 
-- `[ ▶ ]` lee esa respuesta; en pausa, continúa. `[ ■ ]` solo detiene.
+- `[ ▶ ]` lee esa respuesta; en pausa, continúa. `[ ■ ]` detiene y vacía la cola; en una barra **En espera**, cancela solo esa lectura.
 - Para leer una selección, **cópiala primero** y pulsa `[ ▶ copiado ]`: Pi no ve la selección del ratón.
 - `[ ⋯ ]` abre volumen, velocidad y ajustes; `[ → ]` los oculta.
 - `[ ⏻ ]` apaga el servidor y libera el modelo, sin perder tus ajustes.
-- Con varias sesiones de Pi abiertas, todas usan el mismo servidor: encenderlo o apagarlo en una lo hace en todas, y la barra de las demás lo muestra en unos segundos. Leer en una sesión detiene la lectura de otra.
+- Con varias sesiones de Pi abiertas, todas usan el mismo servidor: encenderlo o apagarlo en una lo hace en todas, y la barra de las demás lo muestra en unos segundos. Cada lectura nueva decide si interrumpe o espera, según sus ajustes. Empezar otro turno cancela solo las lecturas de esa sesión; cerrar la sesión conserva el comportamiento anterior.
 - Antes de la primera respuesta, la barra aparece sobre el editor sin el botón de leer respuesta.
 
 ### Comandos
@@ -139,7 +140,7 @@ Pi empieza con el servidor **apagado**, en modo manual. Pulsa `[ ⏻ TTS ]` para
 | `/tts play [n]` | Lee la última respuesta o la número `n` de la sesión, contando desde la primera |
 | `/tts copy` | Lee el texto copiado |
 | `/tts pause` | Pausa o continúa |
-| `/tts stop` | Detiene la lectura |
+| `/tts stop` | Detiene la lectura actual y vacía la cola compartida |
 | `/tts toolbar` | Muestra u oculta la barra y recuerda la elección; no desactiva la lectura ni los atajos |
 | `/tts menu` | Abre los ajustes |
 | `/tts dict` | Activa o desactiva el diccionario de pronunciación para la voz actual y lo recuerda |
@@ -148,6 +149,10 @@ Pi empieza con el servidor **apagado**, en modo manual. Pulsa `[ ⏻ TTS ]` para
 ### Ajustes `[ ≡ ]`
 
 Elige **voz**, **volumen**, **velocidad**, **lectura automática** y **atajos de teclado**, o enciende, apaga y reinicia el servidor. Usa clics o ↑↓, ←→, Enter y Esc.
+
+**Si llega otra lectura** permite elegir **Detener** (predeterminado: corta la actual y reproduce la nueva, sin borrar la cola) o **Esperar** (guarda hasta 10 lecturas, en orden de llegada, sin generar su audio todavía). Se aplica a `[ ▶ ]`, `[ ▶ copiado ]`, `/tts play [n]`, `/tts copy` y al modo automático, también entre sesiones. Una lectura en espera comienza cuando termina, se cancela o falla la actual; al empezar una de esta sesión, Pi avisa: «TTS teHablo: Suena la lectura en espera.». Si la cola está llena, muestra una advertencia.
+
+**Barra de controles** muestra u oculta la barra, con el mismo aviso y efecto que `/tts toolbar`: la lectura y los atajos siguen funcionando. Ambas opciones se guardan al cambiarlas.
 
 La tabla muestra el estado de descarga, la RAM aproximada y **Dict** por voz. El diccionario adapta términos como «Python»; desactivarlo no cambia la lectura de números ni la limpieza del texto. Por defecto está apagado en Phonon y encendido en Pocket.
 

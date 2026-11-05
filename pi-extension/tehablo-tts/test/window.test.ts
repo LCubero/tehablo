@@ -72,6 +72,19 @@ test('keyboard changes volume, speed and auto within their limits', () => {
   assert.equal(s.closed(), true);
 });
 
+test('policy and toolbar rows support keyboard and mouse', () => {
+  const s = setup();
+  assert.match(s.text(), /Si llega otra lectura/);
+  s.click('Detener');
+  assert.deepEqual(s.calls.at(-1), ['change', 'policy', 'wait']);
+  s.key('\x1b[D');
+  assert.deepEqual(s.calls.at(-1), ['change', 'policy', 'stop']);
+  s.click('visible');
+  assert.deepEqual(s.calls.at(-1), ['change', 'toolbar', false]);
+  s.key('\r');
+  assert.deepEqual(s.calls.at(-1), ['change', 'toolbar', true]);
+});
+
 test('voice table orders downloaded, downloadable, then account voices and marks the active one', () => {
   const s = setup();
   s.click('[ Cambiar ]');

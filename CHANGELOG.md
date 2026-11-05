@@ -6,6 +6,8 @@ Este archivo registra los cambios completados en orden cronológico.
 
 ## 2026-11-05
 
+- Pi: los ajustes `[ ≡ ]` permiten elegir **Detener** (predeterminado) o **Esperar** cuando llega otra lectura, tanto manual y copiada como automática. La cola compartida admite 10 lecturas, muestra «En espera», permite cancelar cada una y avisa cuando empieza a sonar. Empezar otro turno cancela solo las lecturas de esa sesión; detener globalmente vacía la cola. El menú también permite mostrar u ocultar la barra, igual que `/tts toolbar`; ambas elecciones se recuerdan (`RH-W-0041`).
+
 - El nombre visible del producto pasa a ser **teHablo**: título del README, avisos de Pi (`TTS teHablo: …`), ventana de ajustes (`teHablo · Ajustes`) y descripción del comando `/tts`. Rutas, comandos, carpetas y nombres técnicos no cambian.
 - Pi con varias sesiones abiertas: la barra de cada sesión muestra en unos segundos si otra encendió o apagó el servidor compartido, y `[ ⏻ ]` lo apaga para todas también cuando lo arrancó otra sesión (`RH-W-0033`).
 - README: video de demostración al principio (encender, leer una respuesta, controles, ajustes, voces y comandos) y el desplegable «▶ Escuchar las voces aquí» justo debajo del consumo aproximado.

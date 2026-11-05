@@ -56,13 +56,15 @@ class ServerTests(unittest.TestCase):
     def setUp(self):
         self.loaded = threading.Event()
         self.synth = Synth()
+        self.audio_factory = Sink
 
         def load(model):
             self.loaded.wait(3)
             return self.synth
 
         self.server = create_server(port=0, model='spanish', synthesizer_factory=load,
-                                    audio_factory=Sink, catalog=['lola', 'other'])
+                                    audio_factory=lambda rate, callback: self.audio_factory(rate, callback),
+                                    catalog=['lola', 'other'])
         # Never touch the real model cache: importing it can take longer than the HTTP timeout in CI.
         self.server.service.cached = lambda name, model, kind: False
         self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
@@ -96,6 +98,145 @@ class ServerTests(unittest.TestCase):
     def ready(self):
         self.loaded.set()
         self.wait(lambda: self.request('/health')[1]['ready'])
+
+    def test_queue_promotions_are_reported_after_completion_and_bounded(self):
+        self.assertNotIn('promoted', self.request('/status')[1])
+        self.request('/speak', {'id': 'first', 'text': 'first'})
+        for i in range(12):
+            identifier = str(i)
+            self.request('/speak', {'id': identifier, 'text': identifier, 'policy': 'wait'})
+            current = 'first' if i == 0 else str(i - 1)
+            self.request('/stop', {'id': current})
+        self.request('/stop', {'id': '11'})
+        status = self.request('/status')[1]
+        self.assertEqual(status['state'], 'idle')
+        self.assertNotIn('queue', status)
+        self.assertEqual(status.get('promoted'), [str(i) for i in range(2, 12)])
+
+    def test_accepted_replay_removes_old_promotion_under_either_policy(self):
+        for policy in ('wait', 'stop'):
+            with self.subTest(policy=policy):
+                self.request('/speak', {'id': 'other', 'text': 'other'})
+                self.request('/speak', {'id': 'a', 'text': 'first A', 'policy': 'wait'})
+                self.request('/stop', {'id': 'other'})
+                self.request('/stop', {'id': 'a'})
+                self.assertIn('a', self.request('/status')[1]['promoted'])
+                self.request('/speak', {'id': 'other', 'text': 'other'})
+                code, result = self.request('/speak', {'id': 'a', 'text': 'replayed A', 'policy': policy})
+                self.assertEqual(code, 202)
+                status = self.request('/status')[1]
+                self.assertNotIn('promoted', status)
+                if policy == 'wait':
+                    self.assertEqual(result['state'], 'queued')
+                    self.assertEqual(status['queue'], ['a'])
+                    self.request('/stop', {'id': 'other'})
+                    self.assertEqual(self.request('/status')[1]['promoted'], ['a'])
+                self.request('/stop', {})
+
+    def test_model_reload_continues_the_queue(self):
+        self.request('/speak', {'id': 'first', 'text': 'first'})
+        self.request('/speak', {'id': 'next', 'text': 'next', 'policy': 'wait'})
+        self.request('/speak', {'id': 'last', 'text': 'last', 'policy': 'wait'})
+        self.assertEqual(self.request('/config', {'model': 'spanish_24l'})[0], 200)
+        self.ready()
+        self.wait(lambda: bool(self.synth.calls))
+        self.assertEqual(self.synth.calls[0][0], 'next')
+        self.assertEqual(self.request('/status')[1]['id'], 'next')
+        self.assertEqual(self.request('/status')[1]['queue'], ['last'])
+
+    def test_wait_queue_loading_fifo_limit_and_scoped_stop(self):
+        self.request('/speak', {'id': 'first', 'text': 'first'})
+        for i in range(10):
+            code, body = self.request('/speak', {'id': str(i), 'text': str(i), 'policy': 'wait'})
+            self.assertEqual((code, body.get('state')), (202, 'queued'))
+        self.assertEqual(self.request('/status')[1]['queue'], [str(i) for i in range(10)])
+        self.assertEqual(self.request('/speak', {'id': 'overflow', 'text': 'overflow', 'policy': 'wait'})[0], 400)
+        self.request('/stop', {'id': '3'})
+        self.assertEqual(self.request('/status')[1]['id'], 'first')
+        self.request('/stop', {'id': 'first'})
+        self.assertEqual(self.request('/status')[1]['id'], '0')
+        self.request('/speak', {'id': 'replacement', 'text': 'new'})
+        self.assertEqual(self.request('/status')[1]['id'], 'replacement')
+        self.assertEqual(self.request('/status')[1]['queue'], ['1', '2', '4', '5', '6', '7', '8', '9'])
+        self.request('/stop', {})
+        self.assertNotIn('queue', self.request('/status')[1])
+        self.assertIsNone(self.request('/status')[1]['id'])
+
+    def test_wait_queue_drains_after_playback_and_pause(self):
+        class ShortSynth(Synth):
+            def stream(self, text, voice, stop):
+                self.calls.append((text, voice))
+                for _ in range(10):
+                    if stop.wait(.005):
+                        return
+                    yield np.ones(240, dtype=np.float32)
+
+        self.synth = ShortSynth()
+        self.ready()
+        self.request('/speak', {'id': 'first', 'text': 'first'})
+        self.wait(lambda: bool(self.synth.calls))
+        self.request('/pause', {})
+        self.assertEqual(self.request('/speak', {'id': 'second', 'text': 'second', 'policy': 'wait'})[1].get('state'), 'queued')
+        self.assertEqual(self.request('/status')[1]['id'], 'first')
+        self.assertEqual(len(self.synth.calls), 1)
+        self.request('/resume', {})
+        self.wait(lambda: len(self.synth.calls) == 2)
+        self.assertEqual(self.synth.calls[1][0], 'second')
+        self.wait(lambda: self.request('/status')[1]['state'] == 'idle')
+        self.assertNotIn('queue', self.request('/status')[1])
+
+    def test_queue_waits_for_done_and_empty_buffer_then_recovers_from_failure(self):
+        sinks = []
+
+        class ManualSink:
+            def __init__(self, rate, callback):
+                self.callback = callback
+                sinks.append(self)
+
+            def drain(self):
+                self.callback(np.zeros((4800, 1), dtype=np.float32), 4800, None, None)
+
+            def close(self):
+                pass
+
+        class ShortSynth:
+            sample_rate = 24000
+
+            def __init__(self):
+                self.calls = []
+                self.finished = threading.Event()
+
+            def stream(self, text, voice, stop):
+                self.calls.append(text)
+                if text == 'broken':
+                    raise RuntimeError('broken queued reading')
+                yield np.ones(2400, dtype=np.float32)
+                self.finished.set()
+
+        synth = ShortSynth()
+        self.synth = synth
+        self.audio_factory = ManualSink
+        self.ready()
+        self.request('/speak', {'id': 'a', 'text': 'first'})
+        self.assertTrue(synth.finished.wait(3))
+        self.request('/speak', {'id': 'b', 'text': 'broken', 'policy': 'wait'})
+        self.request('/speak', {'id': 'c', 'text': 'last', 'policy': 'wait'})
+        self.assertEqual(synth.calls, ['first'])
+        self.assertEqual(self.request('/status')[1]['queue'], ['b', 'c'])
+        self.assertEqual(self.request('/status')[1]['id'], 'a')
+        def drain_first():
+            if self.request('/status')[1]['id'] == 'a':
+                sinks[0].drain()
+            return len(synth.calls) == 3
+
+        self.wait(drain_first)
+        self.assertEqual(synth.calls, ['first', 'broken', 'last'])
+        self.assertEqual(self.request('/status')[1]['id'], 'c')
+        self.assertNotIn('queue', self.request('/status')[1])
+        self.wait(lambda: (sinks[-1].drain(), self.request('/status')[1]['state'] == 'idle')[1])
+        self.assertEqual(self.request('/status')[1]['promoted'], ['b', 'c'])
+        self.assertEqual(self.request('/speak', {'id': 'bad', 'text': 'text', 'policy': 'pause'})[0], 400)
+        self.assertEqual(self.request('/stop', {'id': 42})[0], 400)
 
     def test_fallback_pending_retry_and_no_pocket_fallback(self):
         entered, release = threading.Event(), threading.Event()

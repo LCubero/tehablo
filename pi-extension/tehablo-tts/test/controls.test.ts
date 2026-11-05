@@ -12,11 +12,206 @@ function setup(store=memoryStore(),clipboard?:()=>Promise<string>,watchMs=0) {
   let renderer:any, command:any, state='playing', id:string|null='a', renders=0, fail=false, ready=true, ensures=0;
   const client:any={beginSession(){},ensure:async()=>{ensures++;},stop:async()=>{},shutdown:async()=>{},powerOff:async()=>{calls.push('/shutdown');},request:async(path:string)=>{calls.push(path);if(fail)throw Error('offline');if(path==='/health')return {...settings,ready};return {state,id,error:settings.error};},action:async(path:string,body:any)=>{calls.push(path);if(path==='/config'){configs.push(body);Object.assign(settings,body);return {...settings,ready};}if(path==='/health')return {...settings,ready};if(path==='/pause')state='paused';if(path==='/resume')state='playing';return {state};}};
   const ctx:any={mode:'tui',sessionManager:{getBranch:()=>entries},ui:{onTerminalInput:(h:any)=>{keyHandlers.push(h);return()=>{keyHandlers.splice(keyHandlers.indexOf(h),1);};},custom:(factory:any,options:any)=>new Promise<void>(resolve=>{const entry:any={options,closed:false};entry.w=factory({requestRender(){}},{fg:(_:any,t:string)=>t},{matches:()=>false},()=>{entry.closed=true;resolve();});windows.push(entry);}),notify(text:string){notices.push(text);},setStatus(_:string,text:string|undefined){renders++;statuses.push(text);},setWidget(){}}};
-  createExtension({on:(n:string,h:any)=>hooks[n]=h,registerCommand:(_:any,c:any)=>command=c.handler,registerEntryRenderer:(_:any,r:any)=>renderer=r} as any,client,store,clipboard,watchMs);
+  createExtension({appendEntry:(customType:string,data:any)=>entries.push({type:'custom',customType,data}),on:(n:string,h:any)=>hooks[n]=h,registerCommand:(_:any,c:any)=>command=c.handler,registerEntryRenderer:(_:any,r:any)=>renderer=r} as any,client,store,clipboard,watchMs);
   hooks.session_start({},ctx);
   const card=renderer(entries[1],{}, {fg:(_:any,t:string)=>t});
-  return {store,windows,keyHandlers,press:(d:string)=>keyHandlers.map(h=>h(d)),client,calls,card,configs,notices,statuses,line:()=>{const l=card.render(200)[0];if(l!==undefined)assert.equal(l[0],' ');return l?.slice(1);}, command:(s:string)=>command(s,ctx),set:(s:string,i:string|null='a')=>{state=s;id=i;},setReady:(value:boolean)=>{ready=value;},setError:(value:string)=>{settings.error=value;},setFallback:(value:string|null)=>{settings.fallback=value;},ensures:()=>ensures,close:()=>hooks.session_shutdown({},ctx),agentStart:()=>hooks.agent_start({},ctx),fail:(value=true)=>{fail=value;},renders:()=>renders};
+  return {entries,hooks,ctx,store,windows,keyHandlers,press:(d:string)=>keyHandlers.map(h=>h(d)),client,calls,card,configs,notices,statuses,line:()=>{const l=card.render(200)[0];if(l!==undefined)assert.equal(l[0],' ');return l?.slice(1);}, command:(s:string)=>command(s,ctx),set:(s:string,i:string|null='a')=>{state=s;id=i;},setReady:(value:boolean)=>{ready=value;},setError:(value:string)=>{settings.error=value;},setFallback:(value:string|null)=>{settings.fallback=value;},ensures:()=>ensures,close:()=>hooks.session_shutdown({},ctx),agentStart:()=>hooks.agent_start({},ctx),fail:(value=true)=>{fail=value;},renders:()=>renders};
 }
+test('a status snapshot cannot discard ownership of a pending speak',async()=>{
+  const store=memoryStore();store.save({...store.load(),policy:'wait'} as any);
+  const s=setup(store);const ids:string[]=[],stopped:string[]=[];
+  let release!:(v:any)=>void;
+  const request=s.client.request,action=s.client.action;
+  s.client.request=async(path:string,body:any)=>{
+    if(path==='/speak'){
+      ids.push(body.id);
+      return ids.length===1?{id:body.id}:new Promise(r=>{release=r;});
+    }
+    if(path==='/status')return {state:'playing',id:ids[0]};
+    return request(path,body);
+  };
+  s.client.action=async(path:string,body:any)=>{if(path==='/stop')stopped.push(body.id);return action(path,body);};
+  try{
+    await s.command('play');const pending=s.command('play');await new Promise(r=>setImmediate(r));
+    await tick();release({id:ids[1],state:'queued'});await pending;
+    assert.match(s.line(),/En espera/);
+    await s.agentStart();await new Promise(r=>setImmediate(r));
+    assert.ok(stopped.includes(ids[1]));assert.ok(stopped.includes(ids[0]));
+  }finally{await s.close();}
+});
+
+test('a queued read completed between polls still notifies once, ignoring foreign promotions',async()=>{
+  const s=setup();let idle=false;
+  const request=s.client.request;
+  s.client.request=async(path:string,body:any)=>{
+    if(path==='/speak')return {id:body.id,state:'queued'};
+    if(path==='/status')return {state:idle?'idle':'playing',id:idle?null:'foreign',queue:idle?[]:['a'],promoted:idle?['foreign','a']:['foreign']};
+    return request(path,body);
+  };
+  try{
+    await s.command('play');await tick();assert.equal(s.notices.length,0);
+    idle=true;await tick();await tick();
+    assert.deepEqual(s.notices,['TTS teHablo: Suena la lectura en espera.']);
+    assert.doesNotMatch(s.line(),/En espera/);
+  }finally{await s.close();}
+});
+
+test('replaying a finished queued card waits for its new promotion, not stale history',async()=>{
+  const s=setup();let state='playing',id:string|null='foreign',queue=['a'],promoted:string[]=[];
+  const request=s.client.request;
+  s.client.request=async(path:string,body:any)=>{
+    if(path==='/speak')return {id:body.id,state:'queued'};
+    if(path==='/status')return {state,id,queue,promoted};
+    return request(path,body);
+  };
+  try{
+    await s.command('play');assert.match(s.line(),/En espera/);
+    state='idle';id=null;queue=[];promoted=['a'];await tick();
+    assert.equal(s.notices.length,1);assert.doesNotMatch(s.line(),/En espera/);
+    state='playing';id='foreign';queue=['a'];
+    await clickAt(s,'[ ▶ ]');assert.match(s.line(),/En espera/);
+    // Even a stale snapshot must not announce an id that is still in the queue.
+    await tick();assert.match(s.line(),/En espera/);assert.equal(s.notices.length,1);
+    promoted=[];await tick();assert.match(s.line(),/En espera/);assert.equal(s.notices.length,1);
+    id='a';queue=[];promoted=['a'];await tick();await tick();
+    assert.equal(s.notices.length,2);assert.doesNotMatch(s.line(),/En espera/);
+  }finally{await s.close();}
+});
+
+test('wait requests cover play, copied buttons, commands and auto; queue warns and starts once',async()=>{
+  const store=memoryStore();store.save({...store.load(),policy:'wait'} as any);
+  const s=setup(store,async()=>'Copied');const bodies:any[]=[];
+  let queue=['a'], current='foreign', overflow=false;
+  const request=s.client.request;
+  s.client.request=async(path:string,body:any)=>{
+    if(path==='/speak'){bodies.push(body);if(overflow)throw Error('Cola llena');return {id:body.id,state:'queued'};}
+    if(path==='/status')return {state:'playing',id:current,queue};
+    return request(path,body);
+  };
+  try {
+    await s.command('play 1');assert.match(s.line(),/^\[ ■ \] En espera/);
+    await tick();assert.match(s.line(),/En espera/);assert.equal(s.notices.length,0);
+    queue=[];current='a';await tick();await tick();
+    assert.deepEqual(s.notices,['TTS teHablo: Suena la lectura en espera.']);
+    await s.command('stop');
+    await clickAt(s,'[ ▶ ]');await s.command('stop');
+    await clickAt(s,'[ ▶ copiado ]');await s.command('stop');
+    await s.command('copy');await s.command('stop');
+    await s.command('auto');
+    s.entries.push({type:'message',id:'b',message:{role:'assistant',content:'Automatic'}});
+    await s.hooks.agent_settled({aborted:false},s.ctx);await new Promise(r=>setImmediate(r));
+    assert.equal(bodies.length,5);assert.ok(bodies.every(b=>b.policy==='wait'));
+    overflow=true;await s.command('play');assert.match(s.notices.at(-1)!,/Cola llena/);
+  }finally{await s.close();}
+});
+
+test('queued card stop cancels only its id; agent_start only stops own readings under both policies',async()=>{
+  for(const policy of ['stop','wait']) {
+    const store=memoryStore();store.save({...store.load(),policy} as any);
+    const s=setup(store);const stopped:any[]=[];
+    const request=s.client.request,action=s.client.action;
+    s.client.request=async(path:string,body:any)=>path==='/speak'?{state:'queued',id:body.id}:request(path,body);
+    s.client.action=async(path:string,body:any)=>{if(path==='/stop')stopped.push(body);return action(path,body);};
+    try {
+      await s.command('play');await clickAt(s,'[ ■ ]');
+      assert.deepEqual(stopped,[{id:'a'}]);
+      await s.command('play');await s.agentStart();await new Promise(r=>setImmediate(r));
+      assert.deepEqual(stopped,[{id:'a'},{id:'a'}]);
+      assert.ok(stopped.every(b=>typeof b.id==='string'));
+    }finally{await s.close();}
+  }
+});
+
+test('repeated reads of one card have distinct ids and queued cancellation preserves current',async()=>{
+  const store=memoryStore();store.save({...store.load(),policy:'wait'} as any);
+  const s=setup(store);const ids:string[]=[],stopped:any[]=[];
+  const request=s.client.request,action=s.client.action;
+  s.client.request=async(path:string,body:any)=>{
+    if(path==='/speak'){ids.push(body.id);return {id:body.id,...(ids.length>1?{state:'queued'}:{})};}
+    if(path==='/status')return {state:'playing',id:ids[0],queue:ids.slice(1)};
+    return request(path,body);
+  };
+  s.client.action=async(path:string,body:any)=>{if(path==='/stop')stopped.push(body);return action(path,body);};
+  try{
+    await s.command('play');await s.command('play');assert.notEqual(ids[0],ids[1]);
+    await tick();assert.match(s.line(),/En espera/);assert.equal(s.notices.filter(n=>n.includes('Suena')).length,0);
+    await clickAt(s,'[ ■ ]');assert.deepEqual(stopped,[{id:ids[1]}]);
+    await s.agentStart();await new Promise(r=>setImmediate(r));assert.deepEqual(stopped.at(-1),{id:ids[0]});
+  }finally{await s.close();}
+});
+
+test('switching to stop preserves a queued read of the same card with its own id',async()=>{
+  const store=memoryStore();store.save({...store.load(),policy:'wait'} as any);
+  const s=setup(store);const ids:string[]=[],stopped:any[]=[];
+  const request=s.client.request,action=s.client.action;
+  s.client.request=async(path:string,body:any)=>{
+    if(path==='/speak'){ids.push(body.id);return {id:body.id,...(ids.length===1?{state:'queued'}:{})};}
+    return request(path,body);
+  };
+  s.client.action=async(path:string,body:any)=>{if(path==='/stop')stopped.push(body);return action(path,body);};
+  try{
+    await s.command('play');await s.command('menu');await new Promise(r=>setImmediate(r));
+    s.windows[0].w.c.change('policy','stop');await s.command('play');
+    assert.notEqual(ids[0],ids[1]);assert.match(s.line(),/En espera/);
+    await clickAt(s,'[ ■ ]');assert.deepEqual(stopped,[{id:ids[0]}]);
+  }finally{await s.close();}
+});
+
+test('agent_start cancels a speak response that arrives after the new turn',async()=>{
+  const s=setup();const stopped:any[]=[];let release!:(v:any)=>void;
+  const request=s.client.request,action=s.client.action;
+  s.client.request=async(path:string,body:any)=>path==='/speak'?new Promise(r=>{release=r;}):request(path,body);
+  s.client.action=async(path:string,body:any)=>{if(path==='/stop')stopped.push(body);return action(path,body);};
+  try{
+    const pending=s.command('play');await new Promise(r=>setImmediate(r));
+    await s.agentStart();release({id:'a'});await pending;await new Promise(r=>setImmediate(r));
+    assert.ok(stopped.some(b=>b.id==='a'));assert.ok(stopped.every(b=>b.id));
+    assert.doesNotMatch(s.line(),/■/);
+  }finally{await s.close();}
+});
+
+test('absent status queue means empty, including cancellation by another session',async()=>{
+  const s=setup();let polls=0;
+  const request=s.client.request;
+  s.client.request=async(path:string,body:any)=>{
+    if(path==='/speak')return {state:'queued',id:body.id};
+    if(path==='/status'){polls++;return {state:'playing',id:'foreign'};}
+    return request(path,body);
+  };
+  try{
+    await s.command('play');assert.match(s.line(),/En espera/);
+    await tick();assert.doesNotMatch(s.line(),/En espera/);
+    const before=polls;await tick();assert.equal(polls,before);
+    assert.equal(s.notices.length,0);
+  }finally{await s.close();}
+});
+
+test('late speak after power off does not ensure or restart the server',async()=>{
+  const s=setup();let release!:(v:any)=>void;
+  const request=s.client.request;
+  s.client.request=async(path:string,body:any)=>path==='/speak'?new Promise(r=>{release=r;}):request(path,body);
+  const action=s.client.action;
+  s.client.action=async(path:string,body:any)=>{if(path==='/stop')await s.client.ensure();return action(path,body);};
+  try{
+    await s.command('');await clickAt(s,'[ ⋯ ]');
+    const pending=s.command('play');await new Promise(r=>setImmediate(r));
+    await clickAt(s,'[ ⏻ ]');const before=s.ensures();release({id:'a'});await pending;
+    assert.equal(s.ensures(),before);assert.equal(s.line(),'[ ⏻ TTS ] [ ≡ ]');
+  }finally{await s.close();}
+});
+
+test('settings menu toolbar toggle saves and gives the same notice as the command',async()=>{
+  const s=setup();try{
+    await s.command('menu');await new Promise(r=>setImmediate(r));
+    s.windows[0].w.c.change('toolbar',false);
+    assert.equal(s.line(),undefined);assert.equal(s.store.load().toolbar,false);
+    assert.equal(s.notices.at(-1),'TTS teHablo: Barra oculta.');
+    s.windows[0].w.c.change('toolbar',true);
+    assert.ok(s.line());assert.equal(s.notices.at(-1),'TTS teHablo: Barra visible.');
+    s.windows[0].w.c.change('policy','wait');assert.equal((s.store.load() as any).policy,'wait');
+  }finally{await s.close();}
+});
+
 test('every start button column is clickable, including normal spaces and brackets',async()=>{
   for(let x=0;x<Array.from('[ ⏻ TTS ]').length;x++) {
     const s=setup();try {await click(s.card,x);assert.equal(s.ensures(),1,`column ${x}`);assert.equal(s.line(),'[ ▶ ] [ ▶ copiado ] [ ⋯ ]');}finally{await s.close();}

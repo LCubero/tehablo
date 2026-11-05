@@ -169,6 +169,8 @@ class SpeechService:
         self.state = 'loading'
         self.id = None
         self.pending = None
+        self.queue = deque()
+        self.promoted = deque(maxlen=10)
         self.cancel = threading.Event()
         self.closed = False
         self.revision = 0
@@ -253,7 +255,9 @@ class SpeechService:
 
     def status(self):
         with self.condition:
-            return {'state': self.state, 'id': self.id, 'error': self.error or self.speech_error}
+            return {'state': self.state, 'id': self.id, 'error': self.error or self.speech_error,
+                    **({'queue': [item[0] for item in self.queue]} if self.queue else {}),
+                    **({'promoted': list(self.promoted)} if self.promoted else {})}
 
     def clear(self):
         self.speech_error = None
@@ -265,28 +269,57 @@ class SpeechService:
         self.paused = False
         self.id = None
 
+    def start_reading(self, item):
+        identifier, text, voice, speed, lexicon = item
+        self.clear()
+        self.cancel = threading.Event()
+        self.id = identifier
+        self.pending = (text, self.cancel, voice, speed, lexicon)
+        self.state = 'generating' if self.ready else 'loading'
+        self.condition.notify_all()
+
+    def next_reading(self):
+        if self.queue and not self.closed and self.error is None:
+            item = self.queue.popleft()
+            self.start_reading(item)
+            self.promoted.append(item[0])
+
     def speak(self, body):
         text, identifier = body.get('text'), body.get('id')
         if not isinstance(text, str) or not text.strip() or not isinstance(identifier, str):
             raise ValueError('id and nonempty text must be strings')
         if not isinstance(body.get('lexicon', True), bool):
             raise ValueError('lexicon must be a boolean')
+        policy = body.get('policy', 'stop')
+        if policy not in ('stop', 'wait'):
+            raise ValueError('policy must be stop or wait')
         with self.condition:
             if self.error is not None:
                 raise RuntimeError(self.error)
-            self.clear()
-            self.cancel = threading.Event()
-            self.id = identifier
-            self.pending = (text, self.cancel, self.voice, self.speed, body.get('lexicon', True))
-            self.state = 'generating' if self.ready else 'loading'
-            self.condition.notify_all()
+            item = (identifier, text, self.voice, self.speed, body.get('lexicon', True))
+            if policy == 'wait' and self.id is not None and len(self.queue) >= 10:
+                raise ValueError('La cola de lecturas está llena (máximo 10).')
+            self.promoted = deque((id for id in self.promoted if id != identifier), maxlen=self.promoted.maxlen)
+            if policy == 'wait' and self.id is not None:
+                self.queue.append(item)
+                return {'id': identifier, 'state': 'queued'}
+            self.start_reading(item)
         return {'id': identifier}
 
-    def control(self, action):
+    def control(self, action, identifier=None):
         with self.condition:
             if action == 'stop':
+                if identifier is not None and not isinstance(identifier, str):
+                    raise ValueError('id must be a string')
+                if identifier is None:
+                    self.queue.clear()
+                else:
+                    self.queue = deque(item for item in self.queue if item[0] != identifier)
+                    if identifier != self.id:
+                        return {'state': self.state}
                 self.clear()
                 self.state = 'error' if self.error is not None else 'idle'
+                self.next_reading()
             elif self.id is not None:
                 self.paused = action == 'pause'
                 if self.paused:
@@ -331,7 +364,9 @@ class SpeechService:
                     self.buffer.popleft()
                     self.offset = 0
             if self.done and not self.buffer:
+                self.done = False
                 self.state, self.id = 'idle', None
+                self.next_reading()
             elif written:
                 self.state = 'playing'
 
@@ -394,6 +429,7 @@ class SpeechService:
                         self.ready = True
                         if not self.pending:
                             self.state = 'idle'
+                            self.next_reading()
                 with self.condition:
                     if not self.pending or revision != self.revision:
                         continue
@@ -428,6 +464,10 @@ class SpeechService:
                         with self.condition:
                             if not cancel.is_set():
                                 self.done = True
+                                if not self.buffer and not self.paused:
+                                    self.done = False
+                                    self.state, self.id = 'idle', None
+                                    self.next_reading()
                 except Exception as exc:
                     print(f'Speech failed: {exc}', file=sys.stderr)
                     with self.condition:
@@ -435,6 +475,7 @@ class SpeechService:
                             self.clear()
                             self.speech_error = f'speech failed: {exc}'
                             self.state = 'error' if self.error is not None else 'idle'
+                            self.next_reading()
         finally:
             if sink is not None:
                 sink.close()
@@ -527,7 +568,7 @@ class Handler(BaseHTTPRequestHandler):
                 service.control('stop')
                 threading.Thread(target=self.server.shutdown, daemon=True).start()
             else:
-                self.reply(200, service.control(self.path[1:]))
+                self.reply(200, service.control(self.path[1:], body.get('id') if self.path == '/stop' else None))
         except RuntimeError as exc:
             self.reply(503, {'error': str(exc)})
         except (ValueError, UnicodeDecodeError) as exc:

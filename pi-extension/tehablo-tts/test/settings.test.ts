@@ -52,6 +52,14 @@ test('dict loads boolean overrides field by field', () => withDirs((dir, project
   }
 }));
 
+test('playback policy persists and invalid or missing values default to stop', () => withDirs((dir, project) => {
+  assert.equal(loadSettings(dir, project).policy, 'stop');
+  for (const policy of ['wait', 'stop', 'pause', null, 2]) {
+    saveSettings(dir, {...DEFAULTS, policy} as any);
+    assert.equal(loadSettings(dir, project).policy, policy === 'wait' ? 'wait' : 'stop');
+  }
+}));
+
 test('known voice table entries survive a reload', () => withDirs((dir, project) => {
   const voices = [{name: 'lola', voice: 'lola', model: 'spanish', kind: 'download', note: 'la de siempre', downloaded: true}];
   saveSettings(dir, {...DEFAULTS, voices});

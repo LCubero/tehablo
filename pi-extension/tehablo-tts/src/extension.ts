@@ -67,6 +67,8 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
   const speedLabel = (value: number) => `${value.toFixed(2)}x`;
   let context: ExtensionContext | undefined;
   let playback = {state: 'idle', id: null as string | null};
+  const owned = new Map<string, string>(), queued = new Set<string>(), inFlight = new Set<string>();
+  let readingNumber = 0;
   let timer: ReturnType<typeof setTimeout> | undefined;
   let pollEpoch = 0, started = false, pollFailures = 0;
   // Server lifecycle shown by the start button; `open` shows the volume and speed controls.
@@ -220,7 +222,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
     if (state !== playback.state || id !== playback.id) { playback = {state, id}; refresh(); }
   };
   const cancelPoll = () => { pollEpoch++; if (timer) clearTimeout(timer); timer = undefined; };
-  const resetPlayback = () => { cancelPoll(); started = false; pollFailures = 0; update('idle', null); };
+  const resetPlayback = () => { cancelPoll(); owned.clear(); queued.clear(); started = false; pollFailures = 0; update('idle', null); };
   const powerOff = async () => {
     epoch++; resetPlayback(); cancelReady();
     open = false; volume = settings.volume; speed = settings.speed;
@@ -231,7 +233,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
   const turnOff = () => { setAuto(false); return powerOff(); };
   const poll = () => {
     cancelPoll();
-    if (!started || playback.state === 'idle') return;
+    if (!started) return;
     const generation = pollEpoch;
     timer = setTimeout(async () => {
       timer = undefined;
@@ -239,12 +241,20 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
         const status = await client.request('/status');
         if (generation !== pollEpoch) return;
         pollFailures = 0;
-        if (status.state === 'idle') {
+        const promoted = Array.isArray(status.promoted) ? status.promoted : [];
+        const queue = Array.isArray(status.queue) ? status.queue : [];
+        for (const id of queued) if (owned.has(id) && (id === status.id || (!queue.includes(id) && promoted.includes(id)))) {
+          queued.delete(id);
+          say(context, 'Suena la lectura en espera.', 'info');
+        }
+        for (const id of owned.keys()) if (!inFlight.has(id) && id !== status.id && !queue.includes(id)) { owned.delete(id); queued.delete(id); }
+        if (status.state === 'idle' && !queued.size && !inFlight.size) {
           if (typeof status.error === 'string' && status.error.length > 0)
             say(context, `No se pudo reproducir: ${status.error}`, 'warning');
           resetPlayback();
           return;
         }
+        if (!owned.size) { resetPlayback(); return; }
         update(status.state, status.id);
       } catch {
         if (generation !== pollEpoch) return;
@@ -264,6 +274,16 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
     const result = await client.action('/' + kind, {});
     if (generation === epoch && kind !== 'stop' && started) { update(result?.state ?? (kind === 'pause' ? 'paused' : 'playing'), playback.id); poll(); }
   };
+  const cancelReading = async (id: string) => {
+    await client.action('/stop', {id});
+    queued.delete(id); owned.delete(id);
+    if (playback.id === id) update('idle', null);
+    if (!owned.size) resetPlayback(); else poll();
+  };
+  const setToolbar = (visible: boolean, ctx: ExtensionContext) => {
+    barVisible = visible; settings = {...settings, toolbar: visible}; persist(); refresh(); showStart(ctx);
+    say(ctx, visible ? 'Barra visible.' : 'Barra oculta.', 'info');
+  };
   const cards = (ctx: ExtensionContext): Card[] => ctx.sessionManager.getBranch()
     .filter((e: any) => e.type === 'custom' && e.customType === ENTRY).map((e: any) => e.data);
   const safe = async (ctx: ExtensionContext, operation: () => Promise<unknown> | unknown) => {
@@ -282,11 +302,25 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
     if (generation !== epoch) return;
     await boot();
     if (generation !== epoch) return;
-    await client.request('/speak', {id, text, lexicon: dictEnabled()});
-    if (generation !== epoch) return;
+    const reading = owned.has(id) || inFlight.has(id) ? `${id}:tehablo:${++readingNumber}` : id;
+    owned.set(reading, id);
+    inFlight.add(reading);
+    let result: any;
+    try {
+      result = await client.request('/speak', {id: reading, text, lexicon: dictEnabled(), ...(settings.policy === 'wait' ? {policy: 'wait'} : {})});
+    } catch (error) { owned.delete(reading); throw error; }
+    finally { inFlight.delete(reading); }
+    if (generation !== epoch) {
+      // Never start a server just to cancel a response that arrived after power off or shutdown.
+      try { await client.request('/stop', {id: reading}); } catch { /* Already off. */ }
+      return;
+    }
+    owned.set(reading, id);
     started = true;
     pollFailures = 0;
-    update('generating', id);
+    if (result?.state === 'queued') queued.add(reading);
+    else queued.delete(reading);
+    update(result?.state === 'queued' ? 'queued' : 'generating', reading);
     poll();
   };
   /** Reads the copied text; Pi cannot see the terminal's mouse selection, so the user copies it first. */
@@ -338,6 +372,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
       choose: row => { settings = {...settings, model: row.model, voice: row.voice}; persist(); run(() => configure({model: row.model, voice: row.voice})); },
       change: (field, value) => {
         settings = {...settings, [field]: value}; persist();
+        if (field === 'toolbar') setToolbar(value as boolean, ctx);
         if (field === 'auto') { const starting = setAuto(value as boolean); if (starting) run(() => starting); }
         if (field === 'volume') volume = value as number;
         if (field === 'speed') speed = value as number;
@@ -407,12 +442,14 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
     // Only single-column symbols, so click columns match Array.from lengths (≡ replaced ⚙, which some terminals draw two columns wide).
     // The menu [ ≡ ] shows next to the start button when off, and inside the open controls when on.
     const segments = () => {
-      const active = playback.id === card.messageId && playback.state !== 'idle';
+      const waiting = [...queued].find(id => owned.get(id) === card.messageId);
+      const active = (owned.get(playback.id!) ?? playback.id) === card.messageId && playback.state !== 'idle' && !waiting;
       const menu = {text: '[ ≡ ]', action: 'settings', gap: ''};
-      if (!active && server === 'off') return [{text: '[ ⏻ TTS ]', action: 'start', gap: ' '}, menu];
-      if (!active && server === 'loading') return [{text: '[ Cargando… ]', action: '', gap: ' '}, menu];
+      if (!active && !waiting && server === 'off') return [{text: '[ ⏻ TTS ]', action: 'start', gap: ' '}, menu];
+      if (!active && !waiting && server === 'loading') return [{text: '[ Cargando… ]', action: '', gap: ' '}, menu];
       const paused = playback.state === 'paused';
-      const lead = active
+      const lead = waiting ? [{text: '[ ■ ]', action: 'cancelQueued', gap: ' '}, {text: 'En espera', action: '', gap: ' '}]
+        : active
         ? [{text: paused ? '[ ▶ ]' : '[ ‖ ]', action: paused ? 'resume' : 'pause', gap: ' '}, {text: '[ ■ ]', action: 'stop', gap: ' '}]
         : [...(card === START ? [] : [{text: '[ ▶ ]', action: 'play', gap: ' '}]), {text: '[ ▶ copiado ]', action: 'copied', gap: ' '}];
       return [
@@ -451,6 +488,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
               if (control.action === 'settings') { void safe(context, () => openSettings(context!)); return {handled: true, render: true}; }
               void safe(context, () => control.action === 'play' ? speak(context!, String(card.number))
                 : control.action === 'copied' ? speakCopied(context!, card.messageId)
+                : control.action === 'cancelQueued' ? cancelReading([...queued].find(id => owned.get(id) === card.messageId)!)
                 : control.action === 'powerOff' ? turnOff()
                   : control.action === 'start' ? boot()
                   : /^(volume|speed)/.test(control.action) ? setting(context!, control.action) : action(control.action));
@@ -476,8 +514,9 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
   });
   pi.on('agent_start', (_event, ctx) => {
     if (ctx.mode !== 'tui') return;
+    const ids = [...owned.keys()];
     epoch++; resetPlayback();
-    void safe(ctx, () => client.stop());
+    void safe(ctx, async () => { for (const id of ids) await client.action('/stop', {id}); });
   });
   pi.on('session_shutdown', async (_event, ctx) => {
     if (ctx.mode !== 'tui') return;
@@ -511,7 +550,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
           // Plain /tts turns the server on or off, like [ ⏻ TTS ] and [ ⏻ ] in the bar.
           case '': return server === 'off' ? boot() : turnOff();
           case 'toolbar':
-            barVisible = !barVisible; settings = {...settings, toolbar: barVisible}; persist(); refresh(); showStart(ctx); info(barVisible ? 'Barra visible.' : 'Barra oculta.');
+            setToolbar(!barVisible, ctx);
             return;
           case 'auto':
             // Plain /tts auto toggles; on/off still work for anyone who already types them.

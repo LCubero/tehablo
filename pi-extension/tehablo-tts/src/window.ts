@@ -15,7 +15,7 @@ export interface Controller {
   active(): {model: string; voice: string};
   voices(): VoiceRow[];
   choose(row: VoiceRow): void;
-  change(field: 'volume' | 'speed' | 'auto' | 'shortcutsOn', value: number | boolean): void;
+  change(field: 'volume' | 'speed' | 'auto' | 'shortcutsOn' | 'toolbar' | 'policy', value: number | boolean | 'stop' | 'wait'): void;
   power(action: 'on' | 'off' | 'restart'): void;
   /** Throws an Error with a message safe to show (never the token). */
   saveToken(value: string): void;
@@ -99,6 +99,8 @@ export class SettingsWindow {
       {label: 'Lectura automática', value: s.auto ? 'sí' : 'no', step: () => this.c.change('auto', !s.auto)},
       {label: 'Atajos de teclado', value: s.shortcutsOn ? 'activados' : 'desactivados', step: () => this.c.change('shortcutsOn', !s.shortcutsOn),
         buttons: [['[ Editar ]', () => { this.page = 'shortcuts'; this.scRow = 0; this.capturing = false; this.scError = ''; }]]},
+      {label: 'Si llega otra lectura', value: s.policy === 'wait' ? 'Esperar' : 'Detener', step: () => this.c.change('policy', s.policy === 'wait' ? 'stop' : 'wait')},
+      {label: 'Barra de controles', value: s.toolbar ? 'visible' : 'oculta', step: () => this.c.change('toolbar', !s.toolbar)},
       {label: on ? 'Servidor ● activo' : 'Servidor ○ apagado', buttons: [
         [on ? '[ Apagar ]' : '[ Encender ]', () => { this.c.power(on ? 'off' : 'on'); this.col = 0; }],
         ['[ Reiniciar ]', on ? () => this.c.power('restart') : undefined],
