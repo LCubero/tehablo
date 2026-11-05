@@ -24,6 +24,7 @@ export class ServerClient {
   private ending = false;
   private poweringOff?: Promise<void>;
   private used = false;
+  private readings = new Set<string>();
   /** Extra arguments for the next spawned server, such as the saved model and voice. */
   startArgs: string[] = [];
   /** Hugging Face token for the next spawned server, kept only in memory and passed in its environment. */
@@ -37,6 +38,8 @@ export class ServerClient {
   }
   beginSession() { this.closed = false; this.used = false; this.ending = false; }
   async request(path: string, body?: unknown): Promise<any> {
+    const id = (body as {id?: string} | undefined)?.id;
+    if (path === '/speak' && typeof id === 'string') this.readings.add(id);
     const response = await (this.options.fetch ?? globalThis.fetch)(this.base + path, {
       method: body === undefined ? 'GET' : 'POST',
       headers: {'Content-Type': 'application/json'},
@@ -45,6 +48,9 @@ export class ServerClient {
     });
     const data = await response.json();
     if (!response.ok) throw new Error(data.error ?? `Servidor: HTTP ${response.status}`);
+    if (path === '/stop') {
+      if (id === undefined) this.readings.clear(); else this.readings.delete(id);
+    }
     return data;
   }
   async ensure(): Promise<void> {
@@ -108,7 +114,13 @@ export class ServerClient {
     if (this.closed) return;
     return this.request(path, body);
   }
-  async stop() { if (this.used && !this.closed) await this.request('/stop', {}); }
+  async stop() {
+    if (!this.readings.size) return;
+    const ids = [...this.readings];
+    const status = await this.request('/status');
+    for (const id of [...ids.filter(id => id !== status.id), ...ids.filter(id => id === status.id)])
+      await this.request('/stop', {id});
+  }
   /** Turn the shared server off for every Pi session, without closing this one. */
   powerOff(): Promise<void> {
     if (!this.poweringOff) {
@@ -133,7 +145,10 @@ export class ServerClient {
     this.closed = true;
     await this.starting?.catch(() => {});
     let failure: unknown;
-    if (this.used) { try { await this.request('/stop', {}); } catch (error) { failure = error; } }
+    try {
+      if (shared && this.used) await this.request('/stop', {});
+      else await this.stop();
+    } catch (error) { failure = error; }
     if (this.child) {
       try { await this.request('/shutdown', {}); }
       catch (error) { this.child.kill(); failure = error; }

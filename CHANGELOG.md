@@ -6,6 +6,8 @@ Este archivo registra los cambios completados en orden cronológico.
 
 ## 2026-11-05
 
+- Pi: una lectura en pausa ya no bloquea **Esperar**: al llegar otra, cancela la pausada y avanza en orden, con la pausa, bip y «Siguiente lectura.» habituales. Pausa/continuar (barra, comando y atajo) solo actúa sobre la lectura actual de esta sesión; `/tts stop`, el atajo de detener y cerrar la sesión cancelan solo sus lecturas, actuales y en espera. Apagar o reiniciar sigue siendo global; al cerrar una sesión, solo se apaga el servidor si ella lo arrancó.
+
 - Pi: solo en **Esperar**, cada lectura que sale de la cola dice «Siguiente lectura.» con la misma voz después de la pausa y el bip; se sintetiza junto con el texto, sin una pasada adicional.
 
 - Pi: leer copiado muestra «Preparando…» inmediatamente, hasta que el servidor acepta la lectura; ignora clics repetidos mientras prepara y limpia el estado al cancelar o fallar.

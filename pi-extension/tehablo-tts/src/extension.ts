@@ -45,7 +45,7 @@ const ENTRY = 'tehablo-tts';
 /** Every message from this extension starts with this prefix. */
 const say = (c: ExtensionContext | undefined, text: string, level: 'info' | 'warning') => c?.ui.notify(`TTS teHablo: ${text}`, level);
 interface Card { messageId: string; number: number }
-const help = '/tts · auto · play [n] · copy · pause · stop · toolbar · menu · dict · status\n/tts enciende o apaga el servidor; play sin número lee la última respuesta y play 3 la tercera de la sesión; toolbar muestra u oculta la barra; menu abre los ajustes; dict activa o desactiva el diccionario de pronunciación (pronunciaciones.json) para la voz actual.';
+const help = '/tts · auto · play [n] · copy · pause · stop · toolbar · menu · dict · status\n/tts enciende o apaga el servidor para todos; pause pausa o reanuda solo tu lectura actual; stop detiene tus lecturas actuales y en espera; play sin número lee la última respuesta y play 3 la tercera de la sesión; toolbar muestra u oculta la barra; menu abre los ajustes; dict activa o desactiva el diccionario de pronunciación (pronunciaciones.json) para la voz actual.';
 
 export function createExtension(pi: ExtensionAPI, client = new ServerClient(), store: Store = client.root ? fileStore(client.root) : memoryStore(),
   clipboard: () => Promise<string> = () => readClipboard(), watchMs = 0) {
@@ -71,6 +71,8 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
   const persist = () => { try { store.save(settings); } catch { /* Settings are best effort. */ } };
   // barVisible only hides the bar (/tts toolbar); reading, auto and shortcuts keep working.
   let barVisible = true, auto = false, epoch = 0;
+  // Scoped stop batches survive unrelated actions, but never a power/session boundary.
+  let lifecycleEpoch = 0;
   let volume = 1, speed = 1;
   const speeds = [1, 1.1, 1.15, 1.25, 1.5];
   const speedLabel = (value: number) => `${value.toFixed(2)}x`;
@@ -240,7 +242,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
   const cancelPoll = () => { pollEpoch++; if (timer) clearTimeout(timer); timer = undefined; };
   const resetPlayback = () => { cancelPoll(); preparing.clear(); owned.clear(); queued.clear(); promotedReading = null; started = false; pollFailures = 0; update('idle', null); };
   const powerOff = async () => {
-    epoch++; resetPlayback(); cancelReady();
+    lifecycleEpoch++; epoch++; resetPlayback(); cancelReady();
     open = false; volume = settings.volume; speed = settings.speed;
     setServer('off'); refresh();
     await client.powerOff();
@@ -286,10 +288,22 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
     timer.unref?.();
   };
   const action = async (kind: string) => {
+    const ids = [...owned.keys()];
     if (kind === 'stop') { epoch++; resetPlayback(); }
-    const generation = epoch;
-    const result = await client.action('/' + kind, {});
-    if (generation === epoch && kind !== 'stop' && started) { update(result?.state ?? (kind === 'pause' ? 'paused' : 'playing'), playback.id); poll(); }
+    const generation = epoch, lifecycle = lifecycleEpoch;
+    if (!ids.length) return;
+    const status = await client.request('/status');
+    if (kind === 'stop') {
+      // Remove queued copies first so stopping the current one cannot promote them.
+      for (const id of [...ids.filter(id => id !== status.id), ...ids.filter(id => id === status.id)]) {
+        if (lifecycle !== lifecycleEpoch) return;
+        await client.action('/stop', {id});
+      }
+      return;
+    }
+    if (generation !== epoch || !owned.has(status.id)) return;
+    const result = await client.action('/' + kind, {id: status.id});
+    if (generation === epoch && started) { update(result?.state ?? (kind === 'pause' ? 'paused' : 'playing'), status.id); poll(); }
   };
   const cancelReading = async (id: string) => {
     await client.action('/stop', {id});
@@ -537,7 +551,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
   }
   pi.on('session_start', (_event, ctx) => {
     if (ctx.mode !== 'tui') return;
-    resetPlayback();
+    lifecycleEpoch++; resetPlayback();
     settings = store.load(); applied = false;
     // The server starts off, and an off server has no auto reading (turning auto on starts it).
     settings = {...settings, auto: false};
@@ -556,7 +570,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
   });
   pi.on('session_shutdown', async (_event, ctx) => {
     if (ctx.mode !== 'tui') return;
-    epoch++; resetPlayback(); cancelReady(); stopWatch(); server = 'off'; context = undefined;
+    lifecycleEpoch++; epoch++; resetPlayback(); cancelReady(); stopWatch(); server = 'off'; context = undefined;
     stopKeys?.(); stopKeys = undefined;
     await safe(ctx, () => client.shutdown());
   });

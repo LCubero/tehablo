@@ -4,6 +4,27 @@ import {ServerClient} from '../src/server.ts';
 import {fileURLToPath} from 'node:url';
 import {resolve} from 'node:path';
 
+test('scoped controls S3: shutdown stops only owned current and queued readings on a shared server', async () => {
+  const stops: any[] = [], paths: string[] = [];
+  let current = 'mine', queue = ['foreign-queued'];
+  const client = new ServerClient({fetch: (async (url: any, init: any) => {
+    const path = new URL(url).pathname; paths.push(path);
+    const body = init.body ? JSON.parse(init.body) : undefined;
+    if (path === '/speak') { if (body.id !== current) queue.push(body.id); return Response.json({id: body.id}); }
+    if (path === '/status') return Response.json({state: 'playing', id: current, queue});
+    if (path === '/stop') { stops.push(body); queue = queue.filter(id => id !== body.id); if (body.id === current) current = queue.shift()!; }
+    return Response.json({ok: true});
+  }) as any});
+  await client.ensure();
+  await client.request('/speak', {id: 'mine', text: 'first'});
+  await client.request('/speak', {id: 'mine-queued', text: 'second', policy: 'wait'});
+  await client.shutdown();
+  assert.deepEqual(stops, [{id: 'mine-queued'}, {id: 'mine'}]);
+  assert.equal(current, 'foreign-queued');
+  assert.ok(!paths.includes('/shutdown'));
+  await client.shutdown(); assert.equal(stops.length, 2);
+});
+
 test('default root is two levels above extension, POSIX python, stop only after use',async()=>{
   const defaultClient=new ServerClient();
   assert.equal(defaultClient.root,process.env.TEHABLO_ROOT ?? resolve(fileURLToPath(new URL('../../..',import.meta.url))));
@@ -13,7 +34,7 @@ test('default root is two levels above extension, POSIX python, stop only after 
   }) as any,spawn:((...args:any[])=>{commands.push(args); healthy=true; return {once(){},unref(){},kill(){}};}) as any});
   await client.stop(); assert.equal(calls.length,0);
   await client.ensure(); assert.match(commands[0][0],/\.venv-pocket[/\\]bin[/\\]python$/);
-  await client.shutdown(); assert.deepEqual(calls.slice(-2),['/stop','/shutdown']);
+  await client.shutdown(); assert.deepEqual(calls.slice(-2),['/health','/shutdown']);
   client.beginSession(); await client.ensure(); await client.shutdown(); assert.equal(commands.length,1);
 });
 
@@ -169,6 +190,6 @@ test('power off shuts down a server another Pi session started; closing this ses
       spawn:(()=>{spawns++;return {once(){},unref(){},kill(){}};}) as any});
     await client.ensure();assert.equal(spawns,0);
     await client[end]();
-    assert.deepEqual(calls.slice(-2),end==='powerOff'?['/stop','/shutdown']:['/health','/stop'],end);
+    assert.deepEqual(calls.slice(-2),end==='powerOff'?['/stop','/shutdown']:['/health'],end);
   }
 });

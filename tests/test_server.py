@@ -253,14 +253,75 @@ class ServerTests(unittest.TestCase):
         self.request('/speak', {'id': 'first', 'text': 'first'})
         self.wait(lambda: bool(self.synth.calls))
         self.request('/pause', {})
-        self.assertEqual(self.request('/speak', {'id': 'second', 'text': 'second', 'policy': 'wait'})[1].get('state'), 'queued')
-        self.assertEqual(self.request('/status')[1]['id'], 'first')
-        self.assertEqual(len(self.synth.calls), 1)
-        self.request('/resume', {})
+        self.assertEqual(self.request('/speak', {'id': 'second', 'text': 'second', 'policy': 'wait'})[0], 202)
+        self.assertEqual(self.request('/status')[1]['id'], 'second')
+        self.assertNotIn('queue', self.request('/status')[1])
+        self.assertEqual(self.request('/status')[1]['promoted'], ['second'])
         self.wait(lambda: len(self.synth.calls) == 2)
         self.assertEqual(self.synth.calls[1][0], 'Siguiente lectura. second')
         self.wait(lambda: self.request('/status')[1]['state'] == 'idle')
         self.assertNotIn('queue', self.request('/status')[1])
+
+    def test_wait_replaces_paused_reading_in_fifo_order_even_at_capacity(self):
+        self.request('/speak', {'id': 'paused', 'text': 'paused'})
+        for i in range(10):
+            self.request('/speak', {'id': str(i), 'text': str(i), 'policy': 'wait'})
+        self.request('/pause', {'id': 'paused'})
+        code, result = self.request('/speak', {'id': 'new', 'text': 'new', 'policy': 'wait'})
+        self.assertEqual(code, 202)
+        self.assertEqual(result.get('state'), 'queued')
+        status = self.request('/status')[1]
+        self.assertEqual(status['id'], '0')
+        self.assertEqual(status['queue'], [str(i) for i in range(1, 10)] + ['new'])
+        self.assertEqual(status['promoted'], ['0'])
+        self.ready()
+        self.wait(lambda: bool(self.synth.calls))
+        self.assertEqual(self.synth.calls[0][0], 'Siguiente lectura. cero')
+
+    def test_wait_from_pause_uses_the_promotion_audio_cue(self):
+        sinks = []
+
+        class ManualSink:
+            def __init__(self, rate, callback):
+                self.callback = callback
+                sinks.append(self)
+
+            def close(self):
+                pass
+
+        self.audio_factory = ManualSink
+        self.ready()
+        self.request('/speak', {'id': 'paused', 'text': 'paused'})
+        self.wait(lambda: bool(sinks) and self.request('/status')[1]['state'] == 'playing')
+        self.request('/pause', {'id': 'paused'})
+        self.request('/speak', {'id': 'new', 'text': 'new', 'policy': 'wait'})
+        self.wait(lambda: len(sinks) == 2 and len(self.synth.calls) == 2
+                  and self.request('/status')[1]['state'] == 'playing')
+        output = np.zeros((18000, 1), dtype=np.float32)
+        sinks[-1].callback(output, 18000, None, None)
+        self.assertTrue(np.all(output[:14400] == 0))
+        self.assertGreater(float(np.ptp(output[14400:])), .001)
+        self.assertEqual(self.synth.calls[-1][0], 'Siguiente lectura. new')
+        self.assertEqual(self.request('/status')[1]['id'], 'new')
+
+    def test_pause_resume_are_scoped_and_validate_ids(self):
+        self.request('/speak', {'id': 'a', 'text': 'first'})
+        self.request('/speak', {'id': 'b', 'text': 'second', 'policy': 'wait'})
+        for action in ('pause', 'resume'):
+            self.assertEqual(self.request('/' + action, {'id': 42})[0], 400)
+        self.request('/pause', {'id': 'b'})
+        self.assertNotEqual(self.request('/status')[1]['state'], 'paused')
+        self.request('/pause', {'id': 'a'})
+        self.assertEqual(self.request('/status')[1]['state'], 'paused')
+        self.request('/resume', {'id': 'foreign'})
+        self.assertEqual(self.request('/status')[1]['state'], 'paused')
+        self.request('/resume', {'id': 'a'})
+        self.assertNotEqual(self.request('/status')[1]['state'], 'paused')
+        self.assertEqual(self.request('/status')[1]['queue'], ['b'])
+        self.request('/pause', {})
+        self.assertEqual(self.request('/status')[1]['state'], 'paused')
+        self.request('/resume', {})
+        self.assertNotEqual(self.request('/status')[1]['state'], 'paused')
 
     def test_queue_waits_for_done_and_empty_buffer_then_recovers_from_failure(self):
         sinks = []

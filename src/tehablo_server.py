@@ -306,9 +306,15 @@ class SpeechService:
             if self.error is not None:
                 raise RuntimeError(self.error)
             item = (identifier, text, self.voice, self.speed, body.get('lexicon', True))
-            if policy == 'wait' and self.id is not None and len(self.queue) >= 10:
+            if policy == 'wait' and self.id is not None and not self.paused and len(self.queue) >= 10:
                 raise ValueError('La cola de lecturas está llena (máximo 10).')
             self.promoted = deque((id for id in self.promoted if id != identifier), maxlen=self.promoted.maxlen)
+            if policy == 'wait' and self.paused and self.id is not None:
+                self.control('stop', self.id)
+                if self.id is None:
+                    self.queue.append(item)
+                    self.next_reading()
+                    return {'id': identifier}
             if policy == 'wait' and self.id is not None:
                 self.queue.append(item)
                 self.cue_pending += 1
@@ -318,9 +324,9 @@ class SpeechService:
 
     def control(self, action, identifier=None):
         with self.condition:
+            if identifier is not None and not isinstance(identifier, str):
+                raise ValueError('id must be a string')
             if action == 'stop':
-                if identifier is not None and not isinstance(identifier, str):
-                    raise ValueError('id must be a string')
                 if identifier is None:
                     self.queue.clear()
                 else:
@@ -330,7 +336,7 @@ class SpeechService:
                 self.clear()
                 self.state = 'error' if self.error is not None else 'idle'
                 self.next_reading()
-            elif self.id is not None:
+            elif self.id is not None and (identifier is None or identifier == self.id):
                 self.paused = action == 'pause'
                 if self.paused:
                     self.state = 'paused'
@@ -597,7 +603,7 @@ class Handler(BaseHTTPRequestHandler):
                 service.control('stop')
                 threading.Thread(target=self.server.shutdown, daemon=True).start()
             else:
-                self.reply(200, service.control(self.path[1:], body.get('id') if self.path == '/stop' else None))
+                self.reply(200, service.control(self.path[1:], body.get('id')))
         except RuntimeError as exc:
             self.reply(503, {'error': str(exc)})
         except (ValueError, UnicodeDecodeError) as exc:

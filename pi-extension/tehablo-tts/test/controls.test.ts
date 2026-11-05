@@ -4,6 +4,7 @@ import {createExtension, fileStore, memoryStore, readTable} from '../src/extensi
 import {mkdtempSync, writeFileSync, rmSync, mkdirSync} from 'node:fs';
 import {join} from 'node:path';
 import {DEFAULTS} from '../src/settings.ts';
+import {ServerClient} from '../src/server.ts';
 
 function setup(store=memoryStore(),clipboard?:()=>Promise<string>,watchMs=0) {
   const windows:any[]=[], keyHandlers:any[]=[];
@@ -17,6 +18,130 @@ function setup(store=memoryStore(),clipboard?:()=>Promise<string>,watchMs=0) {
   const card=renderer(entries[1],{}, {fg:(_:any,t:string)=>t});
   return {entries,hooks,ctx,store,windows,keyHandlers,press:(d:string)=>keyHandlers.map(h=>h(d)),client,calls,card,configs,notices,statuses,line:()=>{const l=card.render(200)[0];if(l!==undefined)assert.equal(l[0],' ');return l?.slice(1);}, command:(s:string)=>command(s,ctx),set:(s:string,i:string|null='a')=>{state=s;id=i;},setReady:(value:boolean)=>{ready=value;},setError:(value:string)=>{settings.error=value;},setFallback:(value:string|null)=>{settings.fallback=value;},ensures:()=>ensures,close:()=>hooks.session_shutdown({},ctx),agentStart:()=>hooks.agent_start({},ctx),fail:(value=true)=>{fail=value;},renders:()=>renders};
 }
+for (const control of ['command', 'shortcut', 'toolbar'] as const) {
+  test(`scoped controls S2: ${control} pause/resume never changes a foreign current reading`, async () => {
+    const store = memoryStore();
+    store.save({...store.load(), shortcutsOn: true, shortcuts: {pause: 'alt+p'}});
+    const s = setup(store), actions: any[] = [];
+    const action = s.client.action;
+    s.client.action = async (path: string, body: any) => {
+      if (path === '/pause' || path === '/resume') actions.push({path, body});
+      return action(path, body);
+    };
+    const pause = async () => {
+      if (control === 'command') await s.command('pause');
+      if (control === 'shortcut') { s.press('\u001bp'); await new Promise(r => setImmediate(r)); }
+      if (control === 'toolbar') await clickAt(s, s.line().includes('[ ‖ ]') ? '[ ‖ ]' : '[ ▶ ]');
+    };
+    try {
+      await s.command('play');
+      await pause();
+      assert.deepEqual(actions, [{path: '/pause', body: {id: 'a'}}]);
+      await pause();
+      assert.deepEqual(actions[1], {path: '/resume', body: {id: 'a'}});
+      s.set('playing', 'foreign');
+      await pause(); // Ownership must be checked against fresh status, not the last poll.
+      assert.equal(actions.length, 2);
+    } finally { await s.close(); }
+  });
+}
+
+for (const control of ['command', 'shortcut'] as const) {
+  test(`scoped controls S4: ${control} stop cancels own queued copies before current, preserving foreign queue`, async () => {
+    const store = memoryStore();
+    store.save({...store.load(), policy: 'wait', shortcutsOn: true, shortcuts: {stop: 'alt+s'}});
+    const s = setup(store), ids: string[] = [], stops: any[] = [];
+    const request = s.client.request, action = s.client.action;
+    let current = 'a', queue = ['foreign-queued'];
+    s.client.request = async (path: string, body: any) => {
+      if (path === '/speak') { ids.push(body.id); if (ids.length > 1) queue.push(body.id); return {id: body.id, ...(ids.length > 1 ? {state: 'queued'} : {})}; }
+      if (path === '/status') return {state: 'playing', id: current, queue};
+      return request(path, body);
+    };
+    s.client.action = async (path: string, body: any) => {
+      if (path === '/stop') { stops.push(body); queue = queue.filter(id => id !== body.id); if (!body.id || current === body.id) current = 'foreign'; return {state: 'playing'}; }
+      return action(path, body);
+    };
+    try {
+      await s.command('play'); await s.command('play');
+      if (control === 'command') await s.command('stop');
+      else { s.press('\u001bs'); await new Promise(r => setImmediate(r)); }
+      assert.deepEqual(stops, [{id: ids[1]}, {id: ids[0]}]);
+      assert.equal(current, 'foreign'); assert.deepEqual(queue, ['foreign-queued']);
+      assert.doesNotMatch(s.line(), /En espera|\[ ‖ \]/);
+    } finally { await s.close(); }
+  });
+}
+
+test('scoped controls S4: power off interrupts a multi-reading stop without reconnecting', async () => {
+  const s = setup(), pendingStop = deferred<any>(), stops: string[] = [];
+  const action = s.client.action;
+  s.client.action = async (path: string, body: any) => {
+    if (path === '/stop') { stops.push(body.id); if (stops.length === 1) return pendingStop.promise; }
+    return action(path, body);
+  };
+  try {
+    await s.command('play'); await s.command('play');
+    const stopping = s.command('stop'); await new Promise(r => setImmediate(r));
+    assert.equal(stops.length, 1);
+    await s.command('');
+    pendingStop.resolve({state: 'idle'}); await stopping;
+    assert.equal(stops.length, 1, 'the old stop must not ensure after power off');
+  } finally { pendingStop.resolve({state: 'idle'}); await s.close(); }
+});
+
+test('scoped controls S4: auto toggle cannot abandon snapshotted stop ids', async () => {
+  const s = setup(), pendingStop = deferred<any>(), stops: any[] = [];
+  const action = s.client.action;
+  s.client.action = async (path: string, body: any) => {
+    if (path === '/stop') {
+      stops.push(body);
+      if (stops.length === 1) return pendingStop.promise;
+    }
+    return action(path, body);
+  };
+  try {
+    await s.command('play'); await s.command('play'); await s.command('play');
+    const stopping = s.command('stop'); await new Promise(r => setImmediate(r));
+    assert.deepEqual(stops, [{id: 'a:tehablo:1'}]);
+    await s.command('auto');
+    pendingStop.resolve({state: 'playing'}); await stopping;
+    assert.deepEqual(stops, [{id: 'a:tehablo:1'}, {id: 'a:tehablo:2'}, {id: 'a'}]);
+  } finally { pendingStop.resolve({state: 'idle'}); await s.close(); }
+});
+
+test('scoped controls S3: session_shutdown preserves a foreign current reading and its queue', async () => {
+  const s = setup(memoryStore(), async () => 'Copied'), stops: any[] = [];
+  let queue = ['foreign-queued'];
+  const real = new ServerClient({fetch: (async (url: any, init: any) => {
+    const path = new URL(url).pathname, body = init.body ? JSON.parse(init.body) : undefined;
+    if (path === '/speak') { queue.push(body.id); return Response.json({id: body.id, state: 'queued'}); }
+    if (path === '/status') return Response.json({state: 'playing', id: 'foreign', queue});
+    if (path === '/stop') { stops.push(body); queue = queue.filter(id => id !== body.id); }
+    assert.notEqual(path, '/shutdown');
+    return Response.json({ready: true});
+  }) as any});
+  s.client.ensure = real.ensure.bind(real);
+  s.client.request = real.request.bind(real);
+  s.client.action = real.action.bind(real);
+  s.client.shutdown = real.shutdown.bind(real);
+  await s.command('play'); await s.command('copy');
+  await s.close();
+  assert.deepEqual(stops, [{id: 'a'}, {id: 'a:tehablo:1'}]);
+  assert.deepEqual(queue, ['foreign-queued']);
+});
+
+test('scoped controls S1: a replaced paused card returns to play while the foreign reading runs', async () => {
+  const s = setup();
+  try {
+    await s.command('play'); await s.command('pause');
+    assert.match(s.line(), /\[ ▶ \] \[ ■ \]/);
+    s.set('playing', 'foreign'); await tick();
+    assert.match(s.line(), /^\[ ▶ \] \[ ▶ copiado \]/);
+    assert.doesNotMatch(s.line(), /\[ ■ \]/);
+  } finally { await s.close(); }
+});
+
 function deferred<T>() {
   let resolve!: (value: T) => void, reject!: (error: Error) => void;
   const promise = new Promise<T>((yes, no) => { resolve = yes; reject = no; });
@@ -716,7 +841,7 @@ test('shortcuts run their action only when enabled, are consumed, and stop after
     s.press('\x1b\x13');await tick();assert.equal(s.ensures(),0);assert.equal(s.calls.length,0);
     await start(s);
     assert.deepEqual(s.press('\x1b\x13'),[{consume:true}]);await tick();
-    assert.ok(s.calls.includes('/stop'));
+    assert.ok(!s.calls.includes('/stop'), 'no own readings to stop');
     s.press('\x1ba');assert.equal(s.store.load().auto,false);assert.equal(s.statuses.at(-1),'TTS auto');
     s.press('\x1b\x0f');await new Promise(r=>setImmediate(r));assert.equal(s.windows.length,1);
     store.save({...store.load(),shortcutsOn:false});
