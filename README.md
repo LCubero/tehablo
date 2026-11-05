@@ -1,262 +1,127 @@
 # tehablo
 
+**Lee en voz alta las respuestas de Pi**, en español y en tu equipo. También puedes usarlo desde una TUI o una consola. Es gratis, funciona solo con CPU (sin GPU ni nube) y, después de la primera descarga, sin internet.
+
 > **En desarrollo.** El proyecto todavía está en desarrollo y puede cambiar. Lo que falta está en la [hoja de ruta](docs/repo-harness/roadmap.md).
 
-Convierte texto en voz en español, en tu equipo y gratis. Usa **Pocket TTS** (Kyutai) con la voz `lola`, sin GPU, nube ni cuenta. En Pi también se puede elegir **Phonon 40M es** (más natural, pide una cuenta gratis de Hugging Face) desde la ventana de ajustes. Probado en Windows y en Linux (Fedora), con salida de audio real y [mediciones de consumo](#cuánto-gasta) en ambos. macOS no se ha verificado.
+[Ver tehablo en uso](https://github.com/user-attachments/assets/65c14b22-f1ed-4736-b5c8-ffaa19c254a2)
 
-El uso principal es **leer en voz alta las respuestas de [Pi](#uso-en-pi)**. La TUI y la consola sirven para probar voces, modelo y velocidad.
+## Consumo aproximado
 
-[tehablo_preview.webm](https://github.com/user-attachments/assets/65c14b22-f1ed-4736-b5c8-ffaa19c254a2)
+| Recurso | Aproximación |
+|---|---|
+| Disco: entorno Python | 0,8–1,1 GB |
+| Disco: modelos Pocket descargados | 1,2 GB en Windows; 0,9 GB en Fedora |
+| Disco: modelo Phonon (opcional) | ~0,15 GB |
+| RAM: Pocket `spanish` | ~1 GB |
+| RAM: Pocket `spanish_24l` | ~1,8 GB |
+| RAM: Phonon | ~0,3 GB |
+| Procesador | Solo CPU; no usa GPU |
 
-
-1. [Cómo funciona](#cómo-funciona)
-2. [Qué usa](#qué-usa)
-3. [Cuánto gasta](#cuánto-gasta)
-4. [Instalación](#instalación)
-5. [Uso en Pi](#uso-en-pi)
-6. [Uso: TUI](#uso-tui)
-7. [Uso: consola simple](#uso-consola-simple)
-8. [Voces](#voces)
-9. [Qué se puede agregar, modificar o aprovechar](#qué-se-puede-agregar-modificar-o-aprovechar)
-10. [Más documentación](#más-documentación)
-
----
-
-## Cómo funciona
-
-| Paso | Qué hace | Ejemplo |
-|---|---|---|
-| 1. Texto técnico | Simplifica URLs, rutas, archivos e identificadores | `src/tehablo_server.py` → *tehablo sérver punto pai* |
-| 2. Términos en inglés | Los cambia por cómo suenan ([`pronunciaciones.json`](pronunciaciones.json)) | `Python` → *páiton* |
-| 3. Números | Los convierte a palabras, con su unidad | `15.000` → *quince mil*, `5,86 s` → *cinco coma ochenta y seis segundos* |
-| 4. Phonon (Pi) o Pocket TTS | Genera la voz a trozos | — |
-| 5. Velocidad | Cambia el ritmo sin cambiar el tono | — |
-| 6. Altavoz | Suena mientras se genera lo siguiente | — |
-
-- La preparación del texto y la velocidad son código propio y casi no gastan. Pocket TTS es el paso pesado.
-- Con el modelo ya cargado, el audio empieza a sonar sin esperar a que termine todo el texto. El arranque puede tardar varios segundos; las mediciones y sus límites se detallan en [desarrollo](docs/desarrollo.md#arranque-en-windows-mediciones-y-límites).
-- Internet solo hace falta la primera vez, para descargar los modelos.
-
-Detalle completo: [docs/como-funciona.md](docs/como-funciona.md).
-
-## Qué usa
-
-| Pieza | Para qué | Licencia |
-|---|---|---|
-| **Phonon 40M es** (`ptts`) | Voz opcional en Pi, más natural | Pesos CC BY-NC 4.0, acceso restringido |
-| **Pocket TTS** (Kyutai) | Voz de TUI/consola y alternativa en Pi | Código MIT, pesos CC BY 4.0 |
-| **PyTorch** solo CPU | Ejecuta el modelo | BSD |
-| **Textual** | Interfaz de la TUI | MIT |
-| **sounddevice** | Salida al altavoz | MIT |
-| **audiotsm** | Velocidad sin cambiar el tono | MIT |
-| **numpy / scipy** | Cálculo y guardado de audio `.wav` | BSD |
-
-## Cuánto gasta
-
-Mismo equipo: Ryzen 5 5600X (12 hilos) con 32 GB de RAM, voz `lola` y un texto de unos 36 s de audio.
-
-**Windows:**
-
-| | `spanish` (rápido) | `spanish_24l` (más calidad) |
-|---|---|---|
-| RAM | ~870 MB (pico ~1 GB) | ~1,8 GB (pico ~2,3 GB) |
-| CPU | ~1,8 núcleos (~15 %) | ~1,2 núcleos (~10 %) |
-| Velocidad | 3,7 veces más rápido que tiempo real | 1,2 veces |
-| Primer fragmento generado (sin reproducir) | ~0,16 s | ~0,55 s |
-| GPU | No la usa | No la usa |
-
-En disco: unos 813 MB el entorno de Python y 1,2 GB los modelos descargados.
-
-**Linux (Fedora 44):**
-
-| | `spanish` (rápido) | `spanish_24l` (más calidad) |
-|---|---|---|
-| RAM | ~970 MB (pico ~1,1 GB) | ~1,9 GB (pico ~2,4 GB) |
-| CPU | ~1,7 núcleos (~14 %) | ~1,2 núcleos (~10 %) |
-| Velocidad | 4,3 veces más rápido que tiempo real | 1,3 veces |
-| Primer fragmento generado (modelo cargado, sin reproducir) | ~0,12 s | ~0,44 s |
-| GPU | No la usa | No la usa |
-
-En disco: unos 1087 MB el entorno de Python y 0,9 GB los modelos descargados.
-
-Esa tabla es sin cuantizar. En Linux el modelo se carga **cuantizado** por defecto: genera ~1,7 veces más rápido con `spanish` y ~1,9 con `spanish_24l`, sin diferencia audible en una prueba a ciegas, y tarda ~0,5–1,5 s más en cargar. En Windows sigue sin cuantizar, porque allí era más lento. `TEHABLO_QUANTIZE=0` lo desactiva y `TEHABLO_QUANTIZE=1` lo fuerza; cualquier otro valor se ignora.
-
-Método, valores exactos y cómo repetir la medición: [docs/como-funciona.md](docs/como-funciona.md#consumo-medido).
+Son referencias, no requisitos mínimos: cambian con el modelo, el sistema y la cuantización. La RAM corresponde al modelo en uso; al apagar el servidor se libera. Consulta las [mediciones Windows/Fedora](docs/como-funciona.md#consumo-medido) y la [comparación con Phonon](docs/pruebas-de-voces.md#phonon-40m-es-frente-a-lola-spanish_24l-y-kokoro-2026-11-03-fedora).
 
 ## Instalación
 
-Con [`uv`](https://docs.astral.sh/uv/) instalado, ejecuta desde la raíz del repositorio:
+Con [uv](https://docs.astral.sh/uv/) instalado, ejecuta desde la raíz del repositorio:
 
-**Linux / macOS:**
-```bash
-./install.sh
+| Sistema | Comando |
+|---|---|
+| Linux / macOS | `./install.sh` |
+| Windows (PowerShell) | `powershell -ExecutionPolicy Bypass -File install.ps1` |
+
+Los scripts preparan el entorno, instalan las dependencias y comprueban Torch sin CUDA. En Linux indican cómo instalar PortAudio si falta. Los modelos se descargan al usarlos por primera vez.
+
+Después instala la extensión en Pi con la **ruta absoluta** de tu repositorio:
+
+```text
+pi install <ruta>/pi-extension/tehablo-tts
 ```
 
-**Windows (PowerShell):**
-```powershell
-powershell -ExecutionPolicy Bypass -File install.ps1
-```
+Abre Pi o ejecuta `/reload`. La extensión se instala para todos tus proyectos y usa esta carpeta sin copiarla: no la muevas después de instalarla. Los instaladores muestran el comando con tu ruta.
 
-Los scripts crean o reutilizan el entorno compatible con tu sistema, instalan las dependencias y comprueban las importaciones y Torch sin CUDA; si falta PortAudio, el script de Linux indica cómo instalarlo. Los modelos se descargan en el primer uso.
-
-### Instalación manual
-
-Requisitos: Python 3.10 a 3.14 y [`uv`](https://docs.astral.sh/uv/).
-
-**Windows (PowerShell):**
-```powershell
-uv venv .venv-pocket --python 3.12
-uv pip install --python .venv-pocket\Scripts\python.exe -r requirements.txt `
-  --extra-index-url https://download.pytorch.org/whl/cpu --index-strategy unsafe-best-match
-```
-
-**Linux / macOS:**
-```bash
-uv venv .venv-pocket --python 3.12
-uv pip install --python .venv-pocket/bin/python -r requirements.txt \
-  --extra-index-url https://download.pytorch.org/whl/cpu --index-strategy unsafe-best-match
-```
-
-En Linux, instala PortAudio si falta, usando solo el comando de tu distribución (no hace falta en macOS):
-```bash
-sudo dnf install portaudio      # Fedora
-sudo apt install libportaudio2  # Debian / Ubuntu
-```
-
-El entorno `.venv-pocket` no se puede copiar entre sistemas operativos: créalo en cada equipo. Con dual boot sobre la misma carpeta, deja un entorno por sistema: la extensión busca primero `.venv-pocket` y después `.venv-pocket-windows`, `.venv-pocket-linux` o `.venv-pocket-macos`, según el sistema (`Scripts/python.exe` en Windows, `bin/python` en Linux y macOS). Si no encuentra ninguno, el aviso muestra las rutas que probó. Ejecuta los comandos desde la raíz del repositorio.
-
-Comprobación básica en Linux (importaciones y Torch sin CUDA; no prueba el audio):
-```bash
-.venv-pocket/bin/python -c 'import pocket_tts, sounddevice, torch; print(torch.__version__); assert torch.version.cuda is None'
-```
-
-La combinación comprobada en Fedora y los límites de la prueba están en [Desarrollo](docs/desarrollo.md#verificación-en-fedora).
+Probado con audio en Windows y Fedora; macOS aún no está verificado. [Instalación manual y entornos por sistema](docs/desarrollo.md#instalación-manual).
 
 ## Uso en Pi
 
-Pi empieza con la voz marcada `"default": true` en [`src/voice_table.json`](src/voice_table.json): hoy `lola` (Pocket `spanish`), la mejor que funciona gratis y sin cuenta. Si aparece una mejor que se pueda distribuir, se cambia esa marca. La voz que elijas en la ventana de ajustes se guarda, y el servidor arranca directamente con ella en las sesiones siguientes.
+Pi empieza con el servidor **apagado**, en modo manual. Pulsa `[ ⏻ TTS ]` para cargar la voz; luego `[ ▶ ]` lee esa respuesta (o usa `/tts play`, que la enciende si hace falta). La voz inicial es `lola`, gratis y sin cuenta; si eliges otra, se recuerda.
 
-Phonon 40M es (`Regina`, `Iker`) es opcional. Sus pesos son **CC BY-NC 4.0** (no comercial) y requieren una cuenta gratis de Hugging Face, aceptar las condiciones en <https://huggingface.co/gradium/phonon-40m-es> y un token para la primera descarga: la ventana `[ ≡ ]` lo pide al elegir una de esas voces (o usa `hf auth login`). Token recomendado: *Fine-grained* con el preset **Read-Only** (solo lectura: no puede escribir ni borrar); el permiso que usa la descarga es *Read contents of gated repos you can access*. No hace falta *Write*, *Inference* ni *Full Access*. Ya descargado, funciona desde caché sin token. Si eliges Phonon y falta el paquete, el acceso o la caché, el servidor registra el motivo y usa Pocket `spanish` con `lola`; Pi avisa qué voz no cargó, y `/health` muestra el modelo real y esa voz en `fallback`.
+### Barra de controles
 
-La voz se elige en la ventana (`[ ≡ ]` o `/tts menu`); cada voz ya trae su modelo. El servidor acepta `--model` y `--voice`. Las voces de `voices/` solo son para Pocket.
+| Estado | Barra |
+|---|---|
+| Apagado | `[ ⏻ TTS ] [ ≡ ]` |
+| Cargando | `[ Cargando… ] [ ≡ ]` |
+| Listo | `[ ▶ ] [ ▶ copiado ] [ ⋯ ]` |
+| Controles abiertos | `[ ▶ ] [ ▶ copiado ] [ → ] : [ ≡ ] Vol [- 100% +] Vel [- 1.00x +] [ ⏻ ]` |
+| Sonando | `[ ‖ ] [ ■ ] [ ⋯ ]` |
+| En pausa | `[ ▶ ] [ ■ ] [ ⋯ ]` |
 
-La extensión [`pi-extension/tehablo-tts/`](pi-extension/tehablo-tts/) lee las respuestas finales del agente con la voz local. Se instala una vez para todos tus proyectos con la ruta absoluta de esa carpeta; Pi la usa desde ahí, sin copiarla, porque necesita el servidor y el entorno de este repositorio:
+- `[ ▶ ]` lee esa respuesta; en pausa, continúa. `[ ■ ]` solo detiene.
+- Para leer una selección, **cópiala primero** y pulsa `[ ▶ copiado ]`: Pi no ve la selección del ratón.
+- `[ ⋯ ]` abre volumen, velocidad y ajustes; `[ → ]` los oculta.
+- `[ ⏻ ]` apaga el servidor y libera el modelo, sin perder tus ajustes.
+- Antes de la primera respuesta, la barra aparece sobre el editor sin el botón de leer respuesta.
 
-```bash
-pi install E:\ruta\a\tehablo\pi-extension\tehablo-tts   # Windows
-pi install /ruta/a/tehablo/pi-extension/tehablo-tts       # Linux / macOS
-```
-
-Después abre Pi o ejecuta `/reload`. `pi list` la muestra y `pi remove <ruta>` la quita. Si usas `gentle-shell` por separado (con su propia carpeta), instálala ahí con `gentle-shell install <ruta>`. Al terminar, `install.sh` e `install.ps1` muestran los dos comandos con la ruta de tu equipo.
-
-- **Manual (por defecto):** cada respuesta muestra una barra de controles que se usa con clics. Antes de la primera respuesta, la barra aparece sobre el editor, sin `[ ▶ ]` (todavía no hay nada que leer):
-
-  | Estado | Barra |
-  |---|---|
-  | Apagado | `[ ⏻ TTS ] [ ≡ ]` |
-  | Cargando | `[ Cargando… ] [ ≡ ]` (`Cargando…` no se puede pulsar) |
-  | Listo | `[ ▶ ] [ ▶ copiado ] [ ⋯ ]` |
-  | Listo, controles abiertos | `[ ▶ ] [ ▶ copiado ] [ → ] : [ ≡ ]  Vol [- 100% +]  Vel [- 1.00x +] [ ⏻ ]` |
-  | Sonando | `[ ‖ ] [ ■ ] [ ⋯ ]` |
-  | En pausa | `[ ▶ ] [ ■ ] [ ⋯ ]` |
-
-  `[ ▶ ]` lee esa respuesta y `[ ▶ copiado ]` el texto copiado; en pausa, `[ ▶ ]` sigue.
-
-  **`[ ⏻ TTS ]`** arranca el servidor y carga el modelo antes de escuchar; mientras tanto, la barra de estado muestra `TTS manual · cargando`; con el servidor apagado muestra `TTS off`, y luego `TTS manual` o `TTS auto`. Las pruebas de código cubren clics en toda su superficie (corchetes, símbolo, letras y espacios normales); la persona responsable confirmó el clic físico en toda la etiqueta en Windows y en el corchete y las letras en Linux, y apagar y volver a encender en ambos. `[ ▶ ]`, `[ ▶ copiado ]`, `/tts play` y el modo automático también lo arrancan si hace falta.
-- **Volumen y velocidad:** `[ ⋯ ]` muestra **Vol** (10–150 %, pasos de 10 %, inicial 100 %) y **Vel** (1.00x, 1.10x, 1.15x, 1.25x y 1.50x) en todas las barras; `[ → ]` los oculta. `[-` baja y `+]` sube, con clics. Todas las voces suenan más fuerte que antes: el servidor sube la salida ×1,8 (elegido por escucha) y corrige cada voz de la tabla para que suenen parecido (`gain_db` en `src/voice_table.json`); los picos fuertes se redondean en lugar de recortarse. El volumen cambia incluso el audio en reproducción; la velocidad afecta a los siguientes trozos generados, no al audio ya almacenado. Los límites se mantienen sin error.
-- **Apagar y liberar el modelo:** `[ ⏻ ]` aparece solo al final de los controles abiertos, después del último `+]`. Detiene la lectura y cierra el servidor propio para liberar sus recursos; los ajustes guardados se mantienen. `[ ⏻ TTS ]` permite encenderlo otra vez sin cerrar Pi. No equivale a `[ ■ ]` (solo detener) ni a `/tts toolbar` (ocultar la barra). `/tts` hace lo mismo que `[ ⏻ TTS ]` y `[ ⏻ ]`: enciende o apaga el servidor.
-- **Lo copiado:** Pi no ve lo que seleccionas con el ratón (esa selección es de la terminal), así que primero cópialo (`Ctrl+Shift+C` en la terminal) y pulsa `[ ▶ copiado ]`: lo lee en esa barra, con pausa y detener. No añade dependencias: usa `Get-Clipboard` en Windows, `pbpaste` en macOS y `wl-paste` (paquete `wl-clipboard`) o `xclip` en Linux; si falta, lo avisa.
-- **Automático:** `/tts auto` activa o desactiva la lectura de cada respuesta al terminar (si el servidor está apagado, lo enciende). Apagar el servidor también vuelve al modo manual; reiniciarlo no.
-- **Ventana de ajustes `[ ≡ ]`:** junto a `[ ⏻ TTS ]` con el servidor apagado, y dentro de los controles abiertos (`[ ⋯ ]`, antes de *Vol*) con el servidor encendido. Pulsar `[ ≡ ]` con la ventana abierta la cierra. Abre una ventana centrada que se usa con clics o con el teclado (↑↓ elegir, ←→ cambiar, Enter, Esc cerrar):
-  - **Voz** y `[ Cambiar ]`: una tabla con *Voz*, *Estado* (descargada, para descargar o con cuenta) *RAM aprox.* (lo que ocupa aproximadamente el modelo de esa voz: ~0,3 GB Phonon, ~1 GB Pocket) y *Dict* (si se aplica el diccionario de pronunciación `pronunciaciones.json` a esa voz: un clic en «sí»/«no» o ←→ sobre la fila lo cambia y se guarda; es el mismo ajuste que `/tts dict`); la voz activa lleva `●` y se ve en amarillo. Primero las descargadas, luego las que se descargan sin cuenta y al final las que piden una cuenta gratis de Hugging Face (Phonon), marcadas con `*`. Al elegir una de cuenta sin token, la ventana muestra los 4 pasos (un clic en cada dirección la abre en el navegador) y un campo para pegarlo (se ve como `•••`). El token no se guarda en ningún archivo: solo hace falta para descargar la voz, así que queda en memoria durante esa sesión de Pi y el servidor se reinicia para usarlo; ya descargada, la voz funciona sin él. Un `HF_TOKEN` en el entorno o en `.env` también sirve. Al abrir la ventana con el servidor apagado o cargando, el estado de cada voz se actualiza solo cuando el servidor está listo.
-  - **Volumen**, **Velocidad** y **Lectura automática**.
-  - **Atajos de teclado**: activarlos y `[ Editar ]` para asignar Ctrl o Alt + letra o número a encender/apagar, lectura automática, escuchar, pausar/seguir, detener, abrir ajustes y leer lo copiado. No acepta combinaciones que ya usa Pi.
-  - **Servidor**: `[ Encender ]` (con `[ Reiniciar ]` en gris) o `[ Apagar ]` y `[ Reiniciar ]`.
+### Comandos
 
 | Comando | Acción |
 |---|---|
-| `/tts` | Enciende o apaga el servidor (como `[ ⏻ TTS ]` y `[ ⏻ ]`; apagar también desactiva la lectura automática) |
-| `/tts auto` | Activa o desactiva la lectura automática de cada respuesta (al activarla enciende el servidor si está apagado). Apagado nunca tiene lectura automática: Pi empieza con el servidor apagado y en `TTS off` |
-| `/tts play [n]` | Lee la última respuesta, o la `n` de la sesión contando desde la primera (`/tts play 3` = la tercera) |
-| `/tts copy` | Lee el texto copiado, como `[ ▶ copiado ]` |
-| `/tts pause` | Pausa o sigue la lectura |
+| `/tts` | Enciende o apaga el servidor; apagar desactiva la lectura automática |
+| `/tts auto` | Activa o desactiva la lectura de cada respuesta al terminar; al activarla enciende el servidor |
+| `/tts play [n]` | Lee la última respuesta o la número `n` de la sesión, contando desde la primera |
+| `/tts copy` | Lee el texto copiado |
+| `/tts pause` | Pausa o continúa |
 | `/tts stop` | Detiene la lectura |
-| `/tts toolbar` | Muestra u oculta la barra y lo recuerda al abrir Pi (la lectura, el modo automático y los atajos siguen funcionando) |
-| `/tts menu` | Abre la ventana de ajustes |
-| `/tts dict` | Activa o desactiva el diccionario de pronunciación (`pronunciaciones.json`: cómo se leen términos en inglés como «GitHub») para la voz actual; los números, símbolos y limpieza del texto siguen igual y lo recuerda por voz (por defecto, apagados en Phonon y encendidos en las demás) |
-| `/tts status` | Estado y ayuda |
+| `/tts toolbar` | Muestra u oculta la barra y recuerda la elección; no desactiva la lectura ni los atajos |
+| `/tts menu` | Abre los ajustes |
+| `/tts dict` | Activa o desactiva el diccionario de pronunciación para la voz actual y lo recuerda |
+| `/tts status` | Muestra el estado y la ayuda |
 
-La extensión arranca sola el servidor local [`src/tehablo_server.py`](src/tehablo_server.py) (`127.0.0.1:8765`, se cambia con `TEHABLO_PORT`) y lo apaga al cerrar Pi. Necesita el entorno `.venv-pocket` (o `.venv-pocket-<sistema>`) instalado. Los ajustes se guardan en tu carpeta de usuario, `~/.tehablo/settings.json` (`C:\Users\<usuario>\.tehablo\settings.json` en Windows), así que cada usuario y cada sistema de un dual boot tiene los suyos; se aplican al encender el servidor. La primera vez se parte del antiguo `tehablo-settings.json` del proyecto, si existe, sin cambiarlo. Los mensajes y errores del servidor se guardan en `logs/tehablo-server.log`, que se reescribe en cada arranque; si el servidor no responde a tiempo, el aviso indica esa ruta. Si el modelo no carga, Pi muestra el error en lugar de quedarse en «cargando»; también avisa si una lectura falla (por ejemplo, sin dispositivo de audio) o si se pierde la conexión con el servidor. Cada lectura usa la salida de audio predeterminada del sistema en ese momento: si cambias a audífonos o Bluetooth, la siguiente lectura ya suena ahí. En Windows la que está sonando termina en la salida anterior; en Linux (Fedora) cambia en el momento. Por seguridad, el servidor rechaza peticiones de páginas web (cabecera `Origin`, 403) y los `POST` que no declaran JSON (415).
+### Ajustes `[ ≡ ]`
 
-El registro incluye líneas `Startup:` con segundos por etapa: importaciones del servidor, importaciones de TTS y carga del modelo (sin repetir el tiempo de importación de TTS). Sirven para comparar próximos arranques, no para diagnosticar retrospectivamente la demora ni atribuirla a la caché. No miden la creación del proceso Python ni el inicio de la reproducción. Guarda el registro antes de volver a arrancar: se sobrescribe. Las [mediciones de arranque en Windows y sus límites](docs/desarrollo.md#arranque-en-windows-mediciones-y-límites) quedan documentadas para futuras comparaciones.
+Elige **voz**, **volumen**, **velocidad**, **lectura automática** y **atajos de teclado**, o enciende, apaga y reinicia el servidor. Usa clics o ↑↓, ←→, Enter y Esc.
 
-## Uso: TUI
+La tabla muestra el estado de descarga, la RAM aproximada y **Dict** por voz. El diccionario adapta términos como «Python»; desactivarlo no cambia la lectura de números ni la limpieza del texto. Por defecto está apagado en Phonon y encendido en Pocket.
 
-```powershell
-.\.venv-pocket\Scripts\python src/tehablo_tui.py      # Windows
-.venv-pocket/bin/python src/tehablo_tui.py            # Linux / macOS
-```
-
-Escribe o pega el texto, elige **voz**, **modelo** (`spanish` o `spanish_24l`) y **velocidad** (0,75x a 1,5x), y pulsa **F5**.
-
-| Tecla | Acción |
-|---|---|
-| **F5** | Generar y reproducir |
-| **F6** | Detener |
-| **F7** | Guardar el último audio en `pocket-out/` (con la velocidad elegida) |
-| **F8** | Recargar la lista de voces |
-| **Ctrl+Q** | Salir |
-
-## Uso: consola simple
-
-```powershell
-.\.venv-pocket\Scripts\python src/tehablo_tts.py [--voice lola] [--language spanish]
-```
-
-Escribe texto y pulsa Enter. Comandos: `/leer archivo.txt`, `/multi`, `/voz <nombre|archivo>`, `/voces`, `/modelo <idioma>`, `/guardar [nombre]`, `/salir`. Para textos largos, usa `/leer` o la TUI.
+Los ajustes se guardan por usuario en `~/.tehablo/settings.json`. [Detalles de Pi, portapapeles y diagnóstico](docs/desarrollo.md#uso-en-pi).
 
 ## Voces
 
-| Tipo | Cuáles | ¿Necesita token? |
+| Nombre | Modelo en Pi | ¿Cuenta? | Licencia de pesos / voz |
+|---|---|---|---|
+| `lola` (inicial), `rafael` | Pocket `spanish` | No | CC BY 4.0 |
+| `Facundo`, `Santiago` (Argentina) | Pocket `spanish` | No | Pesos CC BY 4.0; voces CC BY-SA 4.0 |
+| `Camila`, `Javiera`, `Diego` (Chile), `Felipe` (Colombia) | Pocket `spanish` | No | Pesos CC BY 4.0; voces CC BY-SA 4.0 |
+| `Regina` (México), `Iker` (España) | Phonon 40M es | Gratis, solo para descargar | CC BY-NC 4.0: no comercial |
+
+Phonon es opcional: al elegirlo, los ajustes te guían para aceptar las condiciones de Hugging Face y pegar un token de solo lectura. El token queda en memoria durante esa sesión; después de descargarlo no hace falta. Si no carga, se usa `lola` y Pi avisa.
+
+Clona solo voces que tengas permiso para usar. [Catálogo, clonación y atribución](docs/desarrollo.md#voces).
+
+## TUI y consola
+
+Ambas usan Pocket TTS. Ejecuta desde la raíz con el Python de tu entorno:
+
+| Interfaz | Windows | Linux / macOS |
 |---|---|---|
-| **Catálogo** incluido | `lola` (única nativa en español), `rafael` y unas 25 más con timbre de otros idiomas | No |
-| **Incluidas** en `voices/` | `Facundo`, `Santiago` (Argentina), `Camila`, `Javiera`, `Diego` (Chile) y `Felipe` (Colombia), elegidas por escucha (CC BY-SA 4.0, ver `voices/ATTRIBUTION.txt`) | No |
-| **Referencias WAV** en `voices/` | Argentina, Chile y Colombia, mujer y hombre (`scripts/get_voices.py`), para crear otras voces | Para clonarlas, no para descargarlas |
-| **Propias** | Cualquier `.wav`, `.mp3` o `.flac` limpio de 10 a 30 s en `voices/` (F8 para recargar) | Sí |
+| TUI | `.venv-pocket\Scripts\python src/tehablo_tui.py` | `.venv-pocket/bin/python src/tehablo_tui.py` |
+| Consola | `.venv-pocket\Scripts\python src/tehablo_tts.py` | `.venv-pocket/bin/python src/tehablo_tts.py` |
 
-> ⚠️ Clona solo voces que tengas permiso para usar. `cosette` del catálogo es solo para uso no comercial.
+Si el instalador creó un entorno con sufijo de sistema, usa ese nombre.
 
-Listado y licencias: [docs/pocket-tts.md](docs/pocket-tts.md#7-catálogo-de-voces-predefinidas). Más fuentes: [docs/voces-gratuitas.md](docs/voces-gratuitas.md).
+- **TUI:** pega texto, elige voz, modelo y velocidad; pulsa **F5** para escuchar, **F6** para detener y **F7** para guardar.
+- **Consola:** escribe texto y pulsa Enter; para un archivo usa `/leer archivo.txt`.
 
-### Activar la clonación de voces (token de Hugging Face)
-
-1. Crea una cuenta gratuita en <https://huggingface.co> y acepta las condiciones en <https://huggingface.co/kyutai/pocket-tts>.
-2. Crea un token **Read** en <https://huggingface.co/settings/tokens>.
-3. Ejecuta `.\.venv-pocket\Scripts\hf auth login` y pega el token, o añade `HF_TOKEN=hf_...` a `.env`.
-
-Solo hace falta para la primera descarga; después funciona sin internet.
-
-Las voces incluidas ya vienen procesadas en `voices/<nombre>.safetensors` (unos 11 MB cada una): cargan al instante y no piden token. Solo para recrearlas desde los WAV hace falta el token: `python scripts/get_voices.py` descarga las referencias y `python scripts/get_voices.py --prepare` las vuelve a preparar.
-
-## Qué se puede agregar, modificar o aprovechar
-
-**Sin tocar código:**
-- **Pronunciación de términos en inglés:** edita [`pronunciaciones.json`](pronunciaciones.json) (`"Python": "páiton"`). Incluye Git y Pi (`feat`, `master`, `origin`, `pi-tts`); se recarga solo. Cómo escribir cada entrada: [docs/pronunciacion.md](docs/pronunciacion.md).
-- **Texto técnico en español:** las URLs se leen como «enlace a dominio», las rutas solo por su último segmento y los archivos con su extensión; una barra entre palabras se lee «eslash» (`on/off`). Identificadores como `RH-W-0001` se deletrean y los hashes de commit se omiten. Los separadores (`+++`, `===`) no se leen, y las flechas (`→`, `->`, `=>`) y los paréntesis se convierten en una pausa corta. Los símbolos se leen: `=` «igual a», `<` «menor que», `>=` o `≥` «mayor o igual que», `≈` o `~14` «aproximadamente», `1,7×` «veces», `3×4` «por», y `#350` se lee «número 350». En Pi, las tablas se leen fila por fila (celdas separadas por pausas) y los puntajes como `53/53` se leen «53 de 53». Las unidades tras un número se leen completas: tiempo (`ms`, `s`, `min`, `h`), longitud (`m`, `km`, `in`, `ft`), superficie (`m²`, `m2`, `ha`), volumen (`l`, `ml`, `cc`, `gal`), peso (`kg`, `lb`, `ton`), velocidad (`km/h`, `MB/s`), datos (`MB`, `GiB`, `Mbps`), frecuencia (`GHz`), electricidad (`V`, `mA`, `kWh`), presión (`hPa`, `bar`, `psi`), sonido (`dB`), energía (`kcal`) y pantalla (`px`, `fps`), con «un/una» y femenino donde toca («una hora», «doscientas kilocalorías»). Todo esto ocurre antes de aplicar el diccionario y los números.
-- **Voces nuevas:** copia grabaciones en `voices/`, o descarga más con `scripts/get_voices.py --speakers 5`.
-- **Calidad:** prueba `spanish_24l`, o una referencia de voz más limpia.
-
-**Con código, ideas documentadas:**
-- Siglas en el conversor de números, pausas exactas.
-- Lista completa con esfuerzo estimado: [docs/pocket-tts.md](docs/pocket-tts.md#12-catálogo-de-mejoras-posibles).
-- Otros motores y recursos gratuitos: [docs/catalogo-gratuito.md](docs/catalogo-gratuito.md).
+[Todos los atajos y comandos](docs/desarrollo.md#uso-tui).
 
 ## Más documentación
 
-- [Cómo funciona y qué recursos usa](docs/como-funciona.md)
-- [Pocket TTS: referencia, voces, pronunciación y mejoras](docs/pocket-tts.md)
-- [Desarrollo: archivos, pruebas, problemas conocidos y licencias](docs/desarrollo.md)
-- [Hoja de ruta: trabajo pendiente y prioridades](docs/repo-harness/roadmap.md)
-- [Cómo contribuir](CONTRIBUTING.md) · [Guía del harness de IA](docs/repo-harness/usage.md)
+- [Cómo funciona y mediciones de recursos](docs/como-funciona.md)
+- [Uso detallado, instalación manual, pruebas y problemas conocidos](docs/desarrollo.md)
+- [Pronunciación y personalización del texto](docs/pronunciacion.md)
+- [Pocket TTS: referencia, catálogo y mejoras posibles](docs/pocket-tts.md)
+- [Fuentes de voces gratuitas](docs/voces-gratuitas.md) · [Otros motores gratuitos](docs/catalogo-gratuito.md)
+- [Hoja de ruta](docs/repo-harness/roadmap.md) · [Cómo contribuir](CONTRIBUTING.md)
+- [Mapa documental](docs/repo-harness/README.md) · [Guía del harness de IA](docs/repo-harness/usage.md)
 
 Licencia del proyecto: [MIT](LICENSE).

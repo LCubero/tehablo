@@ -36,7 +36,7 @@ Texto escrito
 5. Altavoz                 sounddevice                                     suena mientras se genera lo siguiente
 ```
 
-- Los pasos 0, 1 y 2 se aplican con `spanish`, `spanish_24l` y también con `phonon` en Pi.
+- Los pasos 0 y 2 se aplican con `spanish`, `spanish_24l` y también con `phonon` en Pi. El paso 1 se puede desactivar por voz en Pi con `/tts dict`; por defecto está apagado en Phonon y encendido en Pocket.
 - Los pasos 0, 1, 2 y 4 son código propio y casi no consumen recursos.
 - El paso 3 es la parte pesada.
 
@@ -46,6 +46,7 @@ Texto escrito
 
 | Pieza | Para qué | Licencia |
 |---|---|---|
+| **Phonon 40M es** (`ptts`) | Voz opcional en Pi, más natural | Pesos CC BY-NC 4.0, acceso restringido |
 | **Pocket TTS** (Kyutai) | Modelo de IA que genera la voz | Código MIT, pesos CC BY 4.0 |
 | **PyTorch**, versión solo CPU | Motor que ejecuta el modelo | BSD |
 | **Textual** | Interfaz de la TUI | MIT |
@@ -211,7 +212,7 @@ HF_HUB_OFFLINE=1 .venv-pocket/bin/python scripts/measure_tts.py \
 | GPU | Se instala PyTorch solo CPU (~200 MB frente a ~3 GB con CUDA); funciona en equipos sin tarjeta gráfica |
 | Internet | Solo en la primera ejecución, para descargar los modelos; después funciona sin conexión |
 
-Además del acceso inicial a Phonon (opcional) en Pi, otra excepción es la **clonación de voces** desde audio en `voices/`. Requiere un token gratuito de Hugging Face para la primera descarga de los pesos con clonación; las 6 voces incluidas como `.safetensors` no lo necesitan. Ver [README](../README.md#activar-la-clonación-de-voces-token-de-hugging-face).
+Además del acceso inicial a Phonon (opcional) en Pi, otra excepción es la **clonación de voces** desde audio en `voices/`. Requiere un token gratuito de Hugging Face para la primera descarga de los pesos con clonación; las 6 voces incluidas como `.safetensors` no lo necesitan. Ver [README](desarrollo.md#activar-la-clonación-de-voces-token-de-hugging-face).
 
 ---
 
@@ -221,3 +222,37 @@ Además del acceso inicial a Phonon (opcional) en Pi, otra excepción es la **cl
 - **Empieza a sonar enseguida:** el texto se divide en frases y cada trozo de audio va al altavoz en cuanto está listo. Detalles en [pocket-tts.md](pocket-tts.md).
 - **Números e inglés reescritos antes:** el modelo lee letras con reglas del español. No interpreta "15.000" ni reconoce que "Python" es inglés, y no acepta fonemas. Por eso tehablo reescribe el texto antes de enviarlo.
 - **Velocidad aplicada al audio:** Pocket TTS no tiene una opción de velocidad. La TUI estira o comprime el audio generado con WSOLA, que conserva el tono.
+
+---
+
+## Resumen de mediciones Windows y Fedora
+
+Mismo equipo: Ryzen 5 5600X (12 hilos) con 32 GB de RAM, voz `lola` y un texto de unos 36 s de audio.
+
+**Windows:**
+
+| | `spanish` (rápido) | `spanish_24l` (más calidad) |
+|---|---|---|
+| RAM | ~870 MB (pico ~1 GB) | ~1,8 GB (pico ~2,3 GB) |
+| CPU | ~1,8 núcleos (~15 %) | ~1,2 núcleos (~10 %) |
+| Velocidad | 3,7 veces más rápido que tiempo real | 1,2 veces |
+| Primer fragmento generado (sin reproducir) | ~0,16 s | ~0,55 s |
+| GPU | No la usa | No la usa |
+
+En disco: unos 813 MB el entorno de Python y 1,2 GB los modelos descargados.
+
+**Linux (Fedora 44):**
+
+| | `spanish` (rápido) | `spanish_24l` (más calidad) |
+|---|---|---|
+| RAM | ~970 MB (pico ~1,1 GB) | ~1,9 GB (pico ~2,4 GB) |
+| CPU | ~1,7 núcleos (~14 %) | ~1,2 núcleos (~10 %) |
+| Velocidad | 4,3 veces más rápido que tiempo real | 1,3 veces |
+| Primer fragmento generado (modelo cargado, sin reproducir) | ~0,12 s | ~0,44 s |
+| GPU | No la usa | No la usa |
+
+En disco: unos 1087 MB el entorno de Python y 0,9 GB los modelos descargados.
+
+Esa tabla es sin cuantizar. En Linux el modelo se carga **cuantizado** por defecto: genera ~1,7 veces más rápido con `spanish` y ~1,9 con `spanish_24l`, sin diferencia audible en una prueba a ciegas, y tarda ~0,5–1,5 s más en cargar. En Windows sigue sin cuantizar, porque allí era más lento. `TEHABLO_QUANTIZE=0` lo desactiva y `TEHABLO_QUANTIZE=1` lo fuerza; cualquier otro valor se ignora.
+
+Método, valores exactos y cómo repetir la medición: [docs/como-funciona.md](como-funciona.md#consumo-medido).

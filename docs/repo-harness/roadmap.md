@@ -345,9 +345,10 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 - **Origen:** solicitud de la persona responsable del 2026-11-04: «el readme no cumple con la carga cognitiva», «y que haga sentido y se entienda el producto y sus consumos aproximados», «el gif para mostrar el uso, menu, opciones, shobar, etc. las voces hay que hacer unos archivos de sonidop para subir y que puedan dar clic para el preview (si es posible)».
 - **Prioridad:** P2; es lo primero que ve quien llega al proyecto.
 - **Dependencias:** después de `RH-W-0031`, para que el GIF muestre la barra ya corregida.
-- **Estado:** `proposed`.
+- **Estado:** `active`.
 - **Trabajo restante:** reordenar el README (qué es, instalar, usar en Pi, voces, consumo aproximado de disco y RAM) y mover el detalle a `docs/`; grabar un GIF corto de la barra y el menú; generar una muestra breve por voz y comprobar si GitHub permite escucharla desde la página.
-- **Condición del siguiente avance:** terminar `RH-W-0031`.
+- **Trabajo completado (2026-11-04):** README reorganizado (qué es, consumo aproximado, instalación, uso en Pi, voces, TUI y consola, documentación) de 3339 a ~1050 palabras; el detalle pasó a `docs/como-funciona.md` y `docs/desarrollo.md`; enlaces y anclas comprobados (52, sin errores). Disco de Phonon (~0,15 GB) medido en la caché de Windows el mismo día.
+- **Condición del siguiente avance:** muestras de voz (comprobar si GitHub permite escucharlas desde la página) y GIF de uso grabado por la persona responsable.
 
 ### RH-W-0031: Mostrar la barra de Pi al iniciar
 

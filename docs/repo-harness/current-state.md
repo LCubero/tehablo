@@ -76,7 +76,7 @@ Este archivo proyecta solo hechos verificados del proyecto: registros activos, b
 - `RH-W-0025` (`deferred`, P2): versión lite de mínimo consumo; cuantización predeterminada en Linux entregada; el resto queda para el final del plan.
 - `RH-W-0028` (`deferred`, P3): decidir si tehablo se instala una vez por usuario (`~/.tehablo/`) o se queda en el repositorio; ya entregados los ajustes de Pi por usuario y el token sin guardar (2026-11-04). En Windows, la persona responsable comprobó físicamente `install.ps1` con `ptts`, la descarga de Regina con el token pegado en la ventana y el TTS apagado (Iker quedó descargada con el mismo archivo), y que tras cerrar y abrir Pi Regina e Iker leen sin token; `/health` mostró `phonon`/`Regina` sin error. Esa prueba probablemente reusó un servidor vivo con el token: con un servidor nuevo sin token, Phonon pasaba a `lola`; corregido el mismo día (carga desde el caché) y comprobado con un servidor nuevo sin token. `install.sh` ya comprueba `ptts` y muestra el comando `pi install`, como `install.ps1` (solo se comprobó el texto final y la sintaxis). Linux sigue sin comprobarse.
 - `RH-W-0029` (`proposed`, P3): voces por API externa (ElevenLabs, Google…) como extra apagado.
-- `RH-W-0030` (`proposed`, P2): README claro con producto, consumo aproximado, GIF de uso y muestras de voz.
+- `RH-W-0030` (`active`, P2): README reorganizado (producto, consumo aproximado, instalación, uso); faltan las muestras de voz y el GIF de uso.
 - `RH-W-0031` (`completed`): la barra de Pi aparece al iniciar, sobre el editor, salvo que se dejara oculta; comprobada físicamente en Windows.
 
 ## Siguiente paso
