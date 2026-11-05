@@ -132,13 +132,14 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 - **Origen:** solicitud de la persona responsable del 2026-10-29: «quiero hacer Que se pueda escoger entre usar el diccionario de pronunciación d terminos en inglés o no».
 - **Prioridad:** P3; opción de uso, sin impedir la síntesis de voz.
 - **Dependencias:** coordinar dónde se expone la opción con `RH-W-0004`.
-- **Estado:** `active`.
-- **Trabajo restante:** comprobación física en Pi y escucha con Phonon; la TUI y la consola siguen aplicando siempre el diccionario.
+- **Estado:** `completed`.
+- **Trabajo restante:** none. La TUI y la consola siguen aplicando siempre el diccionario (fuera de este alcance).
 - **Evidencia:** el diccionario siempre se aplica: `Lexicon(ROOT / 'pronunciaciones.json')` en `src/tehablo_server.py` y `src/tehablo_tts.py`.
 - **Adición (2026-11-04):** la persona responsable lo amplía: «una opcion para activar o no los arreglos/diccionarios, me gustaría. y para dejarlo default para las voces que yo quiera. configurtable es bonito (arreglos/diccionario)». Motivo: con Phonon (`Regina`, `Iker`) algunas escrituras del diccionario, pensadas para Pocket, suenan raras (por ejemplo «GitHub» → «guítjab»); inferencia pendiente de confirmar por escucha. La opción se expone en los ajustes de Pi y se guarda; cada voz puede traerla activada o no por defecto.
 - **Decisión:** registrar como trabajo propio; el 2026-11-04 se eligió exponerla en los ajustes de Pi con valor por voz.
 - **Trabajo completado (2026-11-04):** en Pi, `/tts dict` y la columna *Dict* de la tabla de voces (clic o ←→) activan o desactivan los arreglos por voz y se guardan en `dict` de `~/.tehablo/settings.json`; por defecto apagados en Phonon y encendidos en Pocket; el servidor acepta `lexicon` en `/speak` (por petición). Comando elegido por delegación de la persona responsable («en la barra no, comandos si», «dale dale y menu, cada voz debe podersele activar eso o no, individual, y debe guardarse el seting»). Pruebas deterministas: servidor y extensión (97/97).
-- **Condición del siguiente avance:** comprobación física en Pi y escucha de «GitHub» con Regina con y sin arreglos para confirmar el valor por defecto de Phonon.
+- **Comprobación (2026-11-04):** en Windows, la persona responsable escuchó en Pi un texto de prueba (tabla, números, símbolos y términos en inglés) con Dict en sí y en no, y comprobó el menú: «si entendí, me gusta, funciona bien». Columna renombrada a *Dict* para que la tabla quepa en el marco.
+- **Condición del siguiente avance:** none; se reabre si se quiere la misma opción en la TUI o la consola.
 
 ### RH-W-0011: Comprobar la portabilidad en arquitecturas y entornos
 
