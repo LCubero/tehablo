@@ -4,8 +4,6 @@
 
 > **En desarrollo.** El proyecto todavía está en desarrollo y puede cambiar. Lo que falta está en la [hoja de ruta](docs/repo-harness/roadmap.md).
 
-[Ver tehablo en uso](https://github.com/user-attachments/assets/65c14b22-f1ed-4736-b5c8-ffaa19c254a2)
-
 ## Consumo aproximado
 
 | Recurso | Aproximación |
@@ -97,45 +95,45 @@ Los ajustes se guardan por usuario en `~/.tehablo/settings.json`. [Detalles de P
 <details>
 <summary><b>▶ Escuchar las voces aquí</b></summary>
 
-**lola** · la de siempre · Pocket
+**Lola** · la de siempre · Pocket
+https://github.com/user-attachments/assets/cb9ec0aa-0ccc-4104-a309-1a17ae2fb6d5
 
-<!-- Arrastra aquí lola.mp4 (.repo-harness/tmp/videos/) y deja el enlace en su propia línea. -->
 
-**rafael** · España · Pocket
+**Rafael** · España · Pocket
+https://github.com/user-attachments/assets/db843874-b49a-4a1a-9106-8032db1b9c84
 
-<!-- Arrastra aquí rafael.mp4 (.repo-harness/tmp/videos/) y deja el enlace en su propia línea. -->
 
 **Regina** · México · Phonon
+https://github.com/user-attachments/assets/03e02dc6-7ede-4499-b85e-f8dd64d81e07
 
-<!-- Arrastra aquí Regina.mp4 (.repo-harness/tmp/videos/) y deja el enlace en su propia línea. -->
 
 **Iker** · España · Phonon
+https://github.com/user-attachments/assets/f0bac7f9-5182-4f02-a975-b3946e65ecc9
 
-<!-- Arrastra aquí Iker.mp4 (.repo-harness/tmp/videos/) y deja el enlace en su propia línea. -->
 
 **Facundo** · Argentina · Pocket
+https://github.com/user-attachments/assets/23782567-b111-4253-943c-414fb36a9c6b
 
-<!-- Arrastra aquí Facundo.mp4 (.repo-harness/tmp/videos/) y deja el enlace en su propia línea. -->
 
 **Santiago** · Argentina · Pocket
+https://github.com/user-attachments/assets/9dc2ac02-4b7f-4ffd-9e5b-5174c409c38f
 
-<!-- Arrastra aquí Santiago.mp4 (.repo-harness/tmp/videos/) y deja el enlace en su propia línea. -->
 
 **Camila** · Chile · Pocket
+https://github.com/user-attachments/assets/19f07f13-be0c-42ae-b54c-d95b520dc00a
 
-<!-- Arrastra aquí Camila.mp4 (.repo-harness/tmp/videos/) y deja el enlace en su propia línea. -->
 
 **Javiera** · Chile · Pocket
+https://github.com/user-attachments/assets/ffbd2396-c67b-412d-8ac3-702e31c4c99c
 
-<!-- Arrastra aquí Javiera.mp4 (.repo-harness/tmp/videos/) y deja el enlace en su propia línea. -->
 
 **Diego** · Chile · Pocket
+https://github.com/user-attachments/assets/34025bfe-438a-47f2-b0ef-4af05b3ee493
 
-<!-- Arrastra aquí Diego.mp4 (.repo-harness/tmp/videos/) y deja el enlace en su propia línea. -->
 
 **Felipe** · Colombia · Pocket
+https://github.com/user-attachments/assets/d44264cc-69c8-4a47-89f2-b24463895593
 
-<!-- Arrastra aquí Felipe.mp4 (.repo-harness/tmp/videos/) y deja el enlace en su propia línea. -->
 
 </details>
 
