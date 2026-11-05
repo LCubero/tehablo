@@ -95,6 +95,16 @@ Los ajustes se guardan por usuario en `~/.tehablo/settings.json`. [Detalles de P
 <details>
 <summary><b>▶ Escuchar las voces aquí</b></summary>
 
+> 🔇 GitHub muestra los videos silenciados: pulsa el altavoz del reproductor para escuchar.
+
+| Voz | Modelo | Peso de la voz | RAM en uso | ¿Cuenta? |
+|---|---|---|---|---|
+| Lola, Rafael | Pocket | 5–6 MB (se descarga) | ~1 GB | No |
+| Facundo, Santiago, Camila, Javiera, Diego, Felipe | Pocket | 10–12 MB (incluida) | ~1 GB | No |
+| Regina, Iker | Phonon | dentro del modelo | ~0,3 GB | Solo para descargar |
+
+El modelo se descarga una vez y lo comparten todas sus voces: Pocket `spanish` 219 MB, Phonon 144 MB. Pesos medidos en Windows; RAM medida en Fedora.
+
 **Lola** · la de siempre · Pocket
 
 https://github.com/user-attachments/assets/cb9ec0aa-0ccc-4104-a309-1a17ae2fb6d5
