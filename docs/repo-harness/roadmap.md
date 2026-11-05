@@ -421,9 +421,10 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 - **Dependencias:** `RH-W-0033`.
 - **Estado:** `active`.
 - **Trabajo completado (2026-11-05):** opción guardada «Si llega otra lectura: Detener / Esperar» en la ventana `[ ≡ ]` (por defecto Detener, como antes); vale para `[ ▶ ]`, `[ ▶ copiado ]`, el modo auto, `/tts play` y `/tts copy`, y decide la sesión que pide la lectura nueva. Con Esperar, el servidor guarda la lectura en una cola (máximo 10) y la barra muestra `[ ■ ] En espera`, cuyo `[ ■ ]` cancela solo esa lectura; al empezar avisa «TTS teHablo: Suena la lectura en espera.». `/status` informa la cola y las últimas promociones solo cuando hay; `/stop` acepta un `id`. Empezar un turno nuevo del agente detiene solo las lecturas de esa sesión, ya no las de las demás. La ventana también muestra u oculta la barra, como `/tts toolbar`. Una verificación independiente encontró cuatro fallos (propiedad de una lectura en curso, aviso perdido entre consultas, cola detenida al cambiar de modelo y un aviso falso al repetir una tarjeta) y se corrigieron con pruebas. Pruebas: extensión 113/113 y servidor 41/41. Especificación: `odd/tasks/playback-queue.md` (local).
-- **Trabajo restante:** comprobación física de la persona responsable con dos sesiones.
+- **Comprobación física (2026-11-05, Windows):** con «Esperar», la lectura de la segunda sesión quedó en espera y sonó con el aviso al terminar la primera: «funciona».
+- **Trabajo restante:** la persona responsable preguntó si los ajustes deben ser globales («yo pensaria en global pero no sé»); pendiente de decisión.
 - **Decisión:** la sesión que pide la lectura nueva decide la política; tope de 10 en la cola; `/status` omite `queue` y `promoted` cuando están vacíos (decisión del agente para no cambiar las respuestas existentes).
-- **Condición del siguiente avance:** esa comprobación física.
+- **Condición del siguiente avance:** decisión sobre ajustes globales.
 
 ## Registros resueltos
 <!-- doc-role:resolved-records -->
