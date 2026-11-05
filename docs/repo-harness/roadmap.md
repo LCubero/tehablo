@@ -44,7 +44,7 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
   - Revisar la interfaz de Pi y la TUI existente, concretar los problemas de uso y acordar qué menús, opciones y ajustes se quieren mejorar antes de diseñar o implementar.
   - Revisar, agregar o modificar los comandos (`/tts` y sus opciones) y los ajustes.
   - Modo automático persistente: completado el 2026-11-04; `/tts auto on` se guarda en `tehablo-settings.json` y se recupera entre sesiones.
-  - Modo sin mouse: desde el 2026-11-04 hay atajos de teclado configurables (escuchar, pausar, detener, ajustes) y la ventana `[.⚙ ]` se usa con teclado; queda concretar si falta algo más.
+  - Modo sin mouse: desde el 2026-11-04 hay atajos de teclado configurables (escuchar, pausar, detener, ajustes) y la ventana `[ ≡ ]` se usa con teclado; queda concretar si falta algo más.
 - **Trabajo completado (2026-10-29):** botones `[ Vol − ]`/`[ Vol + ]` (10 % a 150 %, en vivo) y `[ Vel − ]`/`[ Vel + ]` (1.00x, 1.10x, 1.15x, 1.25x y 1.50x, elegidos por la persona responsable; desde el siguiente fragmento) junto a Escuchar; `/config` acepta `volume` (`src/tehablo_server.py`, `pi-extension/tehablo-tts/src/extension.ts`).
   - Robustez de los botones ante muchos clics seguidos: hoy los pedidos `/config` no se serializan y un clic rápido puede perderse o pisar a otro; detallar el comportamiento esperado (cola, descarte o espera) antes de cambiarlo («hay que detallar cosas depues para que no se daño por muchos clics»).
   - La TUI conserva sus velocidades propias (0.75x a 1.5x en `src/tehablo_speed.py`); decidir si se alinean con los botones de Pi.
@@ -52,7 +52,7 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
   - Propuestas aprobadas para registrar el 2026-10-29: resaltar en la TUI la frase que se está leyendo, con opción on/off; recordar voz, velocidad, volumen y modo entre sesiones; botón de reproducir junto a cada voz para escucharla antes de elegirla («con un play a la par o algo simple»).
 - **Evidencia:** solicitud de la persona responsable; el 2026-10-29 pidió «los comandos hay que revisarlos agregar modificar, settigs, etc», «Modo automático» y «Modo sin mouse», y aclaró que el modo automático «lee automaticamente sin tener que dar play en escuchar, cada respuesta, hasta que se desactive el modo». No se realizó una evaluación de interfaz.
 - **Decisión:** registrar para después; no se ha elegido un rediseño ni se añaden funciones por el «etc» de la solicitud.
-- **Trabajo completado (2026-11-04):** ventana de ajustes `[.⚙ ]` en Pi, diseñada con la persona responsable a partir de prototipos («me encanta, minimalista, funcional, genial»): voz, volumen, velocidad, lectura automática (ahora se recuerda entre sesiones), atajos de teclado editables y servidor; ajustes en `tehablo-settings.json` (detalle en `README.md`, «Uso en Pi»). Quedan: llevar la misma guía a la TUI y la documentación, botón `▶` para escuchar una voz antes de elegirla, salida de audio (`RH-W-0017`) y robustez ante muchos clics seguidos.
+- **Trabajo completado (2026-11-04):** ventana de ajustes `[ ≡ ]` en Pi, diseñada con la persona responsable a partir de prototipos («me encanta, minimalista, funcional, genial»): voz, volumen, velocidad, lectura automática (ahora se recuerda entre sesiones), atajos de teclado editables y servidor; ajustes en `tehablo-settings.json` (detalle en `README.md`, «Uso en Pi»). Quedan: llevar la misma guía a la TUI y la documentación, botón `▶` para escuchar una voz antes de elegirla, salida de audio (`RH-W-0017`) y robustez ante muchos clics seguidos.
 - **Trabajo completado (2026-11-04, segunda parte):** en la tabla de voces, la voz activa lleva `●` y el nombre en amarillo; columnas *Voz*, *Estado* y *RAM aprox.* (~0,3 GB Phonon, ~1 GB Pocket), elegidas con la persona responsable («está mucho mejor me gusta»). Volumen más fuerte y parejo entre voces (base ×1,8 elegida por escucha, corrección `gain_db` por voz y picos suavizados; «suena muy bien genial»).
 - **Trabajo completado (2026-11-04, tercera parte):** barra y comandos de Pi definidos con la persona responsable («eso es calidad de vida y hacer las cosas bien, pensando en todo. pero sin hacerlo todo de una vez ni sobreingenieria»): el servidor arranca con la voz guardada (antes perdía la primera lectura automática al cambiar de modelo); `[ ▶ ]`, `[ ▶ copiado ]` (lee el portapapeles con la herramienta de cada sistema; Pi no ve la selección del ratón), `[ ⋯ ]` → `[ → ] : [ ≡ ]  Vol … [ ⏻ ]`; `[ ≡ ]` abre o cierra la ventana; comandos `/tts`, `auto`, `play [n]`, `copy`, `pause`, `stop`, `toolbar`, `menu`, `status`; apagado = `TTS off` y sin lectura automática. Falta probarlo en Windows (portapapeles con `Get-Clipboard`).
 - **Condición del siguiente avance:** autorización para revisar la interfaz y concretar el alcance con la persona responsable.
@@ -79,7 +79,7 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 - **Trabajo completado (2026-10-30, con token):** las 18 voces de `voices/` clonadas con Pocket TTS y escuchadas a ciegas sin y con ajustes; los estados `.safetensors` exportados funcionan sin token. Hallazgo: `scripts/get_voices.py` guarda WAV en coma flotante y Pocket TTS no los lee ([resultados](../pruebas-de-voces.md#voces-de-voices-clonadas-con-pocket-tts-2026-10-30)).
 - **Trabajo completado (2026-11-01, descargador):** `scripts/get_voices.py` limita las muestras normalizadas a [-1, 1] y guarda las referencias nuevas como PCM16. Pruebas deterministas con red simulada (`tests/test_get_voices.py`): WAV mono de 16 bits, frecuencia y duración conservadas, saturación, atribución y omisión de archivos existentes sin cambios. Los originales existentes siguen en coma flotante; no se convirtieron. Evidencia previa del lector de Pocket TTS: el original `ar-hombre-4310.wav` falla con `unknown format: 3`; una copia PCM16 se lee a 48000 Hz, mono, 20,629 s. No se verificó una clonación completa en esta corrección ni se hicieron nuevas escuchas. Autorización: «ok dale», solo para archivos nuevos.
 - **Trabajo completado (2026-11-03, Fedora):** ronda acotada para un modo «natural» que como máximo duplique el consumo actual, manteniendo el actual (decisión delegada: «decidelo tu ... sin sobreingenieria»). A ciegas, Phonon 40M es (`Regina` mexicana, `Iker` castellano) sonó «mucho mejor que A [`lola`], muy natural» y, con 2 hilos, gasta menos que `lola`: 303 MiB y 8,0 s de CPU frente a 961 MiB y 10,6 s. `spanish_24l` cuantizado entra en el doble (20,9 s) y suena «ligeramente mejor» que `lola`; Kokoro int8 se pasa en CPU (~39 s). Licencia de Phonon: CC BY-NC 4.0, con acceso restringido en Hugging Face ([resultados](../pruebas-de-voces.md#phonon-40m-es-frente-a-lola-spanish_24l-y-kokoro-2026-11-03-fedora)). Falta comprobarlo con los ajustes de tehablo y texto técnico.
-- **Trabajo completado (2026-11-04):** Phonon 40M es (`Regina`, `Iker`) y 6 voces clonadas de `voices/` se eligen desde la ventana `[.⚙ ]` de Pi; Phonon lleva `*` por pedir cuenta de Hugging Face y las clonadas vienen incluidas sin token; la voz de inicio sigue siendo `lola` (marca `"default"` en `src/voice_table.json`; decisión de la persona responsable: «la que dejemos de default ... la mas buena y mejor y light y ggratis y que venga instalada ... si aparece una mejor que lola y la podemos distribuir pues vienen por defecto esa otra»). Falta probarla en Windows y buscar voces sin cuenta mejores que `lola`.
+- **Trabajo completado (2026-11-04):** Phonon 40M es (`Regina`, `Iker`) y 6 voces clonadas de `voices/` se eligen desde la ventana `[ ≡ ]` de Pi; Phonon lleva `*` por pedir cuenta de Hugging Face y las clonadas vienen incluidas sin token; la voz de inicio sigue siendo `lola` (marca `"default"` en `src/voice_table.json`; decisión de la persona responsable: «la que dejemos de default ... la mas buena y mejor y light y ggratis y que venga instalada ... si aparece una mejor que lola y la podemos distribuir pues vienen por defecto esa otra»). Falta probarla en Windows y buscar voces sin cuenta mejores que `lola`.
 - **Condición del siguiente avance:** la persona responsable sigue probando para tener varias opciones de voz (2026-10-30: «la idea es tratar de tener opciones de voz, no solo 1»); ya se incorporaron Phonon (`Regina`, `Iker`) y las 6 clonadas aprobadas; falta decidir sobre otros motores y voces.
 
 ### RH-W-0007: Modo GPU opcional
@@ -98,20 +98,6 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
   2026-10-30: aplazado por decisión de prioridades (la persona responsable delegó la decisión: «decidelo tu ... sin sobreingenieria»): primero base confiable, medición (`RH-W-0003`), decisión de versión lite e instalación, y endurecimiento (`RH-W-0001`, `RH-W-0013`).
 - **Condición del siguiente avance:** autorización para la investigación acotada del soporte de GPU.
 
-### RH-W-0008: Instalación local fácil
-
-- **Origen:** solicitud de la persona responsable del 2026-10-29: «hay que hacerlo facil de instalar en loca, en vps, etc y seguro».
-- **Prioridad:** P2; hoy la instalación requiere varios pasos manuales por sistema operativo.
-- **Dependencias:** ninguna.
-- **Estado:** `completed`.
-- **Trabajo completado (2026-10-30):** `install.sh` (Linux/macOS) e `install.ps1` (Windows) en la raíz: comprueban `uv`, crean o reutilizan el entorno (`.venv-pocket`, o `.venv-pocket-linux`/`-macos`/`-windows` si `.venv-pocket` es de otro sistema), instalan las dependencias con el índice CPU de PyTorch y comprueban las importaciones; si falta PortAudio en Linux indican el comando de la distribución. Verificado en Fedora en un clon limpio: instalación 17 s, segunda ejecución 4 s, rama de dual boot y aviso sin `uv` (exit 1, sin crear entorno); `shellcheck` sin avisos. El [README](../../README.md#instalación) los pone primero y conserva la instalación manual.
-- **Trabajo completado (2026-10-30, Windows):** `install.ps1` verificado en clones limpios con el comando del README (`powershell -ExecutionPolicy Bypass -File install.ps1`, Windows PowerShell 5.1): instalación 45 s con Torch `2.15.0+cpu`, segunda ejecución 7 s, rama de dual boot (`.venv-pocket` de Linux → crea `.venv-pocket-windows`, 43 s), aviso sin `uv` (exit 1, sin crear entorno) y segunda ejecución con PowerShell 7 (`pwsh`, 7 s); el entorno creado importa `tehablo_tts`. Sin cambios en el script.
-- **Trabajo restante:** ninguno.
-- **Exclusiones:** sin instalador gráfico (la persona responsable, 2026-10-30: «instalador grafico no creo hacerlo o quiza hasta al final de todo»), paquete ni descarga previa de modelos (se descargan en el primer uso); VPS y Docker siguen en `RH-W-0009`.
-- **Evidencia:** pasos manuales en `README.md` antes de este cambio; `requirements.txt` sin versiones fijas (`>=`).
-- **Decisión:** 2026-10-30, por decisión delegada de la persona responsable («tu decidelo, revisa y recuerda sin sobreingenieria»): un script por sistema, sin herramientas nuevas.
-- **Condición del siguiente avance:** ninguna; trabajo completado.
-
 ### RH-W-0009: Versión Docker y despliegue seguro en VPS
 
 - **Origen:** solicitud de la persona responsable del 2026-10-29: «La versión docker» y facilitar la instalación «en vps, etc y seguro».
@@ -127,25 +113,11 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
   2026-10-30: aplazado por decisión de prioridades (la persona responsable delegó la decisión: «decidelo tu ... sin sobreingenieria»): primero base confiable, medición (`RH-W-0003`), decisión de versión lite e instalación, y endurecimiento (`RH-W-0001`, `RH-W-0013`).
 - **Condición del siguiente avance:** autorización para diseñar la versión Docker, con `RH-W-0001` resuelto antes de exponer el servidor en red.
 
-### RH-W-0010: Elegir si se usa el diccionario de pronunciación en inglés
-
-- **Origen:** solicitud de la persona responsable del 2026-10-29: «quiero hacer Que se pueda escoger entre usar el diccionario de pronunciación d terminos en inglés o no».
-- **Prioridad:** P3; opción de uso, sin impedir la síntesis de voz.
-- **Dependencias:** coordinar dónde se expone la opción con `RH-W-0004`.
-- **Estado:** `completed`.
-- **Trabajo restante:** none. La TUI y la consola siguen aplicando siempre el diccionario (fuera de este alcance).
-- **Evidencia:** el diccionario siempre se aplica: `Lexicon(ROOT / 'pronunciaciones.json')` en `src/tehablo_server.py` y `src/tehablo_tts.py`.
-- **Adición (2026-11-04):** la persona responsable lo amplía: «una opcion para activar o no los arreglos/diccionarios, me gustaría. y para dejarlo default para las voces que yo quiera. configurtable es bonito (arreglos/diccionario)». Motivo: con Phonon (`Regina`, `Iker`) algunas escrituras del diccionario, pensadas para Pocket, suenan raras (por ejemplo «GitHub» → «guítjab»); inferencia pendiente de confirmar por escucha. La opción se expone en los ajustes de Pi y se guarda; cada voz puede traerla activada o no por defecto.
-- **Decisión:** registrar como trabajo propio; el 2026-11-04 se eligió exponerla en los ajustes de Pi con valor por voz.
-- **Trabajo completado (2026-11-04):** en Pi, `/tts dict` y la columna *Dict* de la tabla de voces (clic o ←→) activan o desactivan los arreglos por voz y se guardan en `dict` de `~/.tehablo/settings.json`; por defecto apagados en Phonon y encendidos en Pocket; el servidor acepta `lexicon` en `/speak` (por petición). Comando elegido por delegación de la persona responsable («en la barra no, comandos si», «dale dale y menu, cada voz debe podersele activar eso o no, individual, y debe guardarse el seting»). Pruebas deterministas: servidor y extensión (97/97).
-- **Comprobación (2026-11-04):** en Windows, la persona responsable escuchó en Pi un texto de prueba (tabla, números, símbolos y términos en inglés) con Dict en sí y en no, y comprobó el menú: «si entendí, me gusta, funciona bien». Columna renombrada a *Dict* para que la tabla quepa en el marco.
-- **Condición del siguiente avance:** none; se reabre si se quiere la misma opción en la TUI o la consola.
-
 ### RH-W-0011: Comprobar la portabilidad en arquitecturas y entornos
 
 - **Origen:** pregunta de la persona responsable del 2026-10-29: «funciona en arm64, raspberry, oracle cloud free tier, etc?» y «debe funcionar en todo, windows, linux, mac, servers, vps, vm, proxmox, wsl».
 - **Prioridad:** P2; amplía dónde se puede usar el proyecto.
-- **Dependencias:** coordinar con `RH-W-0008` (instalación) y `RH-W-0009` (imágenes Docker).
+- **Dependencias:** coordinar con `RH-W-0008` (instalación), `RH-W-0009` (imágenes Docker), `RH-W-0037` (el instalador nuevo debe funcionar en macOS) y `RH-W-0040` (celular).
 - **Estado:** `proposed`.
 - **Trabajo restante:**
   - Investigar el soporte de Pocket TTS y PyTorch CPU en arm64 (Raspberry Pi, Oracle Cloud Free Tier Ampere), macOS, WSL, VM, Proxmox, servidores y VPS.
@@ -300,6 +272,7 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 - **Evidencia:** no existen configuración de linter ni `SECURITY.md`; el servidor limita cada petición a 1 MiB (`src/tehablo_server.py`) y la extensión de Pi recorta el texto limpio a 3000 caracteres (`pi-extension/tehablo-tts/src/text.ts`); no hay límite de tiempo de generación.
 - **Trabajo completado (2026-10-30):** `requirements.txt` limita las dependencias directas a las versiones mayores probadas (`pocket-tts<5`, `torch<2.16`, `sounddevice<0.6`, `textual<9`, `audiotsm<0.2`); hoy resuelve a las mismas versiones instaladas y probadas en Windows y Fedora. Sin archivo de bloqueo.
 - **Decisión:** registrar para después; no se eligieron herramientas. El 2026-10-30, por decisión delegada de la persona responsable («decidelo tu ... sin sobreingenieria»): límites superiores en lugar de versiones exactas o archivo de bloqueo, para no romper la instalación en Python 3.10–3.14 ni en otros sistemas.
+- **Adición (2026-11-05):** en la revisión de prioridades se recomienda hacer la parte mínima de seguridad (`SECURITY.md` y la revisión de vulnerabilidades de dependencias) antes del primer release (`RH-W-0038`); el resto sigue sin fecha.
 - **Condición del siguiente avance:** autorización para una revisión acotada que proponga prioridades.
 
 ### RH-W-0025: Versión lite de mínimo consumo
@@ -327,7 +300,8 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 - **Trabajo completado (2026-11-04):** los ajustes de Pi pasan a `~/.tehablo/settings.json` (uno por usuario y por sistema; el `tehablo-settings.json` del proyecto solo se lee la primera vez) y el token de Hugging Face ya no se guarda: se usa en memoria para descargar las voces con cuenta, que luego funcionan desde la caché sin él. Después, por pedido de la persona responsable («lo quiero global», «usar la instalacion que en realidad hay que usar»), la extensión se instala con `pi install <ruta>/pi-extension/tehablo-tts` en la configuración del usuario y el repositorio ya no la carga con `.pi/settings.json` (archivado fuera de Git en `.repo-harness/archive/pi-settings.json`).
 - **Exclusiones:** publicar la extensión como paquete npm en la galería de pi.dev quedó descartado por ahora («como instalable desde esos pi.dev mejor no», 2026-11-04): el paquete tendría que instalar por su cuenta Python, el entorno y los modelos. Tampoco se usa `gentle-shell --link` («abrirlo con --link no quiero»); con `gentle-shell` se instala con `gentle-shell install <ruta>`. No se movió el entorno, los modelos ni las voces; la caché de Hugging Face sigue en la carpeta del usuario de cada sistema.
 - **Decisión:** 2026-11-04, decisión delegada de la persona responsable («tu decidelo ... sin sobreingenieria»): hacer ahora solo los ajustes por usuario y el token sin guardar; dejar la instalación global para cuando se trabaje la instalación o la versión lite.
-- **Condición del siguiente avance:** que la persona responsable quiera usar tehablo desde otros proyectos o retome `RH-W-0008`/`RH-W-0025`.
+- **Adición (2026-11-05):** la decisión se toma como primer paso del instalador (`RH-W-0037`), que debe dejar claro qué se instala y dónde. La prueba completa de instalación en Linux también pasa a `RH-W-0037`.
+- **Condición del siguiente avance:** inicio de `RH-W-0037`.
 
 ### RH-W-0029: Voces por API externa como extra apagado
 
@@ -338,7 +312,105 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 - **Trabajo restante:** elegir proveedores, dónde se guarda la clave sin exponerla, cómo se elige en la ventana de voces y avisar que el texto sale del equipo y puede tener coste.
 - **Exclusiones:** activarlo por defecto; cualquier dependencia nueva obligatoria para quien no lo use.
 - **Decisión:** 2026-11-04, aceptado como extra apagado por la persona responsable.
-- **Condición del siguiente avance:** terminar `RH-W-0031`, `RH-W-0010` y `RH-W-0030`, o que la persona responsable lo adelante.
+- **Condición del siguiente avance:** la condición anterior (terminar `RH-W-0031`, `RH-W-0010` y `RH-W-0030`) se cumplió el 2026-11-05; en la revisión de prioridades de ese día queda después del release (`RH-W-0038`), salvo que la persona responsable lo adelante.
+
+### RH-W-0032: Iconos de pausa y encendido que se vean bien
+
+- **Origen:** solicitud de la persona responsable del 2026-11-05, al ver el video del README: «el icono de pausa se me muy mal en el showreel» y «quiza usa esto [ || ], pal show reel, o buscar un icono o algo que sirva se vea centrado y del mismo tamañao o parecido que el de play. para que no se vea raro al cambiar (regla del bar)».
+- **Prioridad:** P2 (revisión de prioridades del 2026-11-05); lo ve quien abre el README y quien usa la barra.
+- **Dependencias:** se hace dentro de la fase de interfaz, junto con `RH-W-0004`, y antes de volver a grabar el video (`RH-W-0036`); volver a subirlo lo hace la persona responsable.
+- **Estado:** `proposed`.
+- **Trabajo restante:** ver por qué `‖` se ve como una raya fina en la grabación (supuesta causa sin comprobar: la fuente de la grabación no tiene ese carácter); elegir un icono que se vea centrado y de tamaño parecido a `▶`. La regla de la barra pide símbolos de una sola columna para que los clics coincidan; `[ || ]` ocupa una columna más y movería los botones al cambiar entre pausa y play. Decidir si el cambio es solo para el video o también para Pi; luego volver a grabar.
+- **Adición (2026-11-05):** la persona responsable: «El icono de encendido en el readme no se ve. Sale un cuadro. Y el icono de pause se ve pegado feo, como en el showreel, resolver con lo otro». En el README, `⏻` (U+23FB) aparece como un cuadro; supuesta causa sin comprobar: la fuente del navegador o de la app no tiene ese carácter. Se resuelven juntos.
+- **Condición del siguiente avance:** autorización para investigar y proponer los iconos.
+
+### RH-W-0033: Qué pasa con el TTS cuando hay varias sesiones de Pi abiertas
+
+- **Origen:** pregunta de la persona responsable del 2026-11-05: «que pasa cuando tengo activo el tts en una session y tengo varias sessiones más abiertas, que pasa cuando otra session enciendo el tts y que pasa cuando detengo el tts (en esa segunda session) y que pasa en la primera o demás».
+- **Prioridad:** P1 (revisión de prioridades del 2026-11-05); comportamiento desconocido en el uso diario: apagar el TTS en una sesión podría cortar la de otra.
+- **Dependencias:** ninguna.
+- **Estado:** `proposed`.
+- **Trabajo restante:** comprobar con varias sesiones de Pi abiertas a la vez qué pasa al encender el TTS en una segunda sesión mientras otra lo tiene encendido, al apagarlo o detenerlo en esa segunda sesión, y cómo afecta a la primera y a las demás (servidor y puerto compartidos, lectura en curso, cierre de Pi). Documentar el resultado y corregir lo que falle.
+- **Condición del siguiente avance:** autorización para comprobarlo.
+
+### RH-W-0035: Completar la prueba de Phonon sin conexión (R3-001)
+
+- **Origen:** aviso R3-001 de una revisión de código del 2026-11-04 sobre la carga de Phonon desde la caché sin token.
+- **Prioridad:** P2; hueco en una prueba existente, sin fallo conocido para quien lo usa.
+- **Dependencias:** ninguna.
+- **Estado:** `proposed`.
+- **Trabajo restante:** que `test_cached_phonon_loads_offline_without_token` (`tests/test_server.py`) cubra también un `HF_HUB_OFFLINE` ya definido antes de la carga y la limpieza de esa variable cuando la carga falla.
+- **Evidencia:** respaldos de continuidad del 2026-11-04 y 2026-11-05; la prueba existe en `tests/test_server.py:238`.
+- **Decisión:** registrar como trabajo propio.
+- **Condición del siguiente avance:** autorización para completar la prueba.
+
+### RH-W-0036: Pulir el README y el video de demostración
+
+- **Origen:** solicitud de la persona responsable del 2026-11-05: «el cuadro de voces del readme dice como encabezado "¿Cuenta?" y no entiendo que es, si yo no sé del proyecto y leo eso, no se entiende»; «En el readme en el cuadro de Consumo aproximado, phonon no es que deba decir opción, quizá algo que de atender lo de huggingface para descargarlo. O poner una nota o algo.»; «El video en app github en android solo se ve el link y se ve feo eso»; «Al showreel agregar al inicio, lo de poner sonido para escuchar, algo bonito serio profesional. Y hay que hacer lo de tumbail. 1 frame al puro inicio de quizá la parte donde se enseña tts ayuda. O del Menu de las voces».
+- **Prioridad:** P2; es lo primero que ve quien llega al proyecto.
+- **Dependencias:** ninguna para los textos; el video se vuelve a grabar después de `RH-W-0004` y `RH-W-0032`, para que muestre la interfaz final.
+- **Estado:** `proposed`.
+- **Trabajo restante:**
+  - Cambiar el encabezado «¿Cuenta?» de las dos tablas de voces del README por uno que se entienda sin conocer el proyecto.
+  - En la tabla de consumo, cambiar «(opcional)» de Phonon por una nota sobre la cuenta de Hugging Face para descargarlo.
+  - Al inicio del video, un aviso serio y profesional para activar el sonido.
+  - Una miniatura: un fotograma del inicio, de la parte del TTS ayudando o del menú de voces.
+  - Que el video se vea bien en la app de GitHub para Android, donde hoy solo aparece el enlace. Supuesta solución sin comprobar: la miniatura como imagen con enlace al video; se comprueba en el celular de la persona responsable.
+- **Exclusiones:** las herramientas de grabación siguen fuera del repositorio; subir el video lo hace la persona responsable.
+- **Decisión:** orden aprobado el 2026-11-05 en dos partes: los textos del README (encabezado y nota de Phonon) en la fase 1; el video, el aviso de sonido, la miniatura y la app de Android en la fase 5, grabando una sola vez.
+- **Condición del siguiente avance:** autorización para la parte de textos.
+
+### RH-W-0037: Instalador con elección de lo que se instala
+
+- **Origen:** solicitud de la persona responsable del 2026-11-05: «crear instalador, tui, el instalador debe poder dar a elegir que quiere instalar, si solo extension para pi, extension para gentle-shell (como hay 2 formas de tener gentle-shell), el modo tui o el modo consola. [...] y hay que analizarlo ver que opciones ponemos, y debe funcionar para linux, windows, mac. quiero que quede claro que se instala donde, como para que o que se usa, etc. bien ordenado menos es mas pero bien hecho, sin complicarlo nio sobre ingenieria.» y «También ofrece instalar por comando, que podemos ofrecer, y pensar en los updates.»
+- **Prioridad:** P1; hoy instalar exige clonar, ejecutar el script y luego `pi install`; es la puerta de entrada para otras personas y requisito del primer release.
+- **Dependencias:** decidir antes `RH-W-0028` (global en `~/.tehablo/` o en el repositorio); macOS sin probar (`RH-W-0011`); reutiliza `install.sh` e `install.ps1` (`RH-W-0008`).
+- **Estado:** `proposed`.
+- **Trabajo restante:**
+  1. Análisis: qué opciones tiene sentido ofrecer (extensión para Pi, para las dos formas de Gentle Shell, TUI, consola), cuáles se pueden hacer y cuáles comparten lo mismo (servidor, entorno, modelo), qué se instala dónde y para qué sirve cada cosa. Si con la extensión ya funcionan la TUI y la consola, no se separan.
+  2. Instalación por comando (una línea por sistema) y cómo se actualiza.
+  3. Instalador con elección en Linux, Windows y macOS, con la prueba completa en Linux que quedó pendiente y la primera en macOS.
+  4. README con qué se instala, dónde y para qué, corto.
+- **Exclusiones:** sin sobreingeniería; el instalador gráfico de escritorio sigue fuera (`RH-W-0008`), salvo que el análisis muestre que una TUI de texto basta.
+- **Evidencia:** `install.sh` e `install.ps1` ya crean el entorno y muestran el comando `pi install` (`RH-W-0008`, `RH-W-0028`); no hay forma de elegir componentes ni de actualizar.
+- **Decisión:** registrar; primero el análisis y una propuesta para la persona responsable.
+- **Condición del siguiente avance:** autorización para el análisis.
+
+### RH-W-0038: Primer release o release candidate
+
+- **Origen:** pregunta de la persona responsable del 2026-11-05: «release o rc (lo que sea mejor segun practicas y tipo de proyecto y estado) cuando ?».
+- **Prioridad:** P2; da una versión estable a quien instala, pero depende del instalador.
+- **Dependencias:** `RH-W-0037` (instalador y actualizaciones) y la parte mínima de seguridad de `RH-W-0023`.
+- **Estado:** `proposed`.
+- **Trabajo restante:** elegir versión y forma (propuesta sin decidir: `v0.1.0-rc1` cuando el instalador funcione en los tres sistemas y `v0.1.0` tras la prueba de la persona responsable), notas de la versión desde `CHANGELOG.md` y etiqueta en GitHub.
+- **Exclusiones:** publicar sin autorización explícita de la persona responsable.
+- **Decisión:** registrar; la propuesta de versión es del agente y la decide la persona responsable.
+- **Condición del siguiente avance:** `RH-W-0037` completado.
+
+### RH-W-0039: Página de producto
+
+- **Origen:** idea de la persona responsable del 2026-11-05: «Una página para mostrarlo tmb sería bueno. Así tengo otro proyecto de página de producto que "vende" o expone el producto, seduce, incita, sugiere usarlo, y xq es bueno de verdad entonces reforzarlo, no exagerar ni mentir.»
+- **Prioridad:** P3; difusión, después de que haya algo fácil de instalar.
+- **Dependencias:** `RH-W-0036` (video y textos) y `RH-W-0038` (una versión a la que enlazar).
+- **Estado:** `proposed`.
+- **Trabajo restante:** decidir si vive en este repositorio (por ejemplo GitHub Pages) o en un proyecto aparte, como sugiere la persona responsable; diseñarla con afirmaciones comprobadas.
+- **Exclusiones:** exagerar o prometer lo que no está comprobado.
+- **Decisión:** registrar; es probable que sea otro proyecto.
+- **Condición del siguiente avance:** `RH-W-0038` y la decisión de dónde vive.
+
+### RH-W-0040: teHablo en el celular
+
+- **Origen:** pregunta de la persona responsable del 2026-11-05: «El teHablo se puede hacer para celular?».
+- **Prioridad:** P3; investigación sin compromiso.
+- **Dependencias:** coordinar con `RH-W-0011` (arm64) y `RH-W-0025` (versión lite).
+- **Estado:** `proposed`.
+- **Trabajo restante:** investigar si Pocket TTS o Phonon funcionan en Android o iOS (por ejemplo con Termux o una app propia), con qué consumo y qué uso tendría ahí; no prometerlo antes.
+- **Evidencia:** nada comprobado; solo hay pruebas en Windows y Fedora x86-64.
+- **Decisión:** registrar como investigación.
+- **Condición del siguiente avance:** autorización para investigar.
+
+## Registros resueltos
+<!-- doc-role:resolved-records -->
 
 ### RH-W-0030: README claro con demostración y muestras de voz
 
@@ -346,11 +418,12 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 - **Prioridad:** P2; es lo primero que ve quien llega al proyecto.
 - **Dependencias:** después de `RH-W-0031`, para que el GIF muestre la barra ya corregida.
 - **Estado:** `completed` (2026-11-05).
-- **Trabajo restante:** reordenar el README (qué es, instalar, usar en Pi, voces, consumo aproximado de disco y RAM) y mover el detalle a `docs/`; grabar un GIF corto de la barra y el menú; generar una muestra breve por voz y comprobar si GitHub permite escucharla desde la página.
+- **Trabajo restante:** none. Alcance original: reordenar el README, mover el detalle a `docs/`, mostrar el uso y una muestra por voz.
 - **Trabajo completado (2026-11-04):** README reorganizado (qué es, consumo aproximado, instalación, uso en Pi, voces, TUI y consola, documentación) de 3339 a ~1050 palabras; el detalle pasó a `docs/como-funciona.md` y `docs/desarrollo.md`; enlaces y anclas comprobados (52, sin errores). Disco de Phonon (~0,15 GB) medido en la caché de Windows el mismo día.
 - **Trabajo completado (2026-11-04, muestras):** una muestra mp3 por voz en `docs/samples/`, enlazada desde la tabla de voces por jsDelivr (GitHub no reproduce audio en el README); aprobadas por escucha («suenan bien»).
 - **Trabajo completado (2026-11-05, demostración):** en lugar del GIF, un video corto con voz grabado de forma automática (Pi real en una terminal sin datos personales: encender, leer una respuesta con audio, controles, ajustes, voces y comandos), aprobado por la persona responsable («genial, perfecto») y subido por ella al README, debajo del título; GitHub lo muestra como reproductor (silenciado por defecto). El desplegable de las voces pasó justo debajo del consumo aproximado y el nombre visible pasó a ser **teHablo** (README y textos de Pi). Las herramientas de grabación quedaron fuera del repositorio, a petición de la persona responsable.
-- **Fuera de alcance:** posible desajuste visto dos veces al grabar y sin investigar: tras subir el volumen desde la barra (110 %), la ventana de ajustes seguía mostrando 100 %.
+- **Fuera de alcance:** posible desajuste visto dos veces al grabar y sin investigar: tras subir el volumen desde la barra (110 %), la ventana de ajustes seguía mostrando 100 %; descartado el 2026-11-05: fue un clic mal dado al grabar (la persona responsable: «fué xq no diste el clic bien»). Las mejoras del README y el video pedidas el 2026-11-05 están en `RH-W-0036`.
+- **Condición del siguiente avance:** none.
 
 ### RH-W-0031: Mostrar la barra de Pi al iniciar
 
@@ -363,26 +436,33 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 - **Trabajo completado (2026-11-04):** antes de la primera respuesta la barra se muestra sobre el editor (`ctx.ui.setWidget`), sin `[ ▶ ]`, y desaparece con la primera respuesta; `/tts toolbar` se guarda como `toolbar` en `~/.tehablo/settings.json`. Las barras llevan una columna de margen como el texto de Pi y la de inicio deja una línea libre antes del editor. Pruebas deterministas de la extensión 94/94. En Windows, la persona responsable comprobó físicamente en una sesión nueva que la barra aparece sobre el editor, que el clic funciona y la posición («ahora si»).
 - **Condición del siguiente avance:** none; se reabre si la barra de inicio falla en Linux.
 
-### RH-W-0032: Icono de pausa que se vea bien y del mismo tamaño que el de play
+### RH-W-0010: Elegir si se usa el diccionario de pronunciación en inglés
 
-- **Origen:** solicitud de la persona responsable del 2026-11-05, al ver el video del README: «el icono de pausa se me muy mal en el showreel» y «quiza usa esto [ || ], pal show reel, o buscar un icono o algo que sirva se vea centrado y del mismo tamañao o parecido que el de play. para que no se vea raro al cambiar (regla del bar)».
-- **Prioridad:** sin asignar; se ordena en la revisión de prioridades.
-- **Dependencias:** ninguna; volver a subir el video del README lo hace la persona responsable.
-- **Estado:** `proposed`.
-- **Trabajo restante:** ver por qué `‖` se ve como una raya fina en la grabación (supuesta causa sin comprobar: la fuente de la grabación no tiene ese carácter); elegir un icono que se vea centrado y de tamaño parecido a `▶`. La regla de la barra pide símbolos de una sola columna para que los clics coincidan; `[ || ]` ocupa una columna más y movería los botones al cambiar entre pausa y play. Decidir si el cambio es solo para el video o también para Pi; luego volver a grabar.
-- **Condición del siguiente avance:** revisión de prioridades del 2026-11-06.
+- **Origen:** solicitud de la persona responsable del 2026-10-29: «quiero hacer Que se pueda escoger entre usar el diccionario de pronunciación d terminos en inglés o no».
+- **Prioridad:** P3; opción de uso, sin impedir la síntesis de voz.
+- **Dependencias:** coordinar dónde se expone la opción con `RH-W-0004`.
+- **Estado:** `completed`.
+- **Trabajo restante:** none. La TUI y la consola siguen aplicando siempre el diccionario (fuera de este alcance).
+- **Evidencia:** el diccionario siempre se aplica: `Lexicon(ROOT / 'pronunciaciones.json')` en `src/tehablo_server.py` y `src/tehablo_tts.py`.
+- **Adición (2026-11-04):** la persona responsable lo amplía: «una opcion para activar o no los arreglos/diccionarios, me gustaría. y para dejarlo default para las voces que yo quiera. configurtable es bonito (arreglos/diccionario)». Motivo: con Phonon (`Regina`, `Iker`) algunas escrituras del diccionario, pensadas para Pocket, suenan raras (por ejemplo «GitHub» → «guítjab»); inferencia pendiente de confirmar por escucha. La opción se expone en los ajustes de Pi y se guarda; cada voz puede traerla activada o no por defecto.
+- **Decisión:** registrar como trabajo propio; el 2026-11-04 se eligió exponerla en los ajustes de Pi con valor por voz.
+- **Trabajo completado (2026-11-04):** en Pi, `/tts dict` y la columna *Dict* de la tabla de voces (clic o ←→) activan o desactivan los arreglos por voz y se guardan en `dict` de `~/.tehablo/settings.json`; por defecto apagados en Phonon y encendidos en Pocket; el servidor acepta `lexicon` en `/speak` (por petición). Comando elegido por delegación de la persona responsable («en la barra no, comandos si», «dale dale y menu, cada voz debe podersele activar eso o no, individual, y debe guardarse el seting»). Pruebas deterministas: servidor y extensión (97/97).
+- **Comprobación (2026-11-04):** en Windows, la persona responsable escuchó en Pi un texto de prueba (tabla, números, símbolos y términos en inglés) con Dict en sí y en no, y comprobó el menú: «si entendí, me gusta, funciona bien». Columna renombrada a *Dict* para que la tabla quepa en el marco.
+- **Condición del siguiente avance:** none; se reabre si se quiere la misma opción en la TUI o la consola.
 
-### RH-W-0033: Qué pasa con el TTS cuando hay varias sesiones de Pi abiertas
+### RH-W-0008: Instalación local fácil
 
-- **Origen:** pregunta de la persona responsable del 2026-11-05: «que pasa cuando tengo activo el tts en una session y tengo varias sessiones más abiertas, que pasa cuando otra session enciendo el tts y que pasa cuando detengo el tts (en esa segunda session) y que pasa en la primera o demás».
-- **Prioridad:** sin asignar; se ordena en la revisión de prioridades.
+- **Origen:** solicitud de la persona responsable del 2026-10-29: «hay que hacerlo facil de instalar en loca, en vps, etc y seguro».
+- **Prioridad:** P2; hoy la instalación requiere varios pasos manuales por sistema operativo.
 - **Dependencias:** ninguna.
-- **Estado:** `proposed`.
-- **Trabajo restante:** comprobar con varias sesiones de Pi abiertas a la vez qué pasa al encender el TTS en una segunda sesión mientras otra lo tiene encendido, al apagarlo o detenerlo en esa segunda sesión, y cómo afecta a la primera y a las demás (servidor y puerto compartidos, lectura en curso, cierre de Pi). Documentar el resultado y corregir lo que falle.
-- **Condición del siguiente avance:** revisión de prioridades del 2026-11-06.
-
-## Registros resueltos
-<!-- doc-role:resolved-records -->
+- **Estado:** `completed`.
+- **Trabajo completado (2026-10-30):** `install.sh` (Linux/macOS) e `install.ps1` (Windows) en la raíz: comprueban `uv`, crean o reutilizan el entorno (`.venv-pocket`, o `.venv-pocket-linux`/`-macos`/`-windows` si `.venv-pocket` es de otro sistema), instalan las dependencias con el índice CPU de PyTorch y comprueban las importaciones; si falta PortAudio en Linux indican el comando de la distribución. Verificado en Fedora en un clon limpio: instalación 17 s, segunda ejecución 4 s, rama de dual boot y aviso sin `uv` (exit 1, sin crear entorno); `shellcheck` sin avisos. El [README](../../README.md#instalación) los pone primero y conserva la instalación manual.
+- **Trabajo completado (2026-10-30, Windows):** `install.ps1` verificado en clones limpios con el comando del README (`powershell -ExecutionPolicy Bypass -File install.ps1`, Windows PowerShell 5.1): instalación 45 s con Torch `2.15.0+cpu`, segunda ejecución 7 s, rama de dual boot (`.venv-pocket` de Linux → crea `.venv-pocket-windows`, 43 s), aviso sin `uv` (exit 1, sin crear entorno) y segunda ejecución con PowerShell 7 (`pwsh`, 7 s); el entorno creado importa `tehablo_tts`. Sin cambios en el script.
+- **Trabajo restante:** ninguno.
+- **Exclusiones:** sin instalador gráfico (la persona responsable, 2026-10-30: «instalador grafico no creo hacerlo o quiza hasta al final de todo»), paquete ni descarga previa de modelos (se descargan en el primer uso); VPS y Docker siguen en `RH-W-0009`.
+- **Evidencia:** pasos manuales en `README.md` antes de este cambio; `requirements.txt` sin versiones fijas (`>=`).
+- **Decisión:** 2026-10-30, por decisión delegada de la persona responsable («tu decidelo, revisa y recuerda sin sobreingenieria»): un script por sistema, sin herramientas nuevas.
+- **Condición del siguiente avance:** ninguna; trabajo completado.
 
 ### RH-W-0026: Arranque lento del TTS tras encender el equipo en Linux
 
