@@ -434,6 +434,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
       choose: row => { settings = {...settings, model: row.model, voice: row.voice}; persist(); run(() => configure({model: row.model, voice: row.voice})); },
       change: (field, value) => {
         settings = {...settings, [field]: value}; if (field !== 'auto') persist();
+        if (field === 'icons') { refresh(); showStart(ctx); }
         if (field === 'toolbar') setToolbar(value as boolean, ctx);
         if (field === 'indicator') setIndicator(value as boolean, ctx);
         if (field === 'auto') { const starting = setAuto(value as boolean); if (starting) run(() => starting); }
@@ -542,7 +543,14 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
       return auto && !open ? [...controls.slice(0, -1), {...controls.at(-1)!, gap: ' '}, {text: 'auto', action: 'autoOff', gap: ''}] : controls;
     };
     const segments = () => {
-      const controls = layout();
+      const textLabels: Record<string, string> = {
+        '[ ⏻ TTS ]': '[ TTS ]', '[ Cargando… ]': '[ Cargando... ]',
+        '[ ▶ ]': '[ |> ]', '[ ▶ copiado ]': '[ |> copiado ]', '[ ‖ ]': '[ || ]',
+        '[ ■ ]': '[ [] ]', '[ ⋯ ]': '[ ... ]', '[ → ]': '[ <- ]', '[ ⏻ ]': '[ off ]',
+        '[ ≡ ]': '[ = ]', '[ ✓ auto ]': '[ v auto ]', '[ ✗ auto ]': '[ x auto ]',
+        'Preparando…': 'Preparando...',
+      };
+      const controls = layout().map(c => settings.icons === 'text' ? {...c, text: textLabels[c.text] ?? c.text} : c);
       return barNote ? [...controls.slice(0, -1), {...controls.at(-1)!, gap: '  '}, {text: `// ${barNote}`, action: '', gap: ''}] : controls;
     };
     const label = () => context?.mode === 'tui' && barVisible && current()

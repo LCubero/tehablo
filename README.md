@@ -124,11 +124,26 @@ Pi empieza con el servidor **apagado**, en modo manual. Pulsa `[ ⏻ TTS ]` para
 | Apagado | `[ ⏻ TTS ] [ ≡ ]` |
 | Cargando | `[ Cargando… ] [ ≡ ]` |
 | Listo | `[ ▶ ] [ ▶ copiado ] [ ⋯ ]` |
-| Controles abiertos | `[ ▶ ] [ ▶ copiado ] [ → ] : [ ≡ ] Vol [- 100% +] Vel [- 1.00x +] [ ⏻ ]` |
+| Controles abiertos | `[ ▶ ] [ ▶ copiado ] [ → ] :  [ ⏻ ] [ ≡ ]  Vol [- 100% +]  Vel [- 1.00x +]  [ ✗ auto ]` |
 | Sonando | `[ ‖ ] [ ■ ] [ ⋯ ]` |
 | En pausa | `[ ▶ ] [ ■ ] [ ⋯ ]` |
 | Preparando copiado | `[ ■ ] Preparando… [ ⋯ ]` |
 | En espera | `[ ■ ] En espera [ ⋯ ]` |
+
+Significado de los iconos (aunque se vean como cuadros):
+
+| Icono | Significado |
+|---|---|
+| `⏻ TTS` | Encender TTS |
+| `▶` | Leer o continuar |
+| `▶ copiado` | Leer el texto copiado |
+| `‖` | Pausar |
+| `■` | Detener o cancelar la lectura en espera |
+| `⋯` | Abrir controles |
+| `→` | Cerrar controles |
+| `⏻` | Apagar el servidor |
+| `≡` | Abrir o cerrar ajustes |
+| `✗ auto` / `✓ auto` | Lectura automática desactivada / activada |
 
 - `[ ▶ ]` lee esa respuesta; en pausa, continúa. `[ ‖ ]` y el botón de continuar solo actúan sobre tu lectura actual, nunca la de otra sesión. `[ ■ ]` detiene solo las lecturas de esa respuesta (la que suena y las que esperan); si hay otra en espera, empieza. `/tts stop` y el atajo de detener cancelan solo tus lecturas, actuales y en espera.
 - Para leer una selección, **cópiala primero** y pulsa `[ ▶ copiado ]`: Pi no ve la selección del ratón.
@@ -153,9 +168,11 @@ Pi empieza con el servidor **apagado**, en modo manual. Pulsa `[ ⏻ TTS ]` para
 | `/tts dict` | Activa o desactiva el diccionario de pronunciación para la voz actual y lo recuerda |
 | `/tts status` | Muestra el estado y la ayuda |
 
-### Ajustes `[ ≡ ]`
+### Ajustes `[ ≡ ]` (menú)
 
 Elige **voz**, **volumen**, **velocidad**, **lectura automática**, **atajos de teclado** e **indicador de estado**, o enciende, apaga y reinicia el servidor. Usa clics o ↑↓, ←→, Enter y Esc.
+
+**Iconos: Símbolos / Texto** conserva los símbolos actuales por defecto. Elige **Texto** si ves cuadros: usa etiquetas ASCII como `[ TTS ]`, `[ |> ]`, `[ || ]`, `[ [] ]`, `[ off ]` y `[ = ]` (ajustes). Se guarda, se comparte entre sesiones y actualiza las barras al cambiarla; [tabla completa](docs/desarrollo.md#iconos-en-modo-texto).
 
 **Si llega otra lectura** permite elegir **Detener** (predeterminado: interrumpe la actual) o **Esperar** (lee en orden, con un aviso sonoro). Se aplica a las lecturas manuales, copiadas y automáticas, también entre sesiones; [límites y casos especiales](docs/desarrollo.md#cola-de-lecturas).
 
@@ -163,7 +180,7 @@ Elige **voz**, **volumen**, **velocidad**, **lectura automática**, **atajos de 
 
 La tabla muestra el estado de descarga, la RAM aproximada y **Dict** por voz. El diccionario adapta términos como «Python»; desactivarlo no cambia la lectura de números ni la limpieza del texto. Por defecto está apagado en Phonon y encendido en Pocket.
 
-Los ajustes se guardan por usuario en `~/.tehablo/settings.json` y se comparten entre todas las sesiones de Pi: voz/modelo, volumen, velocidad, Dict por voz, atajos, política de lectura, barra y caché de voces. Los cambios aparecen en unos segundos en la barra y en los ajustes abiertos, sin `/reload`, incluso con el servidor apagado. Solo la **lectura automática** es de cada sesión: empieza desactivada y no se guarda. [Detalles de Pi, portapapeles y diagnóstico](docs/desarrollo.md#uso-en-pi).
+Los ajustes se guardan por usuario en `~/.tehablo/settings.json` y se comparten entre todas las sesiones de Pi: voz/modelo, volumen, velocidad, Dict por voz, atajos, política de lectura, iconos, barra y caché de voces. Los cambios aparecen en unos segundos en la barra y en los ajustes abiertos, sin `/reload`, incluso con el servidor apagado. Solo la **lectura automática** es de cada sesión: empieza desactivada y no se guarda. [Detalles de Pi, portapapeles y diagnóstico](docs/desarrollo.md#uso-en-pi).
 
 ## Voces
 

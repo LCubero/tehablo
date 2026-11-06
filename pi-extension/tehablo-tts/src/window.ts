@@ -15,7 +15,7 @@ export interface Controller {
   active(): {model: string; voice: string};
   voices(): VoiceRow[];
   choose(row: VoiceRow): void;
-  change(field: 'volume' | 'speed' | 'auto' | 'shortcutsOn' | 'toolbar' | 'indicator' | 'policy', value: number | boolean | 'stop' | 'wait'): void;
+  change(field: 'volume' | 'speed' | 'auto' | 'shortcutsOn' | 'toolbar' | 'indicator' | 'policy' | 'icons', value: number | boolean | 'stop' | 'wait' | 'symbols' | 'text'): void;
   power(action: 'on' | 'off' | 'restart'): void;
   /** Throws an Error with a message safe to show (never the token). */
   saveToken(value: string): void;
@@ -102,6 +102,7 @@ export class SettingsWindow {
       {label: 'Si llega otra lectura', value: s.policy === 'wait' ? 'Esperar' : 'Detener', step: () => this.c.change('policy', s.policy === 'wait' ? 'stop' : 'wait')},
       {label: 'Barra de controles', value: s.toolbar ? 'visible' : 'oculta', step: () => this.c.change('toolbar', !s.toolbar)},
       {label: 'Indicador de estado', value: s.indicator ? 'visible' : 'oculto', step: () => this.c.change('indicator', !s.indicator)},
+      {label: 'Iconos', value: s.icons === 'text' ? 'Texto' : 'Símbolos', step: () => this.c.change('icons', s.icons === 'text' ? 'symbols' : 'text')},
       {label: on ? 'Servidor ● activo' : 'Servidor ○ apagado', buttons: [
         [on ? '[ Apagar ]' : '[ Encender ]', () => { this.c.power(on ? 'off' : 'on'); this.col = 0; }],
         ['[ Reiniciar ]', on ? () => this.c.power('restart') : undefined],

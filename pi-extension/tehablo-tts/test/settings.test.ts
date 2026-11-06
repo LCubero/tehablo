@@ -61,6 +61,19 @@ test('playback policy persists and invalid or missing values default to stop', (
   }
 }));
 
+test('icon mode defaults, normalizes and merges across sessions', () => withDirs((dir, project) => {
+  assert.equal(loadSettings(dir, project).icons, 'symbols');
+  for (const icons of [undefined, 'invalid', null, 1, 'text', 'symbols']) {
+    saveSettings(dir, {...DEFAULTS, icons} as any);
+    assert.equal(loadSettings(dir, project).icons, icons === 'text' ? 'text' : 'symbols');
+  }
+  const before = loadSettings(dir, project);
+  saveSettings(dir, {...before, icons: 'text'}, before);
+  saveSettings(dir, {...before, speed: 1.25}, before);
+  assert.equal(loadSettings(dir, project).icons, 'text');
+  assert.equal(loadSettings(dir, project).speed, 1.25);
+}));
+
 test('known voice table entries survive a reload', () => withDirs((dir, project) => {
   const voices = [{name: 'lola', voice: 'lola', model: 'spanish', kind: 'download', note: 'la de siempre', downloaded: true}];
   saveSettings(dir, {...DEFAULTS, voices});

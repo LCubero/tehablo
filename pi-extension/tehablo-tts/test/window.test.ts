@@ -72,6 +72,18 @@ test('keyboard changes volume, speed and auto within their limits', () => {
   assert.equal(s.closed(), true);
 });
 
+test('icon row supports mouse and keyboard', () => {
+  const s = setup();
+  assert.match(s.text(), /Iconos/);
+  s.click('Símbolos');
+  assert.deepEqual(s.calls.at(-1), ['change', 'icons', 'text']);
+  assert.match(s.text(), /Texto/);
+  s.key('\x1b[D');
+  assert.deepEqual(s.calls.at(-1), ['change', 'icons', 'symbols']);
+  s.key('\r');
+  assert.deepEqual(s.calls.at(-1), ['change', 'icons', 'text']);
+});
+
 test('policy and toolbar rows support keyboard and mouse', () => {
   const s = setup();
   assert.match(s.text(), /Si llega otra lectura/);

@@ -2,6 +2,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {createExtension, fileStore, memoryStore, readTable} from '../src/extension.ts';
 import {mkdtempSync, writeFileSync, rmSync, mkdirSync} from 'node:fs';
+import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {DEFAULTS} from '../src/settings.ts';
 import {ServerClient} from '../src/server.ts';
@@ -141,6 +142,91 @@ test('scoped controls S1: a replaced paused card returns to play while the forei
     assert.doesNotMatch(s.line(), /\[ ■ \]/);
   } finally { await s.close(); }
 });
+
+test('text icons render all states and changing the window saves and redraws immediately', async () => {
+  const clip = deferred<string>(), store = memoryStore();
+  const s = setup(store, () => clip.promise);
+  const ready = '[ |> ] [ |> copiado ]';
+  const tail = '[ <- ] :  [ off ] [ = ]  Vol [- 100% +]  Vel [- 1.00x +]  ';
+  try {
+    await s.command('menu'); await new Promise(r => setImmediate(r));
+    const renders = s.renders();
+    s.windows[0].w.c.change('icons', 'text');
+    assert.equal(store.load().icons, 'text');
+    assert.ok(s.renders() > renders);
+    assert.equal(s.line(), '[ TTS ] [ = ]');
+    s.setReady(false); await clickAt(s, '[ TTS ]', 6);
+    assert.equal(s.line(), '[ Cargando... ] [ = ]');
+    s.setReady(true); await tick();
+    assert.equal(s.line(), ready + ' [ ... ]');
+    await clickAt(s, '[ ... ]');
+    assert.equal(s.line(), ready + ' ' + tail + '[ x auto ]');
+    await clickAt(s, '[ x auto ]', 9);
+    assert.equal(s.line(), ready + ' ' + tail + '[ v auto ]');
+    await clickAt(s, '[ v auto ]'); await clickAt(s, '[ <- ]');
+    await s.command('play'); await tick();
+    assert.equal(s.line(), '[ || ] [ [] ] [ ... ]');
+    await clickAt(s, '[ || ]', 5);
+    assert.equal(s.line(), '[ |> ] [ [] ] [ ... ]');
+    await clickAt(s, '[ |> ]'); await clickAt(s, '[ ... ]');
+    assert.equal(s.line(), '[ || ] [ [] ] ' + tail + '[ x auto ]');
+    await clickAt(s, '[ x auto ]');
+    assert.equal(s.line(), '[ || ] [ [] ] ' + tail + '[ v auto ]');
+    await clickAt(s, '[ v auto ]');
+    await clickAt(s, '[ [] ]', 5);
+    assert.ok(s.calls.includes('/stop'));
+    await clickAt(s, '[ off ]', 6);
+    assert.equal(s.line(), '[ TTS ] [ = ]');
+    await s.command('');
+    const pending = s.command('copy');
+    assert.equal(s.line(), '[ [] ] Preparando... [ ... ]');
+    const request = s.client.request;
+    s.client.request = async (path: string, body: any) => path === '/speak' ? {state: 'queued'} : request(path, body);
+    clip.resolve('Copied'); await pending;
+    assert.equal(s.line(), '[ [] ] En espera [ ... ]');
+    await clickAt(s, '[ [] ]');
+    await s.command('auto');
+    assert.equal(s.line(), ready + ' [ ... ] auto  // Lectura automática: sí');
+    assert.deepEqual(s.notices, []);
+  } finally { clip.resolve('Copied'); await s.close(); }
+});
+
+test('icon changes from another session refresh bars and the open window', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'tehablo-icons-'));
+  const store = fileStore(dir, dir), other = fileStore(dir, dir);
+  const s = setup(store, undefined, 10);
+  try {
+    s.fail();
+    await s.command('menu'); await new Promise(r => setImmediate(r));
+    other.save({...other.load(), icons: 'text'});
+    for (let i = 0; i < 50 && s.line() !== '[ TTS ] [ = ]'; i++) await new Promise(r => setTimeout(r, 10));
+    assert.equal(s.line(), '[ TTS ] [ = ]');
+    assert.match(s.windows[0].w.render(100).join('\n'), /Texto/);
+    assert.ok(s.windows[0].renders > 0);
+    assert.equal(s.ensures(), 0);
+    assert.deepEqual(s.notices, []);
+  } finally { await s.close(); rmSync(dir, {recursive: true, force: true}); }
+});
+
+for (const label of ['[ TTS ]', '[ || ]', '[ [] ]', '[ off ]', '[ x auto ]']) {
+  test(`every text label column is clickable: ${label}`, async () => {
+    for (let offset = 0; offset < label.length; offset++) {
+      const store = memoryStore(); store.save({...store.load(), icons: 'text'});
+      const s = setup(store);
+      try {
+        if (label !== '[ TTS ]') await s.command('');
+        if (label === '[ || ]' || label === '[ [] ]') { await s.command('play'); await tick(); }
+        if (label === '[ off ]' || label === '[ x auto ]') await clickAt(s, '[ ... ]');
+        await clickAt(s, label, offset);
+        if (label === '[ TTS ]') assert.equal(s.ensures(), 1);
+        if (label === '[ || ]') assert.ok(s.calls.includes('/pause'));
+        if (label === '[ [] ]') assert.ok(s.calls.includes('/stop'));
+        if (label === '[ off ]') assert.ok(s.calls.includes('/shutdown'));
+        if (label === '[ x auto ]') assert.equal(s.statuses.at(-1), 'TTS auto');
+      } finally { await s.close(); }
+    }
+  });
+}
 
 function deferred<T>() {
   let resolve!: (value: T) => void, reject!: (error: Error) => void;

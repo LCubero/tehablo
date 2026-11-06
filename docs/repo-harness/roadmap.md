@@ -325,7 +325,9 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 - **Estado:** `proposed`.
 - **Trabajo restante:** ver por qué `‖` se ve como una raya fina en la grabación (supuesta causa sin comprobar: la fuente de la grabación no tiene ese carácter); elegir un icono que se vea centrado y de tamaño parecido a `▶`. La regla de la barra pide símbolos de una sola columna para que los clics coincidan; `[ || ]` ocupa una columna más y movería los botones al cambiar entre pausa y play. Decidir si el cambio es solo para el video o también para Pi; luego volver a grabar.
 - **Adición (2026-11-05):** la persona responsable: «El icono de encendido en el readme no se ve. Sale un cuadro. Y el icono de pause se ve pegado feo, como en el showreel, resolver con lo otro». En el README, `⏻` (U+23FB) aparece como un cuadro; supuesta causa sin comprobar: la fuente del navegador o de la app no tiene ese carácter. Se resuelven juntos.
-- **Condición del siguiente avance:** autorización para investigar y proponer los iconos.
+- **Trabajo completado (2026-11-06):** investigación: `⏻` (U+23FB) falta en fuentes comunes como Segoe UI Symbol, de ahí el cuadro en GitHub; `‖` es puntuación y se ve fina. Una extensión no puede elegir la fuente de la terminal. La persona responsable descartó los candidatos Unicode (`⏸`, `▮`, `▌`, `⏼`, `⭘`, `○`: «horribles») y eligió una opción **Iconos: Símbolos / Texto** en `[ ≡ ]`, con símbolos por defecto y etiquetas ASCII ajustadas por ella (`[ TTS ]`, `[ |> ]`, `[ || ]`, `[ [] ]`, `[ ... ]`, `[ <- ]`, `[ off ]`, `[ = ]`, `[ v auto ]` / `[ x auto ]`; «quité el on a TTS»). El README explica en texto cada icono. Pruebas de la extensión 160/160; la persona responsable vio el modo Texto en Pi («no se ve mal»).
+- **Pendiente:** regrabar el video con una fuente que tenga los símbolos, o en modo Texto (`RH-W-0036`, lo hace la persona responsable).
+- **Condición del siguiente avance:** cerrar cuando se regrabe el video.
 
 
 ### RH-W-0036: Pulir el README y el video de demostración

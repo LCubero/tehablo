@@ -4,6 +4,10 @@
 
 Este archivo registra los cambios completados en orden cronológico.
 
+## 2026-11-06
+
+- Pi: nueva opción **Iconos: Símbolos / Texto** en los ajustes; conserva los símbolos por defecto y permite etiquetas ASCII si se ven cuadros. Se guarda y comparte entre sesiones, con cambio inmediato en las barras; el README explica el significado de cada icono.
+
 ## 2026-11-05
 
 - Pi: los avisos cortos aparecen unos 4 s al final de la barra en gris tenue como `// texto`, sin ocupar otra línea; con la barra oculta, y para errores y `/tts status`, siguen como aviso «TTS teHablo: …».
