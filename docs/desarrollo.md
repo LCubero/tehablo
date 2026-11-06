@@ -133,7 +133,7 @@ del directorio de trabajo. `/leer` conserva las rutas relativas al directorio ac
 
 ## Pruebas
 
-`tests/test_tech.py`, `tests/test_numbers.py`, `tests/test_lexicon.py`, `tests/test_speed.py`, `tests/test_server.py`, `tests/test_startup.py`, `tests/test_console_imports.py` y `tests/test_quantize.py` comprueban el texto técnico, la conversión de números, el diccionario de pronunciación, el cambio de velocidad, el servidor HTTP, los diagnósticos de arranque y la cuantización predeterminada sin modelo ni audio; terminan con código 0 si todos los casos pasan:
+`tests/test_tech.py`, `tests/test_numbers.py`, `tests/test_lexicon.py`, `tests/test_speed.py`, `tests/test_server.py`, `tests/test_startup.py`, `tests/test_console_imports.py`, `tests/test_quantize.py` y `tests/test_receptor.py` comprueban el texto técnico, la conversión de números, el diccionario de pronunciación, el cambio de velocidad, el servidor HTTP, los diagnósticos de arranque, la cuantización predeterminada y que el receptor de audio por SSH vuelve a conectarse (necesita `sh`) sin modelo ni audio; terminan con código 0 si todos los casos pasan:
 
 ```powershell
 .venv-pocket/Scripts/python tests/test_tech.py
@@ -144,6 +144,7 @@ del directorio de trabajo. `/leer` conserva las rutas relativas al directorio ac
 .venv-pocket/Scripts/python tests/test_startup.py
 .venv-pocket/Scripts/python tests/test_console_imports.py
 .venv-pocket/Scripts/python tests/test_quantize.py
+.venv-pocket/Scripts/python tests/test_receptor.py
 ```
 
 En cada push, GitHub Actions (`.github/workflows/tests.yml`) ejecuta en Windows y Linux estas suites, además de `test_measure_tts.py`, `test_get_voices.py`, `test_listening_skill.py` y las de la extensión de Pi. No descarga modelos ni usa audio, así que no sustituye las pruebas de integración ni la escucha.
