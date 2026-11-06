@@ -82,7 +82,7 @@ Este archivo proyecta solo hechos verificados del proyecto: registros activos, b
 - `RH-W-0028` (`deferred`, P3; se decide como primer paso de `RH-W-0037`): decidir si tehablo se instala una vez por usuario (`~/.tehablo/`) o se queda en el repositorio; ya entregados los ajustes de Pi por usuario y el token sin guardar (2026-11-04). En Windows, la persona responsable comprobó físicamente `install.ps1` con `ptts`, la descarga de Regina con el token pegado en la ventana y el TTS apagado (Iker quedó descargada con el mismo archivo), y que tras cerrar y abrir Pi Regina e Iker leen sin token; `/health` mostró `phonon`/`Regina` sin error. Esa prueba probablemente reusó un servidor vivo con el token: con un servidor nuevo sin token, Phonon pasaba a `lola`; corregido el mismo día (carga desde el caché) y comprobado con un servidor nuevo sin token. `install.sh` ya comprueba `ptts` y muestra el comando `pi install`, como `install.ps1` (solo se comprobó el texto final y la sintaxis). Linux sigue sin comprobarse.
 - `RH-W-0029` (`proposed`, P3): voces por API externa (ElevenLabs, Google…) como extra apagado; su condición ya se cumplió y queda después del release.
 - `RH-W-0032` (`proposed`, P2): iconos de pausa y encendido que se vean bien (la pausa se ve pegada en el video; `⏻` sale como un cuadro en el README).
-- `RH-W-0036` (`proposed`, P2): README y video: encabezado «¿Cuenta?», nota de Hugging Face para Phonon, aviso de sonido, miniatura y la app de GitHub para Android.
+- `RH-W-0036` (`proposed`, P2): video de demostración: aviso de sonido, miniatura y la app de GitHub para Android (los textos del README ya están).
 - `RH-W-0037` (`proposed`, P1): instalador con elección (Pi, Gentle Shell, TUI, consola) en Linux, Windows y macOS, instalación por comando y actualizaciones; primero el análisis.
 - `RH-W-0038` (`proposed`, P2): primer release o release candidate, después del instalador.
 - `RH-W-0039` (`proposed`, P3): página de producto, probablemente como proyecto aparte.
@@ -94,7 +94,7 @@ Este archivo proyecta solo hechos verificados del proyecto: registros activos, b
 
 Orden aprobado por la persona responsable el 2026-11-05 («me parece dale»); cada trabajo se revisa antes de empezarlo:
 
-1. **Revisar y corregir:** textos del README (parte de `RH-W-0036`); varias sesiones de Pi (`RH-W-0033`) y la prueba de Phonon sin conexión (`RH-W-0035`) ya están completadas.
+1. **Revisar y corregir:** completado: varias sesiones de Pi (`RH-W-0033`), prueba de Phonon sin conexión (`RH-W-0035`) y textos del README (parte de `RH-W-0036`).
 2. **La voz:** más voces (`RH-W-0005`) y después pronunciación (`RH-W-0002`), porque la pronunciación depende del modelo.
 3. **Interfaz:** interfaz y TUI con los iconos (`RH-W-0004`, `RH-W-0032`); luego añadir palabras (`RH-W-0015`), sugerir pronunciaciones (`RH-W-0016`) y opciones de lectura (`RH-W-0022`).
 4. **Roles de voz** (`RH-W-0018`).
@@ -102,6 +102,6 @@ Orden aprobado por la persona responsable el 2026-11-05 («me parece dale»); ca
 6. **Instalar y publicar:** instalador (`RH-W-0037`, con `RH-W-0028`), seguridad mínima (`RH-W-0023`) y primera versión (`RH-W-0038`).
 7. **Extras y largo plazo:** página de producto (`RH-W-0039`), voces por API (`RH-W-0029`), menú de audio (`RH-W-0017`), portabilidad (`RH-W-0011`), celular (`RH-W-0040`), Docker y VPS (`RH-W-0009`), API (`RH-W-0014`), audiolibros (`RH-W-0019`), resto de calidad (`RH-W-0023`), versión lite (`RH-W-0025`), GPU (`RH-W-0007`) y modelo propio (`RH-W-0012`).
 
-Siguiente: los textos del README de `RH-W-0036`.
+Siguiente: revisar más voces (`RH-W-0005`), fase 2 del orden aprobado.
 
 Plan aprobado el 2026-10-30: (0) base confiable, completada; (1) medir con `RH-W-0003`, completado; (2) endurecer el servidor (`RH-W-0001`, completado) y los errores (`RH-W-0013`, completado) y la instalación (`RH-W-0008`, completado el 2026-10-30); (3) al final, la versión lite (`RH-W-0025`): mínimo consumo, el modelo que funcione bien gastando menos y las funciones mínimas (cambio de orden pedido por la persona responsable el 2026-10-30). La investigación y los deseos grandes quedan `deferred` hasta entonces.

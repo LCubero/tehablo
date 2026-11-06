@@ -10,15 +10,18 @@ https://github.com/user-attachments/assets/ddaaee48-467e-4d6e-a643-2af885896b61
 
 ## Consumo aproximado
 
-| Recurso | Aproximación |
-|---|---|
-| Disco: entorno Python | 0,8–1,1 GB |
-| Disco: modelos Pocket descargados | 1,2 GB en Windows; 0,9 GB en Fedora |
-| Disco: modelo Phonon (opcional) | ~0,15 GB |
-| RAM: Pocket `spanish` | ~1 GB |
-| RAM: Pocket `spanish_24l` | ~1,8 GB |
-| RAM: Phonon | ~0,3 GB |
-| Procesador | Solo CPU; no usa GPU |
+| Modelo | Espacio en disco | RAM |
+|---|---|---|
+| Entorno Python | 0,8–1,1 GB | — |
+| Pocket `spanish` | 0,9–1,2 GB² | ~1 GB |
+| Pocket `spanish_24l` | (incluido arriba) | ~1,8 GB |
+| Phonon¹ | ~0,15 GB | ~0,3 GB |
+
+Todo funciona solo con CPU, sin GPU.
+
+¹ Necesita una cuenta gratis de Hugging Face.
+
+² Los dos modelos Pocket juntos: 1,2 GB en Windows y 0,9 GB en Fedora.
 
 Son referencias, no requisitos mínimos: cambian con el modelo, el sistema y la cuantización. La RAM corresponde al modelo en uso; al apagar el servidor se libera. Consulta las [mediciones Windows/Fedora](docs/como-funciona.md#consumo-medido) y la [comparación con Phonon](docs/pruebas-de-voces.md#phonon-40m-es-frente-a-lola-spanish_24l-y-kokoro-2026-11-03-fedora).
 
@@ -27,11 +30,13 @@ Son referencias, no requisitos mínimos: cambian con el modelo, el sistema y la 
 
 > 🔇 GitHub muestra los videos silenciados: pulsa el altavoz del reproductor para escuchar.
 
-| Voz | Modelo | Peso de la voz | RAM en uso | ¿Cuenta? |
+| Voz | Modelo | Peso de la voz | RAM en uso | ¿Incluida? |
 |---|---|---|---|---|
-| Lola, Rafael | Pocket | 5–6 MB (se descarga) | ~1 GB | No |
-| Facundo, Santiago, Camila, Javiera, Diego, Felipe | Pocket | 10–12 MB (incluida) | ~1 GB | No |
-| Regina, Iker | Phonon | dentro del modelo | ~0,3 GB | Solo para descargar |
+| Lola, Rafael | Pocket | 5–6 MB (se descarga) | ~1 GB | Sí |
+| Facundo, Santiago, Camila, Javiera, Diego, Felipe | Pocket | 10–12 MB (incluida) | ~1 GB | Sí |
+| Regina, Iker | Phonon | dentro del modelo | ~0,3 GB | No, gratis para descarga¹ |
+
+¹ Necesita una cuenta gratis de Hugging Face.
 
 El modelo se descarga una vez y lo comparten todas sus voces: Pocket `spanish` 219 MB, Phonon 144 MB. Pesos medidos en Windows; RAM medida en Fedora.
 
@@ -161,12 +166,14 @@ Los ajustes se guardan por usuario en `~/.tehablo/settings.json` y se comparten 
 
 ## Voces
 
-| Nombre | Modelo en Pi | ¿Cuenta? | Licencia de pesos / voz |
+| Nombre | Modelo en Pi | ¿Incluida? | Licencia de pesos / voz |
 |---|---|---|---|
-| [`lola`](https://cdn.jsdelivr.net/gh/LCubero/tehablo@master/docs/samples/lola.mp3) (inicial), [`rafael`](https://cdn.jsdelivr.net/gh/LCubero/tehablo@master/docs/samples/rafael.mp3) | Pocket `spanish` | No | CC BY 4.0 |
-| [`Facundo`](https://cdn.jsdelivr.net/gh/LCubero/tehablo@master/docs/samples/Facundo.mp3), [`Santiago`](https://cdn.jsdelivr.net/gh/LCubero/tehablo@master/docs/samples/Santiago.mp3) (Argentina) | Pocket `spanish` | No | Pesos CC BY 4.0; voces CC BY-SA 4.0 |
-| [`Camila`](https://cdn.jsdelivr.net/gh/LCubero/tehablo@master/docs/samples/Camila.mp3), [`Javiera`](https://cdn.jsdelivr.net/gh/LCubero/tehablo@master/docs/samples/Javiera.mp3), [`Diego`](https://cdn.jsdelivr.net/gh/LCubero/tehablo@master/docs/samples/Diego.mp3) (Chile), [`Felipe`](https://cdn.jsdelivr.net/gh/LCubero/tehablo@master/docs/samples/Felipe.mp3) (Colombia) | Pocket `spanish` | No | Pesos CC BY 4.0; voces CC BY-SA 4.0 |
-| [`Regina`](https://cdn.jsdelivr.net/gh/LCubero/tehablo@master/docs/samples/Regina.mp3) (México), [`Iker`](https://cdn.jsdelivr.net/gh/LCubero/tehablo@master/docs/samples/Iker.mp3) (España) | Phonon 40M es | Gratis, solo para descargar | CC BY-NC 4.0: no comercial |
+| [`lola`](https://cdn.jsdelivr.net/gh/LCubero/tehablo@master/docs/samples/lola.mp3) (inicial), [`rafael`](https://cdn.jsdelivr.net/gh/LCubero/tehablo@master/docs/samples/rafael.mp3) | Pocket `spanish` | Sí | CC BY 4.0 |
+| [`Facundo`](https://cdn.jsdelivr.net/gh/LCubero/tehablo@master/docs/samples/Facundo.mp3), [`Santiago`](https://cdn.jsdelivr.net/gh/LCubero/tehablo@master/docs/samples/Santiago.mp3) (Argentina) | Pocket `spanish` | Sí | Pesos CC BY 4.0; voces CC BY-SA 4.0 |
+| [`Camila`](https://cdn.jsdelivr.net/gh/LCubero/tehablo@master/docs/samples/Camila.mp3), [`Javiera`](https://cdn.jsdelivr.net/gh/LCubero/tehablo@master/docs/samples/Javiera.mp3), [`Diego`](https://cdn.jsdelivr.net/gh/LCubero/tehablo@master/docs/samples/Diego.mp3) (Chile), [`Felipe`](https://cdn.jsdelivr.net/gh/LCubero/tehablo@master/docs/samples/Felipe.mp3) (Colombia) | Pocket `spanish` | Sí | Pesos CC BY 4.0; voces CC BY-SA 4.0 |
+| [`Regina`](https://cdn.jsdelivr.net/gh/LCubero/tehablo@master/docs/samples/Regina.mp3) (México), [`Iker`](https://cdn.jsdelivr.net/gh/LCubero/tehablo@master/docs/samples/Iker.mp3) (España) | Phonon 40M es | No, gratis para descarga¹ | CC BY-NC 4.0: no comercial |
+
+¹ Necesita una cuenta gratis de Hugging Face.
 
 Haz clic en un nombre para escuchar una muestra de unos 6 s (archivos en [`docs/samples/`](docs/samples/), con el mismo volumen que en Pi).
 

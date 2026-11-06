@@ -332,15 +332,14 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 - **Prioridad:** P2; es lo primero que ve quien llega al proyecto.
 - **Dependencias:** ninguna para los textos; el video se vuelve a grabar después de `RH-W-0004` y `RH-W-0032`, para que muestre la interfaz final.
 - **Estado:** `proposed`.
+- **Trabajo completado (2026-11-05, textos):** las dos tablas de voces cambian «¿Cuenta?» por «¿Incluida?» (Pocket «Sí»; Phonon «No, gratis para descarga¹») con la nota «¹ Necesita una cuenta gratis de Hugging Face.»; la tabla de consumo pasa a columnas por recurso (modelo, espacio en disco, RAM), con la misma nota para Phonon, la del espacio de los dos modelos Pocket y «Todo funciona solo con CPU, sin GPU.». Redacción aprobada por la persona responsable tras dos ajustes («enseñame el cuadro a ver», «ok»).
 - **Trabajo restante:**
-  - Cambiar el encabezado «¿Cuenta?» de las dos tablas de voces del README por uno que se entienda sin conocer el proyecto.
-  - En la tabla de consumo, cambiar «(opcional)» de Phonon por una nota sobre la cuenta de Hugging Face para descargarlo.
   - Al inicio del video, un aviso serio y profesional para activar el sonido.
   - Una miniatura: un fotograma del inicio, de la parte del TTS ayudando o del menú de voces.
   - Que el video se vea bien en la app de GitHub para Android, donde hoy solo aparece el enlace. Supuesta solución sin comprobar: la miniatura como imagen con enlace al video; se comprueba en el celular de la persona responsable.
 - **Exclusiones:** las herramientas de grabación siguen fuera del repositorio; subir el video lo hace la persona responsable.
 - **Decisión:** orden aprobado el 2026-11-05 en dos partes: los textos del README (encabezado y nota de Phonon) en la fase 1; el video, el aviso de sonido, la miniatura y la app de Android en la fase 5, grabando una sola vez.
-- **Condición del siguiente avance:** autorización para la parte de textos.
+- **Condición del siguiente avance:** el video, después de `RH-W-0004` y `RH-W-0032`.
 
 ### RH-W-0037: Instalador con elección de lo que se instala
 
