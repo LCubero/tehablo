@@ -127,6 +127,33 @@ class ClientTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             c.resolve_device('Missing', sd)
 
+    def test_prebuffers_200_ms_before_playing_and_plays_everything(self):
+        # Writing each 20 ms packet as it arrives empties the device buffer on network jitter.
+        stop = threading.Event()
+        class Handler(BaseHTTPRequestHandler):
+            def do_GET(self):
+                self.send_response(200)
+                self.end_headers()
+                self.wfile.write(bytes(44))
+                for _ in range(15):
+                    self.wfile.write(b'\x01\x00' * 480)
+                    self.wfile.flush()
+            def log_message(self, *args):
+                pass
+        server = ThreadingHTTPServer(('127.0.0.1', 0), Handler)
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+        self.addCleanup(server.server_close)
+        self.addCleanup(server.shutdown)
+        sd = MagicMock()
+        stream = sd.RawOutputStream.return_value.__enter__.return_value
+        receiver = c.Receiver(dict(c.DEFAULTS), sd=sd, url=f'http://127.0.0.1:{server.server_port}/audio.wav')
+        receiver.stop_event = stop
+        with patch.object(stop, 'wait', side_effect=lambda _: stop.set()):
+            receiver.run()
+        sizes = [len(call.args[0]) for call in stream.write.call_args_list]
+        self.assertGreaterEqual(sizes[0], 9600)
+        self.assertEqual(sum(sizes), 15 * 960)
+
     def test_reconnect_after_eof_no_real_audio(self):
         calls = []
         stop = threading.Event()

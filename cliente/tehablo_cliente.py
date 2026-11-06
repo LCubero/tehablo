@@ -193,23 +193,43 @@ class Receiver:
                     device_name = self.settings['device']
                     with sd.RawOutputStream(samplerate=24000, channels=1, dtype='int16',
                                             device=resolve_device(device_name, sd), blocksize=480,
-                                            latency='low') as stream:
-                        pending = b''
+                                            latency='high') as stream:
+                        pending = queued = b''
+                        last_data = checked = 0.0
                         while not self.stop_event.is_set():
-                            if self.reload_settings:
+                            now = time.monotonic()
+                            if self.reload_settings and now - checked > .5:
+                                # Reading the settings file on every packet costs disk I/O and causes cuts.
+                                checked = now
                                 self.settings.update(self.reload_settings())
                             if not self.settings['enabled'] or self.settings['device'] != device_name:
                                 break
                             chunk = response.read1(960)
                             if not chunk:
                                 break
+                            now = time.monotonic()
                             data = pending + chunk
                             pending = data[len(data) // 2 * 2:]
                             data = data[:len(data) // 2 * 2]
-                            if data:
-                                self.receiving = True
-                                stream.write(scale_pcm(data, self.settings['volume']))
-                                self.report()
+                            if not data:
+                                continue
+                            # After a pause the server sends nothing; keep ~200 ms before playing again
+                            # so network jitter does not empty the device buffer (micro cuts).
+                            if now - last_data > .3:
+                                if queued:  # a very short reading never reached 200 ms
+                                    stream.write(scale_pcm(queued, self.settings['volume']))
+                                queued = b''
+                            last_data = now
+                            if queued is not None:
+                                queued += data
+                                if len(queued) < 9600:
+                                    continue
+                                data, queued = queued, None
+                            self.receiving = True
+                            stream.write(scale_pcm(data, self.settings['volume']))
+                            self.report()
+                        if queued:
+                            stream.write(scale_pcm(queued, self.settings['volume']))
                     self.error = ''
             except Exception as exc:
                 self.reachable = False
