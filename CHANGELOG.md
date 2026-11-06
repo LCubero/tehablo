@@ -6,6 +6,7 @@ Este archivo registra los cambios completados en orden cronológico.
 
 ## 2026-11-05
 
+- Servidor y Pi, tras una revisión del repositorio: la cola ya no pierde lecturas al cambiar entre Pocket y Phonon; la voz generada por adelantado se limita a unos 3 s, también en pausa, para no acumular RAM; tras un fallo de carga se puede reintentar el mismo modelo sin perder la cola; la extensión olvida las lecturas terminadas y conserva las que el servidor aceptó aunque se pierda la respuesta. Los scripts manuales de la TUI ya no se ejecutan al descubrir pruebas.
 - Pi: **Detener / Esperar** en los ajustes decide si la lectura nueva interrumpe o entra en la cola compartida (máximo 10). **Esperar** avisa con un bip suave al entrar; al salir de la cola, añade unos 0,6 s de pausa, el bip y «Siguiente lectura.» con la misma voz. Si la actual está pausada, se cancela y la cola avanza en orden (`RH-W-0041`).
 - Pi: pausa/continuar, detener, `/tts stop`, atajos, nuevo turno y cierre de sesión actúan solo sobre sus lecturas. **Apagar** (`[ ⏻ ]` o `/tts`) y reiniciar son globales; cerrar una sesión solo apaga el servidor si ella lo arrancó.
 - Pi: leer copiado muestra «Preparando…» de inmediato, ignora clics repetidos mientras prepara y limpia el estado al cancelar o fallar; al empezar ya no muestra «En espera» por otra copia de la misma tarjeta. El menú también muestra u oculta la barra, como `/tts toolbar`, y recuerda la elección.
