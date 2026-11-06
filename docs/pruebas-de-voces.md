@@ -345,6 +345,18 @@ Misma frase para cada voz, sin ajustes de volumen; una sola generación por voz 
 
 Todas salían bajas (lo habitual en voz es −16 a −20 dBFS). La persona responsable escuchó `lola` a ×1, ×1,5 y ×2 y eligió ×1,8 como base; la corrección por voz las iguala a `lola` y los picos por encima de 0,8 se redondean (`soft_limit` en `src/tehablo_server.py`) en lugar de recortarse. Escuchado en Pi: «suena muy bien genial».
 
+## Búsqueda de modelos nuevos (2026-11-05)
+
+Búsqueda web, sin descargar ni probar nada. Datos tomados de las páginas de cada modelo; la licencia queda por confirmar en sus archivos.
+
+| Modelo | Tamaño | CPU | Clonación | Licencia | Nota |
+|---|---|---|---|---|---|
+| NeuTTS Nano Spanish (Neuphonic, feb. 2026) | ~117 M parámetros activos; versiones GGUF Q8 y Q4 | Sí, «tiempo real o mejor» en portátil, sin cifra publicada | Sí, con 3 a 15 s de audio | No figura en la página | Candidato principal. Necesita `espeak-ng`; el audio lleva marca de agua; solo trae la voz de ejemplo `mateo`. Antes se anotó que pide token de Hugging Face (ver [Descartados sin probar](#descartados-sin-probar)). |
+| CuteTTS (OPPO) | ~230 M parámetros | Dice que sí, pero solo da cifras de GPU | Sí | No figura en la página | Español entre 5 idiomas; dudoso que sea liviano en CPU. |
+| Arm `pocket-tts-es-mix-precision` | 383 MB, 26 perfiles de voz | Optimizado para CPU Arm | No | CC BY 4.0 | No sirve: su motor solo se ofrece en un programa de acceso anticipado de Arm. |
+
+El ajuste castellano de `inferencekey` (1,34 GB, `spanish_24l`) sigue pendiente como antes. Ming-3.0-tts (0,5 B) aparece en clasificaciones, pero es más pesado. Siguiente paso propuesto: confirmar la licencia de NeuTTS Nano Spanish y, si permite usarlo, escucharlo a ciegas frente a `lola` y Phonon.
+
 ## Licencias
 
 Cada opción tiene tres capas: el programa, el modelo y la voz con la que se entrenó o se clona.
