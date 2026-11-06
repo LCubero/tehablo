@@ -553,6 +553,27 @@ class SpeechHTTPServer(ThreadingHTTPServer):
             self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
         super().server_bind()
 
+    def stop_serving(self):
+        self.service.control('stop')
+        self.shutdown()
+
+    def serve_forever(self, poll_interval=.5):
+        stopped = threading.Event()
+
+        def watch_idle():
+            while not stopped.wait(min(2, self.idle_exit / 4)):
+                if time.monotonic() - self.last_request > self.idle_exit:
+                    print(f'Idle: no requests for {self.idle_exit:g} s; shutting down', flush=True)
+                    self.stop_serving()
+                    return
+
+        if self.idle_exit:
+            threading.Thread(target=watch_idle, name='idle-exit', daemon=True).start()
+        try:
+            super().serve_forever(poll_interval)
+        finally:
+            stopped.set()
+
     def server_close(self):
         # A failed bind closes the server before create_server attaches the service.
         if hasattr(self, 'service'):
@@ -561,6 +582,10 @@ class SpeechHTTPServer(ThreadingHTTPServer):
 
 
 class Handler(BaseHTTPRequestHandler):
+    def parse_request(self):
+        self.server.last_request = time.monotonic()
+        return super().parse_request()
+
     def log_message(self, format, *args):
         pass
 
@@ -619,8 +644,7 @@ class Handler(BaseHTTPRequestHandler):
                 self.reply(200, service.configure(body))
             elif self.path == '/shutdown':
                 self.reply(200, {'ok': True})
-                service.control('stop')
-                threading.Thread(target=self.server.shutdown, daemon=True).start()
+                threading.Thread(target=self.server.stop_serving, daemon=True).start()
             else:
                 self.reply(200, service.control(self.path[1:], body.get('id')))
         except RuntimeError as exc:
@@ -630,7 +654,9 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def create_server(port=8765, model=START_MODEL, voice=None, speed=1.0,
-                  synthesizer_factory=synthesizer, audio_factory=audio_sink, catalog=None):
+                  synthesizer_factory=synthesizer, audio_factory=audio_sink, catalog=None, idle_exit=30):
+    if not math.isfinite(idle_exit) or idle_exit < 0:
+        raise ValueError('idle-exit must be a finite nonnegative number')
     if catalog is None:
         started = time.perf_counter()
         from tehablo_tts import VOICES
@@ -643,6 +669,8 @@ def create_server(port=8765, model=START_MODEL, voice=None, speed=1.0,
         service.close()
         raise
     server.service = service
+    server.idle_exit = idle_exit
+    server.last_request = time.monotonic()
     return server
 
 
@@ -654,6 +682,8 @@ def main():
     parser.add_argument('--voice', default=None,
                         help='voice (default: Regina for phonon, lola for Pocket)')
     parser.add_argument('--speed', type=float, default=1.0)
+    parser.add_argument('--idle-exit', type=float, default=30,
+                        help='exit after SECONDS without requests (default: 30; 0 disables)', metavar='SECONDS')
     args = parser.parse_args()
     print(f'Startup: server imports completed in {time.perf_counter() - IMPORT_STARTED:.3f} s', flush=True)
     try:

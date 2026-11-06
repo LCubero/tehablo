@@ -155,7 +155,7 @@ export class ServerClient {
     await this.poweringOff;
     await this.close();
   }
-  /** `shared` also shuts down a server another Pi session started; closing a session leaves it to them. */
+  /** Only explicit power off shuts down the shared server; session close leaves idle exit to Python. */
   private async close(shared = false) {
     if (this.closed) return;
     this.closed = true;
@@ -165,13 +165,14 @@ export class ServerClient {
       if (shared && this.used) await this.request('/stop', {});
       else await this.stop();
     } catch (error) { failure = error; }
-    if (this.child) {
+    if (shared) {
       try { await this.request('/shutdown', {}); }
-      catch (error) { this.child.kill(); failure = error; }
-      this.child = undefined;
-    } else if (shared) {
-      try { await this.request('/shutdown', {}); } catch { /* Not running, so already off. */ }
+      catch (error) {
+        if (this.child) { this.child.kill(); failure = error; }
+        // An external server that is not running is already off.
+      }
     }
+    this.child = undefined;
     if (failure) throw failure;
   }
 }

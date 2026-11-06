@@ -52,6 +52,53 @@ class Sink:
         self.thread.join()
 
 
+class IdleTests(unittest.TestCase):
+    def start(self, timeout):
+        server = create_server(port=0, model='spanish', idle_exit=timeout,
+                               synthesizer_factory=lambda model: Synth(),
+                               audio_factory=Sink, catalog=['lola'])
+        thread = threading.Thread(target=server.serve_forever, kwargs={'poll_interval': .01}, daemon=True)
+        thread.start()
+        self.addCleanup(thread.join, 3)
+        self.addCleanup(server.server_close)
+        self.addCleanup(server.shutdown)
+        return server, thread
+
+    def test_idle_exit_without_requests(self):
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            server, thread = self.start(.2)
+            thread.join(2)
+        self.assertFalse(thread.is_alive())
+        self.assertEqual(output.getvalue(), 'Idle: no requests for 0.2 s; shutting down\n')
+
+    def test_requests_keep_server_alive_then_idle_exits(self):
+        server, thread = self.start(.3)
+        for _ in range(8):
+            conn = http.client.HTTPConnection(*server.server_address, timeout=1)
+            conn.request('GET', '/health')
+            response = conn.getresponse()
+            self.assertEqual(response.status, 200)
+            response.read()
+            conn.close()
+            time.sleep(.08)
+            self.assertTrue(thread.is_alive())
+        thread.join(2)
+        self.assertFalse(thread.is_alive())
+
+    def test_zero_disables_idle_exit(self):
+        server, thread = self.start(0)
+        time.sleep(.4)
+        self.assertTrue(thread.is_alive())
+        conn = http.client.HTTPConnection(*server.server_address, timeout=1)
+        conn.request('POST', '/shutdown', '{}', {'Content-Type': 'application/json'})
+        response = conn.getresponse()
+        self.assertEqual((response.status, json.loads(response.read())), (200, {'ok': True}))
+        conn.close()
+        thread.join(2)
+        self.assertFalse(thread.is_alive())
+
+
 class ServerTests(unittest.TestCase):
     def setUp(self):
         self.loaded = threading.Event()
@@ -738,9 +785,7 @@ class ServerTests(unittest.TestCase):
     def test_included_voice_is_cached_with_either_spanish_weights(self):
         from unittest import mock
         from huggingface_hub import constants
-        root = Path(__file__).resolve().parents[1] / '.repo-harness' / 'tmp'
-        root.mkdir(parents=True, exist_ok=True)
-        with tempfile.TemporaryDirectory(dir=root) as tmp:
+        with tempfile.TemporaryDirectory() as tmp:
             voices, hub = Path(tmp) / 'voices', Path(tmp) / 'hub'
             voices.mkdir()
             (voices / 'Facundo.wav').write_bytes(b'')

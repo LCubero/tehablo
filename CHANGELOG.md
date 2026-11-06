@@ -6,6 +6,7 @@ Este archivo registra los cambios completados en orden cronológico.
 
 ## 2026-11-05
 
+- Pi con varias sesiones: `/reload`, Ctrl+C o cerrar una terminal ya no apagan el TTS de las demás; el servidor se apaga solo unos 30 s después de que ninguna sesión lo use, y `[ ⏻ ]` o `/tts` lo siguen apagando para todas (`RH-W-0043`).
 - Pi: `/tts indicator` y la ventana de ajustes muestran u ocultan el indicador de estado (`TTS off`, `TTS manual`, `TTS auto`); se recuerda y se comparte entre sesiones.
 - Pi: mientras la lectura automática está activa en la sesión, la barra muestra una marca discreta `auto` al final, sin clic.
 - README: las tablas de voces dicen «¿Incluida?» en lugar de «¿Cuenta?», con una nota para Phonon (cuenta gratis de Hugging Face); la tabla de consumo pasa a columnas por modelo, espacio en disco y RAM (`RH-W-0036`, parte de textos).

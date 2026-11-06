@@ -393,6 +393,20 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 ## Registros resueltos
 <!-- doc-role:resolved-records -->
 
+### RH-W-0043: Que cerrar o recargar una sesión de Pi no apague el TTS de las demás
+
+- **Origen:** reporte de la persona responsable del 2026-11-05: «hacer reload en una session, apaga el tts de todos, es decir si hay 2 o mas sessiones aactivas y el tts está activo y hago /reload en 1 session, apaga el tts para todas las sesiones. hay que revisar, tambien apsa si cierro un terminal de pi con ctrl + c».
+- **Prioridad:** P1; corta la lectura de otras sesiones en el uso diario.
+- **Dependencias:** `RH-W-0033`, `RH-W-0041`.
+- **Estado:** `completed` (2026-11-05).
+- **Causa (verificada en el código):** la sesión que arrancó el servidor le enviaba `/shutdown` al cerrarse (`/reload`, Ctrl+C o cerrar la terminal) sin mirar si otras sesiones lo usaban (`pi-extension/tehablo-tts/src/server.ts`, cierre de sesión). El servidor no sabía cuántas sesiones había.
+- **Decisión:** la versión más simple, elegida por la persona responsable («me parece bien»; «okok no agregar la opcion entonces»): el servidor recuerda solo la hora de la última petición de cualquier sesión y se apaga solo tras 30 s sin ninguna; cerrar o recargar una sesión ya no lo apaga; `[ ⏻ ]` y `/tts` lo siguen apagando para todas. Sin lista de sesiones y sin opción en el menú: la consulta de cada sesión cada 2 s es la que lo mantiene encendido.
+- **Trabajo completado (2026-11-05):** servidor con salida por inactividad (`--idle-exit SEGUNDOS`, 30 por defecto; 0 la desactiva) que se apaga igual que `/shutdown`; la extensión ya no envía `/shutdown` ni mata el proceso al cerrar una sesión, solo detiene sus lecturas. Pruebas primero: servidor 54, extensión 148 y el resto de suites de Python, todas pasan. README, `docs/desarrollo.md` y CHANGELOG actualizados.
+- **Comprobación con el servidor real (2026-11-05, Linux):** arrancado aparte en el puerto 8799 con `--idle-exit 5`: siguió vivo mientras recibía `/health` cada 2 s (12 s) y se apagó solo tras quedarse sin peticiones («Idle: no requests for 5 s; shutting down»). El verificador independiente no estuvo disponible (falló con un error del sistema, `-122`); la revisión del código la hizo el agente principal.
+- **Comprobación física (2026-11-05, Linux, dos sesiones):** con B leyendo, `/reload` en A no cortó B: «ya funciona siiii». La primera prueba falló por otra causa: el verificador llenó la cuota de `/tmp` (13 GB) y Pi no pudo cargar sus extensiones (error `-122`); se borró la copia temporal y se repitió. Sin comprobar a mano: Ctrl+C y el apagado solo tras cerrar todas; sin comprobar en Windows.
+- **Trabajo restante:** none.
+- **Condición del siguiente avance:** none; se reabre si cerrar una sesión corta otra o si el servidor queda encendido sin sesiones.
+
 ### RH-W-0035: Completar la prueba de Phonon sin conexión (R3-001)
 
 - **Origen:** aviso R3-001 de una revisión de código del 2026-11-04 sobre la carga de Phonon desde la caché sin token.
