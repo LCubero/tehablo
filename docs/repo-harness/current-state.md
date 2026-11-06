@@ -6,7 +6,7 @@
 
 <!-- doc-role:verified-state -->
 
-`tehablo` sintetiza voz en español de forma local con Pocket TTS, solo con CPU. Según el código, el historial de Git y el README:
+`tehablo` sintetiza voz en español de forma local con Pocket TTS y Phonon, solo con CPU. Según el código, el historial de Git y el README:
 
 - TUI en Textual (`src/tehablo_tui.py`) y consola simple (`src/tehablo_tts.py`).
 - Conversión de números a palabras en español (`src/tehablo_numbers.py`); los IDs técnicos explícitos mayores que `9999999` se leen como «terminación en» y sus últimos cuatro dígitos por separado, incluidos ceros, y los nombres de archivo con un número así como «archivo», su tipo y «terminado en» sus últimos cuatro caracteres, sin cambiar números y cantidades comunes ([reglas y límites](../pronunciacion.md#identificadores-numéricos-largos)). Regla textual verificada, sin escucha confirmada.

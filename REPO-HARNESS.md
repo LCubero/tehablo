@@ -6,7 +6,7 @@ Read first. This is how work is done here. Where the project stands lives in [cu
 
 ## Purpose
 
-Local, free Spanish text-to-speech with Kyutai Pocket TTS (CPU only), offered as a Textual TUI and a simple console app, with Spanish number reading, an English-term pronunciation lexicon, and a pitch-preserving speed selector. It serves Spanish speakers who want offline speech synthesis and voice cloning from their own consented recordings.
+Local, free Spanish text-to-speech with Kyutai Pocket TTS and Phonon (CPU only), offered in Pi, a Textual TUI and a simple console app, with Spanish number reading, an English-term pronunciation lexicon, and a pitch-preserving speed selector. It serves Spanish speakers who want offline speech synthesis and voice cloning from their own consented recordings.
 
 ## Hard Rules
 
