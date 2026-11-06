@@ -34,6 +34,8 @@ Load when: sizing a change, deciding when to stop, or agreeing how work is done 
 ## Project Agreements
 
 - `/tmp` on the owner's Fedora is RAM (`tmpfs`, per-user quota). Never copy the repository or `.repo-harness/tmp/` (voice environments, many GB) there, and tell subagents the same; run heavy scratch work in `.repo-harness/tmp/` (2026-10-31: a subagent copy filled 13 GB of RAM; owner: «correcto que no vuelva a pasar»).
+- The agent owns the check: read the repository and its docs, review, and make sure before reporting, deciding toward efficiency, security and minimal resources, with no overengineering (owner, 2026-11-06: «menos es más, pero bien hecho»).
+- Never play sound on the owner's machine without explicit permission for that playback; automated audio checks stay silent (owner, 2026-11-06: «no suenes nada más sin mi permiso»).
 
 ## Budget
 
