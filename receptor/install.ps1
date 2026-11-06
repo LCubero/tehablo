@@ -1,7 +1,8 @@
 param(
     [string]$HostAlias,
     [switch]$Uninstall,
-    [switch]$ConfigOnly
+    [switch]$ConfigOnly,
+    [switch]$Yes
 )
 $ErrorActionPreference = 'Stop'
 # No dependency on the script path: also works through irm | iex.
@@ -27,7 +28,6 @@ if (-not (Get-Command ffplay -ErrorAction SilentlyContinue)) {
 if (-not $HostAlias) { $HostAlias = Read-Host 'Alias SSH (por ejemplo mi-servidor)' }
 if ($HostAlias -notmatch '^[a-zA-Z0-9_.-]+$') { throw 'Usa un alias SSH simple (letras, numeros, punto, guion).' }
 $sshDir = Join-Path $env:USERPROFILE '.ssh'
-[void][IO.Directory]::CreateDirectory($sshDir)
 $config = Join-Path $sshDir 'config'
 $encoding = New-Object Text.UTF8Encoding($false)
 $text = ''
@@ -35,7 +35,6 @@ if (Test-Path -LiteralPath $config) {
     # UTF8 preserves ordinary OpenSSH config, including any BOM and line endings.
     $bytes = [IO.File]::ReadAllBytes($config)
     $text = $encoding.GetString($bytes)
-    Copy-Item -LiteralPath $config -Destination "$config.tehablo-$([DateTime]::Now.ToString('yyyyMMddHHmmssfffffff')).bak"
 }
 $eol = "`n"
 if ($text.Contains("`r`n")) { $eol = "`r`n" }
@@ -57,7 +56,29 @@ for ($i = 0; $i -lt $blocks.Count; $i++) {
         if (-not $seen) { $seen = $true; $insertAt = $end }
     }
 }
-if ($present) { $insertAt = -1 }
+if ($present) {
+    Write-Host "$config ya reenvia el puerto 18765 para $HostAlias; no se cambia."
+} else {
+    Write-Host "Archivo: $config"
+    Write-Host "Host $HostAlias"
+    Write-Host '    LocalForward 18765 127.0.0.1:8765'
+    Write-Host 'Lleva la voz del servidor a esta computadora por tu conexion SSH; el puerto solo escucha en esta computadora (127.0.0.1).'
+    Write-Host 'Se hara una copia de seguridad del archivo existente antes de cambiarlo.'
+    if (-not $Yes) {
+        $answer = ''
+        try { $answer = Read-Host (([char]0xBF) + 'Continuar? [s/N]') } catch { }
+        $Yes = $answer -match '^(s|si|s\u00ed|y|yes)$'
+    }
+    if (-not $Yes) {
+        Write-Host "Sin cambios. Anade a mano en $config, bajo Host ${HostAlias}:"
+        Write-Host '    LocalForward 18765 127.0.0.1:8765'
+    }
+}
+if (-not $present -and $Yes) {
+[void][IO.Directory]::CreateDirectory($sshDir)
+if (Test-Path -LiteralPath $config) {
+    Copy-Item -LiteralPath $config -Destination "$config.tehablo-$([DateTime]::Now.ToString('yyyyMMddHHmmssfffffff')).bak"
+}
 $forward = '    LocalForward 18765 127.0.0.1:8765'
 if (-not $seen) {
     if ($text.Length -and -not $text.EndsWith("`n")) { $text += $eol }
@@ -68,6 +89,7 @@ if (-not $seen) {
     $text = $text.Insert($insertAt, "$prefix$forward$eol")
 }
 [IO.File]::WriteAllBytes($config, $encoding.GetBytes($text))
+}
 if ($ConfigOnly) { Write-Host 'Configuracion SSH preparada; autostart omitido (-ConfigOnly).'; return }
 [void][IO.Directory]::CreateDirectory($base)
 # Resolve ffplay now: login may have an older PATH.

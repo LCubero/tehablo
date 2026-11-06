@@ -159,7 +159,7 @@ test('SSH audio applies on reuse, toggles live and gives the exact one-time inst
     assert.equal(s.notices.length, 0);
     c.change('audio', 'ssh'); await new Promise(r => setImmediate(r));
     assert.deepEqual(s.configs.at(-1), {audio: 'ssh'});
-    assert.deepEqual(s.notices, ['TTS teHablo: Audio por SSH activado. En la computadora desde la que te conectas, ejecuta una vez: Windows: irm https://raw.githubusercontent.com/LCubero/tehablo/master/receptor/install.ps1 | iex; Linux/macOS: curl -fsSL https://raw.githubusercontent.com/LCubero/tehablo/master/receptor/install.sh | sh. Consulta README, sección Audio por SSH.']);
+    assert.deepEqual(s.notices, ['TTS teHablo: Audio por SSH activado.\n\nEn la computadora desde la que te conectas, ejecuta una vez\nEn Windows: irm https://raw.githubusercontent.com/LCubero/tehablo/master/receptor/install.ps1 | iex\nEn Linux/macOS: curl -fsSL https://raw.githubusercontent.com/LCubero/tehablo/master/receptor/install.sh | sh\n\nInstala un receptor pequeño que reproduce la voz en esa computadora y, si lo aceptas, añade una línea a tu configuración SSH para que la voz viaje cifrada por tu misma conexión SSH. No abre puertos hacia internet.\n\nConsulta la documentación para más información o para hacerlo a mano.\nhttps://github.com/LCubero/tehablo#audio-por-ssh']);
     assert.equal(store.load().audio, 'ssh');
     c.change('audio', 'ssh'); await new Promise(r => setImmediate(r));
     assert.equal(s.notices.length, 1);

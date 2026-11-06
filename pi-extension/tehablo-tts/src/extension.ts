@@ -452,7 +452,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
         if (field === 'volume') volume = value as number;
         if (field === 'speed') speed = value as number;
         if (field === 'audio' && server !== 'ready') applied = false;
-        if (field === 'audio' && value === 'ssh' && previousAudio !== 'ssh') say(ctx, 'Audio por SSH activado. En la computadora desde la que te conectas, ejecuta una vez: Windows: irm https://raw.githubusercontent.com/LCubero/tehablo/master/receptor/install.ps1 | iex; Linux/macOS: curl -fsSL https://raw.githubusercontent.com/LCubero/tehablo/master/receptor/install.sh | sh. Consulta README, sección Audio por SSH.', 'info');
+        if (field === 'audio' && value === 'ssh' && previousAudio !== 'ssh') say(ctx, 'Audio por SSH activado.\n\nEn la computadora desde la que te conectas, ejecuta una vez\nEn Windows: irm https://raw.githubusercontent.com/LCubero/tehablo/master/receptor/install.ps1 | iex\nEn Linux/macOS: curl -fsSL https://raw.githubusercontent.com/LCubero/tehablo/master/receptor/install.sh | sh\n\nInstala un receptor pequeño que reproduce la voz en esa computadora y, si lo aceptas, añade una línea a tu configuración SSH para que la voz viaje cifrada por tu misma conexión SSH. No abre puertos hacia internet.\n\nConsulta la documentación para más información o para hacerlo a mano.\nhttps://github.com/LCubero/tehablo#audio-por-ssh', 'info');
         if (field === 'volume' || field === 'speed' || field === 'audio') run(() => configure({[field]: value}));
       },
       power: action => run(async () => {

@@ -48,6 +48,32 @@ class ReceptorTest(unittest.TestCase):
             self.assertTrue(all('-autoexit' in call for call in calls), calls)
 
     @unittest.skipUnless(shutil.which('sh'), 'needs a POSIX sh')
+    def test_no_terminal_declines_config(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            (home / '.ssh').mkdir()
+            config = home / '.ssh' / 'config'
+            before = b'Host vps\n User a\n'
+            config.write_bytes(before)
+            (home / 'ffplay').write_text('#!/bin/sh\nexit 0\n', encoding='utf-8', newline='\n')
+            (home / 'ffplay').chmod(0o755)
+            env = dict(os.environ, HOME=str(home), PATH=f'{home}{os.pathsep}{os.environ.get("PATH", "")}')
+            try:
+                done = subprocess.run([shutil.which('sh'), str(RECEPTOR / 'install.sh'), '--config-only', 'vps'],
+                                      env=env, stdin=subprocess.DEVNULL, capture_output=True, text=True,
+                                      start_new_session=(os.name != 'nt'), timeout=5)
+            except subprocess.TimeoutExpired:
+                self.skipTest('Git Bash /dev/tty remains attached despite DEVNULL; no-terminal case unavailable')
+            self.assertEqual(done.returncode, 0, done.stderr)
+            self.assertEqual(config.read_bytes(), before)
+            self.assertEqual(list(config.parent.glob('*.bak')), [])
+            self.assertIn('LocalForward 18765 127.0.0.1:8765', done.stdout)
+            # Git Bash maps Windows temp HOME paths to its POSIX /tmp mount.
+            shell_config = subprocess.check_output(
+                [shutil.which('sh'), '-c', 'printf "%s/.ssh/config" "$HOME"'], env=env, text=True)
+            self.assertIn(shell_config, done.stdout)
+
+    @unittest.skipUnless(shutil.which('sh'), 'needs a POSIX sh')
     def test_ssh_config_gets_one_forward_and_keeps_existing_ones(self):
         cases = {
             'Host vps\n User a\n': 'Host vps\n User a\n    LocalForward 18765 127.0.0.1:8765\n',
@@ -65,7 +91,7 @@ class ReceptorTest(unittest.TestCase):
                 (home / 'ffplay').chmod(0o755)
                 env = dict(os.environ, HOME=str(home), PATH=f'{home}{os.pathsep}{os.environ.get("PATH", "")}')
                 for _ in range(2):  # A second run changes nothing.
-                    done = subprocess.run([shutil.which('sh'), str(RECEPTOR / 'install.sh'), '--config-only', 'vps'],
+                    done = subprocess.run([shutil.which('sh'), str(RECEPTOR / 'install.sh'), '--config-only', '--yes', 'vps'],
                                           env=env, capture_output=True, text=True, timeout=30)
                     self.assertEqual(done.returncode, 0, done.stderr)
                 self.assertEqual((home / '.ssh' / 'config').read_bytes().decode(), after or before)

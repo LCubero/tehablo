@@ -129,9 +129,27 @@ irm https://raw.githubusercontent.com/LCubero/tehablo/master/receptor/install.ps
 curl -fsSL https://raw.githubusercontent.com/LCubero/tehablo/master/receptor/install.sh | sh
 ```
 
-Si falta ffplay, el instalador indica cómo instalarlo y se detiene sin cambiar nada. Después pide tu alias SSH (por ejemplo `mi-servidor`), guarda una copia de `~/.ssh/config`, añade `LocalForward 18765 127.0.0.1:8765` e instala el receptor oculto al iniciar sesión. Reconecta SSH después de instalar.
+Si falta ffplay, el instalador indica cómo instalarlo y se detiene sin cambiar nada. Después pide tu alias SSH (por ejemplo `mi-servidor`) y muestra el archivo y la línea antes de pedir permiso; si aceptas, guarda una copia y la añade. Si no, explica cómo añadirla a mano y sigue instalando el receptor oculto al iniciar sesión. `--yes` (sh) / `-Yes` (PowerShell) omite la pregunta. Reconecta SSH después de instalar.
+
+`LocalForward 18765 127.0.0.1:8765` lleva la voz del servidor a esta computadora.
+Viaja cifrada por tu propia conexión SSH; el puerto solo escucha en esta computadora (127.0.0.1), no en internet.
+Mientras estás conectado, los programas de esta computadora pueden usar ese puerto para oír o controlar teHablo en el servidor.
 
 En Pi, abre `[ ≡ ]` y elige **Audio: SSH**. Cada día basta con `ssh mi-servidor`, como siempre: no hay otra ventana que abrir. Desde un clon también puedes usar `./install.sh --receptor` o `.\install.ps1 -Receptor` en tu PC, sin instalar el entorno Python.
+
+### Hacerlo a mano
+
+1. Instala FFmpeg: **ffplay** es quien reproduce la voz en esta computadora. Windows: `winget install Gyan.FFmpeg`; Debian/Ubuntu: `sudo apt install ffmpeg`; Fedora: `sudo dnf install ffmpeg-free`; Arch: `sudo pacman -S ffmpeg`; macOS: `brew install ffmpeg`.
+2. En tu configuración SSH (Windows: `C:\Users\<tu usuario>\.ssh\config`; Linux/macOS: `~/.ssh/config`), añade la línea bajo tu bloque Host, conservando tus datos:
+   ```sshconfig
+   Host mi-servidor
+       HostName <dirección del servidor>
+       User <tu usuario remoto>
+       LocalForward 18765 127.0.0.1:8765
+   ```
+   Lleva la voz por tu propia conexión SSH; el puerto solo escucha en esta computadora.
+3. Reconecta con `ssh mi-servidor` y, mientras estés conectado, reproduce con `ffplay -nodisp -autoexit -probesize 32 -analyzeduration 0 -loglevel quiet http://127.0.0.1:18765/audio.wav`. El receptor del instalador hace esto oculto y reconecta por sí solo.
+4. En Pi elige **Audio: SSH**.
 
 Para desinstalar desde un clon: `sh receptor/install.sh --uninstall` o `.\receptor\install.ps1 -Uninstall`. Sin clon, vuelve a descargar el script y pásale `--uninstall` (`sh -s -- --uninstall`) o `-Uninstall` (`& ([scriptblock]::Create((irm https://raw.githubusercontent.com/LCubero/tehablo/master/receptor/install.ps1))) -Uninstall`). Quita a mano la línea `LocalForward 18765 127.0.0.1:8765` del Host correspondiente en `~/.ssh/config`.
 

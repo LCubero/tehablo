@@ -3,11 +3,13 @@ set -eu
 # Works both from a clone and when piped into sh.
 uninstall=false
 config_only=false
+yes=false
 alias_name=''
 for arg in "$@"; do
     case "$arg" in
         --uninstall) uninstall=true ;;
         --config-only) config_only=true ;;
+        --yes) yes=true ;;
         --*) echo "Opcion desconocida: $arg" >&2; exit 1 ;;
         *) alias_name=$arg ;;
     esac
@@ -44,7 +46,6 @@ if [ -z "$alias_name" ]; then
     read -r alias_name </dev/tty
 fi
 case "$alias_name" in ''|*[!a-zA-Z0-9_.-]*) echo 'Usa un alias SSH simple (letras, numeros, punto, guion).' >&2; exit 1 ;; esac
-mkdir -p "$HOME/.ssh"
 config="$HOME/.ssh/config"
 # Already present in any block for this host: leave the file untouched.
 has_forward=false
@@ -58,6 +59,24 @@ END { exit(hit ? 0 : 1) }' "$config"; then
     printf '%s\n' "~/.ssh/config ya reenvia el puerto 18765 para $alias_name; no se cambia."
 fi
 if ! "$has_forward"; then
+    printf '%s\n' "Archivo: $config" "Host $alias_name" '    LocalForward 18765 127.0.0.1:8765' \
+        'Lleva la voz del servidor a esta computadora por tu conexion SSH; el puerto solo escucha en esta computadora (127.0.0.1).' \
+        'Se hara una copia de seguridad del archivo existente antes de cambiarlo.'
+    if ! "$yes"; then
+        answer=''
+        printf '¿Continuar? [s/N] '
+        # A failed tty open or EOF is a decline, including curl | sh without a terminal.
+        if { read -r answer </dev/tty; } 2>/dev/null; then :; else answer=''; fi
+        case "$(printf '%s' "$answer" | tr '[:upper:]' '[:lower:]')" in
+            s|si|sí|sÍ|y|yes) yes=true ;;
+        esac
+    fi
+    if ! "$yes"; then
+        printf '%s\n' "Sin cambios. Anade a mano en $config, bajo Host $alias_name:" '    LocalForward 18765 127.0.0.1:8765'
+    fi
+fi
+if ! "$has_forward" && "$yes"; then
+mkdir -p "$HOME/.ssh"
 # awk preserves each original line, including CRLF; only insert new lines.
 if [ -f "$config" ]; then
     cp -p "$config" "$config.tehablo-$(date +%Y%m%d%H%M%S)-$$.bak"
