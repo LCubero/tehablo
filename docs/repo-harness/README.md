@@ -15,3 +15,13 @@
 
 
 Los resúmenes de sesión de Engram siguen siendo entradas temporales de continuidad y deben reconciliarse con la evidencia del repositorio. No se convierten en verdad durable hasta reconciliarse con la evidencia del repositorio y promoverse al propietario canónico correspondiente.
+
+## Guías del producto
+
+- [Catálogo gratuito](../catalogo-gratuito.md): motores y herramientas, licencias y estado de evaluación.
+- [Cómo funciona](../como-funciona.md): procesamiento y mediciones de recursos.
+- [Desarrollo](../desarrollo.md): uso detallado, instalación manual, pruebas y diagnóstico.
+- [Pocket TTS](../pocket-tts.md): referencia del motor, voces y mejoras posibles.
+- [Pronunciación](../pronunciacion.md): convenciones, decisiones y pruebas de variantes.
+- [Pruebas de voces](../pruebas-de-voces.md): resultados propios y comparaciones por escucha.
+- [Voces gratuitas](../voces-gratuitas.md): fuentes de voces y condiciones de uso.

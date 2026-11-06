@@ -15,7 +15,7 @@
 - Descarga selectiva de voces en español para clonar (`scripts/get_voices.py`): referencias nuevas en PCM16, con muestras limitadas a [-1, 1]; los archivos existentes se omiten sin convertirlos.
 - Pruebas unitarias sin modelo (`tests/test_numbers.py`, `tests/test_lexicon.py`, `tests/test_speed.py`) y scripts de integración de la TUI que reproducen audio.
 - Extensión de Pi `pi-extension/tehablo-tts/` y servidor local `src/tehablo_server.py`: leen las respuestas del agente en modo manual o automático; se instala para todos los proyectos con `pi install <ruta>/pi-extension/tehablo-tts` (desde el 2026-11-04 el repositorio ya no la carga con `.pi/settings.json`).
-- Apagado manual con `[ ⏻ ]` solo al final de Vol/Vel abiertos: la persona responsable confirmó que funciona en Linux tras `/reload`; la comprobación de procesos y puertos del agente principal no encontró `tehablo_server.py` ni listeners en 8765/8766. Las 79 pruebas deterministas de la extensión pasan (2026-11-04, tras los cambios de voces). En Windows, la persona responsable confirmó físicamente el clic en toda la etiqueta `[ ⏻ TTS ]`, apagar y volver a encender en la misma sesión; el clic completo y el reinicio físico en Linux siguen sin comprobarse ([evidencia y límites](../desarrollo.md#arranque-en-windows-mediciones-y-límites)).
+- Apagado manual con `[ ⏻ ]` solo al final de Vol/Vel abiertos: la persona responsable confirmó que funciona en Linux tras `/reload`; la comprobación de procesos y puertos del agente principal no encontró `tehablo_server.py` ni listeners en 8765/8766. Las 79 pruebas deterministas de la extensión pasan (2026-11-04, tras los cambios de voces). En Windows, la persona responsable confirmó físicamente el clic en toda la etiqueta `[ ⏻ TTS ]`, apagar y volver a encender en la misma sesión; en Linux, el 2026-11-03, confirmó el clic en el corchete para apagar y en las letras para volver a encender, con lectura posterior ([evidencia y límites](../desarrollo.md#arranque-en-windows-mediciones-y-límites)).
 - El log existente separa tiempos de importación del servidor, TTS y carga del modelo; solo `scipy.io.wavfile` y `sounddevice` se difieren al guardado y la reproducción de consola. Las 44 pruebas de consola, arranque y servidor pasan (2026-11-04), sin cambio en `--help`; el ahorro de importación no confirmó una mejora del arranque real en Windows ([mediciones y límites](../desarrollo.md#arranque-en-windows-mediciones-y-límites)).
 - Lectura simplificada de texto técnico (`src/tehablo_tech.py`): URLs, rutas, archivos, identificadores y hashes; `pronunciaciones.json` tiene 370 términos de desarrollo, Git, GitHub y uso general, con siglas técnicas deletreadas en inglés y excepciones aprobadas en español (`CPU`, `GPU` y otras); la política global sigue pendiente ([decisiones de pronunciación](../pronunciacion.md#decisiones-y-pendientes)).
 - Probado en Windows y, en Fedora, el servidor y el transporte de la extensión con síntesis CPU `spanish`/`lola`, controles y callbacks de audio reales. No acredita escucha/calidad, interfaz completa de Pi, TUI ni `spanish_24l`; [versiones y comprobaciones](../desarrollo.md#verificación-en-fedora).
@@ -26,6 +26,11 @@ Este archivo proyecta solo hechos verificados del proyecto: registros activos, b
 ## Trabajo reciente completado
 
 <!-- doc-role:recent-work -->
+
+- `RH-W-0010` (`completed`): diccionario configurable por voz con `/tts dict` y *Dict*; comprobado por escucha en Windows.
+- `RH-W-0031` (`completed`): barra visible al iniciar salvo que se dejara oculta; comprobada físicamente en Windows.
+- `RH-W-0033` (`completed`): las barras reflejan el servidor compartido y apagar afecta a todas; comprobado en Windows.
+- `RH-W-0041` (`completed`): Detener/Esperar, avisos de cola y controles por sesión salvo apagar; comprobado en Windows el 2026-11-05, sin comprobar en Linux.
 
 - `RH-W-0030` (`completed`, 2026-11-05): README con video de demostración con voz debajo del título (subido por la persona responsable; GitHub lo muestra como reproductor), voces justo debajo del consumo aproximado y nombre visible **teHablo** en el README y en Pi (`TTS teHablo: `, `teHablo · Ajustes`); las 97 pruebas de la extensión pasan.
 - Pi (2026-11-04, tercera parte): arranca con la voz guardada; barra más corta `[ ▶ ] [ ▶ copiado ] [ ⋯ ]` con el menú `[ ≡ ]` dentro de los controles; lectura de lo copiado sin dependencias nuevas; comandos simplificados (`/tts` enciende o apaga, `auto`, `play [n]`, `copy`, `pause`, `stop`, `toolbar`, `menu`, `status`); mensajes con «TTS TeHablo: »; `TTS off` en la barra de estado y sin auto con el servidor apagado (`RH-W-0004`).
@@ -62,7 +67,6 @@ Este archivo proyecta solo hechos verificados del proyecto: registros activos, b
 - `RH-W-0005` (`active`, P3): probadas a ciegas voces sin token y, con token, las 18 de `voices/` clonadas con Pocket TTS ([resumen y resultados](../pruebas-de-voces.md#resumen-2026-10-30)); varias suenan mejor que `lola`. Sigue la prueba con NeuTTS y el ajuste castellano; ya incorporadas Phonon y 6 clonadas aprobadas; falta decidir sobre otros motores. El 2026-11-03, en Fedora, Phonon 40M es (`Regina`, `Iker`) sonó a ciegas mucho más natural que `lola` gastando menos (303 MiB y 8 s de CPU frente a 961 MiB y 10,6 s); licencia no comercial y sin probar todavía con los ajustes de tehablo ([resultados](../pruebas-de-voces.md#phonon-40m-es-frente-a-lola-spanish_24l-y-kokoro-2026-11-03-fedora)). Corregida solo la salida nueva del descargador a PCM16 (pruebas deterministas sin red); los originales existentes siguen en coma flotante. El lector de Pocket TTS acepta una copia PCM16 donde rechaza el original, pero esta corrección no verifica una clonación completa ni añade escuchas.
 - `RH-W-0007` (`deferred`, P3): modo GPU opcional, manteniendo CPU como predeterminado.
 - `RH-W-0009` (`deferred`, P2): versión Docker y despliegue seguro en VPS; depende de `RH-W-0001` y `RH-W-0008`.
-- `RH-W-0010` (`completed`): `/tts dict` y la columna *Dict* de la ventana activan o desactivan por voz solo el diccionario `pronunciaciones.json` (guardado; Phonon apagado por defecto); comprobado por escucha en Windows.
 - `RH-W-0011` (`proposed`, P2): comprobar portabilidad en arm64, Raspberry Pi, Oracle Cloud Free Tier, macOS, WSL, VM, Proxmox y VPS.
 - `RH-W-0012` (`deferred`, P3): motor o modelo propio y fine-tuning, al final con la optimización.
 - `RH-W-0014` (`deferred`, P3): evaluar una API y la integración con CLIProxyAPI.
@@ -77,10 +81,7 @@ Este archivo proyecta solo hechos verificados del proyecto: registros activos, b
 - `RH-W-0025` (`deferred`, P2): versión lite de mínimo consumo; cuantización predeterminada en Linux entregada; el resto queda para el final del plan.
 - `RH-W-0028` (`deferred`, P3; se decide como primer paso de `RH-W-0037`): decidir si tehablo se instala una vez por usuario (`~/.tehablo/`) o se queda en el repositorio; ya entregados los ajustes de Pi por usuario y el token sin guardar (2026-11-04). En Windows, la persona responsable comprobó físicamente `install.ps1` con `ptts`, la descarga de Regina con el token pegado en la ventana y el TTS apagado (Iker quedó descargada con el mismo archivo), y que tras cerrar y abrir Pi Regina e Iker leen sin token; `/health` mostró `phonon`/`Regina` sin error. Esa prueba probablemente reusó un servidor vivo con el token: con un servidor nuevo sin token, Phonon pasaba a `lola`; corregido el mismo día (carga desde el caché) y comprobado con un servidor nuevo sin token. `install.sh` ya comprueba `ptts` y muestra el comando `pi install`, como `install.ps1` (solo se comprobó el texto final y la sintaxis). Linux sigue sin comprobarse.
 - `RH-W-0029` (`proposed`, P3): voces por API externa (ElevenLabs, Google…) como extra apagado; su condición ya se cumplió y queda después del release.
-- `RH-W-0031` (`completed`): la barra de Pi aparece al iniciar, sobre el editor, salvo que se dejara oculta; comprobada físicamente en Windows.
 - `RH-W-0032` (`proposed`, P2): iconos de pausa y encendido que se vean bien (la pausa se ve pegada en el video; `⏻` sale como un cuadro en el README).
-- `RH-W-0033` (`completed`): con varias sesiones de Pi, cada barra muestra el estado real del servidor compartido y apagar en una apaga todas (comprobado en Windows).
-- `RH-W-0041` (`completed`): «Si llega otra lectura: Detener / Esperar» en `[ ≡ ]`, con bip, pausa y «Siguiente lectura.»; ajustes compartidos entre sesiones salvo el modo auto; cada control actúa solo sobre las lecturas de su sesión, salvo apagar (comprobado en Windows el 2026-11-05; Linux sin comprobar).
 - `RH-W-0035` (`proposed`, P2): completar la prueba de Phonon sin conexión (aviso R3-001).
 - `RH-W-0036` (`proposed`, P2): README y video: encabezado «¿Cuenta?», nota de Hugging Face para Phonon, aviso de sonido, miniatura y la app de GitHub para Android.
 - `RH-W-0037` (`proposed`, P1): instalador con elección (Pi, Gentle Shell, TUI, consola) en Linux, Windows y macOS, instalación por comando y actualizaciones; primero el análisis.
@@ -94,7 +95,7 @@ Este archivo proyecta solo hechos verificados del proyecto: registros activos, b
 
 Orden aprobado por la persona responsable el 2026-11-05 («me parece dale»); cada trabajo se revisa antes de empezarlo:
 
-1. **Revisar y corregir:** varias sesiones de Pi (`RH-W-0033`), prueba de Phonon sin conexión (`RH-W-0035`) y textos del README (parte de `RH-W-0036`).
+1. **Revisar y corregir:** prueba de Phonon sin conexión (`RH-W-0035`) y textos del README (parte de `RH-W-0036`); varias sesiones de Pi (`RH-W-0033`) ya está completado.
 2. **La voz:** más voces (`RH-W-0005`) y después pronunciación (`RH-W-0002`), porque la pronunciación depende del modelo.
 3. **Interfaz:** interfaz y TUI con los iconos (`RH-W-0004`, `RH-W-0032`); luego añadir palabras (`RH-W-0015`), sugerir pronunciaciones (`RH-W-0016`) y opciones de lectura (`RH-W-0022`).
 4. **Roles de voz** (`RH-W-0018`).
@@ -102,6 +103,6 @@ Orden aprobado por la persona responsable el 2026-11-05 («me parece dale»); ca
 6. **Instalar y publicar:** instalador (`RH-W-0037`, con `RH-W-0028`), seguridad mínima (`RH-W-0023`) y primera versión (`RH-W-0038`).
 7. **Extras y largo plazo:** página de producto (`RH-W-0039`), voces por API (`RH-W-0029`), menú de audio (`RH-W-0017`), portabilidad (`RH-W-0011`), celular (`RH-W-0040`), Docker y VPS (`RH-W-0009`), API (`RH-W-0014`), audiolibros (`RH-W-0019`), resto de calidad (`RH-W-0023`), versión lite (`RH-W-0025`), GPU (`RH-W-0007`) y modelo propio (`RH-W-0012`).
 
-Siguiente: revisar y comprobar `RH-W-0033`.
+Siguiente: revisar `RH-W-0035` y después los textos del README de `RH-W-0036`.
 
 Plan aprobado el 2026-10-30: (0) base confiable, completada; (1) medir con `RH-W-0003`, completado; (2) endurecer el servidor (`RH-W-0001`, completado) y los errores (`RH-W-0013`, completado) y la instalación (`RH-W-0008`, completado el 2026-10-30); (3) al final, la versión lite (`RH-W-0025`): mínimo consumo, el modelo que funcione bien gastando menos y las funciones mínimas (cambio de orden pedido por la persona responsable el 2026-10-30). La investigación y los deseos grandes quedan `deferred` hasta entonces.

@@ -1,6 +1,6 @@
 # Pruebas de voces y modelos
 
-Resultados propios de `RH-W-0005`: qué voces y modelos gratuitos probamos en tehablo, cuánto tardan, qué licencia tienen y si suenan igual o mejor que `lola`. Las fuentes sin probar están en el [catálogo maestro](catalogo-gratuito.md) y en [voces gratuitas](voces-gratuitas.md).
+Resultados propios de `RH-W-0005`: qué voces y modelos gratuitos probamos en teHablo, cuánto tardan, qué licencia tienen y si suenan igual o mejor que `lola`. Las fuentes sin probar están en el [catálogo maestro](catalogo-gratuito.md) y en [voces gratuitas](voces-gratuitas.md).
 
 ## Resumen (2026-10-30)
 

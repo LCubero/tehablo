@@ -43,7 +43,7 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 - **Trabajo restante:**
   - Revisar la interfaz de Pi y la TUI existente, concretar los problemas de uso y acordar qué menús, opciones y ajustes se quieren mejorar antes de diseñar o implementar.
   - Revisar, agregar o modificar los comandos (`/tts` y sus opciones) y los ajustes.
-  - Modo automático persistente: completado el 2026-11-04; `/tts auto on` se guarda en `tehablo-settings.json` y se recupera entre sesiones.
+  - Modo automático persistente: entregado el 2026-11-04 y sustituido el 2026-11-05; ahora es por sesión y no se guarda (`RH-W-0041`).
   - Modo sin mouse: desde el 2026-11-04 hay atajos de teclado configurables (escuchar, pausar, detener, ajustes) y la ventana `[ ≡ ]` se usa con teclado; queda concretar si falta algo más.
 - **Trabajo completado (2026-10-29):** botones `[ Vol − ]`/`[ Vol + ]` (10 % a 150 %, en vivo) y `[ Vel − ]`/`[ Vel + ]` (1.00x, 1.10x, 1.15x, 1.25x y 1.50x, elegidos por la persona responsable; desde el siguiente fragmento) junto a Escuchar; `/config` acepta `volume` (`src/tehablo_server.py`, `pi-extension/tehablo-tts/src/extension.ts`).
   - Robustez de los botones ante muchos clics seguidos: hoy los pedidos `/config` no se serializan y un clic rápido puede perderse o pisar a otro; detallar el comportamiento esperado (cola, descarte o espera) antes de cambiarlo («hay que detallar cosas depues para que no se daño por muchos clics»).
@@ -52,7 +52,7 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
   - Propuestas aprobadas para registrar el 2026-10-29: resaltar en la TUI la frase que se está leyendo, con opción on/off; recordar voz, velocidad, volumen y modo entre sesiones; botón de reproducir junto a cada voz para escucharla antes de elegirla («con un play a la par o algo simple»).
 - **Evidencia:** solicitud de la persona responsable; el 2026-10-29 pidió «los comandos hay que revisarlos agregar modificar, settigs, etc», «Modo automático» y «Modo sin mouse», y aclaró que el modo automático «lee automaticamente sin tener que dar play en escuchar, cada respuesta, hasta que se desactive el modo». No se realizó una evaluación de interfaz.
 - **Decisión:** registrar para después; no se ha elegido un rediseño ni se añaden funciones por el «etc» de la solicitud.
-- **Trabajo completado (2026-11-04):** ventana de ajustes `[ ≡ ]` en Pi, diseñada con la persona responsable a partir de prototipos («me encanta, minimalista, funcional, genial»): voz, volumen, velocidad, lectura automática (ahora se recuerda entre sesiones), atajos de teclado editables y servidor; ajustes en `tehablo-settings.json` (detalle en `README.md`, «Uso en Pi»). Quedan: llevar la misma guía a la TUI y la documentación, botón `▶` para escuchar una voz antes de elegirla, salida de audio (`RH-W-0017`) y robustez ante muchos clics seguidos.
+- **Trabajo completado (2026-11-04):** ventana de ajustes `[ ≡ ]` en Pi, diseñada con la persona responsable a partir de prototipos («me encanta, minimalista, funcional, genial»): voz, volumen, velocidad, lectura automática (persistente entonces; desde `RH-W-0041`, solo por sesión), atajos de teclado editables y servidor; ajustes entonces en `tehablo-settings.json`, sustituido por `~/.tehablo/settings.json` en `RH-W-0028` ([comportamiento actual](../../README.md#uso-en-pi)). Quedan: llevar la misma guía a la TUI y la documentación, botón `▶` para escuchar una voz antes de elegirla, salida de audio (`RH-W-0017`) y robustez ante muchos clics seguidos.
 - **Trabajo completado (2026-11-04, segunda parte):** en la tabla de voces, la voz activa lleva `●` y el nombre en amarillo; columnas *Voz*, *Estado* y *RAM aprox.* (~0,3 GB Phonon, ~1 GB Pocket), elegidas con la persona responsable («está mucho mejor me gusta»). Volumen más fuerte y parejo entre voces (base ×1,8 elegida por escucha, corrección `gain_db` por voz y picos suavizados; «suena muy bien genial»).
 - **Trabajo completado (2026-11-04, tercera parte):** barra y comandos de Pi definidos con la persona responsable («eso es calidad de vida y hacer las cosas bien, pensando en todo. pero sin hacerlo todo de una vez ni sobreingenieria»): el servidor arranca con la voz guardada (antes perdía la primera lectura automática al cambiar de modelo); `[ ▶ ]`, `[ ▶ copiado ]` (lee el portapapeles con la herramienta de cada sistema; Pi no ve la selección del ratón), `[ ⋯ ]` → `[ → ] : [ ≡ ]  Vol … [ ⏻ ]`; `[ ≡ ]` abre o cierra la ventana; comandos `/tts`, `auto`, `play [n]`, `copy`, `pause`, `stop`, `toolbar`, `menu`, `status`; apagado = `TTS off` y sin lectura automática. Falta probarlo en Windows (portapapeles con `Get-Clipboard`).
 - **Condición del siguiente avance:** autorización para revisar la interfaz y concretar el alcance con la persona responsable.
@@ -273,6 +273,7 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 - **Trabajo completado (2026-10-30):** `requirements.txt` limita las dependencias directas a las versiones mayores probadas (`pocket-tts<5`, `torch<2.16`, `sounddevice<0.6`, `textual<9`, `audiotsm<0.2`); hoy resuelve a las mismas versiones instaladas y probadas en Windows y Fedora. Sin archivo de bloqueo.
 - **Decisión:** registrar para después; no se eligieron herramientas. El 2026-10-30, por decisión delegada de la persona responsable («decidelo tu ... sin sobreingenieria»): límites superiores en lugar de versiones exactas o archivo de bloqueo, para no romper la instalación en Python 3.10–3.14 ni en otros sistemas.
 - **Adición (2026-11-05):** en la revisión de prioridades se recomienda hacer la parte mínima de seguridad (`SECURITY.md` y la revisión de vulnerabilidades de dependencias) antes del primer release (`RH-W-0038`); el resto sigue sin fecha.
+- **Adición (2026-11-05, revisión del repositorio):** puntos menores conocidos, sin arreglar todavía: tiempo límite por petición o conexión para clientes que se quedan colgados (el servidor solo escucha en `127.0.0.1`); números de miles de dígitos superan el límite de conversión de Python (`src/tehablo_numbers.py`); `/guardar` de la consola acepta rutas fuera de su carpeta (`src/tehablo_tts.py`); lector de `.env` duplicado en `src/tehablo_tts.py` y `src/tehablo_tui.py`; la carga del modelo no se puede cancelar (cerrar espera 5 s); `.gitignore` cubre `.env` pero no `.env.*`.
 - **Condición del siguiente avance:** autorización para una revisión acotada que proponga prioridades.
 
 ### RH-W-0025: Versión lite de mínimo consumo
@@ -284,7 +285,7 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 - **Trabajo restante:**
   - Definir qué es «lite»: qué se incluye, qué se deja fuera y cuál es el consumo objetivo de RAM y CPU.
   - Comparar opciones a partir de mediciones (modelo `spanish`, carga a demanda, liberar el modelo en reposo, menos dependencias) antes de elegir.
-- **Evidencia:** las [mediciones del README](../../README.md#cuánto-gasta) dan unos 870 MB de RAM con `spanish` en Windows y 1,8 GB con `spanish_24l`; el servidor conserva el modelo en memoria al terminar (`RH-W-0003`). Mediciones del 2026-10-30 (`RH-W-0003`): la RAM del servidor (~780–860 MiB) se debe al modelo cargado, que no se libera en reposo; importar torch y pocket_tts ocupa ~380 MiB y domina el arranque (~4,7 s en Windows, ~2,4 s en Fedora con caché caliente); `quantize=True` no ahorra RAM en ninguno, genera más lento en Windows (2,4× contra 3,1×) y ~1,7× más rápido en Fedora (6,9–7,3× contra 4,1–4,3×).
+- **Evidencia:** las [mediciones del README](../../README.md#consumo-aproximado) dan unos 870 MB de RAM con `spanish` en Windows y 1,8 GB con `spanish_24l`; el servidor conserva el modelo en memoria al terminar (`RH-W-0003`). Mediciones del 2026-10-30 (`RH-W-0003`): la RAM del servidor (~780–860 MiB) se debe al modelo cargado, que no se libera en reposo; importar torch y pocket_tts ocupa ~380 MiB y domina el arranque (~4,7 s en Windows, ~2,4 s en Fedora con caché caliente); `quantize=True` no ahorra RAM en ninguno, genera más lento en Windows (2,4× contra 3,1×) y ~1,7× más rápido en Fedora (6,9–7,3× contra 4,1–4,3×).
 - **Trabajo completado (2026-10-30):** cuantización predeterminada en Linux (`quantize_default` en `src/tehablo_tts.py`, usada por el servidor, la TUI y la consola), sin cuantizar en Windows; `TEHABLO_QUANTIZE=0` o `1` la cambia. En Fedora genera ~1,7× más rápido con `spanish` y ~1,9× con `spanish_24l` (que además usa ~260 MiB menos tras cargar); en una prueba a ciegas la persona responsable no distinguió el audio ([resultados](../como-funciona.md#arranque-reposo-y-cuantización-en-fedora-2026-10-30)). Pruebas en `tests/test_quantize.py`.
 - **Riesgo conocido:** al cuantizar, Torch 2.15 avisa que `torch.quantize_per_tensor` y funciones afines quedarán obsoletas y se quitarán en una versión futura; desde el 2026-10-30 `requirements.txt` mantiene torch por debajo de 2.16 (`RH-W-0023`); subir el límite solo tras pasar `tests/test_quantize.py` y una carga cuantizada real. Si aun así falla, `TEHABLO_QUANTIZE=0` la desactiva sin cambiar código.
 - **Decisión:** 2026-10-30, por decisión delegada de la persona responsable («decidelo tu ... sin sobreingenieria»): adoptar la cuantización donde se midió más rápida; no se eligió aún el resto del alcance «lite».
@@ -324,19 +325,6 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 - **Adición (2026-11-05):** la persona responsable: «El icono de encendido en el readme no se ve. Sale un cuadro. Y el icono de pause se ve pegado feo, como en el showreel, resolver con lo otro». En el README, `⏻` (U+23FB) aparece como un cuadro; supuesta causa sin comprobar: la fuente del navegador o de la app no tiene ese carácter. Se resuelven juntos.
 - **Condición del siguiente avance:** autorización para investigar y proponer los iconos.
 
-### RH-W-0033: Qué pasa con el TTS cuando hay varias sesiones de Pi abiertas
-
-- **Origen:** pregunta de la persona responsable del 2026-11-05: «que pasa cuando tengo activo el tts en una session y tengo varias sessiones más abiertas, que pasa cuando otra session enciendo el tts y que pasa cuando detengo el tts (en esa segunda session) y que pasa en la primera o demás».
-- **Prioridad:** P1 (revisión de prioridades del 2026-11-05); comportamiento desconocido en el uso diario: apagar el TTS en una sesión podría cortar la de otra.
-- **Dependencias:** ninguna.
-- **Estado:** `completed`.
-- **Trabajo restante:** comprobar con varias sesiones de Pi abiertas a la vez qué pasa al encender el TTS en una segunda sesión mientras otra lo tiene encendido, al apagarlo o detenerlo en esa segunda sesión, y cómo afecta a la primera y a las demás (servidor y puerto compartidos, lectura en curso, cierre de Pi). Documentar el resultado y corregir lo que falle.
-- **Prueba física (2026-11-05, Windows, dos sesiones de Pi):** la persona responsable comprobó: (1) encender en la segunda sesión mientras la primera sonaba fue «rapidisimo» y no cortó nada (inferencia: reusa el servidor ya levantado); (2-3) cada sesión lee bien por su cuenta; (4) si una sesión suena y se pulsa play en otra, se detiene la primera y suena la nueva; (5) apagar en una sesión apaga el servidor para todas, incluso a mitad de una lectura en otra; (6) encender en una sesión lo enciende para todas, pero la barra de las demás no lo refleja. No se probó cerrar Pi en una sesión con el TTS encendido.
-- **Decisión (2026-11-05):** la persona responsable eligió la opción simple («si la simple»): apagar en una sesión apaga el servidor para todas y todas las barras lo muestran; play en otra sesión sigue cortando la lectura en curso.
-- **Trabajo completado (2026-11-05):** cada sesión consulta `/health` cada 2 s y cambia su barra tras dos observaciones iguales, sin arrancar el servidor, aplicar ajustes ni avisar (`pi-extension/tehablo-tts/src/extension.ts`); `[ ⏻ ]` envía `/shutdown` también cuando el servidor lo arrancó otra sesión, mientras que cerrar una sesión que no lo arrancó lo deja vivo para las demás (`src/server.ts`). Una verificación independiente encontró que un servidor que aún respondía una vez tras `[ ⏻ ]` podía volver a encender la barra; corregido reiniciando la cuenta tras cada acción. README y CHANGELOG actualizados. Pruebas de la extensión 100/100 (tres nuevas, vistas fallar antes de cada cambio; las del vigilante usan esperas reales cortas). Inferencia sin comprobar: cerrar Pi en la sesión que arrancó el servidor lo apaga para todas, y sus barras lo muestran.
-- **Comprobación física (2026-11-05, Windows):** tras `/reload` en dos sesiones, encender en una y apagar en la otra se refleja solo en ambas barras: «genial funciona».
-- **Trabajo restante:** ninguno del alcance elegido. La persona responsable pidió después elegir qué pasa con la lectura en curso (pausar, detener o esperar) y apagar al cerrar la sesión; viabilidad revisada el 2026-11-05, pendiente de decisión.
-- **Condición del siguiente avance:** none; las peticiones posteriores se hicieron en `RH-W-0041`.
 
 ### RH-W-0035: Completar la prueba de Phonon sin conexión (R3-001)
 
@@ -414,6 +402,24 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 - **Decisión:** registrar como investigación.
 - **Condición del siguiente avance:** autorización para investigar.
 
+
+## Registros resueltos
+<!-- doc-role:resolved-records -->
+
+### RH-W-0033: Qué pasa con el TTS cuando hay varias sesiones de Pi abiertas
+
+- **Origen:** pregunta de la persona responsable del 2026-11-05: «que pasa cuando tengo activo el tts en una session y tengo varias sessiones más abiertas, que pasa cuando otra session enciendo el tts y que pasa cuando detengo el tts (en esa segunda session) y que pasa en la primera o demás».
+- **Prioridad:** P1 (revisión de prioridades del 2026-11-05); comportamiento desconocido en el uso diario: apagar el TTS en una sesión podría cortar la de otra.
+- **Dependencias:** ninguna.
+- **Estado:** `completed`.
+- **Alcance inicial:** comprobar con varias sesiones de Pi abiertas a la vez qué pasa al encender el TTS en una segunda sesión mientras otra lo tiene encendido, al apagarlo o detenerlo en esa segunda sesión, y cómo afecta a la primera y a las demás (servidor y puerto compartidos, lectura en curso, cierre de Pi). Documentar el resultado y corregir lo que falle.
+- **Prueba física (2026-11-05, Windows, dos sesiones de Pi):** la persona responsable comprobó: (1) encender en la segunda sesión mientras la primera sonaba fue «rapidisimo» y no cortó nada (inferencia: reusa el servidor ya levantado); (2-3) cada sesión lee bien por su cuenta; (4) si una sesión suena y se pulsa play en otra, se detiene la primera y suena la nueva; (5) apagar en una sesión apaga el servidor para todas, incluso a mitad de una lectura en otra; (6) encender en una sesión lo enciende para todas, pero la barra de las demás no lo refleja. No se probó cerrar Pi en una sesión con el TTS encendido.
+- **Decisión (2026-11-05):** la persona responsable eligió la opción simple («si la simple»): apagar en una sesión apaga el servidor para todas y todas las barras lo muestran; play en otra sesión sigue cortando la lectura en curso.
+- **Trabajo completado (2026-11-05):** cada sesión consulta `/health` cada 2 s y cambia su barra tras dos observaciones iguales, sin arrancar el servidor, aplicar ajustes ni avisar (`pi-extension/tehablo-tts/src/extension.ts`); `[ ⏻ ]` envía `/shutdown` también cuando el servidor lo arrancó otra sesión, mientras que cerrar una sesión que no lo arrancó lo deja vivo para las demás (`src/server.ts`). Una verificación independiente encontró que un servidor que aún respondía una vez tras `[ ⏻ ]` podía volver a encender la barra; corregido reiniciando la cuenta tras cada acción. README y CHANGELOG actualizados. Pruebas de la extensión 100/100 (tres nuevas, vistas fallar antes de cada cambio; las del vigilante usan esperas reales cortas). Inferencia sin comprobar: cerrar Pi en la sesión que arrancó el servidor lo apaga para todas, y sus barras lo muestran.
+- **Comprobación física (2026-11-05, Windows):** tras `/reload` en dos sesiones, encender en una y apagar en la otra se refleja solo en ambas barras: «genial funciona».
+- **Trabajo restante:** none. Las peticiones posteriores sobre lecturas y cierre de sesión se resolvieron en `RH-W-0041`.
+- **Condición del siguiente avance:** none; las peticiones posteriores se hicieron en `RH-W-0041`.
+
 ### RH-W-0041: Elegir qué pasa cuando llega otra lectura
 
 - **Origen:** solicitud de la persona responsable del 2026-11-05, tras `RH-W-0033`: «y que sea opcion configurable [...] esperar a que se reproduzca lo actual y luego avisar y sonar el otro, la de detenet y reproducir el nuevo [...] además de que se deben guardar esas opciones y afectan al modo auto porsupuestamente»; la opción de pausar se descartó («en tonces la de pausar no, eso no») y el cierre de sesión no cambia. Después: «el show toolbar deberia ser una opcion del menu tmb, como lo hace /tts toolbar».
@@ -434,9 +440,6 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 - **Trabajo restante:** none.
 - **Decisión:** la sesión que pide la lectura nueva decide la política; tope de 10 en la cola; `/status` omite `queue` y `promoted` cuando están vacíos (decisión del agente para no cambiar las respuestas existentes).
 - **Condición del siguiente avance:** none; se reabre si falla con varias sesiones o en Linux.
-
-## Registros resueltos
-<!-- doc-role:resolved-records -->
 
 ### RH-W-0030: README claro con demostración y muestras de voz
 

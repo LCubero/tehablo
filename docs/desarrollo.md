@@ -1,6 +1,6 @@
 # Desarrollo: archivos, pruebas, problemas conocidos y licencias
 
-Detalle para quien trabaja en el código de tehablo. La guía de uso está en el [README](../README.md).
+Detalle para quien trabaja en el código de teHablo. La guía de uso está en el [README](../README.md).
 
 1. [Alternativas locales evaluadas](#alternativas-locales-evaluadas)
 2. [Licencias y atribución](#licencias-y-atribución)
@@ -29,7 +29,7 @@ Equipo de referencia: Ryzen 5 5600X, 32 GB de RAM, RTX 2080 Super con 8 GB.
 
 ## Licencias y atribución
 
-El código de tehablo se distribuye bajo la licencia [MIT](../LICENSE). Los componentes de terceros conservan sus propias licencias:
+El código de teHablo se distribuye bajo la licencia [MIT](../LICENSE). Los componentes de terceros conservan sus propias licencias:
 
 | Componente | Licencia | Obligación |
 |---|---|---|
@@ -298,8 +298,8 @@ al arranque real como resultado garantizado.
 
 ### Alcance y entorno
 
-`.pi/settings.json` registra la extensión local `../pi-extension/tehablo-tts`
-y se usa el entorno Python local existente. No se inspeccionó el registro global:
+En el momento de estas mediciones, `.pi/settings.json` registraba la extensión local `../pi-extension/tehablo-tts`
+y se usaba el entorno Python local existente. Desde el 2026-11-04 se instala con `pi install <ruta>/pi-extension/tehablo-tts`; el repositorio ya no la registra. No se inspeccionó el registro global:
 estas mediciones no demuestran una instalación global faltante ni justifican
 reinstalar. La importación diferida evaluada arriba no modifica la instalación. Los diagnósticos añadidos ocupan unas nueve líneas de
 código, sin cambios de API, planificación, dependencias ni harness. La validación
@@ -390,12 +390,14 @@ Después abre Pi o ejecuta `/reload`. `pi list` la muestra y `pi remove <ruta>` 
 
   **`[ ⏻ TTS ]`** arranca el servidor y carga el modelo antes de escuchar; mientras tanto, la barra de estado muestra `TTS manual · cargando`; con el servidor apagado muestra `TTS off`, y luego `TTS manual` o `TTS auto`. Las pruebas de código cubren clics en toda su superficie (corchetes, símbolo, letras y espacios normales); la persona responsable confirmó el clic físico en toda la etiqueta en Windows y en el corchete y las letras en Linux, y apagar y volver a encender en ambos. `[ ▶ ]`, `[ ▶ copiado ]`, `/tts play` y el modo automático también lo arrancan si hace falta.
 - **Volumen y velocidad:** `[ ⋯ ]` muestra **Vol** (10–150 %, pasos de 10 %, inicial 100 %) y **Vel** (1.00x, 1.10x, 1.15x, 1.25x y 1.50x) en todas las barras; `[ → ]` los oculta. `[-` baja y `+]` sube, con clics. Todas las voces suenan más fuerte que antes: el servidor sube la salida ×1,8 (elegido por escucha) y corrige cada voz de la tabla para que suenen parecido (`gain_db` en `src/voice_table.json`); los picos fuertes se redondean en lugar de recortarse. El volumen cambia incluso el audio en reproducción; la velocidad afecta a los siguientes trozos generados, no al audio ya almacenado. Los límites se mantienen sin error.
-- **Apagar y liberar el modelo:** `[ ⏻ ]` aparece solo al final de los controles abiertos, después del último `+]`. Detiene la lectura y cierra el servidor propio para liberar sus recursos; los ajustes guardados se mantienen. `[ ⏻ TTS ]` permite encenderlo otra vez sin cerrar Pi. No equivale a `[ ■ ]` (solo detener) ni a `/tts toolbar` (ocultar la barra). `/tts` hace lo mismo que `[ ⏻ TTS ]` y `[ ⏻ ]`: enciende o apaga el servidor.
+- **Apagar y liberar el modelo:** `[ ⏻ ]` aparece solo al final de los controles abiertos, después del último `+]`. Detiene la lectura y cierra el servidor compartido para liberar sus recursos; los ajustes guardados se mantienen. `[ ⏻ TTS ]` permite encenderlo otra vez sin cerrar Pi. No equivale a `[ ■ ]` (solo detener) ni a `/tts toolbar` (ocultar la barra). `/tts` hace lo mismo que `[ ⏻ TTS ]` y `[ ⏻ ]`: enciende o apaga el servidor.
 - **Lo copiado:** Pi no ve lo que seleccionas con el ratón (esa selección es de la terminal), así que primero cópialo (`Ctrl+Shift+C` en la terminal) y pulsa `[ ▶ copiado ]`: lo lee en esa barra, con pausa y detener. No añade dependencias: usa `Get-Clipboard` en Windows, `pbpaste` en macOS y `wl-paste` (paquete `wl-clipboard`) o `xclip` en Linux; si falta, lo avisa.
 - **Automático:** `/tts auto` activa o desactiva la lectura de cada respuesta al terminar (si el servidor está apagado, lo enciende). Apagar el servidor también vuelve al modo manual; reiniciarlo no.
 - **Ventana de ajustes `[ ≡ ]`:** junto a `[ ⏻ TTS ]` con el servidor apagado, y dentro de los controles abiertos (`[ ⋯ ]`, antes de *Vol*) con el servidor encendido. Pulsar `[ ≡ ]` con la ventana abierta la cierra. Abre una ventana centrada que se usa con clics o con el teclado (↑↓ elegir, ←→ cambiar, Enter, Esc cerrar):
   - **Voz** y `[ Cambiar ]`: una tabla con *Voz*, *Estado* (descargada, para descargar o con cuenta) *RAM aprox.* (lo que ocupa aproximadamente el modelo de esa voz: ~0,3 GB Phonon, ~1 GB Pocket) y *Dict* (si se aplica el diccionario de pronunciación `pronunciaciones.json` a esa voz: un clic en «sí»/«no» o ←→ sobre la fila lo cambia y se guarda; es el mismo ajuste que `/tts dict`); la voz activa lleva `●` y se ve en amarillo. Primero las descargadas, luego las que se descargan sin cuenta y al final las que piden una cuenta gratis de Hugging Face (Phonon), marcadas con `*`. Al elegir una de cuenta sin token, la ventana muestra los 4 pasos (un clic en cada dirección la abre en el navegador) y un campo para pegarlo (se ve como `•••`). El token no se guarda en ningún archivo: solo hace falta para descargar la voz, así que queda en memoria durante esa sesión de Pi y el servidor se reinicia para usarlo; ya descargada, la voz funciona sin él. Un `HF_TOKEN` en el entorno o en `.env` también sirve. Al abrir la ventana con el servidor apagado o cargando, el estado de cada voz se actualiza solo cuando el servidor está listo.
   - **Volumen**, **Velocidad** y **Lectura automática**.
+  - **Si llega otra lectura: Detener / Esperar**: interrumpir o poner en cola ([detalle](#cola-de-lecturas)).
+  - **Barra de controles**: mostrar u ocultar, como `/tts toolbar`.
   - **Atajos de teclado**: activarlos y `[ Editar ]` para asignar Ctrl o Alt + letra o número a encender/apagar, lectura automática, escuchar, pausar/seguir, detener, abrir ajustes y leer lo copiado. No acepta combinaciones que ya usa Pi.
   - **Servidor**: `[ Encender ]` (con `[ Reiniciar ]` en gris) o `[ Apagar ]` y `[ Reiniciar ]`.
 
@@ -405,16 +407,22 @@ Después abre Pi o ejecuta `/reload`. `pi list` la muestra y `pi remove <ruta>` 
 | `/tts auto` | Activa o desactiva la lectura automática de cada respuesta (al activarla enciende el servidor si está apagado). Apagado nunca tiene lectura automática: Pi empieza con el servidor apagado y en `TTS off` |
 | `/tts play [n]` | Lee la última respuesta, o la `n` de la sesión contando desde la primera (`/tts play 3` = la tercera) |
 | `/tts copy` | Lee el texto copiado, como `[ ▶ copiado ]` |
-| `/tts pause` | Pausa o sigue la lectura |
-| `/tts stop` | Detiene la lectura |
+| `/tts pause` | Pausa o sigue la lectura actual de esta sesión |
+| `/tts stop` | Detiene las lecturas actuales y en espera de esta sesión |
 | `/tts toolbar` | Muestra u oculta la barra y lo recuerda al abrir Pi (la lectura, el modo automático y los atajos siguen funcionando) |
 | `/tts menu` | Abre la ventana de ajustes |
 | `/tts dict` | Activa o desactiva el diccionario de pronunciación (`pronunciaciones.json`: cómo se leen términos en inglés como «GitHub») para la voz actual; los números, símbolos y limpieza del texto siguen igual y lo recuerda por voz (por defecto, apagados en Phonon y encendidos en las demás) |
 | `/tts status` | Estado y ayuda |
 
-La extensión arranca sola el servidor local [`src/tehablo_server.py`](../src/tehablo_server.py) (`127.0.0.1:8765`, se cambia con `TEHABLO_PORT`) y lo apaga al cerrar Pi. Necesita el entorno `.venv-pocket` (o `.venv-pocket-<sistema>`) instalado. Los ajustes se guardan en tu carpeta de usuario, `~/.tehablo/settings.json` (`C:\Users\<usuario>\.tehablo\settings.json` en Windows), así que cada usuario y cada sistema de un dual boot tiene los suyos; se aplican al encender el servidor. La primera vez se parte del antiguo `tehablo-settings.json` del proyecto, si existe, sin cambiarlo. Los mensajes y errores del servidor se guardan en `logs/tehablo-server.log`, que se reescribe en cada arranque; si el servidor no responde a tiempo, el aviso indica esa ruta. Si el modelo no carga, Pi muestra el error en lugar de quedarse en «cargando»; también avisa si una lectura falla (por ejemplo, sin dispositivo de audio) o si se pierde la conexión con el servidor. Cada lectura usa la salida de audio predeterminada del sistema en ese momento: si cambias a audífonos o Bluetooth, la siguiente lectura ya suena ahí. En Windows la que está sonando termina en la salida anterior; en Linux (Fedora) cambia en el momento. Por seguridad, el servidor rechaza peticiones de páginas web (cabecera `Origin`, 403) y los `POST` que no declaran JSON (415).
+La extensión arranca sola el servidor local [`src/tehablo_server.py`](../src/tehablo_server.py) (`127.0.0.1:8765`, se cambia con `TEHABLO_PORT`) y, al cerrar Pi, lo apaga solo si esa sesión lo arrancó. Necesita el entorno `.venv-pocket` (o `.venv-pocket-<sistema>`) instalado. Los ajustes se guardan en tu carpeta de usuario, `~/.tehablo/settings.json` (`C:\Users\<usuario>\.tehablo\settings.json` en Windows), así que cada usuario y cada sistema de un dual boot tiene los suyos; se comparten entre sesiones y se actualizan en unos segundos; la lectura automática es por sesión y no se guarda. La primera vez se parte del antiguo `tehablo-settings.json` del proyecto, si existe, sin cambiarlo. Los mensajes y errores del servidor se guardan en `logs/tehablo-server.log`, que se reescribe en cada arranque; si el servidor no responde a tiempo, el aviso indica esa ruta. Si el modelo no carga, Pi muestra el error en lugar de quedarse en «cargando»; también avisa si una lectura falla (por ejemplo, sin dispositivo de audio) o si se pierde la conexión con el servidor. Cada lectura usa la salida de audio predeterminada del sistema en ese momento: si cambias a audífonos o Bluetooth, la siguiente lectura ya suena ahí. En Windows la que está sonando termina en la salida anterior; en Linux (Fedora) cambia en el momento. Por seguridad, el servidor rechaza peticiones de páginas web (cabecera `Origin`, 403) y los `POST` que no declaran JSON (415).
 
 El registro incluye líneas `Startup:` con segundos por etapa: importaciones del servidor, importaciones de TTS y carga del modelo (sin repetir el tiempo de importación de TTS). Sirven para comparar próximos arranques, no para diagnosticar retrospectivamente la demora ni atribuirla a la caché. No miden la creación del proceso Python ni el inicio de la reproducción. Guarda el registro antes de volver a arrancar: se sobrescribe. Las [mediciones de arranque en Windows y sus límites](desarrollo.md#arranque-en-windows-mediciones-y-límites) quedan documentadas para futuras comparaciones.
+
+### Cola de lecturas
+
+**Si llega otra lectura** permite elegir **Detener** (predeterminado: corta la actual y reproduce la nueva, sin borrar la cola) o **Esperar** (guarda hasta 10 lecturas, en orden de llegada, sin generar su audio todavía; suena un bip suave sobre la lectura actual al entrar otra en la cola, y una pausa de unos 0,6 s seguida del mismo bip y «Siguiente lectura.» con la misma voz antes de empezar cada lectura en espera). Se aplica a `[ ▶ ]`, `[ ▶ copiado ]`, `/tts play [n]`, `/tts copy` y al modo automático, también entre sesiones. Si llega una lectura con **Esperar** y la actual está en pausa, se cancela la pausada y su tarjeta vuelve a `[ ▶ ]`: empieza la primera que ya esperaba, o la nueva si no había cola, con la misma pausa, bip y «Siguiente lectura.». La nueva queda al final si había otras esperando. **Detener** no cambia. Una lectura en espera comienza cuando termina, se cancela o falla la actual; al empezar una de esta sesión, Pi avisa: «TTS teHablo: Suena la lectura en espera.». Si la cola está llena, muestra una advertencia.
+
+Pausa, continuar, detener, `/tts stop`, los atajos y cerrar la sesión actúan sobre sus propias lecturas; apagar el servidor afecta a todas. Véase el [alcance de los controles en Pi](../README.md#uso-en-pi).
 
 ## Uso: TUI
 

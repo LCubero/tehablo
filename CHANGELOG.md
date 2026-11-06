@@ -6,17 +6,11 @@ Este archivo registra los cambios completados en orden cronológico.
 
 ## 2026-11-05
 
-- Pi: una lectura en pausa ya no bloquea **Esperar**: al llegar otra, cancela la pausada y avanza en orden, con la pausa, bip y «Siguiente lectura.» habituales. Pausa/continuar (barra, comando y atajo) solo actúa sobre la lectura actual de esta sesión; `/tts stop`, el atajo de detener y cerrar la sesión cancelan solo sus lecturas, actuales y en espera. Apagar o reiniciar sigue siendo global; al cerrar una sesión, solo se apaga el servidor si ella lo arrancó.
-
-- Pi: solo en **Esperar**, cada lectura que sale de la cola dice «Siguiente lectura.» con la misma voz después de la pausa y el bip; se sintetiza junto con el texto, sin una pasada adicional.
-
-- Pi: leer copiado muestra «Preparando…» inmediatamente, hasta que el servidor acepta la lectura; ignora clics repetidos mientras prepara y limpia el estado al cancelar o fallar.
-
-- Pi: **Esperar** avisa con un bip suave sin interrumpir la lectura actual; cada lectura que sale de la cola empieza con una pausa de unos 0,6 s y el mismo bip, generado en memoria y ajustado al volumen. Una lectura copiada que empieza deja de mostrar «En espera» aunque haya otra copia de la misma tarjeta en la cola.
+- Pi: **Detener / Esperar** en los ajustes decide si la lectura nueva interrumpe o entra en la cola compartida (máximo 10). **Esperar** avisa con un bip suave al entrar; al salir de la cola, añade unos 0,6 s de pausa, el bip y «Siguiente lectura.» con la misma voz. Si la actual está pausada, se cancela y la cola avanza en orden (`RH-W-0041`).
+- Pi: pausa/continuar, detener, `/tts stop`, atajos, nuevo turno y cierre de sesión actúan solo sobre sus lecturas. **Apagar** (`[ ⏻ ]` o `/tts`) y reiniciar son globales; cerrar una sesión solo apaga el servidor si ella lo arrancó.
+- Pi: leer copiado muestra «Preparando…» de inmediato, ignora clics repetidos mientras prepara y limpia el estado al cancelar o fallar; al empezar ya no muestra «En espera» por otra copia de la misma tarjeta. El menú también muestra u oculta la barra, como `/tts toolbar`, y recuerda la elección.
 
 - Pi: los ajustes se comparten en vivo entre sesiones, también con el servidor apagado; la barra y la ventana abierta se actualizan sin `/reload`. Cada guardado combina solo los campos cambiados con el archivo actual y lo reemplaza de forma atómica; un archivo ilegible conserva los últimos ajustes válidos. La lectura automática queda solo en cada sesión y ya no se guarda.
-
-- Pi: los ajustes `[ ≡ ]` permiten elegir **Detener** (predeterminado) o **Esperar** cuando llega otra lectura, tanto manual y copiada como automática. La cola compartida admite 10 lecturas, muestra «En espera», permite cancelar cada una y avisa cuando empieza a sonar. Empezar otro turno cancela solo las lecturas de esa sesión; detener globalmente vacía la cola. El menú también permite mostrar u ocultar la barra, igual que `/tts toolbar`; ambas elecciones se recuerdan (`RH-W-0041`).
 
 - El nombre visible del producto pasa a ser **teHablo**: título del README, avisos de Pi (`TTS teHablo: …`), ventana de ajustes (`teHablo · Ajustes`) y descripción del comando `/tts`. Rutas, comandos, carpetas y nombres técnicos no cambian.
 - Pi con varias sesiones abiertas: la barra de cada sesión muestra en unos segundos si otra encendió o apagó el servidor compartido, y `[ ⏻ ]` lo apaga para todas también cuando lo arrancó otra sesión (`RH-W-0033`).
