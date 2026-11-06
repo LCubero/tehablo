@@ -238,6 +238,45 @@ test('Editar opens the shortcuts table; keys are captured, validated and removab
   assert.ok(s.text().includes('teHablo · Ajustes'));
 });
 
+test('keyboard reaches Quitar and removes a bound shortcut without entering capture', () => {
+  const s = setup({settings: {...DEFAULTS, shortcuts: {power: 'ctrl+alt+p'}}});
+  for (let i = 0; i < 4; i++) s.key('\x1b[B');
+  s.key('\r');
+  s.key('\x1b[C'); s.key('\r');
+  assert.deepEqual(s.calls, [['shortcut', 'power', undefined]]);
+  assert.deepEqual(s.state.settings.shortcuts, {});
+  assert.ok(!s.text().includes('Ctrl+Alt+P'));
+  assert.ok(!s.text().includes('[ Quitar ]'));
+  assert.ok(!s.text().includes('Presiona la combinación'));
+  s.key('\r'); s.key('\x1b\x10');
+  assert.equal(s.state.settings.shortcuts.power, 'ctrl+alt+p');
+  assert.ok(s.text().includes('Ctrl+Alt+P'));
+});
+
+test('shortcut buttons show horizontal focus and left returns to keyboard assignment', () => {
+  const s = setup({settings: {...DEFAULTS, shortcuts: {power: 'ctrl+alt+p'}},
+    theme: {fg: (st: string, t: string) => `<${st}>${t}</${st}>`}});
+  for (let i = 0; i < 4; i++) s.key('\x1b[B');
+  s.key('\r');
+  s.key('\x1b[C');
+  assert.ok(s.text().includes('<accent>[ Quitar ]</accent>'));
+  assert.ok(!s.text().includes('<accent>[ Cambiar ]</accent>'));
+  s.key('\x1b[D'); s.key('\r'); s.key('\x1b\x11');
+  assert.equal(s.state.settings.shortcuts.power, 'ctrl+alt+q');
+  assert.ok(s.text().includes('Ctrl+Alt+Q'));
+  s.key('\x7f');
+  assert.deepEqual(s.state.settings.shortcuts, {});
+});
+
+test('mouse Quitar still removes the shortcut and updates the table', () => {
+  const s = setup({settings: {...DEFAULTS, shortcuts: {power: 'ctrl+alt+p'}}});
+  s.click('[ Editar ]'); s.click('[ Quitar ]');
+  assert.deepEqual(s.calls, [['shortcut', 'power', undefined]]);
+  assert.deepEqual(s.state.settings.shortcuts, {});
+  assert.ok(!s.text().includes('[ Quitar ]'));
+  assert.ok(!s.text().includes('Ctrl+Alt+P'));
+});
+
 test('with the server off, unknown download state is shown by kind and chosen without a download step', () => {
   const rows = [{name: 'lola', voice: 'lola', model: 'spanish', kind: 'download', note: 'la de siempre', downloaded: null},
     {name: 'Regina', voice: 'Regina', model: 'phonon', kind: 'account', note: 'México', downloaded: null}];

@@ -98,7 +98,7 @@ export class SettingsWindow {
       {label: 'Velocidad', value: `${SPEEDS[spd].toFixed(2)}x`, step: (d: number) => this.c.change('speed', move(SPEEDS, spd, d))},
       {label: 'Lectura automática', value: s.auto ? 'sí' : 'no', step: () => this.c.change('auto', !s.auto)},
       {label: 'Atajos de teclado', value: s.shortcutsOn ? 'activados' : 'desactivados', step: () => this.c.change('shortcutsOn', !s.shortcutsOn),
-        buttons: [['[ Editar ]', () => { this.page = 'shortcuts'; this.scRow = 0; this.capturing = false; this.scError = ''; }]]},
+        buttons: [['[ Editar ]', () => { this.page = 'shortcuts'; this.scRow = 0; this.col = 0; this.capturing = false; this.scError = ''; }]]},
       {label: 'Si llega otra lectura', value: s.policy === 'wait' ? 'Esperar' : 'Detener', step: () => this.c.change('policy', s.policy === 'wait' ? 'stop' : 'wait')},
       {label: 'Barra de controles', value: s.toolbar ? 'visible' : 'oculta', step: () => this.c.change('toolbar', !s.toolbar)},
       {label: 'Indicador de estado', value: s.indicator ? 'visible' : 'oculto', step: () => this.c.change('indicator', !s.indicator)},
@@ -135,10 +135,12 @@ export class SettingsWindow {
     if (this.page === 'shortcuts') {
       if (this.capturing) this.capture(data);
       else if (k === 'esc') this.home();
-      else if (k === 'up') this.scRow = Math.max(0, this.scRow - 1);
-      else if (k === 'down') this.scRow = Math.min(ACTIONS.length - 1, this.scRow + 1);
-      else if (k === 'enter') { this.capturing = true; this.scError = ''; }
-      else if (k === 'back') this.c.setShortcut(ACTIONS[this.scRow], undefined);
+      else if (k === 'up') { this.scRow = Math.max(0, this.scRow - 1); this.col = 0; }
+      else if (k === 'down') { this.scRow = Math.min(ACTIONS.length - 1, this.scRow + 1); this.col = 0; }
+      else if (k === 'left' || k === 'right') this.col = k === 'right' && this.c.state().settings.shortcuts[ACTIONS[this.scRow]] ? 1 : 0;
+      else if (k === 'back' || (k === 'enter' && this.col === 1 && this.c.state().settings.shortcuts[ACTIONS[this.scRow]])) {
+        this.c.setShortcut(ACTIONS[this.scRow], undefined); this.col = 0;
+      } else if (k === 'enter') { this.col = 0; this.capturing = true; this.scError = ''; }
       this.redraw();
       return;
     }
@@ -204,17 +206,18 @@ export class SettingsWindow {
       line([{text: '   ' + fit('Acción', 30) + fit('Atajo', 14), style: 'dim'}]);
       line([{text: '   ' + '─'.repeat(IN - 4), style: 'dim'}]);
       ACTIONS.forEach((a, i) => {
-        const sel = i === this.scRow, change = () => { this.scRow = i; this.capturing = true; this.scError = ''; };
+        const sel = i === this.scRow, change = () => { this.scRow = i; this.col = 0; this.capturing = true; this.scError = ''; };
         const segs: Seg[] = [{text: sel ? ' ▶ ' : '   ', style: 'accent'}, {text: fit(ACTION_NAMES[a], 30), style: sel ? 'accent' : undefined},
           {text: fit(sel && this.capturing ? '…' : label(shortcuts[a]), 14), style: shortcuts[a] ? 'success' : 'dim'},
-          {text: '[ Cambiar ]', style: sel ? 'accent' : undefined, fn: change}];
-        if (shortcuts[a]) segs.push({text: ' '}, {text: '[ Quitar ]', fn: () => { this.scRow = i; this.c.setShortcut(a, undefined); }});
+          {text: '[ Cambiar ]', style: sel && this.col === 0 ? 'accent' : undefined, fn: change}];
+        if (shortcuts[a]) segs.push({text: ' '}, {text: '[ Quitar ]', style: sel && this.col === 1 ? 'accent' : undefined,
+          fn: () => { this.scRow = i; this.col = 0; this.c.setShortcut(a, undefined); }});
         line(segs);
       });
       line();
       line(this.capturing ? [{text: ' Presiona la combinación (Ctrl o Alt + letra o número) · Esc cancela', style: 'warning'}] : []);
       line(this.scError ? [{text: ' ' + this.scError, style: 'error'}] : []);
-      line([{text: ' '}, {text: '[ Volver ]', style: 'accent', fn: () => this.home()}, {text: '   ↑↓ elegir · Enter cambiar · ⌫ quitar · Esc', style: 'dim'}]);
+      line([{text: ' '}, {text: '[ Volver ]', style: 'accent', fn: () => this.home()}, {text: '   ↑↓ fila · ←→ botón · Enter · ⌫ quitar · Esc', style: 'dim'}]);
     } else if (this.page === 'main') {
       this.mainRows().forEach((r: any, i: number) => {
         const sel = i === this.row;
