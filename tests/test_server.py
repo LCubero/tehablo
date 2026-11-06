@@ -681,6 +681,34 @@ class ServerTests(unittest.TestCase):
                     tehablo_server.PhononSynthesizer()
                     self.assertEqual(seen, [expected])
                     self.assertNotIn('HF_HUB_OFFLINE', os.environ)
+        # A value set by the user is kept as is, during and after the load.
+        with self.subTest(preset='0'):
+            seen.clear()
+            with mock.patch.dict(sys.modules, {'ptts': fake}), \
+                    mock.patch.dict(os.environ, {'HF_TOKEN': '', 'HF_HUB_OFFLINE': '0'}), \
+                    mock.patch.object(tehablo_server, 'cached', lambda *a: True), \
+                    contextlib.redirect_stdout(io.StringIO()):
+                tehablo_server.PhononSynthesizer()
+                self.assertEqual(seen, ['0'])
+                self.assertEqual(os.environ.get('HF_HUB_OFFLINE'), '0')
+        # A failed offline load still removes the variable it set.
+        class Broken:
+            def __init__(self, *args, **kwargs):
+                seen.append(os.environ.get('HF_HUB_OFFLINE'))
+                raise RuntimeError('cache corrupt')
+        broken = type(sys)('ptts')
+        broken.TTS, broken.set_num_threads = Broken, lambda n: None
+        with self.subTest(failure=True):
+            seen.clear()
+            with mock.patch.dict(sys.modules, {'ptts': broken}), \
+                    mock.patch.dict(os.environ, {'HF_TOKEN': ''}), \
+                    mock.patch.object(tehablo_server, 'cached', lambda *a: True), \
+                    contextlib.redirect_stdout(io.StringIO()):
+                os.environ.pop('HF_HUB_OFFLINE', None)
+                with self.assertRaisesRegex(RuntimeError, 'cache corrupt'):
+                    tehablo_server.PhononSynthesizer()
+                self.assertEqual(seen, ['1'])
+                self.assertNotIn('HF_HUB_OFFLINE', os.environ)
 
     def test_voice_table_kinds_and_cache_state(self):
         seen = []

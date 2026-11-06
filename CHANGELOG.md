@@ -6,6 +6,7 @@ Este archivo registra los cambios completados en orden cronológico.
 
 ## 2026-11-05
 
+- Pruebas: la carga de Phonon sin conexión comprueba también un `HF_HUB_OFFLINE` ya definido por quien lo usa y que la variable se borra si la carga falla (`RH-W-0035`, aviso R3-001).
 - Pi: volumen y velocidad desde la barra ya no muestran el aviso «TTS teHablo: …» (el valor se ve en la barra); al abrir una sesión, la barra muestra enseguida si el servidor compartido ya está encendido, sin esperar unos 4 s; el aviso «Se perdió la conexión con el servidor» indica la ruta y el error (`RH-W-0042`).
 - Pi con varias sesiones comprobado en Linux: Esperar, Detener, «Siguiente lectura.» y controles por sesión (`RH-W-0041`). Se registra `RH-W-0042` (propuesto) para quitar el aviso al cambiar volumen o velocidad desde la barra, revisar el estado inicial de la barra y seguir un aviso de conexión intermitente.
 - Servidor y Pi, tras una revisión del repositorio: la cola ya no pierde lecturas al cambiar entre Pocket y Phonon; la voz generada por adelantado se limita a unos 3 s, también en pausa, para no acumular RAM; tras un fallo de carga se puede reintentar el mismo modelo sin perder la cola; la extensión olvida las lecturas terminadas y conserva las que el servidor aceptó aunque se pierda la respuesta. Los scripts manuales de la TUI ya no se ejecutan al descubrir pruebas.

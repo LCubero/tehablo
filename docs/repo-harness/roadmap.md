@@ -326,17 +326,6 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 - **Condición del siguiente avance:** autorización para investigar y proponer los iconos.
 
 
-### RH-W-0035: Completar la prueba de Phonon sin conexión (R3-001)
-
-- **Origen:** aviso R3-001 de una revisión de código del 2026-11-04 sobre la carga de Phonon desde la caché sin token.
-- **Prioridad:** P2; hueco en una prueba existente, sin fallo conocido para quien lo usa.
-- **Dependencias:** ninguna.
-- **Estado:** `proposed`.
-- **Trabajo restante:** que `test_cached_phonon_loads_offline_without_token` (`tests/test_server.py`) cubra también un `HF_HUB_OFFLINE` ya definido antes de la carga y la limpieza de esa variable cuando la carga falla.
-- **Evidencia:** respaldos de continuidad del 2026-11-04 y 2026-11-05; la prueba existe en `tests/test_server.py:238`.
-- **Decisión:** registrar como trabajo propio.
-- **Condición del siguiente avance:** autorización para completar la prueba.
-
 ### RH-W-0036: Pulir el README y el video de demostración
 
 - **Origen:** solicitud de la persona responsable del 2026-11-05: «el cuadro de voces del readme dice como encabezado "¿Cuenta?" y no entiendo que es, si yo no sé del proyecto y leo eso, no se entiende»; «En el readme en el cuadro de Consumo aproximado, phonon no es que deba decir opción, quizá algo que de atender lo de huggingface para descargarlo. O poner una nota o algo.»; «El video en app github en android solo se ve el link y se ve feo eso»; «Al showreel agregar al inicio, lo de poner sonido para escuchar, algo bonito serio profesional. Y hay que hacer lo de tumbail. 1 frame al puro inicio de quizá la parte donde se enseña tts ayuda. O del Menu de las voces».
@@ -404,6 +393,18 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 
 ## Registros resueltos
 <!-- doc-role:resolved-records -->
+
+### RH-W-0035: Completar la prueba de Phonon sin conexión (R3-001)
+
+- **Origen:** aviso R3-001 de una revisión de código del 2026-11-04 sobre la carga de Phonon desde la caché sin token.
+- **Prioridad:** P2; hueco en una prueba existente, sin fallo conocido para quien lo usa.
+- **Dependencias:** ninguna.
+- **Estado:** `completed` (2026-11-05).
+- **Trabajo completado (2026-11-05, autorizado: «si»):** la prueba cubre ahora un `HF_HUB_OFFLINE=0` ya definido (se respeta durante y después de la carga) y una carga sin conexión que falla (la variable se borra y el error sigue). Comprobado con dos mutaciones del servidor en una copia temporal: cada una hace fallar su caso. `tests/test_server.py`: 51 pruebas, todas pasan. No hubo que cambiar el servidor.
+- **Trabajo restante:** none. Alcance original: que `test_cached_phonon_loads_offline_without_token` (`tests/test_server.py`) cubra también un `HF_HUB_OFFLINE` ya definido antes de la carga y la limpieza de esa variable cuando la carga falla.
+- **Evidencia:** respaldos de continuidad del 2026-11-04 y 2026-11-05; la prueba existe en `tests/test_server.py:238`.
+- **Decisión:** registrar como trabajo propio.
+- **Condición del siguiente avance:** none.
 
 ### RH-W-0042: Pulir avisos y estado de la barra con varias sesiones
 
