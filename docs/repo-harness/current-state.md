@@ -78,7 +78,6 @@ Este archivo proyecta solo hechos verificados del proyecto: registros activos, b
 - `RH-W-0018` (`deferred`, P3): roles de voz (locutor, profesor, motivador y otros) con frases y muletillas propias.
 - `RH-W-0019` (`deferred`, P3): exportar audiolibros.
 - `RH-W-0020` (`excluded`): funciones de app lectora de escritorio (atajo global, portapapeles, bandeja, documentos, sonidos de fondo, plugin de navegador).
-- `RH-W-0044` (`excluded`): oír teHablo cuando Pi corre en un VPS por SSH; investigado y documentado, no se implementa.
 - `RH-W-0022` (`proposed`, P3): opciones de lectura (bloques de código, pausas, aviso al terminar, retroceder o repetir, historial).
 - `RH-W-0023` (`proposed`, P2): CI mínima en Windows y Linux entregada el 2026-11-03; quedan revisión de seguridad, buenas prácticas (linter), control (límites) y rendimiento (medición de regresiones); dependencias limitadas a versiones probadas el 2026-10-30.
 - `RH-W-0025` (`deferred`, P2): versión lite de mínimo consumo; cuantización predeterminada en Linux entregada; el resto queda para el final del plan.
@@ -90,6 +89,7 @@ Este archivo proyecta solo hechos verificados del proyecto: registros activos, b
 - `RH-W-0038` (`proposed`, P2): primer release o release candidate, después del instalador.
 - `RH-W-0039` (`proposed`, P3): página de producto, probablemente como proyecto aparte.
 - `RH-W-0040` (`proposed`, P3): investigar teHablo en el celular.
+- `RH-W-0044` (`active`, P2): audio por SSH para la extensión de Pi (receptor en la PC); falta la prueba por SSH con la VM Ubuntu.
 
 ## Siguiente paso
 

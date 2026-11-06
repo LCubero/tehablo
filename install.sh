@@ -2,6 +2,11 @@
 set -euo pipefail
 cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
 
+if [[ "${1:-}" == --receptor ]]; then
+    shift
+    exec sh receptor/install.sh "$@"
+fi
+
 if ! command -v uv >/dev/null 2>&1; then
     printf '%s\n' 'Falta uv. Instálalo con:' \
         'curl -LsSf https://astral.sh/uv/install.sh | sh' \
@@ -40,6 +45,7 @@ else
     fi
     exit 1
 fi
+printf '%s\n' 'Audio por SSH (en tu PC): ./install.sh --receptor'
 printf 'Listo: %s\n' "$env_dir"
 printf 'Para iniciar: %s/bin/python src/tehablo_tui.py\n' "$env_dir"
 extension="$PWD/pi-extension/tehablo-tts"

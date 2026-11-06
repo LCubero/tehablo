@@ -107,6 +107,7 @@ tehablo/
 | `src/tehablo_lexicon.py`, `pronunciaciones.json` | Pronunciación de términos en inglés | Sí |
 | `src/tehablo_speed.py` | Velocidad de la voz sin cambiar el tono (WSOLA con `audiotsm`) | Sí |
 | `src/tehablo_server.py` | Servidor HTTP local (`127.0.0.1:8765`) que usa la extensión de Pi | Sí |
+| `receptor/` | Receptor ffplay y autostart del PC para [Audio por SSH](../README.md#audio-por-ssh); instaladores con opción de desinstalación | Sí |
 | `pi-extension/tehablo-tts/` | Extensión de Pi; se instala con `pi install <ruta>` (ver README) | Sí |
 | `scripts/get_voices.py` | Descarga selectiva de voces | Sí |
 | `tests/` | Pruebas ejecutables sin pytest | Sí |

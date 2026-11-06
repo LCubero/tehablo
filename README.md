@@ -2,7 +2,7 @@
 
 **Lee en voz alta las respuestas de Pi**, en español y en tu equipo. También puedes usarlo desde una TUI o una consola. Es gratis, funciona solo con CPU (sin GPU ni nube) y, después de la primera descarga, sin internet.
 
-teHablo está pensado para usarse en tu propia computadora. Si usas Pi en un VPS por SSH, el sonido sale en el servidor.
+teHablo puede sonar en tu computadora aunque Pi esté en un VPS: consulta [Audio por SSH](#audio-por-ssh). Por defecto el sonido sale donde corre Pi.
 
 > **En desarrollo.** El proyecto todavía está en desarrollo y puede cambiar. Lo que falta está en la [hoja de ruta](docs/repo-harness/roadmap.md).
 
@@ -115,6 +115,28 @@ Abre Pi o ejecuta `/reload`. La extensión se instala para todos tus proyectos y
 
 Probado con audio en Windows y Fedora; macOS aún no está verificado. [Instalación manual y entornos por sistema](docs/desarrollo.md#instalación-manual).
 
+## Audio por SSH
+
+Pi y teHablo corren en el servidor; un pequeño receptor con **ffplay** (incluido en FFmpeg) reproduce el sonido en tu computadora. En esa computadora, ejecuta una vez:
+
+**Windows (PowerShell):**
+```powershell
+irm https://raw.githubusercontent.com/LCubero/tehablo/master/receptor/install.ps1 | iex
+```
+
+**Linux / macOS:**
+```sh
+curl -fsSL https://raw.githubusercontent.com/LCubero/tehablo/master/receptor/install.sh | sh
+```
+
+Si falta ffplay, el instalador indica cómo instalarlo y se detiene sin cambiar nada. Después pide tu alias SSH (por ejemplo `mivps`), guarda una copia de `~/.ssh/config`, añade `LocalForward 18765 127.0.0.1:8765` e instala el receptor oculto al iniciar sesión. Reconecta SSH después de instalar.
+
+En Pi, abre `[ ≡ ]` y elige **Audio: SSH**. Cada día basta con `ssh mivps`, como siempre: no hay otra ventana que abrir. Desde un clon también puedes usar `./install.sh --receptor` o `.\install.ps1 -Receptor` en tu PC, sin instalar el entorno Python.
+
+Para desinstalar desde un clon: `sh receptor/install.sh --uninstall` o `.\receptor\install.ps1 -Uninstall`. Sin clon, vuelve a descargar el script y pásale `--uninstall` (`sh -s -- --uninstall`) o `-Uninstall` (`& ([scriptblock]::Create((irm https://raw.githubusercontent.com/LCubero/tehablo/master/receptor/install.ps1))) -Uninstall`). Quita a mano la línea `LocalForward 18765 127.0.0.1:8765` del Host correspondiente en `~/.ssh/config`.
+
+Solo para la extensión de Pi: no cubre TUI ni consola, no funciona con mosh ni teléfonos. Necesita SSH con reenvío de puertos permitido y el puerto local 18765 libre. macOS está escrito pero no probado.
+
 ## Uso en Pi
 
 Pi empieza con el servidor **apagado**, en modo manual. Pulsa `[ ⏻ TTS ]` para cargar la voz; luego `[ ▶ ]` lee esa respuesta (o usa `/tts play`, que la enciende si hace falta). La voz inicial es `lola`, gratis y sin cuenta; si eliges otra, se recuerda.
@@ -172,7 +194,7 @@ Significado de los iconos (aunque se vean como cuadros):
 
 ### Ajustes `[ ≡ ]` (menú)
 
-Elige **voz**, **volumen**, **velocidad**, **lectura automática**, **atajos de teclado** e **indicador de estado**, o enciende, apaga y reinicia el servidor. Usa clics o ↑↓, ←→, Enter y Esc.
+Elige **Audio: Local / SSH**, **voz**, **volumen**, **velocidad**, **lectura automática**, **atajos de teclado** e **indicador de estado**, o enciende, apaga y reinicia el servidor. Usa clics o ↑↓, ←→, Enter y Esc.
 
 **Iconos: Símbolos / Texto** conserva los símbolos actuales por defecto. Elige **Texto** si ves cuadros: usa etiquetas ASCII como `[ TTS ]`, `[ |> ]`, `[ || ]`, `[ [] ]`, `[ off ]` y `[ = ]` (ajustes). Se guarda, se comparte entre sesiones y actualiza las barras al cambiarla; [tabla completa](docs/desarrollo.md#iconos-en-modo-texto).
 
@@ -182,7 +204,7 @@ Elige **voz**, **volumen**, **velocidad**, **lectura automática**, **atajos de 
 
 La tabla muestra el estado de descarga, la RAM aproximada y **Dict** por voz. El diccionario adapta términos como «Python»; desactivarlo no cambia la lectura de números ni la limpieza del texto. Por defecto está apagado en Phonon y encendido en Pocket.
 
-Los ajustes se guardan por usuario en `~/.tehablo/settings.json` y se comparten entre todas las sesiones de Pi: voz/modelo, volumen, velocidad, Dict por voz, atajos, política de lectura, iconos, barra y caché de voces. Los cambios aparecen en unos segundos en la barra y en los ajustes abiertos, sin `/reload`, incluso con el servidor apagado. Solo la **lectura automática** es de cada sesión: empieza desactivada y no se guarda. [Detalles de Pi, portapapeles y diagnóstico](docs/desarrollo.md#uso-en-pi).
+Los ajustes se guardan por usuario en `~/.tehablo/settings.json` y se comparten entre todas las sesiones de Pi: audio Local/SSH, voz/modelo, volumen, velocidad, Dict por voz, atajos, política de lectura, iconos, barra y caché de voces. Los cambios aparecen en unos segundos en la barra y en los ajustes abiertos, sin `/reload`, incluso con el servidor apagado. Solo la **lectura automática** es de cada sesión: empieza desactivada y no se guarda. [Detalles de Pi, portapapeles y diagnóstico](docs/desarrollo.md#uso-en-pi).
 
 ## Voces
 

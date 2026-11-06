@@ -1,5 +1,13 @@
+param([switch]$Receptor, [string]$HostAlias, [switch]$Uninstall, [switch]$ConfigOnly)
 $ErrorActionPreference = 'Stop'
 Set-Location $PSScriptRoot
+
+if ($Receptor) {
+    $global:LASTEXITCODE = 0
+    & "$PSScriptRoot\receptor\install.ps1" -HostAlias $HostAlias -Uninstall:$Uninstall -ConfigOnly:$ConfigOnly
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    return
+}
 
 if (-not (Get-Command uv -ErrorAction SilentlyContinue)) {
     Write-Host 'Falta uv. Instalalo con:'
@@ -24,6 +32,7 @@ if ($LASTEXITCODE -ne 0) { exit 1 }
 & ".\$python" -c 'import pocket_tts, ptts, sounddevice, torch; print(torch.__version__); assert torch.version.cuda is None'
 if ($LASTEXITCODE -ne 0) { exit 1 }
 
+Write-Host 'Audio por SSH (en tu PC): .\install.ps1 -Receptor'
 Write-Host "Listo: $envDir"
 Write-Host "Para iniciar: .\$python src/tehablo_tui.py"
 Write-Host 'Los modelos se descargan en el primer uso.'

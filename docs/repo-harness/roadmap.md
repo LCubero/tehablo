@@ -395,15 +395,12 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 - **Decisión:** registrar como investigación.
 - **Condición del siguiente avance:** autorización para investigar.
 
-## Registros resueltos
-<!-- doc-role:resolved-records -->
-
 ### RH-W-0044: Escuchar teHablo cuando Pi corre en un VPS por SSH
 
 - **Origen:** captura y registro de un compañero (Ubuntu 26 en un VPS remoto al que entra por SSH), 2026-11-06, tras `./install.sh`: «Notification audio backend unavailable», «No se pudo reproducir: speech failed: [Errno 2] No such file or directory: '/tmp/…'», «Warning: TTS teHablo: No se pudo reproducir: speech failed: PortAudio library not found» y, en `logs/tehablo-server.log`, «Speech failed: PortAudio library not found» y Phonon denegado (`GatedRepo`, cambia a `lola`). Pedido de la persona responsable: «revisa y anota y si podemos hacerlo lo hacemos de una quiza con opcion para audio remoto o algo».
 - **Prioridad:** P2; con Pi en un servidor remoto no se oye nada, pero el uso local no cambia.
 - **Dependencias:** ninguna.
-- **Estado:** `excluded` (2026-11-06).
+- **Estado:** `active` (reabierto el 2026-11-06).
 - **Causa (verificada en el código):** el servidor reproduce con `sounddevice.OutputStream` en la máquina donde corre Python (`src/tehablo_server.py:143-150`); abre la salida antes de sintetizar (`:499-502`), así que sin PortAudio la lectura falla antes de generar voz. SSH no lleva ese audio a la computadora local, y no hay ninguna ruta HTTP que envíe audio (`:603-652`). Instalar `libportaudio2` en el VPS no basta para oírlo en la laptop.
 - **Opciones investigadas (2026-11-06):**
   - **A. Servidor en la laptop y túnel inverso, sin cambiar código** (descartada por la persona responsable, 2026-11-06: «A descartado»; por SSH, Pi o Gentle Shell y el servidor de teHablo corren en el VPS, así que la voz se genera allí y solo el sonido tiene que llegar a la computadora local): arrancar teHablo en la laptop y conectar con `ssh -R 8765:127.0.0.1:8765 vps`. La extensión del VPS consulta `/health` en `127.0.0.1:8765` y, si responde, usa ese servidor sin arrancar otro (`pi-extension/tehablo-tts/src/server.ts:35-38,87-99`). Limitaciones: apagar, reiniciar o pegar el token desde Pi apaga el servidor de la laptop y no puede volver a arrancarlo; el portapapeles se lee en el VPS. Mismo patrón que documenta el proyecto vox (`docs/guide-remote-setup.md`, túnel `ssh -R`).
@@ -428,11 +425,16 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
   - Idea posible, sin evaluar: teHablo en la computadora local como «comando de voz» de herdr-speak, o un plugin propio con la misma idea; leería las respuestas que herdr trae como texto, sin la barra ni los controles de la extensión de Pi.
   - Leídos: README de herdr-speak, herdr-portfwd, herdr-announcer, `docs/mobile-app.md` de herdr-mobile-relay, la página de plugins de herdr y `src/sound.rs`.
 - **Decisión (2026-11-06):** no se implementa; solo se documenta. Persona responsable: «solo documentar no lo vamos a hacer». Con Pi en un VPS por SSH, el sonido sale en el VPS. El prototipo de `.repo-harness/tmp/remote-audio-spike/` se borró.
-- **Trabajo restante:** none.
+- **Reapertura (2026-11-06):** la persona responsable: «si mi rey, que sea facil. para cualqueir usuario. yo diria que en el instalador que hemos hecho venga la opcion [...] si activa la opcion audio ssh, le diga que debe ejecutar "" en el cliente [...] (todo esto es para pi extension)». Elegido: receptor oculto en la PC, que se instala una vez; uso diario `ssh mivps` como siempre.
+- **Trabajo hecho (2026-11-06, rama `feat/ssh-audio`):** ajuste **Audio: Local / SSH** en Pi; en SSH el servidor no usa PortAudio y ofrece `GET /audio.wav` (WAV continuo de 24 kHz, mono, 16 bits) en `127.0.0.1`; aviso con el comando para la PC; `receptor/install.ps1` y `receptor/install.sh` (comprueban `ffplay`, copian `~/.ssh/config` y añaden `LocalForward 18765 127.0.0.1:8765`, arranque automático oculto, desinstalación); `install.sh --receptor` e `install.ps1 -Receptor`; README **Audio por SSH**. Pruebas: servidor 61, extensión 167 y el resto de suites de Python pasan; servidor real en modo SSH con `ffmpeg` grabando 15 s: la frase llegó con voz.
+- **Trabajo restante:** prueba de la persona responsable por SSH con la VM Ubuntu en Proxmox; sin probar: macOS, arranque automático real y una conexión SSH real.
 - **Excluido por ahora:** reconexión automática, autodetección de SSH, compresión (Opus), contraseñas extra y un instalador local; la comprobación de dependencias va en `RH-W-0037`.
 - **Fuentes no leídas completas:** la documentación de red de PulseAudio (freedesktop.org), la de `module-pulse-tunnel` de PipeWire y las respuestas de Unix StackExchange y Super User sobre PulseAudio por SSH se vieron solo como fragmentos de búsqueda.
 - **Decisión:** registrar; pendiente de elección de la persona responsable.
-- **Condición del siguiente avance:** none; se reconsidera solo si la persona responsable lo pide.
+- **Condición del siguiente avance:** prueba por SSH de la persona responsable.
+
+## Registros resueltos
+<!-- doc-role:resolved-records -->
 
 ### RH-W-0043: Que cerrar o recargar una sesión de Pi no apague el TTS de las demás
 

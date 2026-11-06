@@ -1,6 +1,6 @@
 # Cómo funciona teHablo y qué recursos usa
 
-Todo se ejecuta **en el equipo local**: sin API externa, sin nube, sin coste por uso y **sin GPU**. Solo usa CPU y RAM. Pi empieza con Pocket `spanish` y `lola` (la voz marcada en `src/voice_table.json`), o directamente con la voz que elegiste en la ventana de ajustes. Phonon 40M es (2 hilos) es opcional: requiere acceso autorizado de Hugging Face para descargar sus pesos CC BY-NC 4.0; ya descargado, carga sin token desde la caché; si se elige y no carga, se usa `lola`, se registra el motivo y Pi lo avisa. La TUI y la consola siguen en Pocket, sin cuenta.
+Por defecto, todo se ejecuta **en el equipo local**. Con [Audio por SSH](../README.md#audio-por-ssh), Pi y la síntesis corren en el servidor y ffplay reproduce en tu PC el WAV continuo (PCM s16le mono, 24000 Hz) a través del túnel SSH; no se abre sounddevice en el servidor. En ambos casos: sin API externa, sin nube, sin coste por uso y **sin GPU**. Solo usa CPU y RAM. Pi empieza con Pocket `spanish` y `lola` (la voz marcada en `src/voice_table.json`), o directamente con la voz que elegiste en la ventana de ajustes. Phonon 40M es (2 hilos) es opcional: requiere acceso autorizado de Hugging Face para descargar sus pesos CC BY-NC 4.0; ya descargado, carga sin token desde la caché; si se elige y no carga, se usa `lola`, se registra el motivo y Pi lo avisa. La TUI y la consola siguen en Pocket, sin cuenta.
 
 ## Índice
 
