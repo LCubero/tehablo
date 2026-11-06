@@ -30,8 +30,13 @@ test('S2: stale sessions merge only changed keys, nested entries and the voice/m
   assert.equal(x.model, 'phonon'); assert.equal(x.voice, 'Iker');
   y = b.load();
   a.save({...x, shortcuts: {stop: 'ctrl+s'}});
-  b.save({...y, toolbar: false});
-  assert.deepEqual(a.load().shortcuts, {stop: 'ctrl+s'});
+  b.save({...y, toolbar: false, indicator: false});
+  const merged = a.load();
+  assert.deepEqual(merged.shortcuts, {stop: 'ctrl+s'});
+  assert.equal(merged.toolbar, false);
+  assert.equal(merged.indicator, false);
+  a.save({...merged, indicator: true});
+  assert.equal(b.load().indicator, true);
 });
 
 test('S3: malformed and unreadable files retain the last good store snapshot', () => {

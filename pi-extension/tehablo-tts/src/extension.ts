@@ -45,7 +45,7 @@ const ENTRY = 'tehablo-tts';
 /** Every message from this extension starts with this prefix. */
 const say = (c: ExtensionContext | undefined, text: string, level: 'info' | 'warning') => c?.ui.notify(`TTS teHablo: ${text}`, level);
 interface Card { messageId: string; number: number }
-const help = '/tts · auto · play [n] · copy · pause · stop · toolbar · menu · dict · status\n/tts enciende o apaga el servidor para todos; pause pausa o reanuda solo tu lectura actual; stop detiene tus lecturas actuales y en espera; play sin número lee la última respuesta y play 3 la tercera de la sesión; toolbar muestra u oculta la barra; menu abre los ajustes; dict activa o desactiva el diccionario de pronunciación (pronunciaciones.json) para la voz actual.';
+const help = '/tts · auto · play [n] · copy · pause · stop · toolbar · indicator · menu · dict · status\n/tts enciende o apaga el servidor para todos; pause pausa o reanuda solo tu lectura actual; stop detiene tus lecturas actuales y en espera; play sin número lee la última respuesta y play 3 la tercera de la sesión; toolbar muestra u oculta la barra; indicator muestra u oculta el indicador de estado; menu abre los ajustes; dict activa o desactiva el diccionario de pronunciación (pronunciaciones.json) para la voz actual.';
 
 export function createExtension(pi: ExtensionAPI, client = new ServerClient(), store: Store = client.root ? fileStore(client.root) : memoryStore(),
   clipboard: () => Promise<string> = () => readClipboard(), watchMs = 0) {
@@ -90,7 +90,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
   let warnedFallback: string | undefined;
   const READY_TRIES = 240;
   // Status line: "TTS off" while the server is off, else "TTS manual" or "TTS auto".
-  const refresh = () => context?.ui.setStatus(ENTRY, server === 'off' ? 'TTS off'
+  const refresh = () => context?.ui.setStatus(ENTRY, !settings.indicator ? undefined : server === 'off' ? 'TTS off'
     : `TTS ${auto ? 'auto' : 'manual'}${server === 'loading' ? ' · cargando' : ''}`);
   const setServer = (value: typeof server) => { if (value !== server) { server = value; refresh(); } };
   const cancelReady = () => { readyEpoch++; if (readyTimer) clearTimeout(readyTimer); readyTimer = undefined; };
@@ -326,6 +326,10 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
     barVisible = visible; settings = {...settings, toolbar: visible}; persist(); refresh(); showStart(ctx);
     say(ctx, visible ? 'Barra visible.' : 'Barra oculta.', 'info');
   };
+  const setIndicator = (visible: boolean, ctx: ExtensionContext) => {
+    settings = {...settings, indicator: visible}; persist(); refresh();
+    say(ctx, visible ? 'Indicador visible.' : 'Indicador oculto.', 'info');
+  };
   const cards = (ctx: ExtensionContext): Card[] => ctx.sessionManager.getBranch()
     .filter((e: any) => e.type === 'custom' && e.customType === ENTRY).map((e: any) => e.data);
   const safe = async (ctx: ExtensionContext, operation: () => Promise<unknown> | unknown) => {
@@ -421,6 +425,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
       change: (field, value) => {
         settings = {...settings, [field]: value}; if (field !== 'auto') persist();
         if (field === 'toolbar') setToolbar(value as boolean, ctx);
+        if (field === 'indicator') setIndicator(value as boolean, ctx);
         if (field === 'auto') { const starting = setAuto(value as boolean); if (starting) run(() => starting); }
         if (field === 'volume') volume = value as number;
         if (field === 'speed') speed = value as number;
@@ -607,6 +612,9 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
           case 'toolbar':
             setToolbar(!barVisible, ctx);
             return;
+          case 'indicator':
+            setIndicator(!settings.indicator, ctx);
+            return;
           case 'auto':
             // Plain /tts auto toggles; on/off still work for anyone who already types them.
             if (!['', 'on', 'off'].includes(value)) { say(ctx, 'Uso: /tts auto', 'warning'); return; }
@@ -635,7 +643,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
         sync(health);
         const status = await client.action('/status');
         if (generation !== epoch) return;
-        info(`Barra ${barVisible ? 'visible' : 'oculta'} · automático: ${auto ? 'sí' : 'no'}\nServidor: ${status.state} · listo: ${health.ready ? 'sí' : 'no'}\nModelo: ${health.model} · voz: ${health.voice} · velocidad: ${health.speed} · volumen: ${Math.round(volume * 100)} %\nDict (diccionario de pronunciación): ${dictEnabled() ? 'sí' : 'no'}\n${help}`);
+        info(`Barra ${barVisible ? 'visible' : 'oculta'} · indicador ${settings.indicator ? 'visible' : 'oculto'} · automático: ${auto ? 'sí' : 'no'}\nServidor: ${status.state} · listo: ${health.ready ? 'sí' : 'no'}\nModelo: ${health.model} · voz: ${health.voice} · velocidad: ${health.speed} · volumen: ${Math.round(volume * 100)} %\nDict (diccionario de pronunciación): ${dictEnabled() ? 'sí' : 'no'}\n${help}`);
       });
     },
   });

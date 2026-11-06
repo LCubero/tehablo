@@ -220,10 +220,11 @@ test('S1/S4: shared settings refresh the bar and open window on the existing tic
     const before = s.windows[0].w.render(100).join('\n');
     const saved = other.load();
     const voices = [{name: 'Iker', voice: 'Iker', model: 'phonon', kind: 'account', note: '', downloaded: true}];
-    other.save({...saved, toolbar: false, volume: 0.7, speed: 1.25, shortcutsOn: true, shortcuts: {stop: 'alt+s'},
+    other.save({...saved, toolbar: false, indicator: false, volume: 0.7, speed: 1.25, shortcutsOn: true, shortcuts: {stop: 'alt+s'},
       dict: {Iker: false}, voices, policy: 'wait', model: 'phonon', voice: 'Iker'});
     for (let i = 0; i < 50 && s.line() !== undefined; i++) await new Promise(r => setTimeout(r, 10));
     assert.equal(s.line(), undefined, 'toolbar visibility follows the shared file even while offline');
+    assert.equal(s.statuses.at(-1), undefined);
     const after = s.windows[0].w.render(100).join('\n');
     assert.notEqual(after, before);
     assert.match(after, /75 %/); // The window rounds to its existing volume steps.
@@ -236,9 +237,10 @@ test('S1/S4: shared settings refresh the bar and open window on the existing tic
     assert.equal(controller.dict(voices[0]), false);
     assert.deepEqual(controller.voices(), voices);
     s.fail(false);
-    other.save({...other.load(), toolbar: true, volume: 0.8, speed: 1.5});
+    other.save({...other.load(), toolbar: true, indicator: true, volume: 0.8, speed: 1.5});
     for (let i = 0; i < 50 && !s.line()?.includes('[ ⋯ ]'); i++) await new Promise(r => setTimeout(r, 10));
     await clickAt(s, '[ ⋯ ]');
+    assert.equal(s.statuses.at(-1), 'TTS manual');
     assert.match(s.line(), /80%/);
     assert.match(s.line(), /1.50x/);
     assert.equal(s.configs.length, 0);
@@ -504,6 +506,34 @@ test('late speak after power off does not ensure or restart the server',async()=
   }finally{await s.close();}
 });
 
+test('indicator command hides status without changing auto or toolbar and restores current state', async () => {
+  const s = setup();
+  try {
+    assert.equal(s.statuses.at(-1), 'TTS off');
+    await s.command('indicator');
+    assert.equal(s.statuses.at(-1), undefined);
+    assert.equal(s.store.load().indicator, false);
+    assert.equal(s.notices.at(-1), 'TTS teHablo: Indicador oculto.');
+    assert.ok(s.line());
+    await s.command('auto on');
+    assert.equal(s.statuses.at(-1), undefined);
+    assert.equal(s.ensures(), 1);
+    await s.command('indicator');
+    assert.equal(s.statuses.at(-1), 'TTS auto');
+    assert.equal(s.store.load().indicator, true);
+    assert.equal(s.notices.at(-1), 'TTS teHablo: Indicador visible.');
+    await s.command('menu'); await new Promise(r => setImmediate(r));
+    s.windows[0].w.c.change('indicator', false);
+    assert.equal(s.statuses.at(-1), undefined);
+    assert.equal(s.store.load().indicator, false);
+    assert.equal(s.notices.at(-1), 'TTS teHablo: Indicador oculto.');
+    await s.command('');
+    assert.equal(s.statuses.at(-1), undefined);
+    s.windows[0].w.c.change('indicator', true);
+    assert.equal(s.statuses.at(-1), 'TTS off');
+  } finally { await s.close(); }
+});
+
 test('settings menu toolbar toggle saves and gives the same notice as the command',async()=>{
   const s=setup();try{
     await s.command('menu');await new Promise(r=>setImmediate(r));
@@ -582,8 +612,8 @@ test('/tts toggles the server like the bar; status, menu, copy, pause, toolbar; 
     await s.command('auto');assert.equal(s.statuses.at(-1),'TTS auto');assert.equal(s.store.load().auto,false);
     await s.command('');assert.ok(s.calls.includes('/shutdown'));assert.equal(s.line(),'[ ⏻ TTS ] [ ≡ ]');assert.equal(s.statuses.at(-1),'TTS off');assert.equal(s.store.load().auto,false);
     await s.command('');assert.equal(s.ensures(),2);
-    await s.command('status');assert.match(s.notices.at(-1)!,/^TTS teHablo: Barra visible · automático: no\nServidor: idle · listo: sí\n/);
-    assert.match(s.notices.at(-1)!,/\/tts · auto · play \[n\] · copy · pause · stop · toolbar · menu · dict · status/);
+    await s.command('status');assert.match(s.notices.at(-1)!,/^TTS teHablo: Barra visible · indicador visible · automático: no\nServidor: idle · listo: sí\n/);
+    assert.match(s.notices.at(-1)!,/\/tts · auto · play \[n\] · copy · pause · stop · toolbar · indicator · menu · dict · status/);
     await s.command('copy');assert.ok(s.calls.includes('/speak'));
     s.set('playing','a');await s.command('pause');assert.equal(s.calls.at(-1),'/pause');
     s.set('paused','a');await tick();await s.command('pause');assert.equal(s.calls.at(-1),'/resume');

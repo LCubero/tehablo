@@ -6,6 +6,7 @@ Este archivo registra los cambios completados en orden cronológico.
 
 ## 2026-11-05
 
+- Pi: `/tts indicator` y la ventana de ajustes muestran u ocultan el indicador de estado (`TTS off`, `TTS manual`, `TTS auto`); se recuerda y se comparte entre sesiones.
 - Pi: mientras la lectura automática está activa en la sesión, la barra muestra una marca discreta `auto` al final, sin clic.
 - README: las tablas de voces dicen «¿Incluida?» en lugar de «¿Cuenta?», con una nota para Phonon (cuenta gratis de Hugging Face); la tabla de consumo pasa a columnas por modelo, espacio en disco y RAM (`RH-W-0036`, parte de textos).
 - Pruebas: la carga de Phonon sin conexión comprueba también un `HF_HUB_OFFLINE` ya definido por quien lo usa y que la variable se borra si la carga falla (`RH-W-0035`, aviso R3-001).

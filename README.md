@@ -148,13 +148,14 @@ Pi empieza con el servidor **apagado**, en modo manual. Pulsa `[ ⏻ TTS ]` para
 | `/tts pause` | Pausa o continúa solo la lectura actual de esta sesión, igual que el atajo de pausa |
 | `/tts stop` | Detiene las lecturas de esta sesión, actuales y en espera; conserva las de otras sesiones |
 | `/tts toolbar` | Muestra u oculta la barra y recuerda la elección; no desactiva la lectura ni los atajos |
+| `/tts indicator` | Muestra u oculta el indicador de estado (TTS off, TTS manual, TTS auto) en la barra lateral o el pie de Pi; se recuerda y se comparte entre sesiones |
 | `/tts menu` | Abre los ajustes |
 | `/tts dict` | Activa o desactiva el diccionario de pronunciación para la voz actual y lo recuerda |
 | `/tts status` | Muestra el estado y la ayuda |
 
 ### Ajustes `[ ≡ ]`
 
-Elige **voz**, **volumen**, **velocidad**, **lectura automática** y **atajos de teclado**, o enciende, apaga y reinicia el servidor. Usa clics o ↑↓, ←→, Enter y Esc.
+Elige **voz**, **volumen**, **velocidad**, **lectura automática**, **atajos de teclado** e **indicador de estado**, o enciende, apaga y reinicia el servidor. Usa clics o ↑↓, ←→, Enter y Esc.
 
 **Si llega otra lectura** permite elegir **Detener** (predeterminado: interrumpe la actual) o **Esperar** (lee en orden, con un aviso sonoro). Se aplica a las lecturas manuales, copiadas y automáticas, también entre sesiones; [límites y casos especiales](docs/desarrollo.md#cola-de-lecturas).
 

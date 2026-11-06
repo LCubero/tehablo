@@ -85,6 +85,17 @@ test('policy and toolbar rows support keyboard and mouse', () => {
   assert.deepEqual(s.calls.at(-1), ['change', 'toolbar', true]);
 });
 
+test('indicator row supports keyboard and mouse independently of toolbar', () => {
+  const s = setup();
+  assert.match(s.text(), /Indicador de estado/);
+  s.w.row = 7;
+  s.key('\r');
+  assert.deepEqual(s.calls.at(-1), ['change', 'indicator', false]);
+  assert.equal(s.state.settings.toolbar, true);
+  s.click('oculto');
+  assert.deepEqual(s.calls.at(-1), ['change', 'indicator', true]);
+});
+
 test('voice table orders downloaded, downloadable, then account voices and marks the active one', () => {
   const s = setup();
   s.click('[ Cambiar ]');
