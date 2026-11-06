@@ -167,12 +167,12 @@ Pi empieza con el servidor **apagado**, en modo manual. Pulsa `[ ⏻ TTS ]` para
 |---|---|
 | Apagado | `[ ⏻ TTS ] [ ≡ ]` |
 | Cargando | `[ Cargando… ] [ ≡ ]` |
-| Listo | `[ ▶ ] [ ▶ copiado ] [ ⋯ ]` |
-| Controles abiertos | `[ ▶ ] [ ▶ copiado ] [ → ] :  [ ⏻ ] [ ≡ ]  Vol [- 100% +]  Vel [- 1.00x +]  [ ✗ auto ]` |
-| Sonando | `[ ‖ ] [ ■ ] [ ⋯ ]` |
-| En pausa | `[ ▶ ] [ ■ ] [ ⋯ ]` |
-| Preparando copiado | `[ ■ ] Preparando… [ ⋯ ]` |
-| En espera | `[ ■ ] En espera [ ⋯ ]` |
+| Listo | `[ ▶ ] [ ▶ copiado ] [ ⋯ ] [ ≡ ]` |
+| Controles abiertos | `[ ▶ ] [ ▶ copiado ] [ → ] :  [ ⏻ ]  Vol [- 100% +]  Vel [- 1.00x +]  [ ✗ auto ]` |
+| Sonando | `[ ‖ ] [ ■ ] [ ⋯ ] [ ≡ ]` |
+| En pausa | `[ ▶ ] [ ■ ] [ ⋯ ] [ ≡ ]` |
+| Preparando copiado | `[ ■ ] Preparando… [ ⋯ ] [ ≡ ]` |
+| En espera | `[ ■ ] En espera [ ⋯ ] [ ≡ ]` |
 
 Significado de los iconos (aunque se vean como cuadros):
 
@@ -190,8 +190,8 @@ Significado de los iconos (aunque se vean como cuadros):
 | `✗ auto` / `✓ auto` | Lectura automática desactivada / activada |
 
 - `[ ▶ ]` lee esa respuesta; en pausa, continúa. `[ ‖ ]` y el botón de continuar solo actúan sobre tu lectura actual, nunca la de otra sesión. `[ ■ ]` detiene solo las lecturas de esa respuesta (la que suena y las que esperan); si hay otra en espera, empieza. `/tts stop` y el atajo de detener cancelan solo tus lecturas, actuales y en espera.
-- Para leer una selección, **cópiala primero** y pulsa `[ ▶ copiado ]`: Pi no ve la selección del ratón.
-- `[ ⋯ ]` abre volumen, velocidad y ajustes; `[ → ]` los oculta.
+- Para leer una selección, **cópiala primero** y pulsa `[ ▶ copiado ]`: Pi no ve la selección del ratón. Lee el portapapeles donde corre Pi; en Linux sin escritorio (por ejemplo, un servidor SSH) el botón no aparece.
+- `[ ⋯ ]` abre volumen y velocidad; `[ → ]` los oculta. `[ ≡ ]` abre ajustes desde la barra cerrada.
 - `[ ⏻ ]` apaga el servidor y libera el modelo, sin perder tus ajustes.
 - Con varias sesiones de Pi abiertas, todas usan el mismo servidor: encenderlo o apagarlo en una lo hace en todas, y la barra de las demás lo muestra en unos segundos. Cada lectura nueva decide si interrumpe o espera, según sus ajustes. Empezar otro turno o cerrar la sesión cancela solo sus lecturas, sin vaciar la cola de otras sesiones. Cerrar o recargar una sesión nunca apaga el servidor compartido; se apaga solo unos 30 s después de que ninguna sesión de Pi lo use. `[ ⏻ ]` o `/tts` lo siguen apagando para todas.
 - Antes de la primera respuesta, la barra aparece sobre el editor sin el botón de leer respuesta.

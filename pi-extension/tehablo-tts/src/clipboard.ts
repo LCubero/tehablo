@@ -2,6 +2,7 @@ import { execFile } from 'node:child_process';
 
 // Reads copied text with the tool each system already has; nothing is installed.
 type Run = (command: string, args: string[]) => Promise<string | undefined>;
+export const NO_CLIPBOARD = 'Por SSH se lee el portapapeles del servidor, que no tiene escritorio ni portapapeles.';
 
 export function clipboardCommands(platform: string, env: Record<string, string | undefined>): [string, string[]][] {
   if (platform === 'win32')
@@ -20,7 +21,9 @@ const runCommand: Run = (command, args) => new Promise(resolve => {
 });
 
 export async function readClipboard(platform = process.platform, env: Record<string, string | undefined> = process.env, run: Run = runCommand): Promise<string> {
-  for (const [command, args] of clipboardCommands(platform, env)) {
+  const commands = clipboardCommands(platform, env);
+  if (!commands.length) throw new Error(NO_CLIPBOARD);
+  for (const [command, args] of commands) {
     const text = await run(command, args);
     if (text !== undefined) return text;
   }

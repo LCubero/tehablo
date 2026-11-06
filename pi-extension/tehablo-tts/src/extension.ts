@@ -1,7 +1,7 @@
 import type { ExtensionAPI, ExtensionContext } from '@earendil-works/pi-coding-agent';
 import { ServerClient } from './server.ts';
 import { cleanText, finalText } from './text.ts';
-import { readClipboard } from './clipboard.ts';
+import { clipboardCommands, NO_CLIPBOARD, readClipboard } from './clipboard.ts';
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { ACTIONS, DEFAULTS, loadSettings, saveSettings, settingsDir, type Action, type Settings, type VoiceRow } from './settings.ts';
@@ -48,7 +48,8 @@ interface Card { messageId: string; number: number }
 const help = '/tts · auto · play [n] · copy · pause · stop · toolbar · indicator · menu · dict · status\n/tts enciende o apaga el servidor para todos; pause pausa o reanuda solo tu lectura actual; stop detiene tus lecturas actuales y en espera; play sin número lee la última respuesta y play 3 la tercera de la sesión; toolbar muestra u oculta la barra; indicator muestra u oculta el indicador de estado; menu abre los ajustes; dict activa o desactiva el diccionario de pronunciación (pronunciaciones.json) para la voz actual.';
 
 export function createExtension(pi: ExtensionAPI, client = new ServerClient(), store: Store = client.root ? fileStore(client.root) : memoryStore(),
-  clipboard: () => Promise<string> = () => readClipboard(), watchMs = 0, noteMs = 4000) {
+  clipboard: () => Promise<string> = () => readClipboard(), watchMs = 0, noteMs = 4000,
+  clipboardAvailable = clipboardCommands(process.platform, process.env).length > 0) {
   let settings: Settings = store.load();
   let applied = false, windowOpen = false;
   let applying: Promise<void> = Promise.resolve();
@@ -103,7 +104,12 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
   };
   const refresh = () => context?.ui.setStatus(ENTRY, !settings.indicator ? undefined : server === 'off' ? 'TTS off'
     : `TTS ${auto ? 'auto' : 'manual'}${server === 'loading' ? ' · cargando' : ''}`);
-  const setServer = (value: typeof server) => { if (value !== server) { server = value; refresh(); } };
+  const setServer = (value: typeof server) => {
+    if (value === server) return;
+    server = value; refresh();
+    // Both boot polling and the shared-server watcher can observe readiness first.
+    if (value === 'ready' && windowOpen) void refreshVoices().then(() => redrawWindow?.(), () => {});
+  };
   const cancelReady = () => { readyEpoch++; if (readyTimer) clearTimeout(readyTimer); readyTimer = undefined; };
   const sync = (health: any) => {
     if (typeof health?.volume === 'number') volume = health.volume;
@@ -121,8 +127,6 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
     }
     else if (health?.ready === true) {
       cancelReady();
-      // An open window learns the download states as soon as the server can tell them.
-      if (server !== 'ready' && windowOpen) { setServer('ready'); void refreshVoices().then(() => redrawWindow?.(), () => {}); }
       setServer('ready');
     }
     else if (health?.ready === false) { if (server !== 'loading') readyTries = 0; setServer('loading'); waitReady(); }
@@ -392,6 +396,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
   };
   /** Reads the copied text; Pi cannot see the terminal's mouse selection, so the user copies it first. */
   const speakCopied = async (ctx: ExtensionContext, id?: string) => {
+    if (!clipboardAvailable) { say(ctx, NO_CLIPBOARD, 'warning'); return; }
     const target = id ?? cards(ctx).at(-1)?.messageId;
     if (!target || preparing.has(target)) return;
     const generation = epoch, pending = {};
@@ -532,7 +537,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
   /** The bar of one response (`card`), or of the start bar while there is none; `current` says whether to draw it. */
   function bar(card: Card, current: () => boolean, theme: any) {
     // Only single-column symbols, so click columns match Array.from lengths (≡ replaced ⚙, which some terminals draw two columns wide).
-    // The menu [ ≡ ] shows next to the start button when off, and inside the open controls when on.
+    // The menu [ ≡ ] stays on the closed bar, outside the expanded sound controls.
     const layout = () => {
       const pending = preparing.has(card.messageId);
       const promotedHere = playback.id === promotedReading && owned.get(playback.id!) === card.messageId;
@@ -546,15 +551,15 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
         : waiting ? [{text: '[ ■ ]', action: 'cancelQueued', gap: ' '}, {text: 'En espera', action: '', gap: ' '}]
         : active
         ? [{text: paused ? '[ ▶ ]' : '[ ‖ ]', action: paused ? 'resume' : 'pause', gap: ' '}, {text: '[ ■ ]', action: 'stop', gap: ' '}]
-        : [...(card === START ? [] : [{text: '[ ▶ ]', action: 'play', gap: ' '}]), {text: '[ ▶ copiado ]', action: 'copied', gap: ' '}];
+        : [...(card === START ? [] : [{text: '[ ▶ ]', action: 'play', gap: ' '}]), ...(clipboardAvailable ? [{text: '[ ▶ copiado ]', action: 'copied', gap: ' '}] : [])];
       const controls = [
         ...lead,
-        {text: open ? '[ → ]' : '[ ⋯ ]', action: 'toggle', gap: open ? ' ' : ''},
+        {text: open ? '[ → ]' : '[ ⋯ ]', action: 'toggle', gap: ' '},
+        ...(!open ? [menu] : []),
         ...(open ? [
-          // ":" only separates the close button from the menu and the sound controls.
+          // ":" only separates the close button from the sound controls.
           {text: ':', action: '', gap: '  '},
-          {text: '[ ⏻ ]', action: 'powerOff', gap: ' '},
-          {...menu, gap: '  '},
+          {text: '[ ⏻ ]', action: 'powerOff', gap: '  '},
           {text: 'Vol', action: '', gap: ' '},
           {text: '[-', action: 'volume-', gap: ' '},
           {text: `${Math.round(volume * 100)}%`, action: '', gap: ' '},

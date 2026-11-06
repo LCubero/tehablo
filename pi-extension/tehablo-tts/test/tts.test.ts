@@ -20,7 +20,7 @@ function setup(mode = 'tui', clipboard?: () => Promise<string>, health = {model:
     registerEntryRenderer:(n:any,r:any)=>renderers[n]=r,
     appendEntry:(customType:any,data:any)=>entries.push({type:'custom',customType,data})};
   const store = memoryStore();
-  createExtension(pi, client, store, clipboard);
+  createExtension(pi, client, store, clipboard, 0, 4000, true);
   const emit = async (name:string,event:any={})=>{ await hooks[name](event,ctx); await new Promise(resolve=>setImmediate(resolve)); };
   const command = (args:string)=>commands.tts.handler(args,ctx);
   const finish = async (text='**Hola** [mundo](https://example.org)', stopReason='stop')=>{
@@ -82,7 +82,7 @@ test('manual controls and numbered/latest playback; off hides controls',async()=
   assert.equal(component.render(100)[0],' [ ⏻ TTS ] [ ≡ ]');assert.doesNotMatch(component.render(100)[0],/\/tts|\b1\b(?!\.\d)/);
   await s.command('play 1'); assert.deepEqual(s.calls.at(-1),['/speak',{id:'0',text:'Hola mundo',lexicon:true}]);
   await s.command('play'); assert.equal(s.calls.at(-1)[1].text,'Segunda');
-  assert.equal(component.render(100)[0],' [ ▶ ] [ ▶ copiado ] [ ⋯ ]');
+  assert.equal(component.render(100)[0],' [ ▶ ] [ ▶ copiado ] [ ⋯ ] [ ≡ ]');
   await s.command('toolbar'); assert.deepEqual(component.render(100),[]);
 });
 test('auto toggles, skips errors/aborts/empty; new prompt stops',async()=>{
@@ -116,7 +116,7 @@ test('before the first response the bar shows above the editor, and a hidden bar
   await s.emit('session_start');
   assert.deepEqual(startBar(),[' [ ⏻ TTS ] [ ≡ ]','']);
   // Nothing to read yet, so the start bar offers only the copied text.
-  await s.command(''); assert.deepEqual(startBar(),[' [ ▶ copiado ] [ ⋯ ]','']);
+  await s.command(''); assert.deepEqual(startBar(),[' [ ▶ copiado ] [ ⋯ ] [ ≡ ]','']);
   await s.finish(); assert.equal(widgets['tehablo-tts'],undefined); assert.equal(s.cards().length,1);
   await s.command('toolbar'); await s.emit('session_start');
   const component=s.renderers['tehablo-tts'](s.cards()[0],{},theme);

@@ -20,5 +20,6 @@ test('the first tool that runs gives the text; missing tools are skipped',async(
 
 test('without any tool it says what to install',async()=>{
   await assert.rejects(readClipboard('linux',{DISPLAY:':0'},async()=>undefined),/instala wl-clipboard o xclip/);
-  await assert.rejects(readClipboard('linux',{},async()=>undefined),/instala wl-clipboard o xclip/);
+  await assert.rejects(readClipboard('linux',{},async()=>undefined),/SSH.*portapapeles del servidor.*no tiene/);
+  assert.deepEqual(clipboardCommands('linux', {}), []);
 });

@@ -6,6 +6,9 @@ Este archivo registra los cambios completados en orden cronológico.
 
 ## 2026-11-06
 
+- Pi: **Salida** en `[ ≡ ]` elige el dispositivo donde suena la voz en uso normal (en Audio: SSH lo elige el cliente de la PC).
+- Audio por SSH: el receptor de la PC es ahora un **cliente con menú** (`cliente/tehablo_cliente.py`, se ejecuta con `uv`, sin FFmpeg): estado, recepción encendida o apagada, salida, volumen, configuración SSH con permiso, inicio automático y desinstalación; `--fondo` recibe sin menú. Solo se envía audio mientras habla.
+- Pi: el botón `[ ≡ ]` pasa a la barra cerrada cuando el TTS está encendido; en un servidor sin escritorio (por SSH) no se muestra `[ ▶ copiado ]` y `/tts copy` explica que el portapapeles es el del servidor. Las voces de Phonon ya muestran «Descargada» después de descargarlas sin cerrar la ventana.
 - Pi por SSH: nuevo ajuste **Audio: Local / SSH**. En SSH, el servidor del VPS no necesita PortAudio y envía la voz por la conexión SSH a un receptor oculto en la computadora desde la que te conectas. El receptor se instala una vez con un comando (`receptor/install.ps1` o `receptor/install.sh`, también `install.ps1 -Receptor` e `install.sh --receptor`), que comprueba `ffplay`, guarda una copia de `~/.ssh/config` y añade la línea `LocalForward`; después basta con `ssh mi-servidor` como siempre. En Linux, `install.sh` ya no se detiene si falta PortAudio: avisa que la voz no sonará en ese equipo y que por SSH basta con Audio: SSH. Comprobado en un contenedor Ubuntu 26.04 sin PortAudio: instala y la voz llega a Windows por un túnel SSH. No funciona con mosh ni en el celular (`RH-W-0044`).
 
 - README: aviso al principio: teHablo está pensado para usarse en tu propia computadora; con Pi en un VPS por SSH, el sonido sale en el servidor. El audio remoto por SSH se investigó y queda fuera (`RH-W-0044`).
