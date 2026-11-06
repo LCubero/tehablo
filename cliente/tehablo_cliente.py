@@ -57,9 +57,9 @@ def terminal_input(prompt):
     if sys.stdin.isatty():
         return input(prompt)
     if os.name != 'nt':
-        with open('/dev/tty', 'r+') as tty:
-            tty.write(prompt)
-            tty.flush()
+        with open('/dev/tty') as tty, open('/dev/tty', 'w') as output:
+            output.write(prompt)
+            output.flush()
             answer = tty.readline()
             if answer:
                 return answer.rstrip('\r\n')
@@ -68,6 +68,8 @@ def terminal_input(prompt):
 
 def ssh_text(text, alias):
     """Return the unchanged text or append to the FIRST matching Host block."""
+    if text.startswith('\ufeff'):
+        return '\ufeff' + ssh_text(text[1:], alias)
     headers = list(re.finditer(r'(?im)^[ \t]*(Host|Match)[ \t]+[^\r\n]*', text))
     insert_at = None
     for i, header in enumerate(headers):

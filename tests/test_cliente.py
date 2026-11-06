@@ -70,6 +70,32 @@ class ClientTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             c.configure_ssh('bad\nhost', path=path, yes=True)
 
+    def test_terminal_input_nonseekable_tty(self):
+        class Nonseekable(io.StringIO):
+            def seekable(self):
+                return False
+        reader = Nonseekable('sí\n')
+        writer = Nonseekable()
+        def open_tty(path, mode='r'):
+            self.assertEqual(path, '/dev/tty')
+            if '+' in mode:
+                raise io.UnsupportedOperation('File or stream is not seekable')
+            return reader if mode == 'r' else writer
+        with patch.object(c.sys.stdin, 'isatty', return_value=False), patch.object(c.os, 'name', 'posix'), patch('builtins.open', side_effect=open_tty):
+            self.assertEqual(c.terminal_input('Pregunta: '), 'sí')
+
+    def test_ssh_missing_final_newline_and_bom(self):
+        for eol in ('\n', '\r\n'):
+            for tail in ('', eol + 'Host other' + eol + ' User b'):
+                before = 'Host vps' + eol + ' User a' + tail
+                expected = ('Host vps' + eol + ' User a' + eol + '    ' + c.FORWARD + eol + tail.lstrip('\r\n'))
+                with self.subTest(eol=eol, tail=tail):
+                    self.assertEqual(c.ssh_text(before, 'vps'), expected)
+        before = '\ufeffHost vps\n User a\n'
+        expected = '\ufeffHost vps\n User a\n    ' + c.FORWARD + '\n'
+        self.assertEqual(c.ssh_text(before, 'vps'), expected)
+        self.assertEqual(c.ssh_text(expected, 'vps'), expected)
+
     def test_settings(self):
         path = self.home / 'cliente.json'
         self.assertEqual(c.load_settings(path), c.DEFAULTS)

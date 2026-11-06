@@ -73,6 +73,30 @@ class SSHAudioTests(unittest.TestCase):
         conn.request('GET', '/audio.wav')
         return conn.getresponse()
 
+    def test_ssh_devices_and_config_never_import_sounddevice(self):
+        import builtins
+        server, _ = self.start()
+        service = server.service
+        original_import = builtins.__import__
+        imports = []
+        def track(name, *args, **kwargs):
+            imports.append(name)
+            if name == 'sounddevice':
+                raise ImportError('PortAudio unavailable')
+            return original_import(name, *args, **kwargs)
+        with mock.patch.dict(sys.modules):
+            sys.modules.pop('sounddevice', None)
+            with mock.patch('builtins.__import__', side_effect=track):
+                result = service.devices()
+                self.assertEqual(result['devices'], [])
+                self.assertIn('note', result)
+                before = service.health(), service.status()
+                with self.assertRaises(ValueError):
+                    service.configure({'device': 'Speaker'})
+                self.assertEqual(before, (service.health(), service.status()))
+                self.assertNotIn('sounddevice', imports)
+                self.assertNotIn('sounddevice', sys.modules)
+
     def test_local_stream_conflict_changes_nothing(self):
         server, _ = self.start('local')
         before = server.service.health(), server.service.status()

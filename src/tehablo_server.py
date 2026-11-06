@@ -317,6 +317,8 @@ class SpeechService:
         return str(path)
 
     def devices(self):
+        if self.audio == 'ssh':
+            return {'devices': [], 'note': 'En SSH, la salida se elige en el cliente.'}
         try:
             return {'devices': self.device_provider()}
         except Exception as exc:
@@ -325,7 +327,8 @@ class SpeechService:
     def validate(self, body):
         if 'device' in body:
             device = body['device']
-            if not isinstance(device, str) or (device and device not in [d['name'] for d in self.devices()['devices']]):
+            if not isinstance(device, str) or (device and (body.get('audio', self.audio) == 'ssh'
+                    or device not in [d['name'] for d in self.device_provider()])):
                 raise ValueError('unknown output device')
         if set(body) - {'model', 'voice', 'speed', 'volume', 'audio', 'device'}:
             raise ValueError('unknown config field')
