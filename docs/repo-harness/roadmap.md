@@ -402,6 +402,20 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 - **Decisión:** registrar como investigación.
 - **Condición del siguiente avance:** autorización para investigar.
 
+### RH-W-0042: Pulir avisos y estado de la barra con varias sesiones
+
+- **Origen:** pruebas de la persona responsable en Linux con dos sesiones de Pi, 2026-11-05: «si subo o bajo volumen o velocidad desde el toolbar, no hay xq mostrar el mensaje de "TTS teHablo: ...." ya que lo veo en el toolbar, me explico, solo apra volumen y velocidad en toolbar.»; «salio el tts como apagado pero luego se cambió [...] lo mismo si está apagado y lo enciendo en 1 session, dura unr rato en mostrarla en la otra sesion, no está mal pero podrias revisarlo, solo revisar.»; «mientras sonaba B probé darle al volumen + en A y salio "Warning: TTS teHablo: Se perdió la conexión con el servidor. Revisa logs/tehablo-server.log."».
+- **Prioridad:** P2; molestias de uso diario, sin pérdida de lecturas.
+- **Dependencias:** `RH-W-0033`, `RH-W-0041`.
+- **Estado:** `proposed`.
+- **Trabajo restante:**
+  - Volumen y velocidad desde la barra: no mostrar el aviso «TTS teHablo: …», porque el valor ya se ve en la barra. Solo esos dos controles de la barra; los comandos y la ventana `[ ≡ ]` no cambian.
+  - Revisar el estado inicial de la barra: al abrir una sesión se muestra apagado y solo el vigilante (cada 2 s, dos lecturas iguales) lo corrige, ~4 s normalmente (`pi-extension/tehablo-tts/src/extension.ts:552-563`, `:175-190`). Posible mejora: consultar `/health` al empezar la sesión, sin arrancar el servidor.
+  - Aviso intermitente «Se perdió la conexión con el servidor»: sale del seguimiento de reproducción tras tres fallos seguidos de `/status` (`extension.ts:252-288`), no del control de volumen. No se repitió al reintentar y no dejó rastro: el servidor no registra peticiones, el error se descarta y el log se vacía en cada arranque. Si vuelve a pasar, registrar ruta, duración y excepción de esas consultas antes de cambiar nada.
+- **Evidencia:** lectura del código sin cambios; `logs/tehablo-server.log` solo tenía las cuatro líneas de arranque.
+- **Decisión:** registrar; la persona responsable pidió revisar, no cambiar todavía.
+- **Condición del siguiente avance:** autorización de la persona responsable para implementar.
+
 
 ## Registros resueltos
 <!-- doc-role:resolved-records -->
@@ -437,6 +451,7 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 - **Trabajo completado (2026-11-05, controles por sesión):** decisión delegada, aprobada con «ok los comandos hay que revisarlos si tmb, y el menu, tool bar ok dale». Una lectura en pausa ya no frena la cola: con «Esperar» se detiene y la cola sigue en orden. Todos los controles actúan solo sobre las lecturas de su sesión (pausa, reanudar, `[ ■ ]`, `/tts pause`, `/tts stop`, atajos y cerrar la sesión); apagar sigue siendo para todas. Revisados toolbar, comandos, atajos y ventana. La verificación independiente encontró una carrera (`/tts auto` durante `/tts stop` dejaba lecturas sin detener), corregida con prueba. Extensión 139/139, servidor 46/46.
 - **Conocido, sin arreglar:** si el modelo no carga, la cola se conserva hasta cambiar de modelo o reiniciar; cambiar entre Pocket y Phonon con lecturas en cola puede descartarlas.
 - **Comprobación física (2026-11-05, Windows):** pausa, cola y controles por sesión con dos sesiones: «pues si parece que todo bien».
+- **Comprobación física (2026-11-05, Linux):** con dos sesiones en carpetas distintas, «es espera funciona ya lo rpobé. detener funciona ya lo probé funciona la siguiente lectura tmb si detendo en a no detiene en b, ok». Sin comprobar en Linux: apagar desde una sesión a mitad de una lectura de la otra. Los detalles de la barra y un aviso de conexión que no se repitió pasan a `RH-W-0042`.
 - **Trabajo restante:** none.
 - **Decisión:** la sesión que pide la lectura nueva decide la política; tope de 10 en la cola; `/status` omite `queue` y `promoted` cuando están vacíos (decisión del agente para no cambiar las respuestas existentes).
 - **Condición del siguiente avance:** none; se reabre si falla con varias sesiones o en Linux.

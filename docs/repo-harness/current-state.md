@@ -30,7 +30,7 @@ Este archivo proyecta solo hechos verificados del proyecto: registros activos, b
 - `RH-W-0010` (`completed`): diccionario configurable por voz con `/tts dict` y *Dict*; comprobado por escucha en Windows.
 - `RH-W-0031` (`completed`): barra visible al iniciar salvo que se dejara oculta; comprobada físicamente en Windows.
 - `RH-W-0033` (`completed`): las barras reflejan el servidor compartido y apagar afecta a todas; comprobado en Windows.
-- `RH-W-0041` (`completed`): Detener/Esperar, avisos de cola y controles por sesión salvo apagar; comprobado en Windows el 2026-11-05, sin comprobar en Linux.
+- `RH-W-0041` (`completed`): Detener/Esperar, avisos de cola y controles por sesión salvo apagar; comprobado en Windows y en Linux el 2026-11-05 (en Linux falta probar apagar desde otra sesión a mitad de una lectura).
 
 - `RH-W-0030` (`completed`, 2026-11-05): README con video de demostración con voz debajo del título (subido por la persona responsable; GitHub lo muestra como reproductor), voces justo debajo del consumo aproximado y nombre visible **teHablo** en el README y en Pi (`TTS teHablo: `, `teHablo · Ajustes`); las 97 pruebas de la extensión pasan.
 - Pi (2026-11-04, tercera parte): arranca con la voz guardada; barra más corta `[ ▶ ] [ ▶ copiado ] [ ⋯ ]` con el menú `[ ≡ ]` dentro de los controles; lectura de lo copiado sin dependencias nuevas; comandos simplificados (`/tts` enciende o apaga, `auto`, `play [n]`, `copy`, `pause`, `stop`, `toolbar`, `menu`, `status`); mensajes con «TTS TeHablo: »; `TTS off` en la barra de estado y sin auto con el servidor apagado (`RH-W-0004`).
@@ -88,6 +88,7 @@ Este archivo proyecta solo hechos verificados del proyecto: registros activos, b
 - `RH-W-0038` (`proposed`, P2): primer release o release candidate, después del instalador.
 - `RH-W-0039` (`proposed`, P3): página de producto, probablemente como proyecto aparte.
 - `RH-W-0040` (`proposed`, P3): investigar teHablo en el celular.
+- `RH-W-0042` (`proposed`, P2): sin aviso al cambiar volumen o velocidad desde la barra, estado inicial de la barra y un aviso de conexión intermitente.
 
 ## Siguiente paso
 
