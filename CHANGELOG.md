@@ -6,6 +6,8 @@ Este archivo registra los cambios completados en orden cronológico.
 
 ## 2026-11-06
 
+- README: aviso al principio: teHablo está pensado para usarse en tu propia computadora; con Pi en un VPS por SSH, el sonido sale en el servidor. El audio remoto por SSH se investigó y queda fuera (`RH-W-0044`).
+
 - Pi: en los ajustes de atajos, ←→ permite seleccionar **Cambiar** o **Quitar** y Enter activa el botón elegido; se conservan el clic y ⌫ para quitar.
 
 - Pi: nueva opción **Iconos: Símbolos / Texto** en los ajustes; conserva los símbolos por defecto y permite etiquetas ASCII si se ven cuadros. Se guarda y comparte entre sesiones, con cambio inmediato en las barras; el README explica el significado de cada icono.

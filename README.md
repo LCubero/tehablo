@@ -2,6 +2,8 @@
 
 **Lee en voz alta las respuestas de Pi**, en español y en tu equipo. También puedes usarlo desde una TUI o una consola. Es gratis, funciona solo con CPU (sin GPU ni nube) y, después de la primera descarga, sin internet.
 
+teHablo está pensado para usarse en tu propia computadora. Si usas Pi en un VPS por SSH, el sonido sale en el servidor.
+
 > **En desarrollo.** El proyecto todavía está en desarrollo y puede cambiar. Lo que falta está en la [hoja de ruta](docs/repo-harness/roadmap.md).
 
 
