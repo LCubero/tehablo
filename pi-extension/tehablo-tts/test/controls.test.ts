@@ -232,6 +232,32 @@ test('audio changes from another session apply live without duplicate SSH notice
   } finally { await s.close(); }
 });
 
+test('S11 device list is fetched on open, selection saves/configures and shares live', async () => {
+  let changed = false;
+  const store = {...memoryStore(), changed: () => { const result = changed; changed = false; return result; }};
+  const s = setup(store, undefined, 10);
+  const request = s.client.request; let queries = 0;
+  s.client.request = async (path: string, body: any) => {
+    if (path === '/devices') { queries++; return {devices: [{index: 1, name: 'Speakers', default: true}]}; }
+    return request(path, body);
+  };
+  try {
+    await start(s);
+    await s.command('menu'); await new Promise(r => setImmediate(r));
+    const w = s.windows[0].w;
+    assert.deepEqual(w.c.devices?.(), ['Speakers']);
+    w.mainRows().find(r => r.label === 'Salida').step(1);
+    await new Promise(r => setImmediate(r));
+    assert.equal(store.load().device, 'Speakers');
+    assert.ok(s.configs.some(body => body.device === 'Speakers'));
+    store.save({...store.load(), device: 'Headphones'}); changed = true;
+    for (let i = 0; i < 50 && !s.configs.some(body => body.device === 'Headphones'); i++) await new Promise(r => setTimeout(r, 10));
+    assert.ok(s.configs.some(body => body.device === 'Headphones'));
+    assert.equal(w.c.state().settings.device, 'Headphones');
+    assert.equal(queries, 1, 'devices are not polled');
+  } finally { await s.close(); }
+});
+
 test('icon changes from another session refresh bars and the open window', async () => {
   const dir = mkdtempSync(join(tmpdir(), 'tehablo-icons-'));
   const store = fileStore(dir, dir), other = fileStore(dir, dir);
@@ -1204,8 +1230,8 @@ test('short notices show at the end of the bar as // text for a while; a hidden 
   }finally{await s.close();}
 });
 
-test('saved SSH audio is applied before the first reading reaches a reused server', async () => {
-  const store = memoryStore(); store.save({...store.load(), audio: 'ssh'});
+for (const saved of [{device: 'Headphones'}, {audio: 'ssh' as const}]) test(`saved ${JSON.stringify(saved)} is applied before the first reading reaches a reused server`, async () => {
+  const store = memoryStore(); store.save({...store.load(), ...saved});
   const s = setup(store), order: string[] = [];
   const action = s.client.action, request = s.client.request;
   s.client.action = async (path: string, body: any) => {
@@ -1216,5 +1242,8 @@ test('saved SSH audio is applied before the first reading reaches a reused serve
   try {
     await s.command('play');
     assert.deepEqual(order.filter(step => step === 'config' || step === 'speak').slice(0, 2), ['config', 'speak']);
+    assert.ok(s.configs.some(body => Object.entries(saved).every(([key, value]) => body[key] === value)));
+    await s.command('status');
+    assert.ok(s.notices.some(text => text.includes(saved.device ? 'Salida: Headphones' : 'Salida: (SSH: la elige el cliente)')));
   } finally { await s.close(); }
 });

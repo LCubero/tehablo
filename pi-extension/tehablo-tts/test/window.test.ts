@@ -72,6 +72,29 @@ test('keyboard changes volume, speed and auto within their limits', () => {
   assert.equal(s.closed(), true);
 });
 
+test('S11 output row cycles devices with keyboard and click, disabled in SSH', () => {
+  const s = setup();
+  (s.w.c as any).devices = () => ['Speakers', 'Headphones'];
+  s.w.row = s.w.mainRows().findIndex(r => r.label === 'Salida');
+  assert.ok(s.w.row >= 0);
+  assert.ok(s.text().includes('Predeterminada'));
+  s.key('\x1b[C');
+  assert.equal(s.state.settings.device, 'Speakers');
+  s.click('Speakers');
+  assert.equal(s.state.settings.device, 'Headphones');
+  s.key('\x1b[C');
+  assert.equal(s.state.settings.device, '');
+  s.key('\x1b[D');
+  assert.equal(s.state.settings.device, 'Headphones');
+  s.state.settings.audio = 'ssh';
+  assert.ok(s.text().includes('(SSH: la elige el cliente)'));
+  s.key('\x1b[C');
+  assert.equal(s.state.settings.device, 'Headphones');
+  assert.equal(s.state.settings.volume, 1);
+  assert.equal(s.state.settings.speed, 1);
+  assert.equal(s.state.settings.icons, 'symbols');
+});
+
 test('audio row supports click and left/right without changing icons', () => {
   const s = setup();
   s.w.row = s.w.mainRows().findIndex(r => r.label === 'Audio');

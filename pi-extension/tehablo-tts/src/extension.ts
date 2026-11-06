@@ -139,6 +139,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
     if (typeof health.volume === 'number' && settings.volume !== health.volume) body.volume = settings.volume;
     if (typeof health.speed === 'number' && settings.speed !== health.speed) body.speed = settings.speed;
     if (settings.audio !== health.audio) body.audio = settings.audio;
+    if (settings.audio === 'local' && settings.device !== (health.device ?? '')) body.device = settings.device;
     if (!Object.keys(body).length) return;
     try {
       const result = await client.action('/config', body);
@@ -181,11 +182,11 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
       watchTimer = setTimeout(async () => {
         watchTimer = undefined;
         if (store.changed?.()) {
-          const previousAudio = settings.audio;
+          const previousAudio = settings.audio, previousDevice = settings.device;
           settings = {...store.load(), auto};
-          if (settings.audio !== previousAudio) applied = false;
-          if (settings.audio !== previousAudio && server === 'ready') {
-            try { await configure({audio: settings.audio}); }
+          if (settings.audio !== previousAudio || settings.device !== previousDevice) applied = false;
+          if ((settings.audio !== previousAudio || settings.device !== previousDevice) && server === 'ready') {
+            try { await configure({audio: settings.audio, ...(settings.audio === 'local' ? {device: settings.device} : {})}); }
             catch (error) { say(context, `No se aplicó Audio: ${error instanceof Error ? error.message : String(error)}`, 'warning'); }
           }
           barVisible = settings.toolbar; volume = settings.volume; speed = settings.speed;
@@ -425,7 +426,18 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
     try { await refreshVoices(); } catch { /* Keep the last known voices. */ }
     const warn = (error: unknown) => say(ctx, `${error instanceof Error ? error.message : String(error)}`, 'warning');
     const run = (operation: () => Promise<unknown>) => { void operation().catch(warn); };
+    let devices: string[] = [];
+    const refreshDevices = async () => {
+      if (server !== 'ready' || settings.audio !== 'local') return;
+      try {
+        const data = await client.request('/devices');
+        if (Array.isArray(data?.devices)) devices = data.devices.map((d: any) => d.name).filter((n: unknown) => typeof n === 'string');
+      } catch { /* The default remains available if PortAudio is unavailable. */ }
+      redrawWindow?.();
+    };
+    await refreshDevices();
     const controller: Controller = {
+      devices: () => devices,
       state: () => ({settings, server, token: !!client.token || store.hasToken()}),
       // Shared table order and notes; download states from the server once known.
       voices: () => {
@@ -451,9 +463,12 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
         if (field === 'auto') { const starting = setAuto(value as boolean); if (starting) run(() => starting); }
         if (field === 'volume') volume = value as number;
         if (field === 'speed') speed = value as number;
-        if (field === 'audio' && server !== 'ready') applied = false;
+        if ((field === 'audio' || field === 'device') && server !== 'ready') applied = false;
         if (field === 'audio' && value === 'ssh' && previousAudio !== 'ssh') say(ctx, 'Audio por SSH activado.\n\nEn la computadora desde la que te conectas, ejecuta una vez\nEn Windows: irm https://raw.githubusercontent.com/LCubero/tehablo/master/receptor/install.ps1 | iex\nEn Linux/macOS: curl -fsSL https://raw.githubusercontent.com/LCubero/tehablo/master/receptor/install.sh | sh\n\nInstala un receptor pequeño que reproduce la voz en esa computadora y, si lo aceptas, añade una línea a tu configuración SSH para que la voz viaje cifrada por tu misma conexión SSH. No abre puertos hacia internet.\n\nConsulta la documentación para más información o para hacerlo a mano.\nhttps://github.com/LCubero/tehablo#audio-por-ssh', 'info');
-        if (field === 'volume' || field === 'speed' || field === 'audio') run(() => configure({[field]: value}));
+        if (field === 'volume' || field === 'speed' || field === 'audio' || field === 'device') run(async () => {
+          await configure({[field]: value, ...(field === 'audio' && value === 'local' && settings.device ? {device: settings.device} : {})});
+          if (field === 'audio' && value === 'local') await refreshDevices();
+        });
       },
       power: action => run(async () => {
         if (action === 'off') await turnOff();
@@ -691,7 +706,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
         const status = await client.action('/status');
         if (generation !== epoch) return;
         // The multi-line status report is too long for the bar, so it stays an ordinary notice.
-        say(ctx, `Barra ${barVisible ? 'visible' : 'oculta'} · indicador ${settings.indicator ? 'visible' : 'oculto'} · automático: ${auto ? 'sí' : 'no'}\nServidor: ${status.state} · listo: ${health.ready ? 'sí' : 'no'}\nAudio: ${settings.audio === 'ssh' ? 'SSH' : 'Local'}\nModelo: ${health.model} · voz: ${health.voice} · velocidad: ${health.speed} · volumen: ${Math.round(volume * 100)} %\nDict (diccionario de pronunciación): ${dictEnabled() ? 'sí' : 'no'}\n${help}`, 'info');
+        say(ctx, `Barra ${barVisible ? 'visible' : 'oculta'} · indicador ${settings.indicator ? 'visible' : 'oculto'} · automático: ${auto ? 'sí' : 'no'}\nServidor: ${status.state} · listo: ${health.ready ? 'sí' : 'no'}\nAudio: ${settings.audio === 'ssh' ? 'SSH' : 'Local'}\nSalida: ${settings.audio === 'ssh' ? '(SSH: la elige el cliente)' : settings.device || 'Predeterminada'}\nModelo: ${health.model} · voz: ${health.voice} · velocidad: ${health.speed} · volumen: ${Math.round(volume * 100)} %\nDict (diccionario de pronunciación): ${dictEnabled() ? 'sí' : 'no'}\n${help}`, 'info');
       });
     },
   });

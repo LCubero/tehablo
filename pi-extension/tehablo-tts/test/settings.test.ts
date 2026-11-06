@@ -87,6 +87,20 @@ test('audio defaults to local, rejects invalid values and merges with icons', ()
   assert.equal(loadSettings(dir, project).icons, 'text');
 }));
 
+test('S11 device defaults, rejects bad values and merges without changing sound/icons', () => withDirs((dir, project) => {
+  assert.equal(loadSettings(dir, project).device, '');
+  for (const device of [null, 3, true, {}, [], 'Headphones', '']) {
+    saveSettings(dir, {...DEFAULTS, device} as any);
+    assert.equal(loadSettings(dir, project).device, typeof device === 'string' ? device : '');
+  }
+  const before = loadSettings(dir, project);
+  saveSettings(dir, {...before, device: 'Headphones'}, before);
+  saveSettings(dir, {...before, volume: .5, speed: 1.25, icons: 'text'}, before);
+  const s = loadSettings(dir, project);
+  assert.equal(s.device, 'Headphones');
+  assert.equal(s.volume, .5); assert.equal(s.speed, 1.25); assert.equal(s.icons, 'text');
+}));
+
 test('known voice table entries survive a reload', () => withDirs((dir, project) => {
   const voices = [{name: 'lola', voice: 'lola', model: 'spanish', kind: 'download', note: 'la de siempre', downloaded: true}];
   saveSettings(dir, {...DEFAULTS, voices});

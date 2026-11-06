@@ -142,12 +142,19 @@ class PocketSynthesizer:
             yield chunk.detach().cpu().numpy().astype(np.float32).reshape(-1)
 
 
-def audio_sink(rate, callback):
+def output_devices():
+    """Query only on demand: SSH playback must not depend on PortAudio."""
+    import sounddevice as sd
+    return [{'index': i, 'name': d['name'], 'default': i == sd.default.device[1]}
+            for i, d in enumerate(sd.query_devices()) if d['max_output_channels'] > 0]
+
+
+def audio_sink(rate, callback, device=None):
     import sounddevice as sd
     # PortAudio caches the device list; refresh it so a new default output is used.
     sd._terminate()
     sd._initialize()
-    stream = sd.OutputStream(samplerate=rate, channels=1, dtype='float32', callback=callback)
+    stream = sd.OutputStream(samplerate=rate, channels=1, dtype='float32', callback=callback, device=device)
     stream.start()
     return stream
 
@@ -216,16 +223,19 @@ class SSHAudio:
 
 
 class SpeechService:
-    def __init__(self, model, voice, speed, synthesizer_factory, audio_factory, catalog, audio='local'):
+    def __init__(self, model, voice, speed, synthesizer_factory, audio_factory, catalog, audio='local', device_provider=output_devices):
         self.condition = threading.Condition(threading.RLock())
         self.factory = synthesizer_factory
         self.cached = cached
         if audio not in ('local', 'ssh'):
             raise ValueError('audio must be local or ssh')
         self.audio = audio
+        self.device = ''
+        self.device_provider = device_provider
         self.local_audio_factory = audio_factory
         self.audio_factory = lambda rate, callback: (self.ssh_audio.attach(rate, callback)
-                                                    if self.audio == 'ssh' else self.local_audio_factory(rate, callback))
+                                                    if self.audio == 'ssh' else self.local_audio_factory(rate, callback, device=self.device)
+                                                    if self.device else self.local_audio_factory(rate, callback))
         self.catalog = list(catalog)
         self.model_name, self.voice, self.speed = model, voice if voice is not None else default_voice(model), speed
         self.volume = 1.0
@@ -306,8 +316,18 @@ class SpeechService:
             raise ValueError('voice must be a catalog name or a file in voices/')
         return str(path)
 
+    def devices(self):
+        try:
+            return {'devices': self.device_provider()}
+        except Exception as exc:
+            return {'devices': [], 'error': str(exc)}
+
     def validate(self, body):
-        if set(body) - {'model', 'voice', 'speed', 'volume', 'audio'}:
+        if 'device' in body:
+            device = body['device']
+            if not isinstance(device, str) or (device and device not in [d['name'] for d in self.devices()['devices']]):
+                raise ValueError('unknown output device')
+        if set(body) - {'model', 'voice', 'speed', 'volume', 'audio', 'device'}:
             raise ValueError('unknown config field')
         if 'audio' in body and body['audio'] not in ('local', 'ssh'):
             raise ValueError('audio must be local or ssh')
@@ -328,7 +348,7 @@ class SpeechService:
     def health(self):
         with self.condition:
             return {'ok': True, 'ready': self.ready, 'model': self.model_name,
-                    'voice': self.voice, 'speed': float(self.speed), 'volume': self.volume, 'audio': self.audio,
+                    'voice': self.voice, 'speed': float(self.speed), 'volume': self.volume, 'audio': self.audio, 'device': self.device,
                     'error': self.error, 'fallback': self.fallback}
 
     def status(self):
@@ -440,6 +460,7 @@ class SpeechService:
                 self.fallback = None  # A new choice replaces the old warning.
             self.voice = body.get('voice', default_voice(self.model_name) if model_reload else self.voice)
             self.audio = body.get('audio', self.audio)
+            self.device = body.get('device', self.device)
             self.speed = float(body.get('speed', self.speed))
             self.volume = float(body.get('volume', self.volume))
             self.condition.notify_all()
@@ -720,7 +741,7 @@ class Handler(BaseHTTPRequestHandler):
             finally:
                 service.ssh_audio.unsubscribe(listener)
             return
-        routes = {'/health': service.health, '/status': service.status,
+        routes = {'/health': service.health, '/status': service.status, '/devices': service.devices,
                   '/voices': lambda: {'voices': service.voices(), 'catalog': service.voice_table()}}
         if self.path not in routes:
             self.reply(404, {'error': 'unknown path'})
@@ -761,7 +782,7 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def create_server(port=8765, model=START_MODEL, voice=None, speed=1.0,
-                  synthesizer_factory=synthesizer, audio_factory=audio_sink, catalog=None, idle_exit=30, audio='local'):
+                  synthesizer_factory=synthesizer, audio_factory=audio_sink, catalog=None, idle_exit=30, audio='local', device_provider=output_devices):
     if not math.isfinite(idle_exit) or idle_exit < 0:
         raise ValueError('idle-exit must be a finite nonnegative number')
     if catalog is None:
@@ -769,7 +790,7 @@ def create_server(port=8765, model=START_MODEL, voice=None, speed=1.0,
         from tehablo_tts import VOICES
         print(f'Startup: TTS imports completed in {time.perf_counter() - started:.3f} s', flush=True)
         catalog = VOICES
-    service = SpeechService(model, voice, speed, synthesizer_factory, audio_factory, catalog, audio)
+    service = SpeechService(model, voice, speed, synthesizer_factory, audio_factory, catalog, audio, device_provider)
     try:
         server = SpeechHTTPServer(('127.0.0.1', port), Handler)
     except Exception:

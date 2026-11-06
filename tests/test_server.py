@@ -274,6 +274,49 @@ class ServerTests(unittest.TestCase):
         self.loaded.set()
         self.wait(lambda: self.request('/health')[1]['ready'])
 
+    def test_output_device_contract(self):
+        self.ready()
+        devices = [{'index': 2, 'name': 'Speakers', 'default': True},
+                   {'index': 5, 'name': 'Headphones', 'default': False}]
+        self.server.service.device_provider = lambda: devices
+        self.assertEqual(self.request('/devices'), (200, {'devices': devices}))
+        self.assertEqual(self.request('/health')[1]['device'], '')
+        self.assertEqual(self.request('/config', {'device': 'Headphones'})[0], 200)
+        before = self.request('/health')[1]
+        for bad in ['missing', None, 2, True]:
+            self.assertEqual(self.request('/config', {'device': bad, 'volume': .5})[0], 400)
+            self.assertEqual(self.request('/health')[1], before)
+        received = []
+        def output(rate, callback, device=None):
+            received.append(device)
+            return Sink(rate, callback)
+        self.server.service.local_audio_factory = output
+        self.request('/speak', {'id': 'device', 'text': 'hola'})
+        self.wait(lambda: bool(received))
+        self.assertEqual(received, ['Headphones'])
+        self.assertEqual(self.request('/config', {'device': ''})[1]['device'], '')
+
+    def test_devices_unavailable_is_json_not_a_crash(self):
+        with mock.patch.dict(sys.modules, {'sounddevice': None}):
+            code, body = self.request('/devices')
+        self.assertEqual(code, 200)
+        self.assertEqual(body['devices'], [])
+        self.assertIsInstance(body['error'], str)
+        self.server.service.device_provider = mock.Mock(side_effect=OSError('PortAudio unavailable'))
+        code, body = self.request('/devices')
+        self.assertEqual(code, 200)
+        self.assertEqual(body, {'devices': [], 'error': 'PortAudio unavailable'})
+
+    def test_device_query_filters_inputs_and_marks_default(self):
+        fake = mock.Mock()
+        fake.query_devices.return_value = [
+            {'name': 'Mic', 'max_output_channels': 0},
+            {'name': 'Speakers', 'max_output_channels': 2}]
+        fake.default.device = (0, 1)
+        with mock.patch.dict(sys.modules, {'sounddevice': fake}):
+            self.assertEqual(tehablo_server.output_devices(),
+                             [{'index': 1, 'name': 'Speakers', 'default': True}])
+
     def test_http_audio_configuration_and_validation(self):
         self.ready()
         self.assertEqual(self.request('/health')[1]['audio'], 'local')

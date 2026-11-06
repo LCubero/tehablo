@@ -14,8 +14,9 @@ export interface Controller {
   /** The voice in use: the chosen one, else the server's, else the start voice. */
   active(): {model: string; voice: string};
   voices(): VoiceRow[];
+  devices?(): string[];
   choose(row: VoiceRow): void;
-  change(field: 'volume' | 'speed' | 'auto' | 'shortcutsOn' | 'toolbar' | 'indicator' | 'policy' | 'icons' | 'audio', value: number | boolean | 'stop' | 'wait' | 'symbols' | 'text' | 'local' | 'ssh'): void;
+  change(field: 'volume' | 'speed' | 'auto' | 'shortcutsOn' | 'toolbar' | 'indicator' | 'policy' | 'icons' | 'audio' | 'device', value: string | number | boolean | 'stop' | 'wait' | 'symbols' | 'text' | 'local' | 'ssh'): void;
   power(action: 'on' | 'off' | 'restart'): void;
   /** Throws an Error with a message safe to show (never the token). */
   saveToken(value: string): void;
@@ -104,6 +105,13 @@ export class SettingsWindow {
       {label: 'Indicador de estado', value: s.indicator ? 'visible' : 'oculto', step: () => this.c.change('indicator', !s.indicator)},
       {label: 'Iconos', value: s.icons === 'text' ? 'Texto' : 'Símbolos', step: () => this.c.change('icons', s.icons === 'text' ? 'symbols' : 'text')},
       {label: 'Audio', value: s.audio === 'ssh' ? 'SSH' : 'Local', step: () => this.c.change('audio', s.audio === 'ssh' ? 'local' : 'ssh')},
+      s.audio === 'ssh'
+        ? {label: 'Salida', text: '(SSH: la elige el cliente)'}
+        : {label: 'Salida', value: s.device || 'Predeterminada', step: (d: number) => {
+          const devices = ['', ...new Set(this.c.devices?.() ?? [])];
+          const i = Math.max(0, devices.indexOf(s.device));
+          this.c.change('device', devices[(i + d + devices.length) % devices.length]);
+        }},
       {label: on ? 'Servidor ● activo' : 'Servidor ○ apagado', buttons: [
         [on ? '[ Apagar ]' : '[ Encender ]', () => { this.c.power(on ? 'off' : 'on'); this.col = 0; }],
         ['[ Reiniciar ]', on ? () => this.c.power('restart') : undefined],
