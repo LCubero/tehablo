@@ -74,7 +74,7 @@ $player = (Get-Command ffplay).Source.Replace("'", "''")
 $loop = @'
 $ErrorActionPreference = 'Continue'
 while ($true) {
-    $p = Start-Process -FilePath '__PLAYER__' -ArgumentList '-nodisp -loglevel quiet http://127.0.0.1:18765/audio.wav' -WindowStyle Hidden -PassThru
+    $p = Start-Process -FilePath '__PLAYER__' -ArgumentList '-nodisp -autoexit -loglevel quiet http://127.0.0.1:18765/audio.wav' -WindowStyle Hidden -PassThru
     if ($p) { $p.WaitForExit() }
     Start-Sleep -Seconds 3
 }

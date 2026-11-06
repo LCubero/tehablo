@@ -94,7 +94,7 @@ cat > "$base/loop.sh" <<'LOOP'
 child=''
 trap '[ -z "$child" ] || kill "$child" 2>/dev/null; exit 0' TERM INT
 while :; do
-    ffplay -nodisp -loglevel quiet http://127.0.0.1:18765/audio.wav &
+    ffplay -nodisp -autoexit -loglevel quiet http://127.0.0.1:18765/audio.wav &
     child=$!
     wait "$child" || :
     child=''
