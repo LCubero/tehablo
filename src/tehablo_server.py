@@ -197,10 +197,13 @@ class SSHAudio:
         while not self.closed.wait(.02):
             with self.lock:
                 rate, callback = self.rate, self.callback
+                # Nothing playing (idle, paused, stopped), nothing to send: the sink stays open
+                # between readings, and its silence would cost ~170 MB/h over SSH.
+                if callback is None or self.service.audio != 'ssh' or self.service.state not in ('generating', 'playing'):
+                    continue
                 frames = round(rate * .02)
                 samples = np.zeros((frames, 1), dtype=np.float32)
-                if callback is not None and self.service.audio == 'ssh':
-                    callback(samples, frames, None, None)
+                callback(samples, frames, None, None)
                 data = samples[:, 0]
                 if rate != 24000:
                     data = np.interp(np.arange(480) * rate / 24000, np.arange(frames), data)

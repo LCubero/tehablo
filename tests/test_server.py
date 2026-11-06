@@ -107,9 +107,28 @@ class SSHAudioTests(unittest.TestCase):
             self.assertGreater(time.monotonic() - started, .15)
             self.assertIsNone(server.service.speech_error)
             server.service.control('stop')
-            # Allow the bounded queue and in-flight socket packet to drain.
-            first.read(14400)
-            self.assertEqual(first.read(960), bytes(960))
+            # Only the bounded queue (200 ms) and in-flight packets drain; then nothing is sent.
+            self.assertLessEqual(self.drain(first), 14400)
+
+    def drain(self, response):
+        """Bytes received until the stream stays quiet for the connection timeout."""
+        total = 0
+        try:
+            while total < 48000:  # One second of audio is enough to prove it never stops.
+                total += len(response.read1(960))
+        except TimeoutError:
+            pass
+        return total
+
+    def test_sends_nothing_between_readings(self):
+        # Silence would cost about 170 MB per hour over SSH while Pi stays open.
+        server, _ = self.start()
+        conn = http.client.HTTPConnection(*server.server_address, timeout=.5)
+        self.addCleanup(conn.close)
+        conn.request('GET', '/audio.wav')
+        response = conn.getresponse()
+        response.read(44)
+        self.assertEqual(self.drain(response), 0)
 
     def test_resamples_to_24khz(self):
         server, _ = self.start(rate=48000)
