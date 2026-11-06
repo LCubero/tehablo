@@ -6,14 +6,14 @@ import {join} from 'node:path';
 import {DEFAULTS} from '../src/settings.ts';
 import {ServerClient} from '../src/server.ts';
 
-function setup(store=memoryStore(),clipboard?:()=>Promise<string>,watchMs=0) {
+function setup(store=memoryStore(),clipboard?:()=>Promise<string>,watchMs=0,noteMs=4000) {
   const windows:any[]=[], keyHandlers:any[]=[];
   const configs:any[]=[], notices:string[]=[], statuses:(string|undefined)[]=[], settings={volume:1,speed:1,error:null as string|null,fallback:null as string|null};
   const hooks:any={}, calls:string[]=[], entries:any[]=[{type:'message',id:'a',message:{role:'assistant',content:'Hola'}} ,{type:'custom',customType:'tehablo-tts',data:{messageId:'a',number:1}}];
   let renderer:any, command:any, state='playing', id:string|null='a', renders=0, fail=false, ready=true, ensures=0;
   const client:any={beginSession(){},ensure:async()=>{ensures++;},stop:async()=>{},shutdown:async()=>{},powerOff:async()=>{calls.push('/shutdown');},request:async(path:string)=>{calls.push(path);if(fail)throw Error('offline');if(path==='/health')return {...settings,ready};return {state,id,error:settings.error};},action:async(path:string,body:any)=>{calls.push(path);if(path==='/config'){configs.push(body);Object.assign(settings,body);return {...settings,ready};}if(path==='/health')return {...settings,ready};if(path==='/pause')state='paused';if(path==='/resume')state='playing';return {state};}};
   const ctx:any={mode:'tui',sessionManager:{getBranch:()=>entries},ui:{onTerminalInput:(h:any)=>{keyHandlers.push(h);return()=>{keyHandlers.splice(keyHandlers.indexOf(h),1);};},custom:(factory:any,options:any)=>new Promise<void>(resolve=>{const entry:any={options,closed:false};entry.renders=0;entry.w=factory({requestRender(){entry.renders++;}},{fg:(_:any,t:string)=>t},{matches:()=>false},()=>{entry.closed=true;resolve();});windows.push(entry);}),notify(text:string){notices.push(text);},setStatus(_:string,text:string|undefined){renders++;statuses.push(text);},setWidget(){}}};
-  createExtension({appendEntry:(customType:string,data:any)=>entries.push({type:'custom',customType,data}),on:(n:string,h:any)=>hooks[n]=h,registerCommand:(_:any,c:any)=>command=c.handler,registerEntryRenderer:(_:any,r:any)=>renderer=r} as any,client,store,clipboard,watchMs);
+  createExtension({appendEntry:(customType:string,data:any)=>entries.push({type:'custom',customType,data}),on:(n:string,h:any)=>hooks[n]=h,registerCommand:(_:any,c:any)=>command=c.handler,registerEntryRenderer:(_:any,r:any)=>renderer=r} as any,client,store,clipboard,watchMs,noteMs);
   hooks.session_start({},ctx);
   const card=renderer(entries[1],{}, {fg:(_:any,t:string)=>t});
   return {entries,hooks,ctx,store,windows,keyHandlers,press:(d:string)=>keyHandlers.map(h=>h(d)),client,calls,card,configs,notices,statuses,line:()=>{const l=card.render(200)[0];if(l!==undefined)assert.equal(l[0],' ');return l?.slice(1);}, command:(s:string)=>command(s,ctx),set:(s:string,i:string|null='a')=>{state=s;id=i;},setReady:(value:boolean)=>{ready=value;},setError:(value:string)=>{settings.error=value;},setFallback:(value:string|null)=>{settings.fallback=value;},ensures:()=>ensures,close:()=>hooks.session_shutdown({},ctx),agentStart:()=>hooks.agent_start({},ctx),fail:(value=true)=>{fail=value;},renders:()=>renders};
@@ -283,13 +283,13 @@ test('a promoted copied reading shows playing controls even with another copy of
     assert.notEqual(ids[0],ids[1]);assert.match(s.line(),/En espera/);
     current=ids[0];queue=[ids[1]];await tick();
     assert.doesNotMatch(s.line(),/En espera/);assert.match(s.line(),/\[ ‖ \]/);
-    assert.equal(s.notices.filter(n=>n.includes('Suena')).length,1);
+    assert.equal(s.notices.filter(n=>n.includes('Suena')).length,0);assert.match(s.line(),/  \/\/ Suena la lectura en espera\.$/);
     current=ids[1];queue=[];await tick();
     current='foreign';await tick();
     await s.command('copy');assert.equal(ids[2],ids[0]);assert.match(s.line(),/En espera/);
     current=ids[2];queue=[];await tick();
     assert.doesNotMatch(s.line(),/En espera/);assert.match(s.line(),/\[ ‖ \]/);
-    assert.equal(s.notices.filter(n=>n.includes('Suena')).length,3);
+    assert.equal(s.notices.filter(n=>n.includes('Suena')).length,0);assert.match(s.line(),/  \/\/ Suena la lectura en espera\.$/);
   }finally{await s.close();}
 });
 
@@ -357,13 +357,13 @@ test('a queued read completed between polls still notifies once, ignoring foreig
   try{
     await s.command('play');await tick();assert.equal(s.notices.length,0);
     idle=true;await tick();await tick();
-    assert.deepEqual(s.notices,['TTS teHablo: Suena la lectura en espera.']);
+    assert.deepEqual(s.notices,[]);assert.match(s.line(),/  \/\/ Suena la lectura en espera\.$/);
     assert.doesNotMatch(s.line(),/En espera/);
   }finally{await s.close();}
 });
 
 test('replaying a finished queued card waits for its new promotion, not stale history',async()=>{
-  const s=setup();let state='playing',id:string|null='foreign',queue=['a'],promoted:string[]=[];
+  const s=setup(memoryStore(),undefined,0,2000);let state='playing',id:string|null='foreign',queue=['a'],promoted:string[]=[];
   const request=s.client.request;
   s.client.request=async(path:string,body:any)=>{
     if(path==='/speak')return {id:body.id,state:'queued'};
@@ -373,14 +373,15 @@ test('replaying a finished queued card waits for its new promotion, not stale hi
   try{
     await s.command('play');assert.match(s.line(),/En espera/);
     state='idle';id=null;queue=[];promoted=['a'];await tick();
-    assert.equal(s.notices.length,1);assert.doesNotMatch(s.line(),/En espera/);
+    assert.equal(s.notices.length,0);assert.match(s.line(),/  \/\/ Suena la lectura en espera\.$/);assert.doesNotMatch(s.line(),/En espera/);
+    await new Promise(r=>setTimeout(r,2100));assert.doesNotMatch(s.line(),/\/\/ Suena/);
     state='playing';id='foreign';queue=['a'];
     await clickAt(s,'[ ▶ ]');assert.match(s.line(),/En espera/);
     // Even a stale snapshot must not announce an id that is still in the queue.
-    await tick();assert.match(s.line(),/En espera/);assert.equal(s.notices.length,1);
-    promoted=[];await tick();assert.match(s.line(),/En espera/);assert.equal(s.notices.length,1);
+    await tick();assert.match(s.line(),/En espera/);assert.doesNotMatch(s.line(),/\/\/ Suena/);
+    promoted=[];await tick();assert.match(s.line(),/En espera/);assert.doesNotMatch(s.line(),/\/\/ Suena/);
     id='a';queue=[];promoted=['a'];await tick();await tick();
-    assert.equal(s.notices.length,2);assert.doesNotMatch(s.line(),/En espera/);
+    assert.equal(s.notices.length,0);assert.match(s.line(),/  \/\/ Suena la lectura en espera\.$/);assert.doesNotMatch(s.line(),/En espera/);
   }finally{await s.close();}
 });
 
@@ -398,7 +399,7 @@ test('wait requests cover play, copied buttons, commands and auto; queue warns a
     await s.command('play 1');assert.match(s.line(),/^\[ ■ \] En espera/);
     await tick();assert.match(s.line(),/En espera/);assert.equal(s.notices.length,0);
     queue=[];current='a';await tick();await tick();
-    assert.deepEqual(s.notices,['TTS teHablo: Suena la lectura en espera.']);
+    assert.deepEqual(s.notices,[]);assert.match(s.line(),/  \/\/ Suena la lectura en espera\.$/);
     await s.command('stop');
     await clickAt(s,'[ ▶ ]');await s.command('stop');
     await clickAt(s,'[ ▶ copiado ]');await s.command('stop');
@@ -513,7 +514,7 @@ test('indicator command hides status without changing auto or toolbar and restor
     await s.command('indicator');
     assert.equal(s.statuses.at(-1), undefined);
     assert.equal(s.store.load().indicator, false);
-    assert.equal(s.notices.at(-1), 'TTS teHablo: Indicador oculto.');
+    assert.ok(s.line().endsWith('  // Indicador oculto.'));
     assert.ok(s.line());
     await s.command('auto on');
     assert.equal(s.statuses.at(-1), undefined);
@@ -521,12 +522,12 @@ test('indicator command hides status without changing auto or toolbar and restor
     await s.command('indicator');
     assert.equal(s.statuses.at(-1), 'TTS auto');
     assert.equal(s.store.load().indicator, true);
-    assert.equal(s.notices.at(-1), 'TTS teHablo: Indicador visible.');
+    assert.ok(s.line().endsWith('  // Indicador visible.'));
     await s.command('menu'); await new Promise(r => setImmediate(r));
     s.windows[0].w.c.change('indicator', false);
     assert.equal(s.statuses.at(-1), undefined);
     assert.equal(s.store.load().indicator, false);
-    assert.equal(s.notices.at(-1), 'TTS teHablo: Indicador oculto.');
+    assert.ok(s.line().endsWith('  // Indicador oculto.'));
     await s.command('');
     assert.equal(s.statuses.at(-1), undefined);
     s.windows[0].w.c.change('indicator', true);
@@ -541,7 +542,7 @@ test('settings menu toolbar toggle saves and gives the same notice as the comman
     assert.equal(s.line(),undefined);assert.equal(s.store.load().toolbar,false);
     assert.equal(s.notices.at(-1),'TTS teHablo: Barra oculta.');
     s.windows[0].w.c.change('toolbar',true);
-    assert.ok(s.line());assert.equal(s.notices.at(-1),'TTS teHablo: Barra visible.');
+    assert.ok(s.line().endsWith('  // Barra visible.'));
     s.windows[0].w.c.change('policy','wait');assert.equal((s.store.load() as any).policy,'wait');
   }finally{await s.close();}
 });
@@ -552,12 +553,12 @@ test('every start button column is clickable, including normal spaces and bracke
   }
 });
 
-test('expanded controls end with power off, release idle or playing server and allow restart',async()=>{
+test('expanded controls power off after the menu, release idle or playing server and allow restart',async()=>{
   for(const playing of [false,true]) {
     const s=setup();try {
       await clickAt(s,'⏻ TTS');if(playing)await s.command('play');
       assert.ok(!s.line().includes('[ ⏻ ]'));
-      await clickAt(s,'[ ⋯ ]');assert.ok(s.line().endsWith('Vel [- 1.00x +] [ ⏻ ]'));
+      await clickAt(s,'[ ⋯ ]');assert.ok(s.line().endsWith('Vel [- 1.00x +]  [ ✗ auto ]'));
       await clickAt(s,'[ ⏻ ]');assert.deepEqual(s.calls.filter((p:string)=>p==='/shutdown'),['/shutdown']);
       assert.equal(s.line(),'[ ⏻ TTS ] [ ≡ ]');const count=s.calls.length;await tick();assert.equal(s.calls.length,count);
       await clickAt(s,'⏻ TTS');assert.equal(s.line(),'[ ▶ ] [ ▶ copiado ] [ ⋯ ]');
@@ -610,7 +611,7 @@ test('/tts toggles the server like the bar; status, menu, copy, pause, toolbar; 
     s.set('idle',null);
     await s.command('');assert.equal(s.ensures(),1);assert.equal(s.line(),'[ ▶ ] [ ▶ copiado ] [ ⋯ ]');
     await s.command('auto');assert.equal(s.statuses.at(-1),'TTS auto');assert.equal(s.store.load().auto,false);
-    await s.command('');assert.ok(s.calls.includes('/shutdown'));assert.equal(s.line(),'[ ⏻ TTS ] [ ≡ ]');assert.equal(s.statuses.at(-1),'TTS off');assert.equal(s.store.load().auto,false);
+    await s.command('');assert.ok(s.calls.includes('/shutdown'));assert.equal(s.line(),'[ ⏻ TTS ] [ ≡ ]  // Lectura automática: sí');assert.equal(s.statuses.at(-1),'TTS off');assert.equal(s.store.load().auto,false);
     await s.command('');assert.equal(s.ensures(),2);
     await s.command('status');assert.match(s.notices.at(-1)!,/^TTS teHablo: Barra visible · indicador visible · automático: no\nServidor: idle · listo: sí\n/);
     assert.match(s.notices.at(-1)!,/\/tts · auto · play \[n\] · copy · pause · stop · toolbar · indicator · menu · dict · status/);
@@ -621,7 +622,7 @@ test('/tts toggles the server like the bar; status, menu, copy, pause, toolbar; 
     await s.command('play');s.set('playing','a');await tick();const stops=s.calls.filter((p:string)=>p==='/stop').length;
     await s.command('toolbar');assert.equal(s.line(),undefined);assert.equal(s.notices.at(-1),'TTS teHablo: Barra oculta.');
     await tick();assert.equal(s.calls.filter((p:string)=>p==='/stop').length,stops);
-    await s.command('toolbar');assert.match(s.line(),/^\[ ‖ \] \[ ■ \]/);assert.equal(s.notices.at(-1),'TTS teHablo: Barra visible.');
+    await s.command('toolbar');assert.match(s.line(),/^\[ ‖ \] \[ ■ \].*  \/\/ Barra visible\.$/);
     for(const removed of ['on','off','voice','voice lola','model spanish','speed 1.25','resume']) {
       const n=s.calls.length;await s.command(removed);
       assert.match(s.notices.at(-1)!,/^TTS teHablo: Uso: \/tts · auto · play \[n\]/,removed);assert.equal(s.calls.length,n,removed);
@@ -711,7 +712,7 @@ test('controls toggle shows and hides volume and speed',async()=>{
     await start(s);
     assert.equal(s.line(),'[ ▶ ] [ ▶ copiado ] [ ⋯ ]');
     await clickAt(s,'[ ⋯ ]',2);
-    assert.equal(s.line(),'[ ▶ ] [ ▶ copiado ] [ → ] : [ ≡ ]  Vol [- 100% +]  Vel [- 1.00x +] [ ⏻ ]');
+    assert.equal(s.line(),'[ ▶ ] [ ▶ copiado ] [ → ] :  [ ⏻ ] [ ≡ ]  Vol [- 100% +]  Vel [- 1.00x +]  [ ✗ auto ]');
     await clickAt(s,'[ → ]',2);
     assert.equal(s.line(),'[ ▶ ] [ ▶ copiado ] [ ⋯ ]');assert.equal(s.configs.length,0);
   } finally {await s.close();}
@@ -748,8 +749,8 @@ test('active states use icons, pause/resume/stop clicks and command fallbacks',a
     await click(s.card,5);await click(s.card,199);assert.equal(s.calls.length,before);
     await click(s.card,2);assert.ok(s.calls.includes('/pause'));assert.equal(s.line(),'[ ▶ ] [ ■ ] [ ⋯ ]');
     await click(s.card,2);assert.ok(s.calls.includes('/resume'));assert.equal(s.line(),'[ ‖ ] [ ■ ] [ ⋯ ]');
-    await clickAt(s,'[ ⋯ ]',2);assert.equal(s.line(),'[ ‖ ] [ ■ ] [ → ] : [ ≡ ]  Vol [- 100% +]  Vel [- 1.00x +] [ ⏻ ]');
-    await click(s.card,8);assert.ok(s.calls.includes('/stop'));assert.equal(s.line(),'[ ▶ ] [ ▶ copiado ] [ → ] : [ ≡ ]  Vol [- 100% +]  Vel [- 1.00x +] [ ⏻ ]');
+    await clickAt(s,'[ ⋯ ]',2);assert.equal(s.line(),'[ ‖ ] [ ■ ] [ → ] :  [ ⏻ ] [ ≡ ]  Vol [- 100% +]  Vel [- 1.00x +]  [ ✗ auto ]');
+    await click(s.card,8);assert.ok(s.calls.includes('/stop'));assert.equal(s.line(),'[ ▶ ] [ ▶ copiado ] [ → ] :  [ ⏻ ] [ ≡ ]  Vol [- 100% +]  Vel [- 1.00x +]  [ ✗ auto ]');
     for(const state of ['loading','generating','playing','paused']) {
       s.set(state);await s.command('play 1');await tick();
       assert.match(s.line(),state==='paused'?/^\[ ▶ \] \[ ■ \]/:/^\[ ‖ \] \[ ■ \]/);
@@ -815,7 +816,7 @@ test('turning auto reading on starts a stopped server, also with the bar hidden;
       if(how==='window'){await clickAt(s,'[ ≡ ]');s.windows[0].w.c.change('auto',true);}
       await new Promise(r=>setImmediate(r));
       assert.equal(s.store.load().auto,false,how);assert.equal(s.statuses.at(-1),'TTS auto',how);
-      assert.equal(s.ensures(),1,how);assert.equal(s.line(),'[ ▶ ] [ ▶ copiado ] [ ⋯ ] auto',how);
+      assert.equal(s.ensures(),1,how);assert.equal(s.line(),'[ ▶ ] [ ▶ copiado ] [ ⋯ ] auto'+(how==='window'?'':'  // Lectura automática: sí'),how);
       await s.command('auto off');await s.command('auto on');assert.equal(s.ensures(),1,how);
     }finally{await s.close();}
   }
@@ -825,7 +826,7 @@ test('turning auto reading on starts a stopped server, also with the bar hidden;
 test('open controls: [ → ] closes them, ":" only separates, and the menu sits before Vol',async()=>{
   const s=setup();try {
     await start(s);assert.equal(s.line(),'[ ▶ ] [ ▶ copiado ] [ ⋯ ]');
-    await clickAt(s,'[ ⋯ ]');const open='[ ▶ ] [ ▶ copiado ] [ → ] : [ ≡ ]  Vol [- 100% +]  Vel [- 1.00x +] [ ⏻ ]';assert.equal(s.line(),open);
+    await clickAt(s,'[ ⋯ ]');const open='[ ▶ ] [ ▶ copiado ] [ → ] :  [ ⏻ ] [ ≡ ]  Vol [- 100% +]  Vel [- 1.00x +]  [ ✗ auto ]';assert.equal(s.line(),open);
     await clickAt(s,' : ',1);assert.equal(s.line(),open);assert.equal(s.calls.length,1);
     await clickAt(s,'[ → ]');assert.equal(s.line(),'[ ▶ ] [ ▶ copiado ] [ ⋯ ]');
     await clickAt(s,'[ ⋯ ]');await clickAt(s,'[ ≡ ]');await new Promise(r=>setImmediate(r));assert.equal(s.windows.length,1);
@@ -844,9 +845,25 @@ test('the bar shows a small auto mark while auto reading is on in this session',
   const s=setup();try {
     s.set('idle',null);await start(s);
     assert.equal(s.line(),'[ ▶ ] [ ▶ copiado ] [ ⋯ ]');
-    await s.command('auto on');assert.equal(s.line(),'[ ▶ ] [ ▶ copiado ] [ ⋯ ] auto');
-    await clickAt(s,'[ ⋯ ]');assert.match(s.line(),/\[ ⏻ \] auto$/);
-    await clickAt(s,'[ → ]');await s.command('auto off');assert.equal(s.line(),'[ ▶ ] [ ▶ copiado ] [ ⋯ ]');
+    await s.command('auto on');assert.equal(s.line(),'[ ▶ ] [ ▶ copiado ] [ ⋯ ] auto  // Lectura automática: sí');
+    await clickAt(s,'[ ⋯ ]');assert.match(s.line(),/\[ ✓ auto \]  \/\/ Lectura automática: sí$/);
+    await clickAt(s,'[ → ]');await s.command('auto off');assert.equal(s.line(),'[ ▶ ] [ ▶ copiado ] [ ⋯ ]  // Lectura automática: no');
+  }finally{await s.close();}
+});
+
+test('open controls: [ ✗ auto ] / [ ✓ auto ] turn auto reading on and off; the closed bar mark turns it off',async()=>{
+  const s=setup();try {
+    s.set('idle',null);await start(s);
+    await clickAt(s,'[ ⋯ ]');
+    const open='[ ▶ ] [ ▶ copiado ] [ → ] :  [ ⏻ ] [ ≡ ]  Vol [- 100% +]  Vel [- 1.00x +]  ';
+    assert.equal(s.line(),open+'[ ✗ auto ]');
+    for(const offset of [0,2,9]){
+      await clickAt(s,'[ ✗ auto ]',offset);assert.equal(s.line(),open+'[ ✓ auto ]');assert.equal(s.statuses.at(-1),'TTS auto');
+      await clickAt(s,'[ ✓ auto ]',offset);assert.equal(s.line(),open+'[ ✗ auto ]');assert.equal(s.statuses.at(-1),'TTS manual');
+    }
+    await clickAt(s,'[ ✗ auto ]');await clickAt(s,'[ → ]');assert.equal(s.line(),'[ ▶ ] [ ▶ copiado ] [ ⋯ ] auto');
+    await clickAt(s,' auto',1);assert.equal(s.line(),'[ ▶ ] [ ▶ copiado ] [ ⋯ ]');assert.equal(s.statuses.at(-1),'TTS manual');
+    assert.equal(s.store.load().auto,false);
   }finally{await s.close();}
 });
 
@@ -1040,5 +1057,22 @@ test('a dying server answering once after power off does not turn the bar back o
     await clickAt(s,'[ ⏻ ]');const from=s.statuses.length;
     await wait(300);
     assert.deepEqual(s.statuses.slice(from-1),['TTS off']);assert.equal(s.line(),'[ ⏻ TTS ] [ ≡ ]');
+  }finally{await s.close();}
+});
+
+test('short notices show at the end of the bar as // text for a while; a hidden bar and warnings keep the TTS teHablo notice',async()=>{
+  const s=setup(memoryStore(),undefined,0,30);try {
+    s.set('idle',null);await start(s);
+    const before=s.notices.length;
+    await s.command('auto on');assert.equal(s.line(),'[ ▶ ] [ ▶ copiado ] [ ⋯ ] auto  // Lectura automática: sí');
+    await clickAt(s,'[ ⋯ ]');assert.ok(s.line().endsWith('  [ ✓ auto ]  // Lectura automática: sí'),s.line());
+    await clickAt(s,'// Lectura');assert.ok(s.line().endsWith('[ ✓ auto ]  // Lectura automática: sí'));
+    await new Promise(r=>setTimeout(r,80));assert.ok(s.line().endsWith('  [ ✓ auto ]'),s.line());
+    await clickAt(s,'[ → ]');
+    await s.command('toolbar');assert.equal(s.line(),undefined);assert.equal(s.notices.at(-1),'TTS teHablo: Barra oculta.');
+    await s.command('toolbar');assert.equal(s.line(),'[ ▶ ] [ ▶ copiado ] [ ⋯ ] auto  // Barra visible.');
+    assert.equal(s.notices.length,before+1);
+    await s.command('bogus');assert.match(s.notices.at(-1)!,/^TTS teHablo: Uso: /);assert.equal(s.notices.length,before+2);
+    assert.equal(s.line(),'[ ▶ ] [ ▶ copiado ] [ ⋯ ] auto  // Barra visible.');
   }finally{await s.close();}
 });

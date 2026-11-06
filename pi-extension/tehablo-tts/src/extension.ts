@@ -48,7 +48,7 @@ interface Card { messageId: string; number: number }
 const help = '/tts · auto · play [n] · copy · pause · stop · toolbar · indicator · menu · dict · status\n/tts enciende o apaga el servidor para todos; pause pausa o reanuda solo tu lectura actual; stop detiene tus lecturas actuales y en espera; play sin número lee la última respuesta y play 3 la tercera de la sesión; toolbar muestra u oculta la barra; indicator muestra u oculta el indicador de estado; menu abre los ajustes; dict activa o desactiva el diccionario de pronunciación (pronunciaciones.json) para la voz actual.';
 
 export function createExtension(pi: ExtensionAPI, client = new ServerClient(), store: Store = client.root ? fileStore(client.root) : memoryStore(),
-  clipboard: () => Promise<string> = () => readClipboard(), watchMs = 0) {
+  clipboard: () => Promise<string> = () => readClipboard(), watchMs = 0, noteMs = 4000) {
   let settings: Settings = store.load();
   let applied = false, windowOpen = false;
   let closeWindow: (() => void) | undefined, redrawWindow: (() => void) | undefined;
@@ -90,6 +90,16 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
   let warnedFallback: string | undefined;
   const READY_TRIES = 240;
   // Status line: "TTS off" while the server is off, else "TTS manual" or "TTS auto".
+  // Short notices go to the end of the visible bar as "// text" for noteMs, so they do not take another line;
+  // with the bar hidden (or outside the TUI) they stay ordinary "TTS teHablo: ..." notices. Warnings never come here.
+  let barNote = '', noteTimer: ReturnType<typeof setTimeout> | undefined;
+  const clearNote = () => { if (noteTimer) clearTimeout(noteTimer); noteTimer = undefined; barNote = ''; };
+  const tell = (ctx: ExtensionContext | undefined, text: string) => {
+    if (ctx?.mode !== 'tui' || !barVisible) { say(ctx, text, 'info'); return; }
+    clearNote(); barNote = text; refresh();
+    noteTimer = setTimeout(() => { noteTimer = undefined; barNote = ''; refresh(); }, noteMs);
+    noteTimer.unref?.();
+  };
   const refresh = () => context?.ui.setStatus(ENTRY, !settings.indicator ? undefined : server === 'off' ? 'TTS off'
     : `TTS ${auto ? 'auto' : 'manual'}${server === 'loading' ? ' · cargando' : ''}`);
   const setServer = (value: typeof server) => { if (value !== server) { server = value; refresh(); } };
@@ -266,7 +276,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
         for (const id of queued) if (owned.has(id) && (id === status.id || (!queue.includes(id) && promoted.includes(id)))) {
           queued.delete(id);
           if (id === status.id) promotedReading = id;
-          say(context, 'Suena la lectura en espera.', 'info');
+          tell(context, 'Suena la lectura en espera.');
         }
         for (const id of owned.keys()) if (!inFlight.has(id) && id !== status.id && !queue.includes(id)) { owned.delete(id); queued.delete(id); }
         if (status.state === 'idle' && !queued.size && !inFlight.size) {
@@ -324,11 +334,11 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
   };
   const setToolbar = (visible: boolean, ctx: ExtensionContext) => {
     barVisible = visible; settings = {...settings, toolbar: visible}; persist(); refresh(); showStart(ctx);
-    say(ctx, visible ? 'Barra visible.' : 'Barra oculta.', 'info');
+    tell(ctx, visible ? 'Barra visible.' : 'Barra oculta.');
   };
   const setIndicator = (visible: boolean, ctx: ExtensionContext) => {
     settings = {...settings, indicator: visible}; persist(); refresh();
-    say(ctx, visible ? 'Indicador visible.' : 'Indicador oculto.', 'info');
+    tell(ctx, visible ? 'Indicador visible.' : 'Indicador oculto.');
   };
   const cards = (ctx: ExtensionContext): Card[] => ctx.sessionManager.getBranch()
     .filter((e: any) => e.type === 'custom' && e.customType === ENTRY).map((e: any) => e.data);
@@ -463,7 +473,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
       case 'auto':
       {
         const starting = setAuto(!auto);
-        say(ctx, `Lectura automática: ${auto ? 'sí' : 'no'}`, 'info'); return starting;
+        tell(ctx, `Lectura automática: ${auto ? 'sí' : 'no'}`); return starting;
       }
       case 'play': return speak(ctx);
       case 'pause': if (playback.state !== 'idle') return action(playback.state === 'paused' ? 'resume' : 'pause'); return;
@@ -494,7 +504,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
   function bar(card: Card, current: () => boolean, theme: any) {
     // Only single-column symbols, so click columns match Array.from lengths (≡ replaced ⚙, which some terminals draw two columns wide).
     // The menu [ ≡ ] shows next to the start button when off, and inside the open controls when on.
-    const segments = () => {
+    const layout = () => {
       const pending = preparing.has(card.messageId);
       const promotedHere = playback.id === promotedReading && owned.get(playback.id!) === card.messageId;
       const waiting = !promotedHere && [...queued].find(id => owned.get(id) === card.messageId);
@@ -513,7 +523,8 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
         {text: open ? '[ → ]' : '[ ⋯ ]', action: 'toggle', gap: open ? ' ' : ''},
         ...(open ? [
           // ":" only separates the close button from the menu and the sound controls.
-          {text: ':', action: '', gap: ' '},
+          {text: ':', action: '', gap: '  '},
+          {text: '[ ⏻ ]', action: 'powerOff', gap: ' '},
           {...menu, gap: '  '},
           {text: 'Vol', action: '', gap: ' '},
           {text: '[-', action: 'volume-', gap: ' '},
@@ -522,19 +533,31 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
           {text: 'Vel', action: '', gap: ' '},
           {text: '[-', action: 'speed-', gap: ' '},
           {text: speedLabel(speed), action: '', gap: ' '},
-          {text: '+]', action: 'speed+', gap: ' '},
-          {text: '[ ⏻ ]', action: 'powerOff', gap: ''},
+          {text: '+]', action: 'speed+', gap: '  '},
+          // The button is also the indicator: ✓ while this session reads responses aloud on its own, ✗ when not.
+          {text: auto ? '[ ✓ auto ]' : '[ ✗ auto ]', action: 'autoToggle', gap: ''},
         ] : []),
       ];
-      // A small, unclickable mark at the end while this session reads responses aloud on its own.
-      return auto ? [...controls.slice(0, -1), {...controls.at(-1)!, gap: ' '}, {text: 'auto', action: '', gap: ''}] : controls;
+      // Closed controls show a small mark only while auto reading is on; clicking it turns auto reading off.
+      return auto && !open ? [...controls.slice(0, -1), {...controls.at(-1)!, gap: ' '}, {text: 'auto', action: 'autoOff', gap: ''}] : controls;
+    };
+    const segments = () => {
+      const controls = layout();
+      return barNote ? [...controls.slice(0, -1), {...controls.at(-1)!, gap: '  '}, {text: `// ${barNote}`, action: '', gap: ''}] : controls;
     };
     const label = () => context?.mode === 'tui' && barVisible && current()
       ? segments().map(c => c.text + c.gap).join('') : '';
     // One column of padding, like Pi's own transcript text; the start bar also leaves a blank line above the editor.
     return {
-      render: (width: number) => label() && width > 1
-        ? [theme.fg('accent', ' ' + Array.from(label()).slice(0, width - 1).join('')), ...(card === START ? [''] : [])] : [],
+      render: (width: number) => {
+        const text = label();
+        if (!text || width <= 1) return [];
+        // Controls in the accent color; a trailing "// note" dim, so it reads as a comment, not a button.
+        const chars = Array.from(' ' + text).slice(0, width);
+        const split = barNote ? Array.from(' ' + text).length - Array.from(`// ${barNote}`).length : chars.length;
+        const note = chars.slice(split).join('');
+        return [theme.fg('accent', chars.slice(0, split).join('')) + (note ? theme.fg('dim', note) : ''), ...(card === START ? [''] : [])];
+      },
       invalidate() {},
       handleMouse(event: {type: string; button: string; x: number; y: number}) {
         if (label() && event.type === 'click' && event.button === 'left' && event.y === 0 && event.x >= 1 && context) {
@@ -543,6 +566,9 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
             const end = start + Array.from(control.text).length;
             if (control.action && event.x >= start && event.x < end) {
               if (control.action === 'toggle') { open = !open; refresh(); return {handled: true, render: true}; }
+              if (control.action === 'autoToggle' || control.action === 'autoOff') {
+                void safe(context, () => setAuto(control.action === 'autoToggle' && !auto)); return {handled: true, render: true};
+              }
               if (control.action === 'settings') { void safe(context, () => openSettings(context!)); return {handled: true, render: true}; }
               void safe(context, () => control.action === 'play' ? speak(context!, String(card.number))
                 : control.action === 'copied' ? speakCopied(context!, card.messageId)
@@ -565,7 +591,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
     settings = store.load(); applied = false;
     // The server starts off, and an off server has no auto reading (turning auto on starts it).
     settings = {...settings, auto: false};
-    barVisible = settings.toolbar; auto = false; volume = settings.volume; speed = settings.speed; epoch++; context = ctx;
+    clearNote(); barVisible = settings.toolbar; auto = false; volume = settings.volume; speed = settings.speed; epoch++; context = ctx;
     cancelReady(); server = 'off'; open = false;
     refresh(); showStart(ctx);
     listenKeys(ctx);
@@ -580,7 +606,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
   });
   pi.on('session_shutdown', async (_event, ctx) => {
     if (ctx.mode !== 'tui') return;
-    lifecycleEpoch++; epoch++; resetPlayback(); cancelReady(); stopWatch(); server = 'off'; context = undefined;
+    lifecycleEpoch++; epoch++; resetPlayback(); cancelReady(); stopWatch(); clearNote(); server = 'off'; context = undefined;
     stopKeys?.(); stopKeys = undefined;
     await safe(ctx, () => client.shutdown());
   });
@@ -605,7 +631,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
         const [command = '', ...rest] = args.trim().split(/\s+/);
         const value = rest.join(' ');
         const generation = epoch;
-        const info = (text: string) => say(ctx, text, 'info');
+        const info = (text: string) => tell(ctx, text);
         switch (command) {
           // Plain /tts turns the server on or off, like [ ⏻ TTS ] and [ ⏻ ] in the bar.
           case '': return server === 'off' ? boot() : turnOff();
@@ -643,7 +669,8 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
         sync(health);
         const status = await client.action('/status');
         if (generation !== epoch) return;
-        info(`Barra ${barVisible ? 'visible' : 'oculta'} · indicador ${settings.indicator ? 'visible' : 'oculto'} · automático: ${auto ? 'sí' : 'no'}\nServidor: ${status.state} · listo: ${health.ready ? 'sí' : 'no'}\nModelo: ${health.model} · voz: ${health.voice} · velocidad: ${health.speed} · volumen: ${Math.round(volume * 100)} %\nDict (diccionario de pronunciación): ${dictEnabled() ? 'sí' : 'no'}\n${help}`);
+        // The multi-line status report is too long for the bar, so it stays an ordinary notice.
+        say(ctx, `Barra ${barVisible ? 'visible' : 'oculta'} · indicador ${settings.indicator ? 'visible' : 'oculto'} · automático: ${auto ? 'sí' : 'no'}\nServidor: ${status.state} · listo: ${health.ready ? 'sí' : 'no'}\nModelo: ${health.model} · voz: ${health.voice} · velocidad: ${health.speed} · volumen: ${Math.round(volume * 100)} %\nDict (diccionario de pronunciación): ${dictEnabled() ? 'sí' : 'no'}\n${help}`, 'info');
       });
     },
   });

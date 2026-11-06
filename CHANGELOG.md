@@ -6,6 +6,8 @@ Este archivo registra los cambios completados en orden cronológico.
 
 ## 2026-11-05
 
+- Pi: los avisos cortos aparecen unos 4 s al final de la barra en gris tenue como `// texto`, sin ocupar otra línea; con la barra oculta, y para errores y `/tts status`, siguen como aviso «TTS teHablo: …».
+- Pi: los controles abiertos tienen el botón `[ ✗ auto ]` / `[ ✓ auto ]`, que activa o desactiva la lectura automática y es su indicador; `[ ⏻ ]` pasa justo antes de `[ ≡ ]`: `[ → ] :  [ ⏻ ] [ ≡ ]  Vol [- 100% +]  Vel [- 1.00x +]  [ ✗ auto ]`. Con la barra cerrada, la marca `auto` ahora se puede pulsar para desactivarla.
 - Pi con varias sesiones: `/reload`, Ctrl+C o cerrar una terminal ya no apagan el TTS de las demás; el servidor se apaga solo unos 30 s después de que ninguna sesión lo use, y `[ ⏻ ]` o `/tts` lo siguen apagando para todas (`RH-W-0043`).
 - Pi: `/tts indicator` y la ventana de ajustes muestran u ocultan el indicador de estado (`TTS off`, `TTS manual`, `TTS auto`); se recuerda y se comparte entre sesiones.
 - Pi: mientras la lectura automática está activa en la sesión, la barra muestra una marca discreta `auto` al final, sin clic.

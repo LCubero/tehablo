@@ -37,7 +37,7 @@ test('dict defaults, per-voice toggle persistence, request payload and status',a
     const initial=model!=='phonon';
     assert.equal(s.calls.at(-1)[1].lexicon,initial);
     await s.command('dict');
-    assert.deepEqual(s.notices.at(-1),[`TTS teHablo: Dict (diccionario de pronunciación) para ${voice}: ${initial?'no':'sí'}`,'info']);
+    assert.ok(s.renderers['tehablo-tts'](s.cards().at(-1),{},{fg:(_:any,t:string)=>t}).render(200)[0].endsWith(`  // Dict (diccionario de pronunciación) para ${voice}: ${initial?'no':'sí'}`));
     assert.deepEqual(s.store.load().dict,{[voice]:!initial});
     const before=s.calls.length;
     await s.command('dict extra');
@@ -121,7 +121,7 @@ test('before the first response the bar shows above the editor, and a hidden bar
   await s.command('toolbar'); await s.emit('session_start');
   const component=s.renderers['tehablo-tts'](s.cards()[0],{},theme);
   assert.deepEqual(component.render(100),[]); assert.equal(widgets['tehablo-tts'],undefined);
-  await s.command('toolbar'); assert.equal(component.render(100)[0],' [ ⏻ TTS ] [ ≡ ]');
+  await s.command('toolbar'); assert.equal(component.render(100)[0],' [ ⏻ TTS ] [ ≡ ]  // Barra visible.');
 });
 test('a hidden toolbar only hides the bar: auto reading and play still work',async()=>{
   const s=setup(); await s.command('toolbar'); await s.command('auto'); await s.finish();
@@ -130,9 +130,9 @@ test('a hidden toolbar only hides the bar: auto reading and play still work',asy
   assert.ok(!s.calls.some(c=>c[0]==='/stop'));
 });
 test('/tts auto alone toggles auto reading',async()=>{
-  const s=setup(); await s.command('auto'); assert.equal(s.notices.at(-1)[0],'TTS teHablo: Lectura automática: sí');
+  const s=setup(); await s.command('auto'); assert.equal(s.notices.length,0);
   await s.finish(); assert.equal(s.calls.filter(c=>c[0]==='/speak').length,1);
-  await s.command('auto'); assert.equal(s.notices.at(-1)[0],'TTS teHablo: Lectura automática: no');
+  await s.command('auto'); assert.ok(s.renderers['tehablo-tts'](s.cards().at(-1),{},{fg:(_:any,t:string)=>t}).render(200)[0].endsWith('  // Lectura automática: no'));
   await s.finish('Manual'); assert.equal(s.calls.filter(c=>c[0]==='/speak').length,1);
   await s.command('auto x'); assert.equal(s.notices.at(-1)[0],'TTS teHablo: Uso: /tts auto');
 });
@@ -161,4 +161,15 @@ test('health failure spawns once with computed Windows root/python; session shut
   assert.match(spawned[0][1][0],/src[/\\]tehablo_server.py$/);
   await c.shutdown(); assert.ok(!calls.includes('/shutdown')); assert.equal(killed,0);
   calls.length=0; const external=new ServerClient(options); await external.ensure(); await external.shutdown(); assert.ok(!calls.includes('/shutdown'));
+});
+
+test('the bar note is drawn dim after the accent controls, also when cut by the width',async()=>{
+  const s=setup(); await s.finish(); await s.command('auto');
+  const tag={fg:(color:string,text:string)=>`<${color}>${text}</${color}>`};
+  const bar=s.renderers['tehablo-tts'](s.cards().at(-1),{},tag);
+  const line=bar.render(200)[0];
+  assert.match(line,/^<accent> \[/);assert.ok(line.endsWith('  </accent><dim>// Lectura automática: sí</dim>'),line);
+  const cut=bar.render(Array.from(line.replace(/<\/?[a-z]+>/g,'')).indexOf('/')+4)[0];
+  assert.ok(cut.endsWith('</accent><dim>// L</dim>'),cut);
+  assert.doesNotMatch(bar.render(5)[0],/dim/);
 });
