@@ -74,6 +74,19 @@ test('icon mode defaults, normalizes and merges across sessions', () => withDirs
   assert.equal(loadSettings(dir, project).speed, 1.25);
 }));
 
+test('audio defaults to local, rejects invalid values and merges with icons', () => withDirs((dir, project) => {
+  assert.equal(loadSettings(dir, project).audio, 'local');
+  for (const audio of ['ssh', 'local', 'bad', null, 3]) {
+    saveSettings(dir, {...DEFAULTS, audio} as any);
+    assert.equal(loadSettings(dir, project).audio, audio === 'ssh' ? 'ssh' : 'local');
+  }
+  const before = loadSettings(dir, project);
+  saveSettings(dir, {...before, audio: 'ssh'}, before);
+  saveSettings(dir, {...before, icons: 'text'}, before);
+  assert.equal(loadSettings(dir, project).audio, 'ssh');
+  assert.equal(loadSettings(dir, project).icons, 'text');
+}));
+
 test('known voice table entries survive a reload', () => withDirs((dir, project) => {
   const voices = [{name: 'lola', voice: 'lola', model: 'spanish', kind: 'download', note: 'la de siempre', downloaded: true}];
   saveSettings(dir, {...DEFAULTS, voices});

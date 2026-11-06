@@ -12,7 +12,7 @@ function setup(mode = 'tui', clipboard?: () => Promise<string>, health = {model:
     const body = init?.body && JSON.parse(init.body);
     calls.push([path, body]);
     if (path === '/config' && body.speed > 1.5) return new Response(JSON.stringify({error:'Velocidad fuera de rango'}), {status:400});
-    return Response.json({ok:true, ready:true, state:'idle', ...health, speed:1, voices:['voz']});
+    return Response.json({ok:true, ready:true, state:'idle', audio:'local', ...health, speed:1, voices:['voz']});
   };
   const client = new ServerClient({fetch:fetcher as any});
   const ctx: any = {mode, sessionManager:{getBranch:()=>entries}, ui:{notify:(...args:any[])=>notices.push(args), setStatus(){}, setWidget(){}}};

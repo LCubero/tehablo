@@ -11,6 +11,8 @@ import math
 import os
 from pathlib import Path
 import socket
+import queue
+import struct
 import sys
 import threading
 
@@ -150,12 +152,77 @@ def audio_sink(rate, callback):
     return stream
 
 
+# Unknown-length RIFF is understood by ffplay without buffering an entire reading.
+WAV_HEADER = struct.pack('<4sI4s4sIHHIIHH4sI', b'RIFF', 0xFFFFFFFF, b'WAVE',
+                         b'fmt ', 16, 1, 1, 24000, 48000, 2, 16, b'data', 0xFFFFFFFF)
+
+
+class SSHAudio:
+    """One real-time callback clock; slow listeners disconnect rather than accumulate delay."""
+    def __init__(self, service):
+        self.service = service
+        self.lock = threading.Lock()
+        self.listeners = set()
+        self.rate = 24000
+        self.callback = None
+        self.closed = threading.Event()
+        self.thread = threading.Thread(target=self.run, name='ssh-audio', daemon=True)
+        self.thread.start()
+
+    def attach(self, rate, callback):
+        with self.lock:
+            self.rate, self.callback = rate, callback
+        return self
+
+    def close(self):
+        # A reading's sink is closed before the next reading, not the HTTP stream.
+        with self.lock:
+            self.callback = None
+
+    def subscribe(self):
+        listener = queue.Queue(maxsize=10)  # at most 200 ms; no stale speech on reconnect
+        with self.lock:
+            self.listeners.add(listener)
+        return listener
+
+    def unsubscribe(self, listener):
+        with self.lock:
+            self.listeners.discard(listener)
+
+    def shutdown(self):
+        self.closed.set()
+        self.thread.join(timeout=2)
+
+    def run(self):
+        while not self.closed.wait(.02):
+            with self.lock:
+                rate, callback = self.rate, self.callback
+                frames = round(rate * .02)
+                samples = np.zeros((frames, 1), dtype=np.float32)
+                if callback is not None and self.service.audio == 'ssh':
+                    callback(samples, frames, None, None)
+                data = samples[:, 0]
+                if rate != 24000:
+                    data = np.interp(np.arange(480) * rate / 24000, np.arange(frames), data)
+                packet = (np.clip(data, -1, 1) * 32767).astype('<i2').tobytes()
+                for listener in list(self.listeners):
+                    try:
+                        listener.put_nowait(packet)
+                    except queue.Full:
+                        self.listeners.discard(listener)
+
+
 class SpeechService:
-    def __init__(self, model, voice, speed, synthesizer_factory, audio_factory, catalog):
+    def __init__(self, model, voice, speed, synthesizer_factory, audio_factory, catalog, audio='local'):
         self.condition = threading.Condition(threading.RLock())
         self.factory = synthesizer_factory
         self.cached = cached
-        self.audio_factory = audio_factory
+        if audio not in ('local', 'ssh'):
+            raise ValueError('audio must be local or ssh')
+        self.audio = audio
+        self.local_audio_factory = audio_factory
+        self.audio_factory = lambda rate, callback: (self.ssh_audio.attach(rate, callback)
+                                                    if self.audio == 'ssh' else self.local_audio_factory(rate, callback))
         self.catalog = list(catalog)
         self.model_name, self.voice, self.speed = model, voice if voice is not None else default_voice(model), speed
         self.volume = 1.0
@@ -183,6 +250,7 @@ class SpeechService:
         self.cue_pending = 0
         self.cue_offset = 0
         self.queue_prefix = False
+        self.ssh_audio = SSHAudio(self)
         self.worker = threading.Thread(target=self.run, name='speech-worker', daemon=True)
         self.worker.start()
 
@@ -236,8 +304,10 @@ class SpeechService:
         return str(path)
 
     def validate(self, body):
-        if set(body) - {'model', 'voice', 'speed', 'volume'}:
+        if set(body) - {'model', 'voice', 'speed', 'volume', 'audio'}:
             raise ValueError('unknown config field')
+        if 'audio' in body and body['audio'] not in ('local', 'ssh'):
+            raise ValueError('audio must be local or ssh')
         if 'model' in body and (not isinstance(body['model'], str) or body['model'] not in MODELS):
             raise ValueError('model must be phonon, spanish or spanish_24l')
         if 'voice' in body:
@@ -255,12 +325,12 @@ class SpeechService:
     def health(self):
         with self.condition:
             return {'ok': True, 'ready': self.ready, 'model': self.model_name,
-                    'voice': self.voice, 'speed': float(self.speed), 'volume': self.volume,
+                    'voice': self.voice, 'speed': float(self.speed), 'volume': self.volume, 'audio': self.audio,
                     'error': self.error, 'fallback': self.fallback}
 
     def status(self):
         with self.condition:
-            return {'state': self.state, 'id': self.id, 'error': self.error or self.speech_error,
+            return {'state': self.state, 'id': self.id, 'audio': self.audio, 'error': self.error or self.speech_error,
                     **({'queue': [item[0] for item in self.queue]} if self.queue else {}),
                     **({'promoted': list(self.promoted)} if self.promoted else {})}
 
@@ -354,18 +424,19 @@ class SpeechService:
     def configure(self, body):
         with self.condition:
             self.validate(body)
-            reload = (body.get('model', self.model_name) != self.model_name
-                      or ('model' in body and self.error is not None))
-            if reload:
+            model_reload = (body.get('model', self.model_name) != self.model_name
+                            or ('model' in body and self.error is not None))
+            if model_reload or body.get('audio', self.audio) != self.audio:
                 self.clear()
-                self.model_name = body['model']
+                self.model_name = body.get('model', self.model_name)
                 self.revision += 1
                 self.ready = False
                 self.error = None
                 self.state = 'loading'
             if 'model' in body or 'voice' in body:
                 self.fallback = None  # A new choice replaces the old warning.
-            self.voice = body.get('voice', default_voice(self.model_name) if reload else self.voice)
+            self.voice = body.get('voice', default_voice(self.model_name) if model_reload else self.voice)
+            self.audio = body.get('audio', self.audio)
             self.speed = float(body.get('speed', self.speed))
             self.volume = float(body.get('volume', self.volume))
             self.condition.notify_all()
@@ -540,6 +611,7 @@ class SpeechService:
             self.clear()
             self.condition.notify_all()
         self.worker.join(timeout=5)
+        self.ssh_audio.shutdown()
 
 
 class SpeechHTTPServer(ThreadingHTTPServer):
@@ -555,6 +627,7 @@ class SpeechHTTPServer(ThreadingHTTPServer):
 
     def stop_serving(self):
         self.service.control('stop')
+        self.streams_closed.set()
         self.shutdown()
 
     def serve_forever(self, poll_interval=.5):
@@ -573,6 +646,7 @@ class SpeechHTTPServer(ThreadingHTTPServer):
             super().serve_forever(poll_interval)
         finally:
             stopped.set()
+            self.streams_closed.set()
 
     def server_close(self):
         # A failed bind closes the server before create_server attaches the service.
@@ -583,8 +657,10 @@ class SpeechHTTPServer(ThreadingHTTPServer):
 
 class Handler(BaseHTTPRequestHandler):
     def parse_request(self):
-        self.server.last_request = time.monotonic()
-        return super().parse_request()
+        parsed = super().parse_request()
+        if parsed and self.path != '/audio.wav':
+            self.server.last_request = time.monotonic()
+        return parsed
 
     def log_message(self, format, *args):
         pass
@@ -613,6 +689,34 @@ class Handler(BaseHTTPRequestHandler):
         if self.reject_origin():
             return
         service = self.server.service
+        if self.path == '/audio.wav':
+            if service.audio != 'ssh':
+                self.reply(409, {'error': 'audio stream requires ssh mode'})
+                return
+            listener = service.ssh_audio.subscribe()
+            self.close_connection = True
+            self.connection.settimeout(.25)
+            try:
+                self.send_response(200)
+                self.send_header('Content-Type', 'audio/wav')
+                self.end_headers()
+                self.wfile.write(WAV_HEADER)
+                self.wfile.flush()
+                while not service.closed and service.audio == 'ssh' and not self.server.streams_closed.is_set():
+                    with service.ssh_audio.lock:
+                        if listener not in service.ssh_audio.listeners:
+                            break
+                    try:
+                        packet = listener.get(timeout=.1)
+                    except queue.Empty:
+                        continue
+                    self.wfile.write(packet)
+                    self.wfile.flush()
+            except (OSError, ConnectionError):
+                pass
+            finally:
+                service.ssh_audio.unsubscribe(listener)
+            return
         routes = {'/health': service.health, '/status': service.status,
                   '/voices': lambda: {'voices': service.voices(), 'catalog': service.voice_table()}}
         if self.path not in routes:
@@ -654,7 +758,7 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def create_server(port=8765, model=START_MODEL, voice=None, speed=1.0,
-                  synthesizer_factory=synthesizer, audio_factory=audio_sink, catalog=None, idle_exit=30):
+                  synthesizer_factory=synthesizer, audio_factory=audio_sink, catalog=None, idle_exit=30, audio='local'):
     if not math.isfinite(idle_exit) or idle_exit < 0:
         raise ValueError('idle-exit must be a finite nonnegative number')
     if catalog is None:
@@ -662,13 +766,14 @@ def create_server(port=8765, model=START_MODEL, voice=None, speed=1.0,
         from tehablo_tts import VOICES
         print(f'Startup: TTS imports completed in {time.perf_counter() - started:.3f} s', flush=True)
         catalog = VOICES
-    service = SpeechService(model, voice, speed, synthesizer_factory, audio_factory, catalog)
+    service = SpeechService(model, voice, speed, synthesizer_factory, audio_factory, catalog, audio)
     try:
         server = SpeechHTTPServer(('127.0.0.1', port), Handler)
     except Exception:
         service.close()
         raise
     server.service = service
+    server.streams_closed = threading.Event()
     server.idle_exit = idle_exit
     server.last_request = time.monotonic()
     return server
@@ -682,6 +787,7 @@ def main():
     parser.add_argument('--voice', default=None,
                         help='voice (default: Regina for phonon, lola for Pocket)')
     parser.add_argument('--speed', type=float, default=1.0)
+    parser.add_argument('--audio', choices=['local', 'ssh'], default='local')
     parser.add_argument('--idle-exit', type=float, default=30,
                         help='exit after SECONDS without requests (default: 30; 0 disables)', metavar='SECONDS')
     args = parser.parse_args()

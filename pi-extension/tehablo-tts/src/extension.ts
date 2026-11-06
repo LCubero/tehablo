@@ -136,6 +136,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
     if (!client.spawned && settings.voice && (body.model || settings.voice !== health.voice)) body.voice = settings.voice;
     if (typeof health.volume === 'number' && settings.volume !== health.volume) body.volume = settings.volume;
     if (typeof health.speed === 'number' && settings.speed !== health.speed) body.speed = settings.speed;
+    if (settings.audio !== health.audio) body.audio = settings.audio;
     if (!Object.keys(body).length) return;
     try {
       const result = await client.action('/config', body);
@@ -178,7 +179,13 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
       watchTimer = setTimeout(async () => {
         watchTimer = undefined;
         if (store.changed?.()) {
+          const previousAudio = settings.audio;
           settings = {...store.load(), auto};
+          if (settings.audio !== previousAudio) applied = false;
+          if (settings.audio !== previousAudio && server === 'ready') {
+            try { await configure({audio: settings.audio}); }
+            catch (error) { say(context, `No se aplicó Audio: ${error instanceof Error ? error.message : String(error)}`, 'warning'); }
+          }
           barVisible = settings.toolbar; volume = settings.volume; speed = settings.speed;
           refresh(); if (context) showStart(context); redrawWindow?.();
         }
@@ -216,7 +223,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
   const bootOnce = async () => {
     const generation = epoch;
     if (server === 'off') { readyTries = 0; applied = false; setServer('loading'); }
-    client.startArgs = settings.model ? ['--model', settings.model, ...(settings.voice ? ['--voice', settings.voice] : [])] : [];
+    client.startArgs = [...(settings.model ? ['--model', settings.model, ...(settings.voice ? ['--voice', settings.voice] : [])] : []), '--audio', settings.audio];
     try {
       await client.ensure();
       if (generation !== epoch) return;
@@ -433,6 +440,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
       toggleDict: row => { toggleDict(row.voice, row.model); },
       choose: row => { settings = {...settings, model: row.model, voice: row.voice}; persist(); run(() => configure({model: row.model, voice: row.voice})); },
       change: (field, value) => {
+        const previousAudio = settings.audio;
         settings = {...settings, [field]: value}; if (field !== 'auto') persist();
         if (field === 'icons') { refresh(); showStart(ctx); }
         if (field === 'toolbar') setToolbar(value as boolean, ctx);
@@ -440,7 +448,9 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
         if (field === 'auto') { const starting = setAuto(value as boolean); if (starting) run(() => starting); }
         if (field === 'volume') volume = value as number;
         if (field === 'speed') speed = value as number;
-        if (field === 'volume' || field === 'speed') run(() => configure({[field]: value}));
+        if (field === 'audio' && server !== 'ready') applied = false;
+        if (field === 'audio' && value === 'ssh' && previousAudio !== 'ssh') say(ctx, 'Audio por SSH activado. En la computadora desde la que te conectas, ejecuta una vez: Windows: irm https://raw.githubusercontent.com/LCubero/tehablo/master/receptor/install.ps1 | iex; Linux/macOS: curl -fsSL https://raw.githubusercontent.com/LCubero/tehablo/master/receptor/install.sh | sh. Consulta README, sección Audio por SSH.', 'info');
+        if (field === 'volume' || field === 'speed' || field === 'audio') run(() => configure({[field]: value}));
       },
       power: action => run(async () => {
         if (action === 'off') await turnOff();
@@ -678,7 +688,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
         const status = await client.action('/status');
         if (generation !== epoch) return;
         // The multi-line status report is too long for the bar, so it stays an ordinary notice.
-        say(ctx, `Barra ${barVisible ? 'visible' : 'oculta'} · indicador ${settings.indicator ? 'visible' : 'oculto'} · automático: ${auto ? 'sí' : 'no'}\nServidor: ${status.state} · listo: ${health.ready ? 'sí' : 'no'}\nModelo: ${health.model} · voz: ${health.voice} · velocidad: ${health.speed} · volumen: ${Math.round(volume * 100)} %\nDict (diccionario de pronunciación): ${dictEnabled() ? 'sí' : 'no'}\n${help}`, 'info');
+        say(ctx, `Barra ${barVisible ? 'visible' : 'oculta'} · indicador ${settings.indicator ? 'visible' : 'oculto'} · automático: ${auto ? 'sí' : 'no'}\nServidor: ${status.state} · listo: ${health.ready ? 'sí' : 'no'}\nAudio: ${settings.audio === 'ssh' ? 'SSH' : 'Local'}\nModelo: ${health.model} · voz: ${health.voice} · velocidad: ${health.speed} · volumen: ${Math.round(volume * 100)} %\nDict (diccionario de pronunciación): ${dictEnabled() ? 'sí' : 'no'}\n${help}`, 'info');
       });
     },
   });

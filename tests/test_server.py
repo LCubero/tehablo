@@ -52,6 +52,115 @@ class Sink:
         self.thread.join()
 
 
+class SSHAudioTests(unittest.TestCase):
+    def start(self, audio='ssh', idle_exit=0, rate=24000):
+        synth = Synth()
+        synth.sample_rate = rate
+        synth.stream = lambda text, voice, stop: iter([np.full(rate * 2, .1, dtype=np.float32)])
+        server = create_server(port=0, model='spanish', catalog=['lola'], audio=audio,
+                               idle_exit=idle_exit, synthesizer_factory=lambda _: synth,
+                               audio_factory=lambda *_: self.fail('local audio used in SSH mode'))
+        thread = threading.Thread(target=server.serve_forever, kwargs={'poll_interval': .01}, daemon=True)
+        thread.start()
+        self.addCleanup(thread.join, 3)
+        self.addCleanup(server.server_close)
+        self.addCleanup(server.shutdown)
+        return server, thread
+
+    def stream(self, server):
+        conn = http.client.HTTPConnection(*server.server_address, timeout=2)
+        self.addCleanup(conn.close)
+        conn.request('GET', '/audio.wav')
+        return conn.getresponse()
+
+    def test_local_stream_conflict_changes_nothing(self):
+        server, _ = self.start('local')
+        before = server.service.health(), server.service.status()
+        response = self.stream(server)
+        self.assertEqual(response.status, 409)
+        self.assertIn('error', json.loads(response.read()))
+        self.assertEqual(before, (server.service.health(), server.service.status()))
+
+    def test_header_fanout_pacing_stop_and_no_sounddevice(self):
+        server, _ = self.start()
+        first = self.stream(server)
+        second = self.stream(server)
+        self.assertEqual(first.status, 200)
+        self.assertEqual(first.getheader('Content-Type'), 'audio/wav')
+        expected = bytes.fromhex('52494646ffffffff57415645666d74201000000001000100c05d000080bb00000200100064617461ffffffff')
+        self.assertEqual(first.read(44), expected)
+        self.assertEqual(second.read(44), expected)
+        # Drain initial silence before synthesis starts, then both listeners must hear the same frames.
+        with mock.patch.dict(sys.modules, {'sounddevice': None}):
+            server.service.speak({'id': 'ssh', 'text': 'hola'})
+            def voiced(response):
+                for _ in range(100):
+                    packet = response.read(960)
+                    if any(packet):
+                        return packet
+                self.fail('no synthesized samples received')
+            a, b = voiced(first), voiced(second)
+            self.assertEqual(a, b)
+            self.assertEqual(np.frombuffer(a, dtype='<i2')[0], int(.1 * 1.8 * 32767))
+            started = time.monotonic()
+            first.read(24000)
+            self.assertGreater(time.monotonic() - started, .15)
+            self.assertIsNone(server.service.speech_error)
+            server.service.control('stop')
+            # Allow the bounded queue and in-flight socket packet to drain.
+            first.read(14400)
+            self.assertEqual(first.read(960), bytes(960))
+
+    def test_resamples_to_24khz(self):
+        server, _ = self.start(rate=48000)
+        response = self.stream(server)
+        response.read(44)
+        server.service.speak({'id': 'resampled', 'text': 'hola'})
+        for _ in range(100):
+            packet = response.read(960)
+            if any(packet):
+                self.assertEqual(np.frombuffer(packet, dtype='<i2')[0], int(.1 * 1.8 * 32767))
+                break
+        else:
+            self.fail('no resampled samples')
+
+    def test_stream_is_not_idle_activity_and_closes_on_exit(self):
+        server, thread = self.start(idle_exit=.4)
+        before = server.last_request
+        response = self.stream(server)
+        self.assertEqual(response.status, 200)
+        self.assertEqual(server.last_request, before)
+        thread.join(2)
+        self.assertFalse(thread.is_alive())
+        self.assertLess(len(response.read()), 48000)
+
+    def test_cli_audio_choices(self):
+        for audio in ('local', 'ssh'):
+            with mock.patch.object(sys, 'argv', ['server', '--audio', audio]), \
+                 mock.patch.object(tehablo_server, 'create_server') as factory:
+                tehablo_server.main()
+                self.assertEqual(factory.call_args.kwargs['audio'], audio)
+        with mock.patch.object(sys, 'argv', ['server', '--audio', 'invalid']), \
+             contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as result:
+            tehablo_server.main()
+        self.assertEqual(result.exception.code, 2)
+
+    def test_audio_config_contract(self):
+        server = create_server(port=0, model='spanish', catalog=['lola'],
+                               synthesizer_factory=lambda _: Synth(), audio_factory=Sink)
+        self.addCleanup(server.server_close)
+        service = server.service
+        self.assertEqual(service.health()['audio'], 'local')
+        self.assertEqual(service.status()['audio'], 'local')
+        self.assertEqual(service.configure({'audio': 'ssh'})['audio'], 'ssh')
+        for value in ('bad', None, True, 3, []):
+            with self.assertRaises(ValueError):
+                service.configure({'audio': value, 'volume': .5})
+            self.assertEqual(service.health()['audio'], 'ssh')
+            self.assertEqual(service.volume, 1)
+        self.assertEqual(service.configure({'audio': 'local'})['audio'], 'local')
+
+
 class IdleTests(unittest.TestCase):
     def start(self, timeout):
         server = create_server(port=0, model='spanish', idle_exit=timeout,
@@ -145,6 +254,24 @@ class ServerTests(unittest.TestCase):
     def ready(self):
         self.loaded.set()
         self.wait(lambda: self.request('/health')[1]['ready'])
+
+    def test_http_audio_configuration_and_validation(self):
+        self.ready()
+        self.assertEqual(self.request('/health')[1]['audio'], 'local')
+        self.assertEqual(self.request('/status')[1]['audio'], 'local')
+        self.request('/config', {'voice': 'other'})
+        switched = self.request('/config', {'audio': 'ssh'})[1]
+        self.assertEqual(switched['audio'], 'ssh')
+        self.assertEqual(switched['voice'], 'other')
+        for value in ('invalid', None, True, 3, [], {}):
+            before = self.request('/health')[1]
+            code, payload = self.request('/config', {'audio': value, 'volume': .5})
+            self.assertEqual(code, 400)
+            self.assertIn('error', payload)
+            after = self.request('/health')[1]
+            self.assertEqual(after['audio'], before['audio'])
+            self.assertEqual(after['volume'], before['volume'])
+        self.assertEqual(self.request('/config', {'audio': 'local'})[1]['audio'], 'local')
 
     def test_queue_cues_mix_and_prefix_promoted_audio(self):
         sinks = []
@@ -845,10 +972,10 @@ class ServerTests(unittest.TestCase):
                 self.assertEqual(self.request('/speak', {'id': kind, 'text': 'hola'})[0], 202)
                 self.wait(lambda: self.request('/status')[1]['state'] == 'idle')
                 self.assertEqual(self.request('/status'), (200, {
-                    'state': 'idle', 'id': None, 'error': 'speech failed: broken playback'}))
+                    'state': 'idle', 'id': None, 'audio': 'local', 'error': 'speech failed: broken playback'}))
                 self.assertIsNone(self.request('/health')[1]['error'])
                 self.assertEqual(self.request('/stop', {}), (200, {'state': 'idle'}))
-                self.assertEqual(self.request('/status')[1], {'state': 'idle', 'id': None, 'error': None})
+                self.assertEqual(self.request('/status')[1], {'state': 'idle', 'id': None, 'audio': 'local', 'error': None})
         self.server.service.audio_factory = Sink
         self.synth.stream = fail
         self.request('/speak', {'id': 'fail', 'text': 'hola'})
@@ -948,7 +1075,7 @@ class ServerTests(unittest.TestCase):
         self.assertEqual(health[0], 200)
         self.assertFalse(health[1]['ready'])
         self.assertEqual(health[1]['error'], message)
-        self.assertEqual(self.request('/status'), (200, {'state': 'error', 'id': None, 'error': message}))
+        self.assertEqual(self.request('/status'), (200, {'state': 'error', 'id': None, 'audio': 'local', 'error': message}))
         self.assertEqual(self.request('/speak', {'id': 'bad', 'text': 'hola'}), (503, {'error': message}))
         self.assertEqual(self.request('/health'), health)
         self.assertEqual(self.synth.calls, [])
@@ -956,7 +1083,7 @@ class ServerTests(unittest.TestCase):
         self.assertEqual(result[0], 200)
         self.assertIsNone(result[1]['error'])
         self.assertFalse(result[1]['ready'])
-        self.assertEqual(self.request('/status')[1], {'state': 'loading', 'id': None, 'error': None})
+        self.assertEqual(self.request('/status')[1], {'state': 'loading', 'id': None, 'audio': 'local', 'error': None})
         retry.set()
         self.wait(lambda: self.request('/health')[1]['ready'])
         self.assertIsNone(self.request('/health')[1]['error'])
@@ -1199,7 +1326,7 @@ class ServerTests(unittest.TestCase):
         self.wait(lambda: bool(self.request('/health')[1]['error']))
         self.assertEqual(self.request('/stop', {}), (200, {'state': 'error'}))
         self.assertEqual(self.request('/status'),
-                         (200, {'state': 'error', 'id': None, 'error': 'model load failed: broken model'}))
+                         (200, {'state': 'error', 'id': None, 'audio': 'local', 'error': 'model load failed: broken model'}))
 
     def test_rejected_body_closes_connection(self):
         self.ready()

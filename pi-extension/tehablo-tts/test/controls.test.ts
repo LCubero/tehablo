@@ -9,7 +9,7 @@ import {ServerClient} from '../src/server.ts';
 
 function setup(store=memoryStore(),clipboard?:()=>Promise<string>,watchMs=0,noteMs=4000) {
   const windows:any[]=[], keyHandlers:any[]=[];
-  const configs:any[]=[], notices:string[]=[], statuses:(string|undefined)[]=[], settings={volume:1,speed:1,error:null as string|null,fallback:null as string|null};
+  const configs:any[]=[], notices:string[]=[], statuses:(string|undefined)[]=[], settings={volume:1,speed:1,audio:'local',error:null as string|null,fallback:null as string|null};
   const hooks:any={}, calls:string[]=[], entries:any[]=[{type:'message',id:'a',message:{role:'assistant',content:'Hola'}} ,{type:'custom',customType:'tehablo-tts',data:{messageId:'a',number:1}}];
   let renderer:any, command:any, state='playing', id:string|null='a', renders=0, fail=false, ready=true, ensures=0;
   const client:any={beginSession(){},ensure:async()=>{ensures++;},stop:async()=>{},shutdown:async()=>{},powerOff:async()=>{calls.push('/shutdown');},request:async(path:string)=>{calls.push(path);if(fail)throw Error('offline');if(path==='/health')return {...settings,ready};return {state,id,error:settings.error};},action:async(path:string,body:any)=>{calls.push(path);if(path==='/config'){configs.push(body);Object.assign(settings,body);return {...settings,ready};}if(path==='/health')return {...settings,ready};if(path==='/pause')state='paused';if(path==='/resume')state='playing';return {state};}};
@@ -143,6 +143,32 @@ test('scoped controls S1: a replaced paused card returns to play while the forei
   } finally { await s.close(); }
 });
 
+test('SSH audio applies on reuse, toggles live and gives the exact one-time instructions', async () => {
+  const store = memoryStore(); store.save({...store.load(), audio: 'ssh'});
+  const s = setup(store);
+  try {
+    await start(s);
+    assert.ok(s.configs.some(body => body.audio === 'ssh'));
+    await s.command('status');
+    assert.ok(s.notices.some(text => text.includes('Audio: SSH')));
+    await s.command('menu'); await new Promise(r => setImmediate(r));
+    const c = s.windows[0].w.c;
+    s.notices.length = 0;
+    c.change('audio', 'local'); await new Promise(r => setImmediate(r));
+    assert.deepEqual(s.configs.at(-1), {audio: 'local'});
+    assert.equal(s.notices.length, 0);
+    c.change('audio', 'ssh'); await new Promise(r => setImmediate(r));
+    assert.deepEqual(s.configs.at(-1), {audio: 'ssh'});
+    assert.deepEqual(s.notices, ['TTS teHablo: Audio por SSH activado. En la computadora desde la que te conectas, ejecuta una vez: Windows: irm https://raw.githubusercontent.com/LCubero/tehablo/master/receptor/install.ps1 | iex; Linux/macOS: curl -fsSL https://raw.githubusercontent.com/LCubero/tehablo/master/receptor/install.sh | sh. Consulta README, sección Audio por SSH.']);
+    assert.equal(store.load().audio, 'ssh');
+    c.change('audio', 'ssh'); await new Promise(r => setImmediate(r));
+    assert.equal(s.notices.length, 1);
+    c.change('icons', 'text');
+    assert.equal(store.load().icons, 'text');
+    assert.equal(store.load().audio, 'ssh');
+  } finally { await s.close(); }
+});
+
 test('text icons render all states and changing the window saves and redraws immediately', async () => {
   const clip = deferred<string>(), store = memoryStore();
   const s = setup(store, () => clip.promise);
@@ -189,6 +215,21 @@ test('text icons render all states and changing the window saves and redraws imm
     assert.equal(s.line(), ready + ' [ ... ] auto  // Lectura automática: sí');
     assert.deepEqual(s.notices, []);
   } finally { clip.resolve('Copied'); await s.close(); }
+});
+
+test('audio changes from another session apply live without duplicate SSH notices', async () => {
+  let changed = false;
+  const store = {...memoryStore(), changed: () => { const result = changed; changed = false; return result; }};
+  const s = setup(store, undefined, 10);
+  try {
+    await start(s);
+    await s.command('menu'); await new Promise(r => setImmediate(r));
+    store.save({...store.load(), audio: 'ssh'}); changed = true;
+    for (let i = 0; i < 50 && !s.configs.some(body => body.audio === 'ssh'); i++) await new Promise(r => setTimeout(r, 10));
+    assert.ok(s.configs.some(body => body.audio === 'ssh'));
+    assert.equal(s.windows[0].w.c.state().settings.audio, 'ssh');
+    assert.ok(!s.notices.some(text => text.includes('Audio por SSH activado')));
+  } finally { await s.close(); }
 });
 
 test('icon changes from another session refresh bars and the open window', async () => {
@@ -888,7 +929,7 @@ test('a server started here gets the saved model and voice at launch, so no relo
   const store=memoryStore();store.save({...DEFAULTS,model:'phonon',voice:'Regina',volume:0.75,speed:1.25});
   const s=setup(store);s.client.ensure=async function(){this.spawned=true;};try {
     await start(s);
-    assert.deepEqual(s.client.startArgs,['--model','phonon','--voice','Regina']);
+    assert.deepEqual(s.client.startArgs,['--model','phonon','--voice','Regina','--audio','local']);
     assert.deepEqual(s.configs,[{volume:0.75,speed:1.25}]);
   }finally{await s.close();}
 });

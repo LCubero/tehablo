@@ -72,6 +72,20 @@ test('keyboard changes volume, speed and auto within their limits', () => {
   assert.equal(s.closed(), true);
 });
 
+test('audio row supports click and left/right without changing icons', () => {
+  const s = setup();
+  s.w.row = s.w.mainRows().findIndex(r => r.label === 'Audio');
+  assert.ok(s.text().includes('Local'));
+  s.key('\x1b[C');
+  assert.equal(s.state.settings.audio, 'ssh');
+  assert.ok(s.text().includes('SSH'));
+  s.key('\x1b[D');
+  assert.equal(s.state.settings.audio, 'local');
+  s.click('Local');
+  assert.equal(s.state.settings.audio, 'ssh');
+  assert.equal(s.state.settings.icons, 'symbols');
+});
+
 test('icon row supports mouse and keyboard', () => {
   const s = setup();
   assert.match(s.text(), /Iconos/);
