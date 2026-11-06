@@ -622,7 +622,7 @@ test('three consecutive status failures stop playback; success resets the count'
     s.fail(false);await tick();s.fail();await tick();await tick();
     assert.deepEqual(s.notices,[]);assert.match(s.line(),/■/);
     await tick();assert.equal(s.line(),'[ ⏻ TTS ] [ ≡ ]');
-    assert.deepEqual(s.notices,['TTS teHablo: Se perdió la conexión con el servidor. Revisa logs/tehablo-server.log.']);
+    assert.deepEqual(s.notices,['TTS teHablo: Se perdió la conexión con el servidor (/status: offline). Revisa logs/tehablo-server.log.']);
     const count=s.calls.length;await tick();assert.equal(s.calls.length,count);assert.equal(s.notices.length,1);
   }finally{await s.close();}
 });
@@ -692,9 +692,9 @@ test('volume and speed buttons, limits and command synchronization',async()=>{
   const volDown=()=>clickAt(s,'Vol [-',5), volUp=()=>clickAt(s,'% +]',2), velDown=()=>clickAt(s,'Vel [-',5), velUp=()=>clickAt(s,'x +]',2);
   try {
     await start(s);await clickAt(s,'[ ⋯ ]',2);
-    await volDown();assert.deepEqual(s.configs.at(-1),{volume:.9});assert.ok(s.notices.includes('TTS teHablo: Volumen: 90 %'));assert.match(s.line(),/Vol \[- 90% \+\]/);
+    await volDown();assert.deepEqual(s.configs.at(-1),{volume:.9});assert.match(s.line(),/Vol \[- 90% \+\]/);
     await volUp();assert.deepEqual(s.configs.at(-1),{volume:1});
-    await velUp();assert.deepEqual(s.configs.at(-1),{speed:1.1});assert.ok(s.notices.includes('TTS teHablo: Velocidad: 1.10x'));
+    await velUp();assert.deepEqual(s.configs.at(-1),{speed:1.1});assert.match(s.line(),/Vel \[- 1\.10x \+\]/);assert.deepEqual(s.notices,[],'the bar already shows volume and speed');
     await velUp();assert.deepEqual(s.configs.at(-1),{speed:1.15});
     await velDown();await velDown();assert.deepEqual(s.configs.at(-1),{speed:1});
     const n=s.configs.length;
@@ -978,6 +978,16 @@ test('the bar follows another Pi session turning the shared server on and off, w
     assert.ok(s.calls.every((p:string)=>p==='/health'),s.calls.join());
   }finally{await s.close();}
   const n=s.calls.length;await new Promise(r=>setTimeout(r,150));assert.equal(s.calls.length,n);
+});
+
+test('a new session shows the shared server state at once, without starting it or warning',async()=>{
+  const s=setup(memoryStore(),undefined,1000);
+  try {
+    s.set('idle',null);assert.equal(s.line(),'[ ⏻ TTS ] [ ≡ ]');
+    await new Promise(r=>setTimeout(r,50));
+    assert.equal(s.line(),'[ ▶ ] [ ▶ copiado ] [ ⋯ ]');assert.equal(s.ensures(),0);assert.deepEqual(s.notices,[]);
+    assert.deepEqual(s.calls,['/health']);
+  }finally{await s.close();}
 });
 
 test('a dying server answering once after power off does not turn the bar back on',async()=>{

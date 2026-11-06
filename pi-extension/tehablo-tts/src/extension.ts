@@ -154,14 +154,16 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
     readyTimer.unref?.();
   };
   /** Other Pi sessions share the server, so the bar watches /health to show when one of them turns it on or off.
-   * Only the state changes, after two equal observations; it never starts the server, applies settings or warns. */
+   * Only the state changes, after two equal observations; it never starts the server, applies settings or warns.
+   * At session start the first observation comes at once and counts alone, so a running server shows without delay. */
   let watchTimer: ReturnType<typeof setTimeout> | undefined, watchEpoch = 0, booting = 0;
   let seen: typeof server | undefined, seenCount = 0, seenEpoch = 0;
   const stopWatch = () => { watchEpoch++; if (watchTimer) clearTimeout(watchTimer); watchTimer = undefined; seen = undefined; };
-  const watch = () => {
+  const watch = (immediate = false) => {
     stopWatch();
     if (!watchMs) return;
     const generation = watchEpoch;
+    let first = immediate;
     const next = () => {
       watchTimer = setTimeout(async () => {
         watchTimer = undefined;
@@ -184,13 +186,14 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
         if (before !== epoch || booting || readyTimer) seen = undefined;
         else {
           seenCount = observed === seen ? seenCount + 1 : 1; seen = observed;
-          if (seenCount >= 2 && observed !== server) {
+          if ((seenCount >= 2 || first) && observed !== server) {
             if (observed === 'off') { resetPlayback(); open = false; }
             setServer(observed);
           }
         }
+        first = false;
         next();
-      }, watchMs);
+      }, first ? 0 : watchMs);
       watchTimer.unref?.();
     };
     next();
@@ -234,7 +237,6 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
     if (generation !== epoch) return;
     if (typeof configured?.[field] === 'number') { settings = {...settings, [field]: configured[field]}; persist(); }
     sync(configured);
-    say(ctx, field === 'volume' ? `Volumen: ${Math.round(volume * 100)} %` : `Velocidad: ${speedLabel(speed)}`, 'info');
   };
   const update = (state: string, id: string | null) => {
     if (state !== playback.state || id !== playback.id) { playback = {state, id}; refresh(); }
@@ -275,11 +277,12 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
         }
         if (!owned.size) { resetPlayback(); return; }
         update(status.state, status.id);
-      } catch {
+      } catch (error) {
         if (generation !== pollEpoch) return;
         if (++pollFailures >= 3) {
           resetPlayback(); setServer('off');
-          say(context, 'Se perdió la conexión con el servidor. Revisa logs/tehablo-server.log.', 'warning');
+          const reason = error instanceof Error ? error.message : String(error);
+          say(context, `Se perdió la conexión con el servidor (/status: ${reason}). Revisa logs/tehablo-server.log.`, 'warning');
           return;
         }
       }
@@ -560,7 +563,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
     refresh(); showStart(ctx);
     listenKeys(ctx);
     client.beginSession();
-    watch();
+    watch(true);
   });
   pi.on('agent_start', (_event, ctx) => {
     if (ctx.mode !== 'tui') return;

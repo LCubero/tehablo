@@ -402,23 +402,24 @@ Esta hoja de ruta es el propietario canónico del ciclo de vida. Registre solo t
 - **Decisión:** registrar como investigación.
 - **Condición del siguiente avance:** autorización para investigar.
 
+## Registros resueltos
+<!-- doc-role:resolved-records -->
+
 ### RH-W-0042: Pulir avisos y estado de la barra con varias sesiones
 
 - **Origen:** pruebas de la persona responsable en Linux con dos sesiones de Pi, 2026-11-05: «si subo o bajo volumen o velocidad desde el toolbar, no hay xq mostrar el mensaje de "TTS teHablo: ...." ya que lo veo en el toolbar, me explico, solo apra volumen y velocidad en toolbar.»; «salio el tts como apagado pero luego se cambió [...] lo mismo si está apagado y lo enciendo en 1 session, dura unr rato en mostrarla en la otra sesion, no está mal pero podrias revisarlo, solo revisar.»; «mientras sonaba B probé darle al volumen + en A y salio "Warning: TTS teHablo: Se perdió la conexión con el servidor. Revisa logs/tehablo-server.log."».
 - **Prioridad:** P2; molestias de uso diario, sin pérdida de lecturas.
 - **Dependencias:** `RH-W-0033`, `RH-W-0041`.
-- **Estado:** `proposed`.
-- **Trabajo restante:**
+- **Estado:** `completed` (2026-11-05).
+- **Trabajo completado (2026-11-05, autorizado: «ok [...] menos es más, pero bien hecho»):** (1) volumen y velocidad desde la barra ya no muestran aviso; (2) al abrir una sesión, el vigilante consulta `/health` de inmediato y acepta esa primera lectura, sin arrancar el servidor ni avisar; después sigue pidiendo dos lecturas iguales; (3) el aviso de conexión perdida incluye la ruta y el error de la última consulta (`/status: …`), para tener rastro si vuelve a salir. Pruebas de la extensión: 145, todas pasan.
+- **Comprobación física (2026-11-05, Linux):** la persona responsable cambió volumen y velocidad desde la barra sin aviso: «ya funciona, gracias». Sin comprobar a mano: el estado inmediato al abrir una segunda sesión (lo cubre su prueba automática).
+- **Trabajo restante:** none. Alcance original:
   - Volumen y velocidad desde la barra: no mostrar el aviso «TTS teHablo: …», porque el valor ya se ve en la barra. Solo esos dos controles de la barra; los comandos y la ventana `[ ≡ ]` no cambian.
   - Revisar el estado inicial de la barra: al abrir una sesión se muestra apagado y solo el vigilante (cada 2 s, dos lecturas iguales) lo corrige, ~4 s normalmente (`pi-extension/tehablo-tts/src/extension.ts:552-563`, `:175-190`). Posible mejora: consultar `/health` al empezar la sesión, sin arrancar el servidor.
   - Aviso intermitente «Se perdió la conexión con el servidor»: sale del seguimiento de reproducción tras tres fallos seguidos de `/status` (`extension.ts:252-288`), no del control de volumen. No se repitió al reintentar y no dejó rastro: el servidor no registra peticiones, el error se descarta y el log se vacía en cada arranque. Si vuelve a pasar, registrar ruta, duración y excepción de esas consultas antes de cambiar nada.
 - **Evidencia:** lectura del código sin cambios; `logs/tehablo-server.log` solo tenía las cuatro líneas de arranque.
-- **Decisión:** registrar; la persona responsable pidió revisar, no cambiar todavía.
-- **Condición del siguiente avance:** autorización de la persona responsable para implementar.
-
-
-## Registros resueltos
-<!-- doc-role:resolved-records -->
+- **Decisión:** registrar; la persona responsable pidió revisar, no cambiar todavía. Implementado el 2026-11-05 tras su autorización, con el cambio mínimo: sin registro nuevo en el servidor.
+- **Condición del siguiente avance:** none; se reabre si la barra tarda al abrir una sesión o si el aviso de conexión vuelve a salir (ahora con su causa).
 
 ### RH-W-0033: Qué pasa con el TTS cuando hay varias sesiones de Pi abiertas
 

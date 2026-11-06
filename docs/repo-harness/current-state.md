@@ -88,7 +88,6 @@ Este archivo proyecta solo hechos verificados del proyecto: registros activos, b
 - `RH-W-0038` (`proposed`, P2): primer release o release candidate, después del instalador.
 - `RH-W-0039` (`proposed`, P3): página de producto, probablemente como proyecto aparte.
 - `RH-W-0040` (`proposed`, P3): investigar teHablo en el celular.
-- `RH-W-0042` (`proposed`, P2): sin aviso al cambiar volumen o velocidad desde la barra, estado inicial de la barra y un aviso de conexión intermitente.
 
 ## Siguiente paso
 
