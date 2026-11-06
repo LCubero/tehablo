@@ -275,12 +275,17 @@ class SpeechService:
         self.id = None
         self.cue_pending = self.cue_offset = 0
         self.queue_prefix = False
+        self.condition.notify_all()
 
     def start_reading(self, item):
         identifier, text, voice, speed, lexicon = item
         self.clear()
         self.cancel = threading.Event()
         self.id = identifier
+        try:
+            self.resolve_voice(voice)
+        except ValueError:
+            voice = self.voice
         self.pending = (text, self.cancel, voice, speed, lexicon)
         self.state = 'generating' if self.ready else 'loading'
         self.condition.notify_all()
@@ -340,14 +345,17 @@ class SpeechService:
                 self.paused = action == 'pause'
                 if self.paused:
                     self.state = 'paused'
+                    self.condition.notify_all()
                 else:
                     self.state = ('playing' if self.buffer else 'generating') if self.ready else 'loading'
+                    self.condition.notify_all()
             return {'state': self.state}
 
     def configure(self, body):
         with self.condition:
             self.validate(body)
-            reload = body.get('model', self.model_name) != self.model_name
+            reload = (body.get('model', self.model_name) != self.model_name
+                      or ('model' in body and self.error is not None))
             if reload:
                 self.clear()
                 self.model_name = body['model']
@@ -379,6 +387,8 @@ class SpeechService:
                 if self.offset == len(chunk):
                     self.buffer.popleft()
                     self.offset = 0
+            if written:
+                self.condition.notify_all()
             position = 0
             while self.cue_pending and self.cue.size and position < frames:
                 count = min(frames - position, len(self.cue) - self.cue_offset)
@@ -399,8 +409,17 @@ class SpeechService:
     def append(self, data, cancel):
         data = np.asarray(data, dtype=np.float32).reshape(-1)
         with self.condition:
-            if data.size and not cancel.is_set():
-                self.buffer.append(data)
+            # Keep at most three seconds queued, even when a synth yields a large chunk.
+            limit = 3 * self.cue_rate
+            position = 0
+            while position < data.size and not cancel.is_set() and not self.closed:
+                buffered = sum(len(chunk) for chunk in self.buffer) - self.offset
+                if buffered >= limit:
+                    self.condition.wait()
+                    continue
+                count = min(data.size - position, limit - buffered)
+                self.buffer.append(data[position:position + count].copy())
+                position += count
                 if not self.paused:
                     self.state = 'playing'
 

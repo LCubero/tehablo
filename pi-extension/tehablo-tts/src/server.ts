@@ -25,6 +25,7 @@ export class ServerClient {
   private poweringOff?: Promise<void>;
   private used = false;
   private readings = new Set<string>();
+  private inFlight = new Set<string>();
   /** Extra arguments for the next spawned server, such as the saved model and voice. */
   startArgs: string[] = [];
   /** Hugging Face token for the next spawned server, kept only in memory and passed in its environment. */
@@ -39,19 +40,34 @@ export class ServerClient {
   beginSession() { this.closed = false; this.used = false; this.ending = false; }
   async request(path: string, body?: unknown): Promise<any> {
     const id = (body as {id?: string} | undefined)?.id;
-    if (path === '/speak' && typeof id === 'string') this.readings.add(id);
-    const response = await (this.options.fetch ?? globalThis.fetch)(this.base + path, {
-      method: body === undefined ? 'GET' : 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: body === undefined ? undefined : JSON.stringify(body),
-      signal: AbortSignal.timeout(2000),
-    });
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.error ?? `Servidor: HTTP ${response.status}`);
-    if (path === '/stop') {
-      if (id === undefined) this.readings.clear(); else this.readings.delete(id);
+    const speaking = path === '/speak' && typeof id === 'string';
+    if (speaking) { this.readings.add(id); this.inFlight.add(id); }
+    // A status snapshot cannot retire requests that were pending or started after it.
+    const observed = path === '/status' ? [...this.readings].filter(id => !this.inFlight.has(id)) : [];
+    try {
+      const response = await (this.options.fetch ?? globalThis.fetch)(this.base + path, {
+        method: body === undefined ? 'GET' : 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: body === undefined ? undefined : JSON.stringify(body),
+        signal: AbortSignal.timeout(2000),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        if (speaking) this.readings.delete(id);
+        throw new Error(data.error ?? `Servidor: HTTP ${response.status}`);
+      }
+      if (path === '/stop') {
+        if (id === undefined) this.readings.clear(); else this.readings.delete(id);
+      }
+      if (path === '/status') {
+        const active = new Set([data.id, ...(data.queue ?? []), ...(data.promoted ?? [])]);
+        for (const reading of observed)
+          if (!active.has(reading) && !this.inFlight.has(reading)) this.readings.delete(reading);
+      }
+      return data;
+    } finally {
+      if (speaking) this.inFlight.delete(id);
     }
-    return data;
   }
   async ensure(): Promise<void> {
     await this.poweringOff;
@@ -116,8 +132,8 @@ export class ServerClient {
   }
   async stop() {
     if (!this.readings.size) return;
-    const ids = [...this.readings];
     const status = await this.request('/status');
+    const ids = [...this.readings];
     for (const id of [...ids.filter(id => id !== status.id), ...ids.filter(id => id === status.id)])
       await this.request('/stop', {id});
   }

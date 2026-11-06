@@ -210,6 +210,154 @@ class ServerTests(unittest.TestCase):
                     self.assertEqual(self.request('/status')[1]['promoted'], ['a'])
                 self.request('/stop', {})
 
+    def test_cross_engine_queue_uses_current_voice(self):
+        self.request('/speak', {'id': 'first', 'text': 'first'})
+        for model, voice in [('phonon', 'Iker'), ('spanish', 'other')]:
+            with self.subTest(model=model):
+                count = len(self.synth.calls)
+                self.request('/speak', {'id': 'next', 'text': 'next', 'policy': 'wait'})
+                self.request('/config', {'model': model, 'voice': voice})
+                self.ready()
+                self.wait(lambda: len(self.synth.calls) > count)
+                self.assertEqual(self.synth.calls[-1], ('Siguiente lectura. next', voice))
+
+    def test_queue_uses_fallback_voice(self):
+        original = self.server.service.factory
+
+        def load(model):
+            if model == 'phonon':
+                self.loaded.wait(3)
+                raise RuntimeError('unavailable')
+            return original(model)
+
+        self.server.service.factory = load
+        self.request('/speak', {'id': 'first', 'text': 'first'})
+        self.request('/config', {'model': 'phonon'})
+        self.request('/speak', {'id': 'loading', 'text': 'loading'})
+        self.request('/speak', {'id': 'next', 'text': 'next', 'policy': 'wait'})
+        self.ready()
+        self.wait(lambda: bool(self.synth.calls))
+        self.request('/stop', {'id': 'loading'})
+        self.wait(lambda: len(self.synth.calls) == 2)
+        self.assertEqual(self.synth.calls[-1], ('Siguiente lectura. next', 'lola'))
+
+    def test_same_model_retry_preserves_queue(self):
+        attempts = []
+
+        def load(model):
+            attempts.append(model)
+            self.loaded.wait(3)
+            if len(attempts) == 1:
+                raise RuntimeError('temporary load failure')
+            return self.synth
+
+        # The initial factory is already waiting; fail the next revision instead.
+        self.ready()
+        self.server.service.factory = load
+        self.loaded.clear()
+        self.request('/speak', {'id': 'first', 'text': 'first'})
+        self.request('/speak', {'id': 'next', 'text': 'next', 'policy': 'wait'})
+        self.request('/config', {'model': 'spanish_24l'})
+        self.loaded.set()
+        self.wait(lambda: self.request('/health')[1]['error'] is not None)
+        self.assertEqual(self.request('/status')[1]['queue'], ['next'])
+        self.request('/config', {'model': 'spanish_24l'})
+        self.wait(lambda: self.request('/health')[1]['ready'])
+        self.wait(lambda: any('next' in text for text, _ in self.synth.calls))
+        self.assertEqual(attempts, ['spanish_24l', 'spanish_24l'])
+
+    def test_buffer_backpressure_and_interruptions(self):
+        sinks = []
+        generated = []
+
+        class ManualSink:
+            def __init__(self, rate, callback):
+                self.callback = callback
+                sinks.append(self)
+
+            def close(self):
+                pass
+
+        class FastSynth:
+            sample_rate = 24000
+
+            def stream(self, text, voice, stop):
+                generated.append(text)
+                for _ in range(100):
+                    if stop.is_set():
+                        return
+                    generated.append('chunk')
+                    yield np.full(24000, .1, dtype=np.float32)
+
+        self.synth = FastSynth()
+        self.audio_factory = ManualSink
+        self.ready()
+        for action in ('stop', 'replace', 'model', 'close'):
+            with self.subTest(action=action):
+                generated.clear()
+                self.request('/speak', {'id': 'a', 'text': 'first'})
+                self.wait(lambda: generated.count('chunk') >= 4)
+                self.request('/pause', {'id': 'a'})
+                time.sleep(.05)
+                self.assertLessEqual(generated.count('chunk'), 4)
+                count = generated.count('chunk')
+                output = np.zeros((24000, 1), dtype=np.float32)
+                sinks[-1].callback(output, 24000, None, None)
+                self.assertFalse(output.any())
+                self.request('/resume', {'id': 'a'})
+                sinks[-1].callback(output, 24000, None, None)
+                self.assertTrue(output.any())
+                self.wait(lambda: generated.count('chunk') > count)
+                if action == 'stop':
+                    self.request('/stop', {})
+                    self.request('/speak', {'id': 'b', 'text': 'second'})
+                elif action == 'replace':
+                    self.request('/speak', {'id': 'b', 'text': 'second'})
+                elif action == 'model':
+                    self.request('/speak', {'id': 'b', 'text': 'second', 'policy': 'wait'})
+                    self.request('/config', {'model': 'spanish_24l'})
+                else:
+                    self.server.service.close()
+                    self.assertFalse(self.server.service.worker.is_alive())
+                    continue
+                self.wait(lambda: any('second' in text for text in generated))
+                self.request('/stop', {})
+
+    def test_large_chunk_is_split_at_buffer_limit(self):
+        sinks = []
+        yielded = threading.Event()
+
+        class ManualSink:
+            def __init__(self, rate, callback):
+                self.callback = callback
+                sinks.append(self)
+
+            def close(self):
+                pass
+
+        class LargeSynth:
+            sample_rate = 24000
+
+            def stream(self, text, voice, stop):
+                yielded.set()
+                yield np.full(240000, .1, dtype=np.float32)
+
+        self.synth = LargeSynth()
+        self.audio_factory = ManualSink
+        self.ready()
+        self.request('/speak', {'id': 'large', 'text': 'large'})
+        self.wait(lambda: yielded.is_set() and self.request('/status')[1]['state'] == 'playing')
+        self.request('/pause', {'id': 'large'})
+        output = np.zeros((240000, 1), dtype=np.float32)
+        sinks[-1].callback(output, len(output), None, None)
+        self.assertFalse(output.any())
+        self.request('/resume', {'id': 'large'})
+        sinks[-1].callback(output, len(output), None, None)
+        self.assertEqual(np.count_nonzero(output), 72000)
+        self.assertTrue(np.all(output[:72000] > 0))
+        self.request('/stop', {})
+        self.assertEqual(self.request('/status')[1]['state'], 'idle')
+
     def test_model_reload_continues_the_queue(self):
         self.request('/speak', {'id': 'first', 'text': 'first'})
         self.request('/speak', {'id': 'next', 'text': 'next', 'policy': 'wait'})

@@ -46,4 +46,5 @@ async def main() -> int:
     return 0 if 1.35 < ratio < 1.65 else 1
 
 
-sys.exit(asyncio.run(main()))
+if __name__ == '__main__':
+    sys.exit(asyncio.run(main()))

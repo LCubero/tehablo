@@ -95,6 +95,104 @@ test('power off during pending startup prevents stale spawn and can restart',asy
   await client.ensure();await client.shutdown();
 });
 
+test('S12: completed, rejected and stopped readings are forgotten through status and shutdown', async () => {
+  const stops: string[] = [];
+  let status = {id: 'current', queue: ['queued']} as any;
+  const client = new ServerClient({fetch: (async (url: any, init: any) => {
+    const path = new URL(url).pathname;
+    const body = init.body ? JSON.parse(init.body) : {};
+    if (path === '/speak' && body.id === 'rejected')
+      return Response.json({error: 'full'}, {status: 400});
+    if (path === '/speak' && body.id === 'network') throw Error('offline');
+    if (path === '/status') return Response.json(status);
+    if (path === '/stop') stops.push(body.id);
+    return Response.json({ok: true});
+  }) as any});
+  for (const id of ['completed', 'stopped', 'current', 'queued'])
+    await client.request('/speak', {id, text: id});
+  await assert.rejects(client.request('/speak', {id: 'rejected', text: 'no'}), /full/);
+  await assert.rejects(client.request('/speak', {id: 'network', text: 'no'}), /offline/);
+  await client.request('/stop', {id: 'stopped'});
+  await client.request('/status');
+  status = {id: 'foreign', queue: ['queued']};
+  await client.shutdown();
+  assert.deepEqual(stops, ['stopped', 'queued']);
+});
+
+test('S12: lost speak responses retain ownership until status reconciles it', async () => {
+  for (const location of ['current', 'queue', 'promoted', 'absent']) {
+    const stops: string[] = [];
+    const client = new ServerClient({fetch: (async (url: any, init: any) => {
+      const path = new URL(url).pathname;
+      if (path === '/speak') {
+        // Accepted server-side, but the response never reaches the client.
+        throw new Error('connection reset after acceptance');
+      }
+      if (path === '/status') return Response.json({
+        id: location === 'current' ? 'accepted' : 'foreign',
+        queue: location === 'queue' ? ['accepted'] : [],
+        promoted: location === 'promoted' ? ['accepted'] : [],
+      });
+      if (path === '/stop') stops.push(JSON.parse(init.body).id);
+      return Response.json({ok: true});
+    }) as any});
+    await assert.rejects(client.request('/speak', {id: 'accepted', text: 'hello'}), /connection reset/);
+    await client.shutdown();
+    assert.deepEqual(stops, location === 'absent' ? [] : ['accepted'], location);
+  }
+});
+
+test('S12: an explicit speak rejection retires ownership without waiting for status', async () => {
+  const calls: string[] = [];
+  const client = new ServerClient({fetch: (async (url: any) => {
+    calls.push(new URL(url).pathname);
+    return Response.json({error: 'queue full'}, {status: 400});
+  }) as any});
+  await assert.rejects(client.request('/speak', {id: 'rejected', text: 'hello'}), /queue full/);
+  await client.shutdown();
+  assert.deepEqual(calls, ['/speak']);
+});
+
+test('S12: status cannot forget a speak request still in flight', async () => {
+  let release!: () => void;
+  const stops: string[] = [];
+  const client = new ServerClient({fetch: (async (url: any, init: any) => {
+    const path = new URL(url).pathname;
+    if (path === '/speak') await new Promise<void>(resolve => { release = resolve; });
+    if (path === '/status') return Response.json({id: null});
+    if (path === '/stop') stops.push(JSON.parse(init.body).id);
+    return Response.json({ok: true});
+  }) as any});
+  const speaking = client.request('/speak', {id: 'pending', text: 'hello'});
+  await client.request('/status');
+  const stopping = client.stop();
+  await stopping;
+  release(); await speaking;
+  assert.deepEqual(stops, ['pending']);
+});
+
+test('S12: a stale status response cannot forget a speak accepted while it was in flight', async () => {
+  let release!: () => void;
+  const stops: string[] = [];
+  let delayed = true;
+  const client = new ServerClient({fetch: (async (url: any, init: any) => {
+    const path = new URL(url).pathname;
+    if (path === '/status' && delayed) {
+      delayed = false;
+      await new Promise<void>(resolve => { release = resolve; });
+      return Response.json({id: null});
+    }
+    if (path === '/status') return Response.json({id: 'new'});
+    if (path === '/stop') stops.push(JSON.parse(init.body).id);
+    return Response.json({ok: true});
+  }) as any});
+  const stale = client.request('/status');
+  await client.request('/speak', {id: 'new', text: 'hello'});
+  release(); await stale;
+  await client.shutdown();
+  assert.deepEqual(stops, ['new']);
+});
+
 const slash=(path:string)=>path.replaceAll('\\','/');
 
 function spawnRecorder(spawned:any[],onSpawn:()=>void,error?:Error){
