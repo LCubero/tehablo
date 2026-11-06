@@ -28,22 +28,30 @@ fi
 uv pip install --python "$env_dir/bin/python" -r requirements.txt \
     --extra-index-url https://download.pytorch.org/whl/cpu --index-strategy unsafe-best-match
 
-if output=$("$env_dir/bin/python" -c 'import pocket_tts, ptts, sounddevice, torch; print(torch.__version__); assert torch.version.cuda is None' 2>&1); then
+if output=$("$env_dir/bin/python" -c 'import pocket_tts, ptts, torch; print(torch.__version__); assert torch.version.cuda is None' 2>&1); then
     printf '%s\n' "$output"
 else
     printf '%s\n' "$output" >&2
+    exit 1
+fi
+# PortAudio is only needed to play on this machine; a server without sound can use Audio: SSH.
+if ! output=$("$env_dir/bin/python" -c 'import sounddevice' 2>&1); then
     if printf '%s\n' "$output" | grep -qi portaudio; then
-        printf '%s\n' 'Falta PortAudio. Instálalo y vuelve a ejecutar este script:' >&2
+        printf '%s\n' 'Aviso: falta PortAudio, así que la voz no puede sonar en este equipo.' \
+            'Si usas Pi aquí por SSH, elige Audio: SSH en los ajustes de Pi (README, Audio por SSH).' \
+            'Para que suene en este equipo, instálalo y vuelve a ejecutar este script:'
         if command -v dnf >/dev/null 2>&1; then
-            printf '%s\n' 'sudo dnf install portaudio' >&2
+            printf '%s\n' 'sudo dnf install portaudio'
         elif command -v apt-get >/dev/null 2>&1; then
-            printf '%s\n' 'sudo apt install libportaudio2' >&2
+            printf '%s\n' 'sudo apt install libportaudio2'
         else
             printf '%s\n' 'sudo dnf install portaudio      # Fedora' \
-                'sudo apt install libportaudio2  # Debian / Ubuntu' >&2
+                'sudo apt install libportaudio2  # Debian / Ubuntu'
         fi
+    else
+        printf '%s\n' "$output" >&2
+        exit 1
     fi
-    exit 1
 fi
 printf '%s\n' 'Audio por SSH (en tu PC): ./install.sh --receptor'
 printf 'Listo: %s\n' "$env_dir"

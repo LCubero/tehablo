@@ -6,7 +6,7 @@ Este archivo registra los cambios completados en orden cronológico.
 
 ## 2026-11-06
 
-- Pi por SSH: nuevo ajuste **Audio: Local / SSH**. En SSH, el servidor del VPS no necesita PortAudio y envía la voz por la conexión SSH a un receptor oculto en la computadora desde la que te conectas. El receptor se instala una vez con un comando (`receptor/install.ps1` o `receptor/install.sh`, también `install.ps1 -Receptor` e `install.sh --receptor`), que comprueba `ffplay`, guarda una copia de `~/.ssh/config` y añade la línea `LocalForward`; después basta con `ssh mivps` como siempre. No funciona con mosh ni en el celular. Pendiente: prueba por SSH real (`RH-W-0044`).
+- Pi por SSH: nuevo ajuste **Audio: Local / SSH**. En SSH, el servidor del VPS no necesita PortAudio y envía la voz por la conexión SSH a un receptor oculto en la computadora desde la que te conectas. El receptor se instala una vez con un comando (`receptor/install.ps1` o `receptor/install.sh`, también `install.ps1 -Receptor` e `install.sh --receptor`), que comprueba `ffplay`, guarda una copia de `~/.ssh/config` y añade la línea `LocalForward`; después basta con `ssh mivps` como siempre. En Linux, `install.sh` ya no se detiene si falta PortAudio: avisa que la voz no sonará en ese equipo y que por SSH basta con Audio: SSH. Comprobado en un contenedor Ubuntu 26.04 sin PortAudio: instala y la voz llega a Windows por un túnel SSH. No funciona con mosh ni en el celular (`RH-W-0044`).
 
 - README: aviso al principio: teHablo está pensado para usarse en tu propia computadora; con Pi en un VPS por SSH, el sonido sale en el servidor. El audio remoto por SSH se investigó y queda fuera (`RH-W-0044`).
 
