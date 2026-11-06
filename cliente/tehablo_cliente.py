@@ -338,8 +338,10 @@ def menu(settings, manager, receiver):
               '| Inicio automatico:', 'si' if manager.enabled() else 'no')
         if receiver.error:
             print('Aviso:', receiver.error)
-        print('1. Recepcion on/off\n2. Elegir salida\n3. Subir volumen\n4. Bajar volumen\n'
-              '5. Configurar SSH\n6. Inicio automatico on/off\n7. Desinstalar\n0. Salir')
+        # Each option says what it will do, not a toggle the user has to guess.
+        print(f"1. {'Apagar' if settings['enabled'] else 'Encender'} recepcion\n2. Elegir salida\n3. Subir volumen\n"
+              f"4. Bajar volumen\n5. Configurar SSH\n6. {'Quitar' if manager.enabled() else 'Activar'} inicio automatico\n"
+              '7. Desinstalar\n0. Salir')
         try:
             choice = terminal_input('Opcion: ')
             if choice == '0':
