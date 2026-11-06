@@ -1,104 +1,70 @@
-"""PC receptor: ffplay exits at end of stream and the loop connects again."""
+"""Thin installer checks with stub uv; never install or play anything."""
 from pathlib import Path
 import os
-import re
 import shutil
 import subprocess
 import tempfile
-import time
 import unittest
 
-RECEPTOR = Path(__file__).resolve().parents[1] / 'receptor'
+ROOT = Path(__file__).resolve().parents[1]
+SCRATCH = ROOT / '.repo-harness/tmp/t8-check'
+SCRATCH.mkdir(parents=True, exist_ok=True)
 
 
-def ffplay_lines(text):
-    # Lines that start the player (both use -nodisp), not the uninstall process match.
-    return [line for line in text.splitlines() if 'audio.wav' in line and '-nodisp' in line]
+@unittest.skipUnless(shutil.which('sh'), 'needs POSIX sh')
+class InstallerTest(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory(dir=SCRATCH)
+        self.addCleanup(self.tmp.cleanup)
+        self.home = Path(self.tmp.name)
+        self.bin = self.home / 'bin'
+        self.bin.mkdir()
+        self.env = dict(os.environ, HOME=str(self.home))
+        self.sh = shutil.which('sh')
 
+    def run_installer(self, *args):
+        return subprocess.run([self.sh, '-c', 'PATH="$HOME/bin"; export PATH; . "$0" "$@"',
+                               (ROOT / 'receptor/install.sh').as_posix(), *args], env=self.env,
+                              stdin=subprocess.DEVNULL, capture_output=True, text=True, timeout=15)
 
-class ReceptorTest(unittest.TestCase):
-    def test_both_receptors_exit_at_end_of_stream(self):
-        for name in ('install.sh', 'install.ps1'):
-            lines = ffplay_lines((RECEPTOR / name).read_text(encoding='utf-8'))
-            self.assertTrue(lines, name)
-            for line in lines:
-                self.assertIn('-autoexit', line, f'{name}: {line.strip()}')
+    def test_missing_uv_leaves_home_unchanged(self):
+        before = sorted(p.relative_to(self.home) for p in self.home.rglob('*'))
+        result = self.run_installer('--yes', 'vps')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('https://astral.sh/uv/install.sh', result.stdout + result.stderr)
+        self.assertEqual(sorted(p.relative_to(self.home) for p in self.home.rglob('*')), before)
 
-    @unittest.skipUnless(shutil.which('sh'), 'needs a POSIX sh')
-    def test_loop_connects_again_after_the_stream_ends(self):
-        text = (RECEPTOR / 'install.sh').read_text(encoding='utf-8')
-        loop = re.search(r"<<'LOOP'\n(.*?)\nLOOP\n", text, re.S).group(1) + '\n'
-        with tempfile.TemporaryDirectory() as tmp:
-            tmp = Path(tmp)
-            (tmp / 'loop.sh').write_text(loop, encoding='utf-8', newline='\n')
-            log = tmp / 'calls.log'
-            stub = tmp / 'ffplay'
-            # Stands in for ffplay reaching the end of the stream right away.
-            stub.write_text(f'#!/bin/sh\necho "$*" >> "{log.as_posix()}"\nexit 0\n', encoding='utf-8', newline='\n')
-            stub.chmod(0o755)
-            env = dict(os.environ, PATH=f'{tmp}{os.pathsep}{os.environ.get("PATH", "")}')
-            proc = subprocess.Popen([shutil.which('sh'), str(tmp / 'loop.sh')], env=env)
-            try:
-                time.sleep(4.5)
-            finally:
-                proc.terminate()
-                proc.wait(timeout=10)
-            calls = log.read_text(encoding='utf-8').splitlines()
-            self.assertGreaterEqual(len(calls), 2, calls)
-            self.assertTrue(all('-autoexit' in call for call in calls), calls)
+    def test_piped_download_with_stub_curl_and_uv(self):
+        for name, content in {
+            'uv': '#!/bin/sh\nprintf "%s\\n" "$@" > "$HOME/uv-args"\n',
+            'curl': '#!/bin/sh\nprintf "%s\\n" "$@" > "$HOME/curl-args"\nwhile [ "$#" -gt 0 ]; do if [ "$1" = -o ]; then shift; printf "# fake client\\n" > "$1"; fi; shift; done\n',
+        }.items():
+            path = self.bin / name
+            path.write_text(content, encoding='utf-8', newline='\n')
+            path.chmod(0o755)
+        result = subprocess.run([self.sh, '-s', '--', '--yes', 'vps'],
+                                input='PATH="$HOME/bin:/usr/bin:/bin"; export PATH\n' + (ROOT / 'receptor/install.sh').read_text(), env=self.env,
+                                capture_output=True, text=True, timeout=15)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertTrue((self.home / '.local/share/tehablo-cliente/tehablo_cliente.py').exists())
+        self.assertIn('https://raw.githubusercontent.com/LCubero/tehablo/master/cliente/tehablo_cliente.py',
+                      (self.home / 'curl-args').read_text())
+        self.assertEqual((self.home / 'uv-args').read_text().splitlines()[-2:], ['--yes', 'vps'])
+        self.assertFalse((self.home / '.ssh').exists())
 
-    @unittest.skipUnless(shutil.which('sh'), 'needs a POSIX sh')
-    def test_no_terminal_declines_config(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            home = Path(tmp)
-            (home / '.ssh').mkdir()
-            config = home / '.ssh' / 'config'
-            before = b'Host vps\n User a\n'
-            config.write_bytes(before)
-            (home / 'ffplay').write_text('#!/bin/sh\nexit 0\n', encoding='utf-8', newline='\n')
-            (home / 'ffplay').chmod(0o755)
-            env = dict(os.environ, HOME=str(home), PATH=f'{home}{os.pathsep}{os.environ.get("PATH", "")}')
-            try:
-                done = subprocess.run([shutil.which('sh'), str(RECEPTOR / 'install.sh'), '--config-only', 'vps'],
-                                      env=env, stdin=subprocess.DEVNULL, capture_output=True, text=True,
-                                      start_new_session=(os.name != 'nt'), timeout=5)
-            except subprocess.TimeoutExpired:
-                self.skipTest('Git Bash /dev/tty remains attached despite DEVNULL; no-terminal case unavailable')
-            self.assertEqual(done.returncode, 0, done.stderr)
-            self.assertEqual(config.read_bytes(), before)
-            self.assertEqual(list(config.parent.glob('*.bak')), [])
-            self.assertIn('LocalForward 18765 127.0.0.1:8765', done.stdout)
-            # Git Bash maps Windows temp HOME paths to its POSIX /tmp mount.
-            shell_config = subprocess.check_output(
-                [shutil.which('sh'), '-c', 'printf "%s/.ssh/config" "$HOME"'], env=env, text=True)
-            self.assertIn(shell_config, done.stdout)
-
-    @unittest.skipUnless(shutil.which('sh'), 'needs a POSIX sh')
-    def test_ssh_config_gets_one_forward_and_keeps_existing_ones(self):
-        cases = {
-            'Host vps\n User a\n': 'Host vps\n User a\n    LocalForward 18765 127.0.0.1:8765\n',
-            'Host vps\n User a\nHost vps\n IdentityFile k\n':
-                'Host vps\n User a\n    LocalForward 18765 127.0.0.1:8765\nHost vps\n IdentityFile k\n',
-            'Host vps\n LocalForward localhost:18765 127.0.0.1:8765\n': None,
-            'Host other\n User a\nHost vps\n LocalForward 18765 127.0.0.1:8765\n': None,
-        }
-        for before, after in cases.items():
-            with self.subTest(before=before), tempfile.TemporaryDirectory() as tmp:
-                home = Path(tmp)
-                (home / '.ssh').mkdir()
-                (home / '.ssh' / 'config').write_bytes(before.encode())
-                (home / 'ffplay').write_text('#!/bin/sh\nexit 0\n', encoding='utf-8', newline='\n')
-                (home / 'ffplay').chmod(0o755)
-                env = dict(os.environ, HOME=str(home), PATH=f'{home}{os.pathsep}{os.environ.get("PATH", "")}')
-                for _ in range(2):  # A second run changes nothing.
-                    done = subprocess.run([shutil.which('sh'), str(RECEPTOR / 'install.sh'), '--config-only', '--yes', 'vps'],
-                                          env=env, capture_output=True, text=True, timeout=30)
-                    self.assertEqual(done.returncode, 0, done.stderr)
-                self.assertEqual((home / '.ssh' / 'config').read_bytes().decode(), after or before)
-                backups = list((home / '.ssh').glob('config.tehablo-*.bak'))
-                self.assertEqual(len(backups), 1 if after else 0)
-                if after:
-                    self.assertEqual(backups[0].read_bytes().decode(), before)
+    def test_yes_and_uninstall_delegate_to_uv(self):
+        # A shell stub logs only; it never runs the real client.
+        stub = self.bin / 'uv'
+        stub.write_text('#!/bin/sh\nprintf "%s\\n" "$@" > "$HOME/uv-args"\n', encoding='utf-8', newline='\n')
+        stub.chmod(0o755)
+        for args in (('--yes', 'vps'), ('--uninstall',)):
+            result = self.run_installer(*args)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            actual = (self.home / 'uv-args').read_text().splitlines()
+            self.assertEqual(actual[:2], ['run', '--script'])
+            self.assertTrue(actual[2].replace('\\', '/').endswith('/cliente/tehablo_cliente.py'))
+            self.assertEqual(actual[3:], list(args))
+            self.assertFalse((self.home / '.ssh').exists())
 
 
 if __name__ == '__main__':

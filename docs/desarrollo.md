@@ -107,7 +107,8 @@ tehablo/
 | `src/tehablo_lexicon.py`, `pronunciaciones.json` | Pronunciación de términos en inglés | Sí |
 | `src/tehablo_speed.py` | Velocidad de la voz sin cambiar el tono (WSOLA con `audiotsm`) | Sí |
 | `src/tehablo_server.py` | Servidor HTTP local (`127.0.0.1:8765`) que usa la extensión de Pi | Sí |
-| `receptor/` | Receptor ffplay y autostart del PC para [Audio por SSH](../README.md#audio-por-ssh); instaladores con opción de desinstalación | Sí |
+| `cliente/tehablo_cliente.py` | Cliente de audio SSH: menú, sounddevice, volumen, configuración SSH e inicio automático (PEP 723, uv) | Sí |
+| `receptor/` | Instaladores finos del cliente para [Audio por SSH](../README.md#audio-por-ssh); requieren uv, sin FFmpeg | Sí |
 | `pi-extension/tehablo-tts/` | Extensión de Pi; se instala con `pi install <ruta>` (ver README) | Sí |
 | `scripts/get_voices.py` | Descarga selectiva de voces | Sí |
 | `tests/` | Pruebas ejecutables sin pytest | Sí |
@@ -133,7 +134,7 @@ del directorio de trabajo. `/leer` conserva las rutas relativas al directorio ac
 
 ## Pruebas
 
-`tests/test_tech.py`, `tests/test_numbers.py`, `tests/test_lexicon.py`, `tests/test_speed.py`, `tests/test_server.py`, `tests/test_startup.py`, `tests/test_console_imports.py`, `tests/test_quantize.py` y `tests/test_receptor.py` comprueban el texto técnico, la conversión de números, el diccionario de pronunciación, el cambio de velocidad, el servidor HTTP, los diagnósticos de arranque, la cuantización predeterminada y el receptor de audio por SSH (reconexión y una sola línea `LocalForward`; necesita `sh`) sin modelo ni audio; terminan con código 0 si todos los casos pasan:
+`tests/test_tech.py`, `tests/test_numbers.py`, `tests/test_lexicon.py`, `tests/test_speed.py`, `tests/test_server.py`, `tests/test_startup.py`, `tests/test_console_imports.py`, `tests/test_quantize.py` `tests/test_cliente.py` y `tests/test_receptor.py` comprueban el texto técnico, la conversión de números, el diccionario de pronunciación, el cambio de velocidad, el servidor HTTP, los diagnósticos de arranque, la cuantización predeterminada y el cliente de audio por SSH (configuración, volumen, salidas, reconexión con audio falso e inicio automático en carpetas aisladas) y sus instaladores (uv falso; necesita `sh`) sin modelo ni audio; terminan con código 0 si todos los casos pasan:
 
 ```powershell
 .venv-pocket/Scripts/python tests/test_tech.py
@@ -144,6 +145,7 @@ del directorio de trabajo. `/leer` conserva las rutas relativas al directorio ac
 .venv-pocket/Scripts/python tests/test_startup.py
 .venv-pocket/Scripts/python tests/test_console_imports.py
 .venv-pocket/Scripts/python tests/test_quantize.py
+.venv-pocket/Scripts/python tests/test_cliente.py
 .venv-pocket/Scripts/python tests/test_receptor.py
 ```
 

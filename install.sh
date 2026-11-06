@@ -2,7 +2,7 @@
 set -euo pipefail
 cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
 
-if [[ "${1:-}" == --receptor ]]; then
+if [[ "${1:-}" == --cliente || "${1:-}" == --receptor ]]; then
     shift
     exec sh receptor/install.sh "$@"
 fi
@@ -53,7 +53,7 @@ if ! output=$("$env_dir/bin/python" -c 'import sounddevice' 2>&1); then
         exit 1
     fi
 fi
-printf '%s\n' 'Audio por SSH (en tu PC): ./install.sh --receptor'
+printf '%s\n' 'Audio por SSH (en tu PC): ./install.sh --cliente (--receptor tambien funciona)'
 printf 'Listo: %s\n' "$env_dir"
 printf 'Para iniciar: %s/bin/python src/tehablo_tui.py\n' "$env_dir"
 extension="$PWD/pi-extension/tehablo-tts"

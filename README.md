@@ -117,7 +117,7 @@ Probado con audio en Windows y Fedora; macOS aún no está verificado. [Instalac
 
 ## Audio por SSH
 
-Pi y teHablo corren en el servidor; un pequeño receptor con **ffplay** (incluido en FFmpeg) reproduce el sonido en tu computadora. En esa computadora, ejecuta una vez:
+Pi y teHablo corren en el servidor; el **cliente teHablo** reproduce la voz en tu computadora. Usa **uv** para ejecutar Python con sounddevice; no necesita FFmpeg. En esa computadora, ejecuta:
 
 **Windows (PowerShell):**
 ```powershell
@@ -129,17 +129,19 @@ irm https://raw.githubusercontent.com/LCubero/tehablo/master/receptor/install.ps
 curl -fsSL https://raw.githubusercontent.com/LCubero/tehablo/master/receptor/install.sh | sh
 ```
 
-Si falta ffplay, el instalador indica cómo instalarlo y se detiene sin cambiar nada. Después pide tu alias SSH (por ejemplo `mi-servidor`) y muestra el archivo y la línea antes de pedir permiso; si aceptas, guarda una copia y la añade. Si no, explica cómo añadirla a mano y sigue instalando el receptor oculto al iniciar sesión. `--yes` (sh) / `-Yes` (PowerShell) omite la pregunta. Reconecta SSH después de instalar.
+Si falta uv, muestra el comando oficial para instalarlo y se detiene sin cambios. Después abre un menú: recepción on/off, salida de audio, volumen, configurar SSH, inicio automático, desinstalar y salir. Muestra conexión, recepción y ajustes; se guardan en `~/.tehablo/cliente.json`.
+
+**Configurar SSH** pide tu alias (por ejemplo `mi-servidor`), muestra el archivo y la línea y pide permiso. Si aceptas, hace copia y la añade; si no, indica cómo hacerlo a mano. Para automatizar: `sh receptor/install.sh --yes mi-servidor` o `.\receptor\install.ps1 -Yes -HostAlias mi-servidor`. Reconecta SSH después.
 
 `LocalForward 18765 127.0.0.1:8765` lleva la voz del servidor a esta computadora.
 Viaja cifrada por tu propia conexión SSH; el puerto solo escucha en esta computadora (127.0.0.1), no en internet.
 Mientras estás conectado, los programas de esta computadora pueden usar ese puerto para oír o controlar teHablo en el servidor.
 
-En Pi, abre `[ ≡ ]` y elige **Audio: SSH**. Cada día basta con `ssh mi-servidor`, como siempre: no hay otra ventana que abrir. Desde un clon también puedes usar `./install.sh --receptor` o `.\install.ps1 -Receptor` en tu PC, sin instalar el entorno Python.
+En Pi, elige **Audio: SSH**. Activa el inicio automático en el cliente para recibir sin ventana al iniciar sesión (`--fondo`); cada día basta con `ssh mi-servidor`. Desde un clon: `./install.sh --cliente` o `.\install.ps1 -Cliente` (también aceptan `--receptor` / `-Receptor`). La salida y el volumen del cliente son independientes de los de Pi.
 
 ### Hacerlo a mano
 
-1. Instala FFmpeg: **ffplay** es quien reproduce la voz en esta computadora. Windows: `winget install Gyan.FFmpeg`; Debian/Ubuntu: `sudo apt install ffmpeg`; Fedora: `sudo dnf install ffmpeg-free`; Arch: `sudo pacman -S ffmpeg`; macOS: `brew install ffmpeg`.
+1. Instala [uv](https://docs.astral.sh/uv/getting-started/installation/): obtiene Python y sounddevice para reproducir la voz. En Linux también puede hacer falta PortAudio (`sudo apt install libportaudio2` o `sudo dnf install portaudio`).
 2. En tu configuración SSH (Windows: `C:\Users\<tu usuario>\.ssh\config`; Linux/macOS: `~/.ssh/config`), añade la línea bajo tu bloque Host, conservando tus datos:
    ```sshconfig
    Host mi-servidor
@@ -148,7 +150,7 @@ En Pi, abre `[ ≡ ]` y elige **Audio: SSH**. Cada día basta con `ssh mi-servid
        LocalForward 18765 127.0.0.1:8765
    ```
    Lleva la voz por tu propia conexión SSH; el puerto solo escucha en esta computadora.
-3. Reconecta con `ssh mi-servidor` y, mientras estés conectado, reproduce con `ffplay -nodisp -autoexit -probesize 32 -analyzeduration 0 -loglevel quiet http://127.0.0.1:18765/audio.wav`. El receptor del instalador hace esto oculto y reconecta por sí solo.
+3. Desde el clon, ejecuta `uv run cliente/tehablo_cliente.py` en tu computadora y reconecta con `ssh mi-servidor`. El cliente reconecta cada 3 s si se corta el stream; puedes activar inicio automático desde el menú.
 4. En Pi elige **Audio: SSH**.
 
 Para desinstalar desde un clon: `sh receptor/install.sh --uninstall` o `.\receptor\install.ps1 -Uninstall`. Sin clon, vuelve a descargar el script y pásale `--uninstall` (`sh -s -- --uninstall`) o `-Uninstall` (`& ([scriptblock]::Create((irm https://raw.githubusercontent.com/LCubero/tehablo/master/receptor/install.ps1))) -Uninstall`). Quita a mano la línea `LocalForward 18765 127.0.0.1:8765` del Host correspondiente en `~/.ssh/config`.
@@ -212,7 +214,7 @@ Significado de los iconos (aunque se vean como cuadros):
 
 ### Ajustes `[ ≡ ]` (menú)
 
-Elige **Audio: Local / SSH**, **voz**, **volumen**, **velocidad**, **lectura automática**, **atajos de teclado** e **indicador de estado**, o enciende, apaga y reinicia el servidor. Usa clics o ↑↓, ←→, Enter y Esc.
+Elige **Audio: Local / SSH**, **Salida: nombre / Predeterminada** (en Local; en SSH se elige en el cliente), **voz**, **volumen**, **velocidad**, **lectura automática**, **atajos de teclado** e **indicador de estado**, o enciende, apaga y reinicia el servidor. Usa clics o ↑↓, ←→, Enter y Esc.
 
 **Iconos: Símbolos / Texto** conserva los símbolos actuales por defecto. Elige **Texto** si ves cuadros: usa etiquetas ASCII como `[ TTS ]`, `[ |> ]`, `[ || ]`, `[ [] ]`, `[ off ]` y `[ = ]` (ajustes). Se guarda, se comparte entre sesiones y actualiza las barras al cambiarla; [tabla completa](docs/desarrollo.md#iconos-en-modo-texto).
 
