@@ -503,7 +503,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
         : active
         ? [{text: paused ? '[ ▶ ]' : '[ ‖ ]', action: paused ? 'resume' : 'pause', gap: ' '}, {text: '[ ■ ]', action: 'stop', gap: ' '}]
         : [...(card === START ? [] : [{text: '[ ▶ ]', action: 'play', gap: ' '}]), {text: '[ ▶ copiado ]', action: 'copied', gap: ' '}];
-      return [
+      const controls = [
         ...lead,
         {text: open ? '[ → ]' : '[ ⋯ ]', action: 'toggle', gap: open ? ' ' : ''},
         ...(open ? [
@@ -521,6 +521,8 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
           {text: '[ ⏻ ]', action: 'powerOff', gap: ''},
         ] : []),
       ];
+      // A small, unclickable mark at the end while this session reads responses aloud on its own.
+      return auto ? [...controls.slice(0, -1), {...controls.at(-1)!, gap: ' '}, {text: 'auto', action: '', gap: ''}] : controls;
     };
     const label = () => context?.mode === 'tui' && barVisible && current()
       ? segments().map(c => c.text + c.gap).join('') : '';

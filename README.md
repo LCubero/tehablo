@@ -142,7 +142,7 @@ Pi empieza con el servidor **apagado**, en modo manual. Pulsa `[ ⏻ TTS ]` para
 | Comando | Acción |
 |---|---|
 | `/tts` | Enciende o apaga el servidor; apagar desactiva la lectura automática |
-| `/tts auto` | Activa o desactiva la lectura de cada respuesta al terminar; al activarla enciende el servidor |
+| `/tts auto` | Activa o desactiva la lectura de cada respuesta al terminar; al activarla enciende el servidor. Mientras está activa, la barra muestra `auto` al final |
 | `/tts play [n]` | Lee la última respuesta o la número `n` de la sesión, contando desde la primera |
 | `/tts copy` | Lee el texto copiado |
 | `/tts pause` | Pausa o continúa solo la lectura actual de esta sesión, igual que el atajo de pausa |

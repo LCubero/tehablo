@@ -785,7 +785,7 @@ test('turning auto reading on starts a stopped server, also with the bar hidden;
       if(how==='window'){await clickAt(s,'[ ≡ ]');s.windows[0].w.c.change('auto',true);}
       await new Promise(r=>setImmediate(r));
       assert.equal(s.store.load().auto,false,how);assert.equal(s.statuses.at(-1),'TTS auto',how);
-      assert.equal(s.ensures(),1,how);assert.equal(s.line(),'[ ▶ ] [ ▶ copiado ] [ ⋯ ]',how);
+      assert.equal(s.ensures(),1,how);assert.equal(s.line(),'[ ▶ ] [ ▶ copiado ] [ ⋯ ] auto',how);
       await s.command('auto off');await s.command('auto on');assert.equal(s.ensures(),1,how);
     }finally{await s.close();}
   }
@@ -807,6 +807,16 @@ test('the menu button closes the open settings window instead of opening another
     await clickAt(s,'[ ≡ ]');await new Promise(r=>setImmediate(r));assert.equal(s.windows.length,1);
     await clickAt(s,'[ ≡ ]');await new Promise(r=>setImmediate(r));assert.equal(s.windows.length,1);assert.equal(s.windows[0].closed,true);
     await clickAt(s,'[ ≡ ]');await new Promise(r=>setImmediate(r));assert.equal(s.windows.length,2);
+  }finally{await s.close();}
+});
+
+test('the bar shows a small auto mark while auto reading is on in this session',async()=>{
+  const s=setup();try {
+    s.set('idle',null);await start(s);
+    assert.equal(s.line(),'[ ▶ ] [ ▶ copiado ] [ ⋯ ]');
+    await s.command('auto on');assert.equal(s.line(),'[ ▶ ] [ ▶ copiado ] [ ⋯ ] auto');
+    await clickAt(s,'[ ⋯ ]');assert.match(s.line(),/\[ ⏻ \] auto$/);
+    await clickAt(s,'[ → ]');await s.command('auto off');assert.equal(s.line(),'[ ▶ ] [ ▶ copiado ] [ ⋯ ]');
   }finally{await s.close();}
 });
 

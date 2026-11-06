@@ -6,6 +6,7 @@ Este archivo registra los cambios completados en orden cronológico.
 
 ## 2026-11-05
 
+- Pi: mientras la lectura automática está activa en la sesión, la barra muestra una marca discreta `auto` al final, sin clic.
 - README: las tablas de voces dicen «¿Incluida?» en lugar de «¿Cuenta?», con una nota para Phonon (cuenta gratis de Hugging Face); la tabla de consumo pasa a columnas por modelo, espacio en disco y RAM (`RH-W-0036`, parte de textos).
 - Pruebas: la carga de Phonon sin conexión comprueba también un `HF_HUB_OFFLINE` ya definido por quien lo usa y que la variable se borra si la carga falla (`RH-W-0035`, aviso R3-001).
 - Pi: volumen y velocidad desde la barra ya no muestran el aviso «TTS teHablo: …» (el valor se ve en la barra); al abrir una sesión, la barra muestra enseguida si el servidor compartido ya está encendido, sin esperar unos 4 s; el aviso «Se perdió la conexión con el servidor» indica la ruta y el error (`RH-W-0042`).
