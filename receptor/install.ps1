@@ -43,20 +43,20 @@ $pattern = '(?im)^[ \t]*(?:Host|Match)[ \t]+[^\r\n]*'
 $blocks = [regex]::Matches($text, $pattern)
 $insertAt = -1
 $seen = $false
+$present = $false
+# Insert only in the first block for this host; skip if any of its blocks already has the line.
 for ($i = 0; $i -lt $blocks.Count; $i++) {
     $header = $blocks[$i]
     $tokens = $header.Value.Trim() -split '\s+'
     if ($tokens[0] -ieq 'Host' -and $tokens[1..($tokens.Length-1)] -ccontains $HostAlias) {
-        $seen = $true
         $end = $text.Length
         if ($i + 1 -lt $blocks.Count) { $end = $blocks[$i+1].Index }
         $body = $text.Substring($header.Index, $end - $header.Index)
-        if ($body -notmatch '(?im)^[ \t]*LocalForward[ \t]+18765[ \t]+127\.0\.0\.1:8765(?:[ \t]*(?:#.*)?)?\r?$') {
-            $insertAt = $end
-        }
-        break
+        if ($body -match '(?im)^[ \t]*LocalForward[ \t]+18765[ \t]+127\.0\.0\.1:8765(?:[ \t]*(?:#.*)?)?\r?$') { $present = $true }
+        if (-not $seen) { $seen = $true; $insertAt = $end }
     }
 }
+if ($present) { $insertAt = -1 }
 $forward = '    LocalForward 18765 127.0.0.1:8765'
 if (-not $seen) {
     if ($text.Length -and -not $text.EndsWith("`n")) { $text += $eol }

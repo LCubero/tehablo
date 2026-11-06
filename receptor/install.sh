@@ -46,6 +46,17 @@ fi
 case "$alias_name" in ''|*[!a-zA-Z0-9_.-]*) echo 'Usa un alias SSH simple (letras, numeros, punto, guion).' >&2; exit 1 ;; esac
 mkdir -p "$HOME/.ssh"
 config="$HOME/.ssh/config"
+# Already present in any block for this host: leave the file untouched.
+has_forward=false
+if [ -f "$config" ] && awk -v target="$alias_name" '
+{ line=$0; sub(/\r$/, "", line); n=split(line, a, /[ \t]+/); start=(a[1]=="" ? 2 : 1); key=tolower(a[start]);
+  if (key=="host" || key=="match") { active=0; if (key=="host") for(i=start+1;i<=n;i++) if(a[i]==target) active=1 }
+  if (active && key=="localforward" && a[start+1]=="18765" && a[start+2]=="127.0.0.1:8765") hit=1 }
+END { exit(hit ? 0 : 1) }' "$config"; then
+    has_forward=true
+    printf '%s\n' "~/.ssh/config ya tiene LocalForward 18765 127.0.0.1:8765 para $alias_name."
+fi
+if ! "$has_forward"; then
 # awk preserves each original line, including CRLF; only insert new lines.
 if [ -f "$config" ]; then
     cp -p "$config" "$config.tehablo-$(date +%Y%m%d%H%M%S)-$$.bak"
@@ -57,22 +68,25 @@ final_newline=0
 [ "$last" != "
 x" ] || final_newline=1
 awk -v BINMODE=3 -v target="$alias_name" -v final_newline="$final_newline" '
-function emit(s) { if (wrote) printf "\n"; printf "%s", s; wrote=1 }
-function insert() { if (active && !found) emit("    LocalForward 18765 127.0.0.1:8765" cr) }
+# A CRLF file whose last line had no newline gets CRLF when a line follows it.
+function emit(s) { if (wrote) printf "%s\n", (cr != "" && last !~ /\r$/ ? "\r" : ""); printf "%s", s; wrote=1; last=s; lastins=0 }
+function insert() { if (active && !found) { emit("    LocalForward 18765 127.0.0.1:8765" cr); lastins=1 } }
 { original=$0; line=$0; sub(/\r$/, "", line); if (NR==1 && original ~ /\r$/) cr="\r";
   n=split(line, a, /[ \t]+/); start=(a[1]=="" ? 2 : 1); key=tolower(a[start]);
   if (key=="host" || key=="match") {
     insert(); active=0; found=0;
-    if (key=="host") for(i=start+1;i<=n;i++) if(a[i]==target) { active=1; seen=1 }
+    # Only the first block for this host gets the line.
+    if (key=="host" && !seen) for(i=start+1;i<=n;i++) if(a[i]==target) { active=1; seen=1 }
   }
   if(active && key=="localforward" && a[start+1]=="18765" && a[start+2]=="127.0.0.1:8765") found=1;
   emit(original)
 }
-END { insert(); if(!seen) { emit("Host " target cr); emit("    LocalForward 18765 127.0.0.1:8765" cr) } if(final_newline || !seen) printf "\n" }
+END { insert(); if(!seen) { emit("Host " target cr); emit("    LocalForward 18765 127.0.0.1:8765" cr) } if(final_newline || !seen || lastins) printf "\n" }
 ' "$config" > "$config.tehablo-new"
 # Preserve file identity and permissions rather than replacing it.
 cat "$config.tehablo-new" > "$config"
 unlink "$config.tehablo-new"
+fi
 if "$config_only"; then echo 'Configuracion SSH preparada; autostart omitido (--config-only).'; exit 0; fi
 mkdir -p "$base"
 cat > "$base/loop.sh" <<'LOOP'
