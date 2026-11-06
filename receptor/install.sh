@@ -40,7 +40,7 @@ if ! command -v ffplay >/dev/null 2>&1; then
     exit 1
 fi
 if [ -z "$alias_name" ]; then
-    printf 'Alias SSH (por ejemplo mivps): '
+    printf 'Alias SSH (por ejemplo mi-servidor): '
     read -r alias_name </dev/tty
 fi
 case "$alias_name" in ''|*[!a-zA-Z0-9_.-]*) echo 'Usa un alias SSH simple (letras, numeros, punto, guion).' >&2; exit 1 ;; esac

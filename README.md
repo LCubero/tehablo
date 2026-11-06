@@ -129,9 +129,9 @@ irm https://raw.githubusercontent.com/LCubero/tehablo/master/receptor/install.ps
 curl -fsSL https://raw.githubusercontent.com/LCubero/tehablo/master/receptor/install.sh | sh
 ```
 
-Si falta ffplay, el instalador indica cómo instalarlo y se detiene sin cambiar nada. Después pide tu alias SSH (por ejemplo `mivps`), guarda una copia de `~/.ssh/config`, añade `LocalForward 18765 127.0.0.1:8765` e instala el receptor oculto al iniciar sesión. Reconecta SSH después de instalar.
+Si falta ffplay, el instalador indica cómo instalarlo y se detiene sin cambiar nada. Después pide tu alias SSH (por ejemplo `mi-servidor`), guarda una copia de `~/.ssh/config`, añade `LocalForward 18765 127.0.0.1:8765` e instala el receptor oculto al iniciar sesión. Reconecta SSH después de instalar.
 
-En Pi, abre `[ ≡ ]` y elige **Audio: SSH**. Cada día basta con `ssh mivps`, como siempre: no hay otra ventana que abrir. Desde un clon también puedes usar `./install.sh --receptor` o `.\install.ps1 -Receptor` en tu PC, sin instalar el entorno Python.
+En Pi, abre `[ ≡ ]` y elige **Audio: SSH**. Cada día basta con `ssh mi-servidor`, como siempre: no hay otra ventana que abrir. Desde un clon también puedes usar `./install.sh --receptor` o `.\install.ps1 -Receptor` en tu PC, sin instalar el entorno Python.
 
 Para desinstalar desde un clon: `sh receptor/install.sh --uninstall` o `.\receptor\install.ps1 -Uninstall`. Sin clon, vuelve a descargar el script y pásale `--uninstall` (`sh -s -- --uninstall`) o `-Uninstall` (`& ([scriptblock]::Create((irm https://raw.githubusercontent.com/LCubero/tehablo/master/receptor/install.ps1))) -Uninstall`). Quita a mano la línea `LocalForward 18765 127.0.0.1:8765` del Host correspondiente en `~/.ssh/config`.
 

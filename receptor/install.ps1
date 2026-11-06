@@ -24,7 +24,7 @@ if (-not (Get-Command ffplay -ErrorAction SilentlyContinue)) {
     Write-Host 'winget install Gyan.FFmpeg'
     exit 1
 }
-if (-not $HostAlias) { $HostAlias = Read-Host 'Alias SSH (por ejemplo mivps)' }
+if (-not $HostAlias) { $HostAlias = Read-Host 'Alias SSH (por ejemplo mi-servidor)' }
 if ($HostAlias -notmatch '^[a-zA-Z0-9_.-]+$') { throw 'Usa un alias SSH simple (letras, numeros, punto, guion).' }
 $sshDir = Join-Path $env:USERPROFILE '.ssh'
 [void][IO.Directory]::CreateDirectory($sshDir)
