@@ -51,10 +51,11 @@ has_forward=false
 if [ -f "$config" ] && awk -v target="$alias_name" '
 { line=$0; sub(/\r$/, "", line); n=split(line, a, /[ \t]+/); start=(a[1]=="" ? 2 : 1); key=tolower(a[start]);
   if (key=="host" || key=="match") { active=0; if (key=="host") for(i=start+1;i<=n;i++) if(a[i]==target) active=1 }
-  if (active && key=="localforward" && a[start+1]=="18765" && a[start+2]=="127.0.0.1:8765") hit=1 }
+  # Any forward of local port 18765 (18765, localhost:18765, [::1]:18765...) counts.
+  if (active && key=="localforward" && a[start+1] ~ /(^|:)18765$/) hit=1 }
 END { exit(hit ? 0 : 1) }' "$config"; then
     has_forward=true
-    printf '%s\n' "~/.ssh/config ya tiene LocalForward 18765 127.0.0.1:8765 para $alias_name."
+    printf '%s\n' "~/.ssh/config ya reenvia el puerto 18765 para $alias_name; no se cambia."
 fi
 if ! "$has_forward"; then
 # awk preserves each original line, including CRLF; only insert new lines.
@@ -78,7 +79,7 @@ function insert() { if (active && !found) { emit("    LocalForward 18765 127.0.0
     # Only the first block for this host gets the line.
     if (key=="host" && !seen) for(i=start+1;i<=n;i++) if(a[i]==target) { active=1; seen=1 }
   }
-  if(active && key=="localforward" && a[start+1]=="18765" && a[start+2]=="127.0.0.1:8765") found=1;
+  if(active && key=="localforward" && a[start+1] ~ /(^|:)18765$/) found=1;
   emit(original)
 }
 END { insert(); if(!seen) { emit("Host " target cr); emit("    LocalForward 18765 127.0.0.1:8765" cr) } if(final_newline || !seen || lastins) printf "\n" }

@@ -52,7 +52,8 @@ for ($i = 0; $i -lt $blocks.Count; $i++) {
         $end = $text.Length
         if ($i + 1 -lt $blocks.Count) { $end = $blocks[$i+1].Index }
         $body = $text.Substring($header.Index, $end - $header.Index)
-        if ($body -match '(?im)^[ \t]*LocalForward[ \t]+18765[ \t]+127\.0\.0\.1:8765(?:[ \t]*(?:#.*)?)?\r?$') { $present = $true }
+        # Any forward of local port 18765 (18765, localhost:18765, [::1]:18765...) counts.
+        if ($body -match '(?im)^[ \t]*LocalForward[ \t]+(?:\S*:)?18765[ \t]') { $present = $true }
         if (-not $seen) { $seen = $true; $insertAt = $end }
     }
 }
