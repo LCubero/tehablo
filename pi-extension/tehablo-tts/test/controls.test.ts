@@ -1203,3 +1203,18 @@ test('short notices show at the end of the bar as // text for a while; a hidden 
     assert.equal(s.line(),'[ ▶ ] [ ▶ copiado ] [ ⋯ ] auto  // Barra visible.');
   }finally{await s.close();}
 });
+
+test('saved SSH audio is applied before the first reading reaches a reused server', async () => {
+  const store = memoryStore(); store.save({...store.load(), audio: 'ssh'});
+  const s = setup(store), order: string[] = [];
+  const action = s.client.action, request = s.client.request;
+  s.client.action = async (path: string, body: any) => {
+    if (path === '/config') { await new Promise(r => setTimeout(r, 100)); order.push('config'); }
+    return action(path, body);
+  };
+  s.client.request = async (path: string, body: any) => { if (path === '/speak') order.push('speak'); return request(path, body); };
+  try {
+    await s.command('play');
+    assert.deepEqual(order.filter(step => step === 'config' || step === 'speak').slice(0, 2), ['config', 'speak']);
+  } finally { await s.close(); }
+});

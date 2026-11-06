@@ -51,6 +51,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
   clipboard: () => Promise<string> = () => readClipboard(), watchMs = 0, noteMs = 4000) {
   let settings: Settings = store.load();
   let applied = false, windowOpen = false;
+  let applying: Promise<void> = Promise.resolve();
   let closeWindow: (() => void) | undefined, redrawWindow: (() => void) | undefined;
   let current: {model: string; voice: string} | undefined;
   let stopKeys: (() => void) | undefined;
@@ -112,7 +113,8 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
     const failed = typeof health?.fallback === 'string' && health.fallback ? health.fallback : undefined;
     if (failed && failed !== warnedFallback) say(context, `${failed} no cargó; se usa lola. Detalle en logs/tehablo-server.log.`, 'warning');
     if (health && 'fallback' in health) warnedFallback = failed;
-    if (health?.ready === true && !applied) { applied = true; void applySaved(health); }
+    // play() awaits this, so an audio change never clears a reading it just sent.
+    if (health?.ready === true && !applied) { applied = true; applying = applySaved(health).catch(() => {}); }
     if (typeof health?.error === 'string' && health.error.length > 0) {
       cancelReady(); setServer('off');
       say(context, `El modelo no cargó: ${health.error}`, 'warning');
@@ -364,6 +366,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
   const play = async (id: string, text: string, generation = epoch) => {
     if (generation !== epoch) return;
     await boot();
+    await applying;
     if (generation !== epoch) return;
     const reading = owned.has(id) || inFlight.has(id) ? `${id}:tehablo:${++readingNumber}` : id;
     owned.set(reading, id);
