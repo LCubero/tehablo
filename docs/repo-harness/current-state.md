@@ -89,7 +89,7 @@ Este archivo proyecta solo hechos verificados del proyecto: registros activos, b
 - `RH-W-0038` (`proposed`, P2): primer release o release candidate, después del instalador.
 - `RH-W-0039` (`proposed`, P3): página de producto, probablemente como proyecto aparte.
 - `RH-W-0040` (`proposed`, P3): investigar teHablo en el celular.
-- `RH-W-0044` (`active`, P2): audio por SSH para la extensión de Pi (receptor en la PC); falta la prueba por SSH con la VM Ubuntu.
+- `RH-W-0044` (`active`, P2): audio por SSH para la extensión de Pi; funciona y está probado en Docker (Ubuntu 26.04) con Windows, en la rama `feat/ssh-audio` sin publicar; faltan instalador con menú, prueba real del instalador e inicio automático, prueba Linux con Linux y macOS.
 
 ## Siguiente paso
 
