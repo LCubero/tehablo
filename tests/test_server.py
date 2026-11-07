@@ -19,7 +19,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'src'))
 import tehablo_server
 from tehablo_server import create_server
 
-SCRATCH = Path(__file__).resolve().parents[1] / '.repo-harness/tmp/t9-check'
+SCRATCH = Path(__file__).resolve().parents[1] / '.repo-harness/tmp/t11-check'
 SCRATCH.mkdir(parents=True, exist_ok=True)
 CODE = '0123456789abcdef0123456789abcdef'
 
@@ -66,6 +66,84 @@ class Sink:
         self.thread.join()
 
 
+class AuthenticationTests(unittest.TestCase):
+    def test_api_rejects_without_state_change(self):
+        server = create_server(port=0, model='spanish', catalog=['lola'], idle_exit=0,
+                               synthesizer_factory=lambda _: Synth(), audio_factory=Sink)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        try:
+            deadline = time.monotonic() + 2
+            while not server.service.ready and time.monotonic() < deadline:
+                time.sleep(.01)
+            for code in ('', 'wrong'):
+                for path in ('/speak', '/config', '/stop', '/shutdown', '/status'):
+                    before = server.service.health(), server.service.status(), server.last_request
+                    conn = http.client.HTTPConnection(*server.server_address, timeout=2)
+                    conn.request('GET' if path == '/status' else 'POST', path, '{}',
+                                 {'Content-Type': 'application/json', 'X-Tehablo-Codigo': code})
+                    response = conn.getresponse()
+                    self.assertEqual(response.status, 403)
+                    self.assertIn('error', json.loads(response.read()))
+                    conn.close()
+                    self.assertEqual(before, (server.service.health(), server.service.status(), server.last_request))
+            for path, headers in (('/health', {}), ('/status', {'X-Tehablo-Codigo': CODE})):
+                conn = http.client.HTTPConnection(*server.server_address, timeout=2)
+                conn.request('GET', path, headers=headers)
+                response = conn.getresponse()
+                self.assertEqual(response.status, 200)
+                response.read()
+                conn.close()
+        finally:
+            server.shutdown()
+            server.server_close()
+            thread.join()
+
+    def test_mutual_handshake_never_sends_code(self):
+        import hmac
+        nonces = []
+        for wrong in (False, True):
+            left, right = socket.socketpair()
+            left.settimeout(.5)
+            right.settimeout(.5)
+            captured = []
+            def peer():
+                nonce = b'n' * 16
+                right.sendall(nonce)
+                response = right.recv(48)
+                captured.append(response)
+                self.assertEqual(response[:32], hmac.digest(CODE.encode(), b'servidor' + nonce, 'sha256'))
+                right.sendall(hmac.digest((('f' * 32) if wrong else CODE).encode(), b'cliente' + response[32:], 'sha256'))
+            thread = threading.Thread(target=peer)
+            thread.start()
+            try:
+                if wrong:
+                    with self.assertRaises(OSError):
+                        tehablo_server.authenticate_audio(left, CODE)
+                else:
+                    tehablo_server.authenticate_audio(left, CODE)
+                self.assertNotIn(CODE.encode(), b''.join(captured))
+                nonces.append(captured[0][32:])
+            finally:
+                thread.join()
+                left.close()
+                right.close()
+        self.assertNotEqual(nonces[0], nonces[1])
+
+    def test_listener_only_receives_nothing(self):
+        left, right = socket.socketpair()
+        left.settimeout(.02)
+        right.settimeout(.02)
+        try:
+            with self.assertRaises(OSError):
+                tehablo_server.authenticate_audio(left, CODE)
+            with self.assertRaises(socket.timeout):
+                right.recv(1024)
+        finally:
+            left.close()
+            right.close()
+
+
 class SSHAudioTests(unittest.TestCase):
     def start(self, audio='ssh', idle_exit=0, rate=24000):
         synth = Synth()
@@ -84,7 +162,7 @@ class SSHAudioTests(unittest.TestCase):
     def stream(self, server):
         conn = http.client.HTTPConnection(*server.server_address, timeout=2)
         self.addCleanup(conn.close)
-        conn.request('GET', '/audio.wav')
+        conn.request('GET', '/audio.wav', headers={'X-Tehablo-Codigo': CODE})
         return conn.getresponse()
 
     def test_ssh_devices_and_config_never_import_sounddevice(self):
@@ -143,6 +221,7 @@ class SSHAudioTests(unittest.TestCase):
                 connection = mock.Mock()
                 packets = []
                 connection.sendall.side_effect = lambda data: packets.append((time.monotonic(), data))
+                connection.recv.side_effect = lambda size: (b'n' * 16 if size == 16 else tehablo_server.hmac.digest(CODE.encode(), b'cliente' + packets[0][1][32:], 'sha256'))
                 with mock.patch.object(tehablo_server.socket, 'create_connection', return_value=connection) as connect, mock.patch.dict(sys.modules, {'sounddevice': None}):
                     time.sleep(.05)
                     connect.assert_not_called()
@@ -151,7 +230,8 @@ class SSHAudioTests(unittest.TestCase):
                     while len(packets) < 12 and time.monotonic() < deadline:
                         time.sleep(.01)
                     self.assertGreaterEqual(len(packets), 12)
-                    self.assertEqual(packets[0][1], b'TEHABLO/1 ' + CODE.encode() + b'\n')
+                    self.assertEqual(len(packets[0][1]), 48)
+                    self.assertNotIn(CODE.encode(), b''.join(data for _, data in packets))
                     self.assertEqual(packets[1][1], bytes.fromhex('52494646ffffffff57415645666d74201000000001000100c05d000080bb00000200100064617461ffffffff'))
                     voiced = [data for _, data in packets[2:] if any(data)]
                     self.assertTrue(voiced)
@@ -174,6 +254,7 @@ class SSHAudioTests(unittest.TestCase):
     def test_outbound_stream_is_not_idle_activity_and_closes_on_exit(self):
         server, thread = self.start(idle_exit=.4)
         connection = mock.Mock()
+        connection.recv.side_effect = OSError('unpaired')
         with mock.patch.object(tehablo_server.socket, 'create_connection', return_value=connection):
             before = server.last_request
             server.service.speak({'id': 'push', 'text': 'hola'})
@@ -181,6 +262,16 @@ class SSHAudioTests(unittest.TestCase):
             self.assertFalse(thread.is_alive())
             self.assertEqual(server.last_request, before)
             connection.close.assert_called_once()
+
+    def test_pairing_code_atomic_concurrent_creation(self):
+        from concurrent.futures import ThreadPoolExecutor
+        with tempfile.TemporaryDirectory(dir=SCRATCH) as tmp:
+            path = Path(tmp) / 'ssh-codigo'
+            with ThreadPoolExecutor(max_workers=8) as pool:
+                codes = list(pool.map(lambda _: tehablo_server.read_pairing_code(path), range(24)))
+            self.assertEqual(len(set(codes)), 1)
+            self.assertEqual(len(codes[0]), 32)
+            self.assertEqual(list(path.parent.iterdir()), [path])
 
     def test_pairing_code_file_created_once(self):
         with tempfile.TemporaryDirectory(dir=SCRATCH) as tmp:
@@ -262,7 +353,7 @@ class IdleTests(unittest.TestCase):
         time.sleep(.4)
         self.assertTrue(thread.is_alive())
         conn = http.client.HTTPConnection(*server.server_address, timeout=1)
-        conn.request('POST', '/shutdown', '{}', {'Content-Type': 'application/json'})
+        conn.request('POST', '/shutdown', '{}', {'Content-Type': 'application/json', 'X-Tehablo-Codigo': CODE})
         response = conn.getresponse()
         self.assertEqual((response.status, json.loads(response.read())), (200, {'ok': True}))
         conn.close()
@@ -299,7 +390,7 @@ class ServerTests(unittest.TestCase):
         method = 'POST' if body is not None or raw is not None else 'GET'
         conn.request(method, path, raw if raw is not None else
                      (json.dumps(body) if body is not None else None),
-                     {'Content-Type': 'application/json'} if headers is None else headers)
+                     dict({'Content-Type': 'application/json'} if headers is None else headers, **{'X-Tehablo-Codigo': CODE}))
         response = conn.getresponse()
         result = response.status, json.loads(response.read())
         conn.close()
@@ -1408,7 +1499,7 @@ class ServerTests(unittest.TestCase):
 
     def test_unsupported_method_returns_json_error(self):
         conn = http.client.HTTPConnection(*self.server.server_address, timeout=3)
-        conn.request('PUT', '/health', '{}')
+        conn.request('PUT', '/health', '{}', {'X-Tehablo-Codigo': CODE})
         response = conn.getresponse()
         self.assertEqual(response.status, 501)
         self.assertIn('error', json.loads(response.read()))
@@ -1439,7 +1530,7 @@ class ServerTests(unittest.TestCase):
         body = (b'POST /shutdown HTTP/1.1\r\nHost: localhost\r\n'
                 b'Content-Type: application/json\r\nContent-Length: 2\r\n\r\n{}')
         with socket.create_connection(self.server.server_address, timeout=3) as conn:
-            conn.sendall(b'POST /speak HTTP/1.1\r\nHost: localhost\r\nConnection: keep-alive\r\n'
+            conn.sendall(b'POST /speak HTTP/1.1\r\nHost: localhost\r\nX-Tehablo-Codigo: ' + CODE.encode() + b'\r\nConnection: keep-alive\r\n'
                          b'Content-Type: text/plain\r\nContent-Length: ' + str(len(body)).encode()
                          + b'\r\n\r\n' + body)
             chunks = []

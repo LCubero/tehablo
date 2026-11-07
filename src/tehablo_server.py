@@ -7,6 +7,7 @@ import argparse
 from collections import deque
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
+import hmac
 import math
 import os
 from pathlib import Path
@@ -167,13 +168,18 @@ WAV_HEADER = struct.pack('<4sI4s4sIHHIIHH4sI', b'RIFF', 0xFFFFFFFF, b'WAVE',
 def read_pairing_code(path):
     """Create privately and exclusively; concurrent servers reuse the same code."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    try:
-        fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-    except FileExistsError:
-        pass
-    else:
-        with os.fdopen(fd, 'w', encoding='ascii') as file:
-            file.write(secrets.token_hex(16) + '\n')
+    if not path.exists():
+        temporary = path.with_name(path.name + '.' + secrets.token_hex(16))
+        fd = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        try:
+            with os.fdopen(fd, 'w', encoding='ascii') as file:
+                file.write(secrets.token_hex(16) + '\n')
+            try:
+                os.link(temporary, path)  # Publish complete bytes, never replace a winner.
+            except FileExistsError:
+                pass
+        finally:
+            temporary.unlink()
     code = path.read_text(encoding='ascii').strip()
     if len(code) != 32 or any(c not in '0123456789abcdef' for c in code):
         raise ValueError('Invalid SSH pairing code file')
@@ -182,6 +188,28 @@ def read_pairing_code(path):
 
 def load_ssh_code():
     return read_pairing_code(Path.home() / '.tehablo/ssh-codigo')
+
+
+def authenticate_audio(connection, code):
+    """Fixed-size mutual proof; the shared secret never crosses the socket."""
+    def receive(size):
+        data = b''
+        deadline = time.monotonic() + .5
+        while len(data) < size:
+            connection.settimeout(max(.001, deadline - time.monotonic()))
+            if time.monotonic() >= deadline:
+                raise OSError('Audio authentication failed')
+            chunk = connection.recv(size - len(data))
+            if not chunk:
+                raise OSError('Audio authentication failed')
+            data += chunk
+        return data
+    key = code.encode('ascii')
+    client_nonce = receive(16)
+    server_nonce = secrets.token_bytes(16)
+    connection.sendall(hmac.digest(key, b'servidor' + client_nonce, 'sha256') + server_nonce)
+    if not hmac.compare_digest(receive(32), hmac.digest(key, b'cliente' + server_nonce, 'sha256')):
+        raise OSError('Audio authentication failed')
 
 
 class SSHAudio:
@@ -242,7 +270,8 @@ class SSHAudio:
                     try:
                         self.connection = socket.create_connection(('127.0.0.1', 18766), timeout=.5)
                         self.connection.settimeout(.1)
-                        self.connection.sendall(b'TEHABLO/1 ' + load_ssh_code().encode('ascii') + b'\n')
+                        authenticate_audio(self.connection, load_ssh_code())
+                        self.connection.settimeout(.1)
                         self.connection.sendall(WAV_HEADER)
                     except (OSError, ValueError) as exc:
                         self.failed(exc)
@@ -727,6 +756,16 @@ class Handler(BaseHTTPRequestHandler):
     def parse_request(self):
         parsed = super().parse_request()
         if parsed:
+            if not (self.command == 'GET' and self.path == '/health'):
+                supplied = self.headers.get('X-Tehablo-Codigo', '').encode('utf-8')
+                try:
+                    valid = hmac.compare_digest(supplied, load_ssh_code().encode('ascii'))
+                except (OSError, ValueError):
+                    valid = False
+                if not valid:
+                    self.close_connection = True
+                    self.reply(403, {'error': 'forbidden'})
+                    return False
             self.server.last_request = time.monotonic()
         return parsed
 

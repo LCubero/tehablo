@@ -7,6 +7,7 @@ import argparse
 from array import array
 import json
 import hmac
+import secrets
 import os
 from pathlib import Path
 import platform
@@ -127,7 +128,7 @@ def configure_ssh(alias, path=None, yes=False, ask=None, output=print):
     for line in (f'Archivo: {path}', f'Host {alias}', '    ' + FORWARD,
                  'Lleva la voz a este receptor (127.0.0.1:18766) por tu conexion SSH; el puerto remoto escucha en loopback por defecto (no cambies GatewayPorts).',
                  'En un servidor compartido, otro usuario podria intentar enviar sonido: el receptor exige el codigo de vinculacion. Quien conozca el codigo puede enviar voz; un administrador puede leerlo.',
-                 'Nada en esta computadora puede controlar teHablo ni el servidor por este reenvio. El codigo no protege la API HTTP local de teHablo en un servidor compartido.',
+                 'Nada en esta computadora puede controlar teHablo ni el servidor por este reenvio. El mismo codigo protege la API HTTP local de teHablo.',
                  'Se hara una copia de seguridad del archivo existente antes de cambiarlo.'):
         output(line)
     if not yes:
@@ -221,16 +222,19 @@ class Receiver:
         return data
 
     def play(self, connection):
-        line = self.read_exact(connection, 43)
-        if not line.startswith(b'TEHABLO/1 ') or not line.endswith(b'\n'):
-            raise OSError('Codigo de vinculacion no valido')
-        code = line[10:-1]
-        # Compare every saved code; never open the sound device before authentication.
-        valid = False
+        connection.settimeout(.5)
+        nonce = secrets.token_bytes(16)
+        connection.sendall(nonce)
+        proof = self.read_exact(connection, 48)
+        key = None
+        # Compare every saved code before choosing a matching server.
         for saved in self.settings.get('codes', []):
-            valid |= hmac.compare_digest(code, saved.encode('ascii'))
-        if not valid:
+            candidate = saved.encode('ascii')
+            if hmac.compare_digest(proof[:32], hmac.digest(candidate, b'servidor' + nonce, 'sha256')):
+                key = candidate
+        if key is None:
             raise OSError('Servidor sin vincular: usa Vincular servidor')
+        connection.sendall(hmac.digest(key, b'cliente' + proof[32:], 'sha256'))
         if self.read_exact(connection, 44) != WAV_HEADER:
             raise OSError('Cabecera WAV no valida')
         if self.stop_event.is_set() or not self.settings['enabled']:

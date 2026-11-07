@@ -1,5 +1,7 @@
 import { spawn as nodeSpawn } from 'node:child_process';
-import { closeSync, existsSync, mkdirSync, openSync } from 'node:fs';
+import { closeSync, existsSync, mkdirSync, openSync, readFileSync, writeFileSync, linkSync, unlinkSync } from 'node:fs';
+import { randomBytes } from 'node:crypto';
+import { homedir } from 'node:os';
 import { resolve, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -9,10 +11,26 @@ type Options = {
   root?: string; platform?: string; port?: string; exists?: (path: string) => boolean;
   fetch?: typeof fetch; spawn?: typeof nodeSpawn; delay?: (ms: number) => Promise<void>;
   openLog?: (path: string) => number; closeLog?: (fd: number) => void;
+  codePath?: string;
 };
 
 /** Truncates the log on every server start, so it holds only the latest run. */
 const openLogFile = (path: string) => { mkdirSync(join(path, '..'), {recursive: true}); return openSync(path, 'w'); };
+
+export function pairingCode(path = join(homedir(), '.tehablo', 'ssh-codigo')): string {
+  mkdirSync(join(path, '..'), {recursive: true});
+  if (!existsSync(path)) {
+    const temporary = path + '.' + randomBytes(16).toString('hex');
+    writeFileSync(temporary, randomBytes(16).toString('hex') + '\n', {flag: 'wx', mode: 0o600});
+    try {
+      try { linkSync(temporary, path); }
+      catch (error) { if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error; }
+    } finally { unlinkSync(temporary); }
+  }
+  const code = readFileSync(path, 'ascii').trim();
+  if (!/^[0-9a-f]{32}$/.test(code)) throw new Error('Invalid SSH pairing code file');
+  return code;
+}
 
 export class ServerClient {
   root: string;
@@ -45,9 +63,10 @@ export class ServerClient {
     // A status snapshot cannot retire requests that were pending or started after it.
     const observed = path === '/status' ? [...this.readings].filter(id => !this.inFlight.has(id)) : [];
     try {
+      const codePath = this.options.codePath;
       const response = await (this.options.fetch ?? globalThis.fetch)(this.base + path, {
         method: body === undefined ? 'GET' : 'POST',
-        headers: {'Content-Type': 'application/json'},
+        headers: {'Content-Type': 'application/json', get 'X-Tehablo-Codigo'() { return pairingCode(codePath); } },
         body: body === undefined ? undefined : JSON.stringify(body),
         signal: AbortSignal.timeout(2000),
       });

@@ -11,7 +11,7 @@ import unittest
 from unittest.mock import MagicMock, Mock, patch
 
 ROOT = Path(__file__).resolve().parents[1]
-SCRATCH = ROOT / '.repo-harness/tmp/t9-check'
+SCRATCH = ROOT / '.repo-harness/tmp/t11-check'
 SCRATCH.mkdir(parents=True, exist_ok=True)
 spec = importlib.util.spec_from_file_location('cliente', ROOT / 'cliente/tehablo_cliente.py')
 c = importlib.util.module_from_spec(spec)
@@ -158,7 +158,11 @@ class ClientTest(unittest.TestCase):
         peers = []
         for _ in range(connections):
             peer = MagicMock()
-            data = bytearray(b''.join(chunks))
+            wire = b''.join(chunks)
+            if wire.startswith(b'TEHABLO/1 ') and len(wire) >= 43:
+                key = wire[10:42]
+                wire = c.hmac.digest(key, b'servidor' + b'n' * 16, 'sha256') + b's' * 16 + wire[43:]
+            data = bytearray(wire)
             def recv(size, data=data):
                 size = min(size, max_recv)
                 result = bytes(data[:size])
@@ -177,13 +181,17 @@ class ClientTest(unittest.TestCase):
             count += 1
             return peer, ('127.0.0.1', 12345)
         listener.accept.side_effect = accept
-        with patch.object(receiver.stop_event, 'wait', side_effect=lambda _: receiver.stop_event.set()), patch.object(c.socket, 'socket') as factory:
+        with patch.object(c.secrets, 'token_bytes', return_value=b'n' * 16), patch.object(receiver.stop_event, 'wait', side_effect=lambda _: receiver.stop_event.set()), patch.object(c.socket, 'socket') as factory:
             factory.return_value.__enter__.return_value = listener
             receiver.run()
         listener.bind.assert_called_once_with(('127.0.0.1', 18766))
         self.assertFalse(receiver.receiving)
         for peer in peers:
             peer.close.assert_called_once()
+            sent = [call.args[0] for call in peer.sendall.call_args_list]
+            self.assertNotIn(self.CODE.encode(), b''.join(sent))
+            if sd.RawOutputStream.called:
+                self.assertEqual(sent, [b'n' * 16, c.hmac.digest(self.CODE.encode(), b'cliente' + b's' * 16, 'sha256')])
         return sd, receiver
 
     def test_prebuffers_200_ms_and_returns_to_waiting_after_eof(self):
@@ -212,6 +220,31 @@ class ClientTest(unittest.TestCase):
         sd, _ = self.receive([b'TEHABLO/1 ' + self.CODE.encode() + b'\n', c.WAV_HEADER,
                               bytes([100, 0]) * 2], dict(c.DEFAULTS, codes=[self.CODE], volume=.5), max_recv=1)
         sd.RawOutputStream.return_value.__enter__.return_value.write.assert_called_once_with(bytes([50, 0]) * 2)
+
+    def test_client_challenges_are_fresh_and_wrong_server_gets_no_proof(self):
+        nonces = []
+        for key in (self.CODE, self.CODE, 'f' * 32):
+            peer = Mock()
+            sent = []
+            peer.sendall.side_effect = sent.append
+            data = bytearray()
+            def recv(size):
+                if not data:
+                    data.extend(c.hmac.digest(key.encode(), b'servidor' + sent[0], 'sha256') + b's' * 16 + b'BAD')
+                result = bytes(data[:size])
+                del data[:size]
+                return result
+            peer.recv.side_effect = recv
+            sd = Mock()
+            receiver = c.Receiver(dict(c.DEFAULTS, codes=[self.CODE]), sd=sd)
+            # Stop after authentication: a bad WAV must still never open audio.
+            with self.assertRaises(OSError):
+                receiver.play(peer)
+            sd.RawOutputStream.assert_not_called()
+            self.assertNotIn(self.CODE.encode(), b''.join(sent))
+            self.assertEqual(len(sent), 1 if key != self.CODE else 2)
+            nonces.append(sent[0])
+        self.assertEqual(len(set(nonces)), 3)
 
     def test_port_busy_is_clear_warning(self):
         receiver = c.Receiver(dict(c.DEFAULTS), sd=Mock())
