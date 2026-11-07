@@ -129,16 +129,16 @@ irm https://raw.githubusercontent.com/LCubero/tehablo/master/receptor/install.ps
 curl -fsSL https://raw.githubusercontent.com/LCubero/tehablo/master/receptor/install.sh | sh
 ```
 
-Si falta uv, muestra el comando oficial para instalarlo y se detiene sin cambios. Después abre un menú: recepción on/off, salida de audio, volumen, configurar SSH, vincular servidor, inicio automático, desinstalar y salir. Muestra «Esperando voz» / «Recibiendo» y ajustes; se guardan en `~/.tehablo/cliente.json`.
+Si falta uv, muestra el comando oficial para instalarlo y se detiene sin cambios. Después abre un menú en la terminal que se usa con el ratón o el teclado: recepción on/off, salida de audio, volumen, vincular servidor (código de `/tts codigo`), conectar la voz por SSH, desinstalar y salir. Muestra «Listo para recibir» / «Recibiendo voz»; los ajustes se guardan en `~/.tehablo/cliente.json`. La voz solo llega mientras el cliente está abierto.
 
-**Configurar SSH** pide tu alias (por ejemplo `mi-servidor`), muestra el archivo y la línea y pide permiso. Si aceptas, hace copia y la añade; si no, indica cómo hacerlo a mano. Para automatizar: `sh receptor/install.sh --yes mi-servidor` o `.\receptor\install.ps1 -Yes -HostAlias mi-servidor`. Reconecta SSH después.
+**Conexión SSH** lista solo tus sesiones abiertas, sin leer `~/.ssh/config`; **Otra…** permite pegar tu comando, por ejemplo `ssh pepe@192.168.7.88`. Al elegirlo abre un canal de voz SSH oculto con los mismos datos de conexión, sin editar archivos ni reconectar tu sesión. Necesita autenticación por clave (sin preguntas de contraseña); si entras con contraseña, usa **Lo hago a mano**. La fila muestra **● Voz conectada a…** y permite **Detener voz**. Salir o desinstalar cierra ese canal; el orden de apertura de SSH, Pi y cliente no importa. Las conexiones que ya llevan la voz no abren otro canal.
 
 `RemoteForward 18766 127.0.0.1:18766` lleva cada lectura al receptor, que espera en 127.0.0.1:18766 sin sondeos ni tráfico en reposo.
 Viaja cifrada por tu conexión SSH; el puerto remoto escucha en loopback por defecto (no cambies `GatewayPorts`). Este reenvío no permite controlar teHablo ni el servidor desde tu computadora.
-El receptor exige un código: en Pi elige **Audio: SSH**, ejecuta `/tts codigo` para ver el **Código de vinculación** y añádelo en **Vincular servidor** (o `uv run cliente/tehablo_cliente.py --codigo CODIGO`). Sin él muestra «Sin vincular» y no reproduce. El código se guarda en `~/.tehablo/ssh-codigo` en el servidor (0600 en POSIX); quien lo conozca, incluido un administrador, puede enviar sonido. No protege la API HTTP local de teHablo.
+El receptor exige un código: en Pi elige **Audio: SSH**, ejecuta `/tts codigo` para ver el **Código de vinculación** y añádelo en **Vincular servidor** (o `uv run cliente/tehablo_cliente.py --codigo CODIGO`). Sin él muestra «Sin vincular» y no reproduce. El código se guarda en `~/.tehablo/ssh-codigo` en el servidor (0600 en POSIX); quien lo conozca, incluido un administrador, puede enviar sonido. El mismo código también protege la API HTTP local de teHablo.
 Si conservas `LocalForward 18765 127.0.0.1:8765`, ya no hace falta: puedes quitarlo a mano; el cliente nunca lo borra.
 
-En Pi, elige **Audio: SSH**. La guía de instalación aparece solo hasta que un cliente se autentique por primera vez; después, al activarlo, solo confirma «Audio por SSH activado.». Si no hay receptor o se desconecta, se detiene esa lectura y Pi avisa: «Sin receptor de audio por SSH: abre el cliente en tu computadora.». Activa el inicio automático en el cliente para recibir sin ventana al iniciar sesión (`--fondo`); cada día basta con `ssh mi-servidor`. Desde un clon: `./install.sh --cliente` o `.\install.ps1 -Cliente` (también aceptan `--receptor` / `-Receptor`). La salida y el volumen del cliente son independientes de los de Pi.
+En Pi, elige **Audio: SSH**. La guía de instalación aparece solo hasta que un cliente se autentique por primera vez; después, al activarlo, solo confirma «Audio por SSH activado.». Si no hay receptor o se desconecta, se detiene esa lectura y Pi avisa: «Sin receptor de audio por SSH: abre el cliente en tu computadora.». Mantén abierto el cliente mientras quieras oír la voz. Desde un clon: `./install.sh --cliente` o `.\install.ps1 -Cliente` (también aceptan `--receptor` / `-Receptor`). La salida y el volumen del cliente son independientes de los de Pi.
 
 ### Hacerlo a mano
 
@@ -151,7 +151,10 @@ En Pi, elige **Audio: SSH**. La guía de instalación aparece solo hasta que un 
        RemoteForward 18766 127.0.0.1:18766
    ```
    Lleva cada lectura por tu conexión SSH al receptor local; el puerto remoto escucha en loopback por defecto.
-3. Desde el clon, ejecuta `uv run cliente/tehablo_cliente.py` en tu computadora y reconecta con `ssh mi-servidor`. El cliente espera conexiones, sin sondear al servidor; puedes activar inicio automático desde el menú.
+   Sin tocar archivos: añade `-R 18766:127.0.0.1:18766` a tu comando, por ejemplo `ssh -R 18766:127.0.0.1:18766 pepe@192.168.7.88`.
+   Si usas otro programa: **Reenvío remoto (Remote): puerto 18766 → 127.0.0.1:18766**; el menú muestra esta ayuda también si no encuentra `ssh`.
+   En PuTTY: **Connection › SSH › Tunnels** → Source port `18766`, Destination `127.0.0.1:18766`, **Remote**, **Add** y guarda la sesión.
+3. Desde el clon, ejecuta `uv run cliente/tehablo_cliente.py` en tu computadora y reconecta con `ssh mi-servidor`. El cliente espera conexiones, sin sondear al servidor; mantenlo abierto mientras quieras oír la voz.
 4. En Pi elige **Audio: SSH** y copia el código de `/tts codigo` en **Vincular servidor** del cliente.
 
 Para desinstalar desde un clon: `sh receptor/install.sh --uninstall` o `.\receptor\install.ps1 -Uninstall`. Sin clon, vuelve a descargar el script y pásale `--uninstall` (`sh -s -- --uninstall`) o `-Uninstall` (`& ([scriptblock]::Create((irm https://raw.githubusercontent.com/LCubero/tehablo/master/receptor/install.ps1))) -Uninstall`). Quita a mano la línea `RemoteForward 18766 127.0.0.1:18766` del Host correspondiente en `~/.ssh/config`.
