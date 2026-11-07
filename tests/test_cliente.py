@@ -18,92 +18,102 @@ c = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(c)
 
 
+class VoiceChannelTest(unittest.TestCase):
+    def test_background_argv(self):
+        tail = ['-N', '-T', '-o', 'BatchMode=yes', '-o', 'ExitOnForwardFailure=yes',
+                '-o', 'ServerAliveInterval=30', '-R', '18766:127.0.0.1:18766']
+        # The destination goes last, so options typed after it are never lost.
+        for command, prefix, destination in [
+            ('ssh -i "key file" -p 2222 -L 8080:x:80 -R999:x:9 -D 1080 -W h:22 -ftNT pepe@h command',
+             ['ssh', '-i', 'key file', '-p', '2222'], 'pepe@h'),
+            ('ssh pepe@192.168.7.88', ['ssh'], 'pepe@192.168.7.88'),
+            ('saved', ['ssh'], 'saved'),
+            (r'"C:\Windows\ssh.exe" -i "C:\a b\key" h',
+             [r'C:\Windows\ssh.exe', '-i', r'C:\a b\key'], 'h'),
+            ('ssh -J jump -F config -o Port=22 h uptime', ['ssh', '-J', 'jump', '-F', 'config', '-o', 'Port=22'], 'h'),
+            ('ssh server -p 2222', ['ssh', '-p', '2222'], 'server'),
+            ('ssh -i k server -p 2222 -L 1:x:1 uptime -p 9', ['ssh', '-i', 'k', '-p', '2222'], 'server'),
+            ('ssh -p 2222 -- server uptime', ['ssh', '-p', '2222'], 'server')]:
+            self.assertEqual(c.voice_argv(command), prefix + tail + [destination])
+        for command in ('ssh', 'ssh -p 2222', 'ssh -- ', 'ssh bad;host'):
+            with self.assertRaises(ValueError):
+                c.voice_argv(command)
+
+    def test_lifecycle_and_reasons(self):
+        process = Mock()
+        process.poll.return_value = None
+        process.stderr = io.BytesIO(b'Permission denied (publickey,password)\n')
+        factory = Mock(return_value=process)
+        voice = c.VoiceChannel(factory)
+        voice.start('ssh pepe@h')
+        self.assertTrue(voice.running)
+        self.assertEqual(voice.host, 'h')
+        self.assertEqual(factory.call_args.kwargs['stdin'], c.subprocess.DEVNULL)
+        self.assertEqual(factory.call_args.kwargs['stdout'], c.subprocess.DEVNULL)
+        self.assertEqual(factory.call_args.kwargs['stderr'], c.subprocess.PIPE)
+        if os.name == 'nt':
+            self.assertEqual(factory.call_args.kwargs['creationflags'], c.subprocess.CREATE_NO_WINDOW)
+        else:
+            self.assertNotIn('creationflags', factory.call_args.kwargs)
+        process.poll.return_value = 255
+        self.assertIn('contraseña', voice.reason())
+        self.assertEqual(voice.reason(), '')
+        for error, expected in [(b'remote port forwarding failed', 'ya está abierto'),
+                                (b'administratively prohibited', 'ya está abierto'),
+                                (b'first\nlast\n', 'last')]:
+            process.poll.return_value = None
+            process.stderr = io.BytesIO(error)
+            voice.start('h')
+            process.poll.return_value = 1
+            self.assertIn(expected, voice.reason())
+        process.poll.return_value = None
+        process.stderr = io.BytesIO()
+        voice.start('h')
+        process.wait.side_effect = [c.subprocess.TimeoutExpired('ssh', 1), None]
+        voice.stop()
+        process.terminate.assert_called_once()
+        process.kill.assert_called_once()
+        self.assertFalse(voice.running)
+
+
+class SshPickerTest(unittest.TestCase):
+    def test_targets(self):
+        for command, host in [('ssh pepe@192.168.7.88', '192.168.7.88'),
+                              ('ssh -p 2222 pepe@host', 'host'),
+                              ('ssh -l pepe host', 'host'), ('pepe@host', 'host'),
+                              ('mi-servidor', 'mi-servidor'),
+                              ('ssh -i "key file" -J jump -o Port=22 host', 'host')]:
+            self.assertEqual(c.ssh_target(command), host)
+        for command in ('', 'ssh', 'ssh -p 2222', 'ssh -l', 'ssh -V'):
+            with self.assertRaisesRegex(ValueError, 'conexión SSH'):
+                c.ssh_target(command)
+
+    def test_open_sessions(self):
+        cases = [(r'ssh -i "C:\a b\key" -p 2222 root@127.0.0.1', ('127.0.0.1', False)),
+                 ('ssh -R 18766:127.0.0.1:18766 pepe@h', ('h', True)),
+                 ("ssh git@github.com git-upload-pack 'x'", None),
+                 ('ssh -F cfg alias', None),
+                 (r'C:\Windows\System32\OpenSSH\ssh.exe pepe@h', ('h', False)),
+                 ('/usr/bin/ssh mi-servidor', ('mi-servidor', False)),
+                 ('python script.py', None),
+                 ('ssh -L 18766:localhost:18766 h', ('h', False)),
+                 ('ssh -R 9999:localhost:18766 h', ('h', False)),
+                 ('ssh -o RemoteForward=18766:127.0.0.1:18766 h', ('h', True))]
+        for command, expected in cases:
+            self.assertEqual(c.ssh_process(command), expected, command)
+        runner = Mock(return_value=Mock(returncode=0, stdout='ssh h\nssh h\npython x'))
+        self.assertEqual(c.open_ssh_sessions(runner, 'Linux'), [('h', False)])
+        self.assertEqual(runner.call_args.kwargs['timeout'], 3)
+        for failure in (FileNotFoundError(), TimeoutError()):
+            self.assertEqual(c.open_ssh_sessions(Mock(side_effect=failure), 'Windows'), [])
+        self.assertEqual(c.open_ssh_sessions(Mock(return_value=Mock(returncode=1)), 'Darwin'), [])
+
+
 class ClientTest(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory(dir=SCRATCH)
         self.addCleanup(self.tmp.cleanup)
         self.home = Path(self.tmp.name)
-
-    def test_ssh_matrix_idempotent_backup_only_on_change(self):
-        cases = [
-            (b'Host vps\n User a\n', b'Host vps\n User a\n    RemoteForward 18766 127.0.0.1:18766\n'),
-            (b'Host vps\n User a\nHost vps\n IdentityFile k\n', b'Host vps\n User a\n    RemoteForward 18766 127.0.0.1:18766\nHost vps\n IdentityFile k\n'),
-            (b'Host vps\n RemoteForward localhost:18766 127.0.0.1:18766\n', None),
-            (b'Host other\n User a\nHost vps\n RemoteForward 18766 127.0.0.1:18766\n', None),
-            (b'Host vps\n User a\nHost vps\n RemoteForward [::1]:18766 elsewhere:9\n', None),
-            (b'Host other\r\n User a', b'Host other\r\n User a\r\nHost vps\r\n    RemoteForward 18766 127.0.0.1:18766\r\n'),
-            (b'Host vps\r\n User a', b'Host vps\r\n User a\r\n    RemoteForward 18766 127.0.0.1:18766\r\n'),
-            (b'Host vps\nMatch all\n User b', b'Host vps\n    RemoteForward 18766 127.0.0.1:18766\nMatch all\n User b'),
-            (b'Host other\n RemoteForward 18766 elsewhere:9\n', b'Host other\n RemoteForward 18766 elsewhere:9\nHost vps\n    RemoteForward 18766 127.0.0.1:18766\n'),
-            (b'Host one vps\n User a\n', b'Host one vps\n User a\n    RemoteForward 18766 127.0.0.1:18766\n'),
-        ]
-        for i, (before, after) in enumerate(cases):
-            with self.subTest(i=i):
-                path = self.home / str(i) / 'config'
-                path.parent.mkdir()
-                path.write_bytes(before)
-                for _ in range(2):
-                    c.configure_ssh('vps', path=path, yes=True, output=lambda *a: None)
-                self.assertEqual(path.read_bytes(), after or before)
-                backups = list(path.parent.glob('*.bak'))
-                self.assertEqual(len(backups), int(after is not None))
-                if backups:
-                    self.assertEqual(backups[0].read_bytes(), before)
-
-    def test_consent_and_no_terminal_do_not_change_anything(self):
-        path = self.home / '.ssh/config'
-        for answer in ('n', '', 'sure'):
-            log = []
-            c.configure_ssh('vps', path=path, ask=lambda p: answer, output=log.append)
-            self.assertFalse(path.parent.exists())
-            self.assertIn(str(path), '\n'.join(log))
-            self.assertIn(c.FORWARD, '\n'.join(log))
-        with patch.object(c, 'terminal_input', side_effect=EOFError):
-            c.configure_ssh('vps', path=path, output=lambda *a: None)
-        self.assertFalse(path.parent.exists())
-        for answer in ('S', 'si', 'SÍ', 'Y', 'YES'):
-            target = self.home / answer / 'config'
-            c.configure_ssh('vps', path=target, ask=lambda p: answer, output=lambda *a: None)
-            self.assertIn(c.FORWARD, target.read_text())
-        with self.assertRaises(ValueError):
-            c.configure_ssh('bad\nhost', path=path, yes=True)
-
-    def test_terminal_input_nonseekable_tty(self):
-        class Nonseekable(io.StringIO):
-            def seekable(self):
-                return False
-        reader = Nonseekable('sí\n')
-        writer = Nonseekable()
-        def open_tty(path, mode='r'):
-            self.assertEqual(path, '/dev/tty')
-            if '+' in mode:
-                raise io.UnsupportedOperation('File or stream is not seekable')
-            return reader if mode == 'r' else writer
-        with patch.object(c.sys.stdin, 'isatty', return_value=False), patch.object(c.os, 'name', 'posix'), patch('builtins.open', side_effect=open_tty):
-            self.assertEqual(c.terminal_input('Pregunta: '), 'sí')
-
-    def test_ssh_missing_final_newline_and_bom(self):
-        for eol in ('\n', '\r\n'):
-            for tail in ('', eol + 'Host other' + eol + ' User b'):
-                before = 'Host vps' + eol + ' User a' + tail
-                expected = ('Host vps' + eol + ' User a' + eol + '    ' + c.FORWARD + eol + tail.lstrip('\r\n'))
-                with self.subTest(eol=eol, tail=tail):
-                    self.assertEqual(c.ssh_text(before, 'vps'), expected)
-        before = '\ufeffHost vps\n User a\n'
-        expected = '\ufeffHost vps\n User a\n    ' + c.FORWARD + '\n'
-        self.assertEqual(c.ssh_text(before, 'vps'), expected)
-        self.assertEqual(c.ssh_text(expected, 'vps'), expected)
-
-    def test_old_forward_is_mentioned_and_never_deleted(self):
-        path = self.home / 'config'
-        before = b'Host vps\n    LocalForward 18765 127.0.0.1:8765\n'
-        path.write_bytes(before)
-        log = []
-        c.configure_ssh('vps', path=path, yes=True, output=log.append)
-        self.assertTrue(path.read_bytes().startswith(before))
-        self.assertIn('LocalForward 18765', '\n'.join(log))
-        self.assertIn('otro usuario', '\n'.join(log))
-        self.assertIn('controlar', '\n'.join(log))
 
     def test_settings(self):
         path = self.home / 'cliente.json'
@@ -258,42 +268,350 @@ class ClientTest(unittest.TestCase):
         self.assertIn('18766', receiver.error)
         self.assertIn('ocupado', receiver.error)
 
-    def test_yes_and_uninstall_cli_are_isolated(self):
-        manager = Mock()
+    def test_uninstall_stops_an_open_receiver(self):
+        with patch.dict(os.environ, HOME=str(self.home), APPDATA=str(self.home / 'AppData/Roaming')):
+            receiver = c.Receiver(dict(c.DEFAULTS, codes=[self.CODE]), retired=c.retired_path())
+            listener = MagicMock()
+            def accept():
+                if not c.retired_path().exists():
+                    c.uninstall(output=lambda *a: None)
+                    raise c.socket.timeout()
+                self.fail('the receiver must stop before accepting after uninstall')
+            listener.accept.side_effect = accept
+            with patch.object(c.socket, 'socket') as factory:
+                factory.return_value.__enter__.return_value = listener
+                receiver.run()
+            self.assertTrue(receiver.stop_event.is_set())
+            self.assertFalse(c.load_settings()['enabled'])
+
+    def test_uninstall_removes_legacy_login_entries(self):
+        cases = [('Windows', 'AppData/Roaming/Microsoft/Windows/Start Menu/Programs/Startup/tehablo-cliente.vbs', None),
+                 ('Linux', '.config/systemd/user/tehablo-cliente.service',
+                  ['systemctl', '--user', 'disable', '--now', 'tehablo-cliente.service']),
+                 ('Darwin', 'Library/LaunchAgents/com.tehablo.cliente.plist', 'launchctl')]
+        for system, relative, command in cases:
+            with self.subTest(system=system):
+                path = self.home / relative
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text('legacy')
+                calls = []
+                with patch.dict(os.environ, HOME=str(self.home), APPDATA=str(self.home / 'AppData/Roaming')):
+                    c.uninstall(output=lambda *a: None, system=system, run=lambda cmd, **kw: calls.append(cmd))
+                self.assertFalse(path.exists())
+                if command is None:
+                    self.assertEqual(calls, [])
+                elif command == 'launchctl':
+                    self.assertEqual(calls, [['launchctl', 'unload', str(path)]])
+                else:
+                    self.assertEqual(calls, [command])
+        calls = []
+        with patch.dict(os.environ, HOME=str(self.home), APPDATA=str(self.home / 'AppData/Roaming')):
+            c.uninstall(output=lambda *a: None, system='Linux', run=lambda cmd, **kw: calls.append(cmd))
+        self.assertEqual(calls, [])
+
+    def test_pair_and_uninstall_cli_are_isolated(self):
         installed = self.home / '.local/share/tehablo-cliente/tehablo_cliente.py'
         installed.parent.mkdir(parents=True)
         installed.write_text('# downloaded client')
-        with patch.dict(os.environ, HOME=str(self.home), APPDATA=str(self.home / 'AppData')), patch.object(c, 'Autostart', return_value=manager), patch.object(c, 'sound_device') as sound, patch.object(c, 'print'):
-            with patch.object(sys, 'argv', ['cliente', '--codigo', self.CODE, '--yes', 'vps']):
+        with patch.dict(os.environ, HOME=str(self.home), APPDATA=str(self.home / 'AppData')), patch.object(c, 'sound_device') as sound, patch.object(c, 'print'):
+            with patch.object(sys, 'argv', ['cliente', '--codigo', self.CODE]), patch.object(c, 'menu'), patch.object(c.threading, 'Thread'):
                 c.main()
             self.assertEqual(c.load_settings()['codes'], [self.CODE])
-            manager.enable.assert_called_once()
-            manager.start_windows.assert_called_once()
-            self.assertIn(c.FORWARD, (self.home / '.ssh/config').read_text())
+            self.assertTrue(c.load_settings()['enabled'])
+            self.assertEqual(sorted(str(p.relative_to(self.home)).replace('\\', '/') for p in self.home.rglob('*') if p.is_file()),
+                             sorted(['.local/share/tehablo-cliente/tehablo_cliente.py',
+                                     '.tehablo/cliente.json']))
             with patch.object(sys, 'argv', ['cliente', '--uninstall']):
                 c.main()
-            manager.disable.assert_called_once()
             self.assertFalse(installed.exists())
             self.assertFalse(c.load_settings()['enabled'])
+            self.assertEqual(c.load_settings()['codes'], [self.CODE])
             self.assertTrue((self.home / '.tehablo/cliente-retirado').exists())
             sound.assert_not_called()
-        self.assertTrue((self.home / '.ssh/config').exists())
+        self.assertFalse((self.home / '.ssh/config').exists())
 
-    def test_autostart_isolated_paths_and_commands(self):
-        script = self.home / 'with spaces/cliente.py'
-        for system in ('Windows', 'Linux', 'Darwin'):
-            commands = []
-            manager = c.Autostart(home=self.home, appdata=self.home / 'AppData', system=system,
-                                  script=script, uv='/fake path/uv', run=lambda cmd: commands.append(cmd))
-            manager.enable()
-            self.assertTrue(manager.enabled())
-            text = manager.path.read_text(encoding='utf-16' if system == 'Windows' else 'utf-8')
-            self.assertIn('--fondo', text)
-            self.assertIn('cliente.py', text)
-            if system == 'Windows':
-                self.assertIn(', 0, False', text)
-            manager.disable()
-            self.assertFalse(manager.enabled())
+    def test_open_receiver_status_and_menu_exit_stop_reception(self):
+        receiver = c.Receiver(dict(c.DEFAULTS, codes=[self.CODE]))
+        receiver.receiving = True
+        self.assertIn('Recibiendo voz', c.status_text(receiver.settings, receiver))
+        receiver.receiving = False
+        self.assertIn('Listo para recibir', c.status_text(receiver.settings, receiver))
+        with patch.dict(os.environ, HOME=str(self.home), APPDATA=str(self.home / 'AppData/Roaming')), patch.object(sys, 'argv', ['cliente']), patch.object(c, 'Receiver', return_value=receiver), patch.object(c.threading, 'Thread') as thread, patch.object(c, 'menu') as menu, patch.object(c, 'VoiceChannel') as channel:
+            c.save_settings(receiver.settings)
+            c.main()
+        self.assertTrue(receiver.stop_event.is_set())
+        menu.assert_called_once_with(receiver.settings, receiver, channel.return_value)
+        channel.return_value.stop.assert_called_once()
+        thread.return_value.start.assert_called_once()
+        thread.return_value.join.assert_called_once_with(7)
+
+    def test_removed_flags_are_rejected(self):
+        for args in (['--yes'], ['--config-only'], ['vps'], ['--fondo']):
+            with patch.object(sys, 'argv', ['cliente', *args]), patch.object(sys, 'stderr', io.StringIO()):
+                with self.assertRaises(SystemExit) as error:
+                    c.main()
+            self.assertEqual(error.exception.code, 2)
+
+
+@unittest.skipUnless(importlib.util.find_spec('textual'), 'run with: uv run --no-project --with "textual>=8,<9" python -m unittest tests.test_cliente')
+class MenuTest(unittest.IsolatedAsyncioTestCase):
+    CODE = ClientTest.CODE
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory(dir=SCRATCH)
+        self.addCleanup(self.tmp.cleanup)
+        self.home = Path(self.tmp.name)
+        for patcher in (patch.dict(os.environ, HOME=str(self.home), APPDATA=str(self.home / 'AppData/Roaming')),
+                        patch.object(c, 'open_ssh_sessions', return_value=[]),
+                        patch.object(c, 'output_devices', return_value=['Altavoces', 'Audífonos'])):
+            patcher.start()
+            self.addCleanup(patcher.stop)
+        self.settings = c.load_settings()
+        self.receiver = c.Receiver(dict(self.settings))
+        self.process = Mock()
+        self.process.poll.return_value = None
+        self.process.stderr = io.BytesIO()
+        self.factory = Mock(return_value=self.process)
+        patcher = patch.object(c.subprocess, 'Popen', self.factory)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def text(self, app, selector):
+        return str(app.query_one(selector).render())
+
+    async def test_menu_is_clickable_and_saves_every_option(self):
+        app = c.menu_app(self.settings, self.receiver)
+        async with app.run_test(size=(100, 45)) as pilot:
+            self.assertIn('Sin vincular', self.text(app, '#alerta'))
+            self.assertIn('/tts codigo', self.text(app, '#alerta'))
+            self.assertIn('Listo para recibir', self.text(app, '#estado'))
+            await pilot.click('#recepcion')
+            await pilot.pause()
+            self.assertFalse(c.load_settings()['enabled'])
+            self.assertIn('Recepción apagada', self.text(app, '#estado'))
+            await pilot.click('#volumen', offset=(1, 0))
+            await pilot.press('right', 'left', 'left')
+            await pilot.pause()
+            self.assertEqual(c.load_settings()['volume'], 0.8)
+            self.assertIn('80%', self.text(app, '#volumen'))
+            await pilot.click('#salida')
+            await pilot.press('down', 'down', 'enter')
+            await pilot.pause()
+            self.assertEqual(c.load_settings()['device'], 'Audífonos')
+            await pilot.click('#vincular')
+            await pilot.press('m', 'a', 'l', 'o', 'enter')
+            await pilot.pause()
+            self.assertIn('/tts codigo', self.text(app, '#aviso'))
+            self.assertEqual(c.load_settings()['codes'], [])
+            await pilot.click('#vincular')
+            await pilot.press(*self.CODE, 'enter')
+            await pilot.pause()
+            self.assertEqual(c.load_settings()['codes'], [self.CODE])
+            self.assertNotIn('Sin vincular', self.text(app, '#alerta'))
+            self.assertFalse(app.query('#inicio'))
+            await pilot.click('#salir')
+        self.assertFalse(app.is_running)
+
+    async def test_open_session_channel_and_stop(self):
+        command = 'ssh -i "key file" -p 2222 pepe@servidor'
+        app = c.menu_app(self.settings, self.receiver)
+        with patch.object(c.shutil, 'which', return_value='ssh'), patch.object(
+                c, 'open_ssh_sessions', return_value=[('servidor', False, command),
+                                                      ('activo', True, 'ssh -R18766:x:9 activo')]) as listing:
+          async with app.run_test(size=(100, 30)) as pilot:
+            listing.assert_not_called()
+            await pilot.click('#ssh')
+            await pilot.pause()
+            from textual.widgets import OptionList
+            prompts = str(app.screen.query_one(OptionList).get_option_at_index(0).prompt)
+            self.assertIn('abierta ahora', prompts)
+            app.save_screenshot('ssh-picker.svg', path=str(ROOT / '.repo-harness/tmp/menu-shot'))
+            await pilot.press('down', 'enter')
+            self.factory.assert_not_called()
+            await pilot.click('#ssh')
+            await pilot.press('enter')
+            await pilot.pause()
+            self.assertIn('● Voz conectada a servidor', self.text(app, '#ssh'))
+            self.assertEqual(self.factory.call_args.args[0], c.voice_argv(command))
+            app.save_screenshot('ssh-connected.svg', path=str(ROOT / '.repo-harness/tmp/menu-shot'))
+            await pilot.click('#ssh')
+            await pilot.press('enter')
+            await pilot.pause()
+            self.process.terminate.assert_called_once()
+            self.assertNotIn('conectada', self.text(app, '#ssh'))
+            self.assertFalse((self.home / '.ssh/config').exists())
+
+    async def test_picker_never_reads_config(self):
+        config = self.home / '.ssh/config'
+        config.parent.mkdir()
+        config.write_bytes(b'Host secret-saved-host\n')
+        original = Path.read_text
+        def guarded(path, *args, **kwargs):
+            self.assertNotEqual(path, config, 'picker must not read SSH config')
+            return original(path, *args, **kwargs)
+        app = c.menu_app(self.settings, self.receiver)
+        with patch.object(c.shutil, 'which', return_value='ssh'), patch.object(Path, 'read_text', guarded):
+          async with app.run_test(size=(100, 30)) as pilot:
+            await pilot.click('#ssh')
+            await pilot.pause()
+            from textual.widgets import OptionList
+            options = app.screen.query_one(OptionList)
+            self.assertEqual(options.option_count, 2)
+            self.assertNotIn('secret-saved-host', str(options.get_option_at_index(0).prompt))
+
+    async def test_manual_text_exact(self):
+        expected = ('Hazlo tú en tu programa SSH. Sirve si entras con contraseña o usas\n'
+                    'PuTTY, Termius, MobaXterm…\n\n'
+                    'Necesitas un reenvío remoto:\n'
+                    'puerto 18766 del servidor → 127.0.0.1:18766 de esta computadora\n\n'
+                    '  ssh        ssh -R 18766:127.0.0.1:18766 pepe@192.168.7.88\n'
+                    '  ssh fijo   en ~/.ssh/config, bajo tu Host:\n'
+                    '             RemoteForward 18766 127.0.0.1:18766\n'
+                    '  PuTTY      Connection › SSH › Tunnels › Source port 18766,\n'
+                    '             Destination 127.0.0.1:18766, Remote, Add; guarda la sesión\n'
+                    '  Otros      un reenvío remoto con esos mismos datos\n\n'
+                    'Después conéctate de nuevo y deja este cliente abierto: es el que suena.')
+        app = c.menu_app(self.settings, self.receiver)
+        async with app.run_test(size=(100, 40)) as pilot:
+            app.other_program()
+            await pilot.pause()
+            self.assertEqual(self.text(app.screen, '#pregunta'), expected)
+
+    async def test_open_session_and_uninstall_confirmation(self):
+        app = c.menu_app(self.settings, self.receiver)
+        with patch.object(c.shutil, 'which', return_value='ssh'), patch.object(
+                c, 'open_ssh_sessions', return_value=[('vps', False, 'ssh vps')]):
+          async with app.run_test(size=(100, 30)) as pilot:
+            await pilot.click('#ssh')
+            await pilot.press('enter')
+            await pilot.pause()
+            self.assertIn('conectada a vps', self.text(app, '#ssh'))
+            await pilot.click('#desinstalar')
+            await pilot.press('down', 'enter')
+            self.assertTrue(app.is_running)
+            await pilot.click('#desinstalar')
+            await pilot.press('enter')
+            await pilot.pause()
+        self.process.terminate.assert_called_once()
+        self.assertTrue(self.receiver.stop_event.is_set())
+        self.assertFalse(c.load_settings()['enabled'])
+
+    async def test_channel_exit_reason_once_and_menu_exit(self):
+        voice = c.VoiceChannel(self.factory)
+        voice.start('h')
+        app = c.menu_app(self.settings, self.receiver, voice)
+        async with app.run_test(size=(100, 30)) as pilot:
+            self.process.stderr = io.BytesIO(b'Permission denied (publickey,password)')
+            self.process.poll.return_value = 255
+            app.refresh_status()
+            self.assertIn('contraseña', self.text(app, '#aviso'))
+            self.assertIn('contraseña', self.text(app, '#ssh'))
+            app.notice('otro aviso')
+            app.refresh_status()
+            self.assertEqual(self.text(app, '#aviso'), 'otro aviso')
+            self.process.poll.return_value = None
+            self.process.stderr = io.BytesIO()
+            voice.start('h')
+            await pilot.press('escape')
+        self.process.terminate.assert_called_once()
+
+    async def test_salir_stops_channel(self):
+        voice = c.VoiceChannel(self.factory)
+        voice.start('h')
+        app = c.menu_app(self.settings, self.receiver, voice)
+        async with app.run_test(size=(100, 30)) as pilot:
+            await pilot.click('#salir')
+        self.process.terminate.assert_called_once()
+
+    async def test_marker_stops_channel(self):
+        voice = c.VoiceChannel(self.factory)
+        voice.start('h')
+        self.receiver.retired = c.retired_path()
+        app = c.menu_app(self.settings, self.receiver, voice)
+        async with app.run_test(size=(100, 30)) as pilot:
+            self.receiver.retired.parent.mkdir(parents=True, exist_ok=True)
+            self.receiver.retired.touch()
+            app.refresh_status()
+            await pilot.pause()
+        self.process.terminate.assert_called_once()
+
+    async def test_compact_layout_volume_limits_and_keyboard(self):
+        app = c.menu_app(self.settings, self.receiver)
+        async with app.run_test(size=(80, 24)) as pilot:
+            from textual.widgets import Button, Select, Switch
+            self.assertFalse(app.query(Button))
+            self.assertFalse(app.query(Select))
+            self.assertFalse(app.query(Switch))
+            self.assertLess(app.query_one('#pistas').region.bottom, 25)
+            await pilot.click('#volumen', offset=(1, 0))
+            await pilot.press('right')
+            self.assertEqual(c.load_settings()['volume'], 1)
+            await pilot.click('#volumen', offset=(22, 0))
+            self.assertEqual(c.load_settings()['volume'], 0)
+            await pilot.press('left')
+            self.assertEqual(c.load_settings()['volume'], 0)
+            await pilot.click('#volumen', offset=(41, 0))
+            self.assertEqual(c.load_settings()['volume'], 1)
+            await pilot.press('up', 'up', 'enter')
+            self.assertFalse(c.load_settings()['enabled'])
+            self.assertFalse(app.query('#inicio'))
+            await pilot.press('escape')
+        self.assertFalse(app.is_running)
+
+    async def test_other_connection_and_other_program(self):
+        config = self.home / '.ssh/config'
+        app = c.menu_app(self.settings, self.receiver)
+        with patch.object(c.shutil, 'which', return_value='ssh'):
+          async with app.run_test(size=(100, 30)) as pilot:
+            await pilot.click('#ssh')
+            await pilot.press('enter')
+            await pilot.press(*'ssh bad/host', 'enter')
+            await pilot.pause()
+            self.assertIn('conexión SSH', self.text(app, '#aviso'))
+            self.assertNotIn('alias', self.text(app, '#aviso'))
+            self.assertFalse(config.exists())
+            await pilot.click('#ssh')
+            await pilot.press('enter')
+            await pilot.press(*'ssh pepe@192.168.7.88', 'enter')
+            await pilot.pause()
+            self.assertIn('conectada a 192.168.7.88', self.text(app, '#ssh'))
+            self.assertFalse(config.exists())
+            await pilot.click('#ssh')
+            await pilot.press('enter')
+            await pilot.click('#ssh')
+            await pilot.press('down', 'enter')
+            await pilot.pause()
+            text = self.text(app.screen, '#pregunta')
+            for word in ('18766', '127.0.0.1:18766', 'PuTTY', 'Connection › SSH › Tunnels'):
+                self.assertIn(word, text)
+            await pilot.press('escape')
+            self.assertFalse(config.exists())
+            with patch.object(c.shutil, 'which', return_value=None):
+                await pilot.click('#ssh')
+                await pilot.pause()
+                self.assertIn('PuTTY', self.text(app.screen, '#pregunta'))
+                self.assertFalse(config.exists())
+
+
+class MenuTextTest(unittest.TestCase):
+    def test_pairing_guidance_names_tts_codigo(self):
+        with self.assertRaises(ValueError) as error:
+            c.normalize_code('malo')
+        self.assertIn('/tts codigo', str(error.exception))
+        self.assertNotIn('/tts status', (ROOT / 'cliente/tehablo_cliente.py').read_text(encoding='utf-8'))
+
+    def test_exit_message_says_if_voice_keeps_arriving(self):
+        self.assertEqual(c.exit_message(dict(c.DEFAULTS)),
+                         'Recepción detenida: abre el cliente cuando quieras oír la voz.')
+        self.assertEqual(c.exit_message(dict(c.DEFAULTS, enabled=False)),
+                         'Recepción apagada: enciéndela en el menú para oír la voz.')
+
+    def test_menu_without_terminal_changes_nothing(self):
+        log = []
+        with patch.object(c.sys.stdin, 'isatty', return_value=False), patch.object(c.os, 'name', 'nt'), patch.object(c, 'menu_app') as app, patch.object(c, 'print', side_effect=log.append):
+            c.menu(dict(c.DEFAULTS), Mock())
+        app.assert_not_called()
+        self.assertIn('terminal', ' '.join(log))
 
 
 if __name__ == '__main__':

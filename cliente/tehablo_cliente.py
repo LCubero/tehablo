@@ -1,6 +1,6 @@
 # /// script
 # requires-python = ">=3.10"
-# dependencies = ["sounddevice"]
+# dependencies = ["sounddevice", "textual>=8,<9"]
 # ///
 """Cliente de audio SSH de teHablo. Ejecutar con uv run --script este_archivo."""
 import argparse
@@ -8,19 +8,18 @@ from array import array
 import json
 import hmac
 import secrets
+import shlex
 import os
 from pathlib import Path
-import platform
-import plistlib
 import re
 import shutil
 import socket
-import struct
 import subprocess
+import platform
+import struct
 import sys
 import threading
 import time
-import uuid
 
 ADDRESS = ('127.0.0.1', 18766)
 FORWARD = 'RemoteForward 18766 127.0.0.1:18766'
@@ -32,7 +31,7 @@ WAV_HEADER = struct.pack('<4sI4s4sIHHIIHH4sI', b'RIFF', 0xFFFFFFFF, b'WAVE',
 def normalize_code(value):
     code = value.replace('-', '').replace(' ', '').lower()
     if not re.fullmatch(r'[0-9a-f]{32}', code):
-        raise ValueError('Codigo no valido: copia el codigo completo de /tts status en el servidor.')
+        raise ValueError('Código no válido: copia el código completo de /tts codigo en el servidor.')
     return code
 
 
@@ -76,76 +75,171 @@ def save_settings(settings, path=None):
     temp.replace(path)
 
 
-def terminal_input(prompt):
-    # curl | sh has no stdin terminal. Never consume the downloaded script as input.
-    if sys.stdin.isatty():
-        return input(prompt)
-    if os.name != 'nt':
-        with open('/dev/tty') as tty, open('/dev/tty', 'w') as output:
-            output.write(prompt)
-            output.flush()
-            answer = tty.readline()
-            if answer:
-                return answer.rstrip('\r\n')
-    raise EOFError('No hay terminal para preguntar')
+def ssh_tokens(command):
+    # Non-POSIX splitting preserves Windows identity paths; unquote each token.
+    return [t[1:-1] if len(t) > 1 and t[0] == t[-1] and t[0] in '\"\'' else t
+            for t in shlex.split(command, posix=False)]
 
 
-def ssh_text(text, alias):
-    """Return the unchanged text or append to the FIRST matching Host block."""
-    if text.startswith('\ufeff'):
-        return '\ufeff' + ssh_text(text[1:], alias)
-    headers = list(re.finditer(r'(?im)^[ \t]*(Host|Match)[ \t]+[^\r\n]*', text))
-    insert_at = None
-    for i, header in enumerate(headers):
-        tokens = header.group().split()
-        end = headers[i + 1].start() if i + 1 < len(headers) else len(text)
-        if tokens[0].lower() == 'host' and alias in tokens[1:]:
-            body = text[header.start():end]
-            if re.search(r'(?im)^[ \t]*RemoteForward[ \t]+(?:\S*:)?18766(?:[ \t]|$)', body):
-                return text
-            if insert_at is None:
-                insert_at = end
-    eol = '\r\n' if '\r\n' in text else '\n'
-    if insert_at is None:
-        prefix = eol if text and not text.endswith('\n') else ''
-        return text + prefix + 'Host ' + alias + eol + '    ' + FORWARD + eol
-    prefix = eol if insert_at and text[insert_at - 1] != '\n' else ''
-    return text[:insert_at] + prefix + '    ' + FORWARD + eol + text[insert_at:]
+def voice_argv(command):
+    """Keep connection arguments only, without shell execution or remote commands."""
+    tokens = ssh_tokens(command)
+    executable = 'ssh'
+    if tokens and tokens[0].replace('\\', '/').rsplit('/', 1)[-1] in ('ssh', 'ssh.exe'):
+        executable = tokens.pop(0)
+    kept, destination = [executable], None
+    while tokens:
+        token = tokens.pop(0)
+        if token == '--':
+            if destination is None and tokens:
+                destination = tokens.pop(0)
+            break
+        if token.startswith('-'):
+            flags = ''
+            for index, option in enumerate(token[1:]):
+                if option in 'BbcDEeFIiJLlmOopQRSWw':
+                    value = token[index + 2:] or (tokens.pop(0) if tokens else '')
+                    if not value:
+                        raise ValueError('No se reconoce esa conexión SSH.')
+                    if option not in 'LRDW' and not (option == 'o' and value.lower().startswith(
+                            ('remoteforward', 'localforward', 'dynamicforward'))):
+                        flags += option
+                        kept.extend(['-' + flags, value])
+                        flags = ''
+                    break
+                if option not in '46AaCfGgKkMNnqsTtVvXxYyf':
+                    raise ValueError('No se reconoce esa conexión SSH.')
+                if option not in 'ftNT':
+                    flags += option
+            if flags:
+                kept.append('-' + flags)
+            continue
+        if destination is not None:
+            break  # OpenSSH reads options after the host; the first other word starts a remote command.
+        destination = token
+    if destination is None or not re.fullmatch(r'[\w.@:%\[\]-]+', destination) or destination.startswith('-'):
+        raise ValueError('No se reconoce esa conexión SSH.')
+    return kept + ['-N', '-T', '-o', 'BatchMode=yes', '-o', 'ExitOnForwardFailure=yes',
+                   '-o', 'ServerAliveInterval=30', '-R', '18766:127.0.0.1:18766', destination]
 
 
-def configure_ssh(alias, path=None, yes=False, ask=None, output=print):
-    if not re.fullmatch(r'[a-zA-Z0-9_.-]+', alias):
-        raise ValueError('Usa un alias SSH simple (letras, numeros, punto, guion).')
-    path = path or home_dir() / '.ssh/config'
-    before = path.read_bytes() if path.exists() else b''
-    text = before.decode('utf-8')
-    after = ssh_text(text, alias).encode('utf-8')
-    if re.search(r'(?im)^[ \t]*LocalForward[ \t]+(?:\S*:)?18765[ \t]+127\.0\.0\.1:8765(?:[ \t\r\n]|$)', text):
-        output('La linea antigua LocalForward 18765 127.0.0.1:8765 ya no hace falta; puedes quitarla a mano. No la borramos.')
-    if before == after:
-        output(f'{path} ya reenvia el puerto 18766 para {alias}; no se cambia.')
-        return False
-    for line in (f'Archivo: {path}', f'Host {alias}', '    ' + FORWARD,
-                 'Lleva la voz a este receptor (127.0.0.1:18766) por tu conexion SSH; el puerto remoto escucha en loopback por defecto (no cambies GatewayPorts).',
-                 'En un servidor compartido, otro usuario podria intentar enviar sonido: el receptor exige el codigo de vinculacion. Quien conozca el codigo puede enviar voz; un administrador puede leerlo.',
-                 'Nada en esta computadora puede controlar teHablo ni el servidor por este reenvio. El mismo codigo protege la API HTTP local de teHablo.',
-                 'Se hara una copia de seguridad del archivo existente antes de cambiarlo.'):
-        output(line)
-    if not yes:
-        try:
-            yes = (ask or terminal_input)('¿Continuar? [s/N] ').strip().lower() in ('s', 'si', 'sí', 'y', 'yes')
-        except (EOFError, OSError):
-            yes = False
-    if not yes:
-        output(f'Sin cambios. Anade a mano en {path}, bajo Host {alias}:\n    {FORWARD}')
-        return False
-    path.parent.mkdir(parents=True, exist_ok=True)
-    if path.exists():
-        backup = path.with_name(path.name + '.tehablo-' + uuid.uuid4().hex + '.bak')
-        shutil.copy2(path, backup)
-    # Preserve identity/permissions; original bytes and line order remain untouched.
-    path.write_bytes(after)
-    return True
+class VoiceChannel:
+    def __init__(self, process_factory=None):
+        self.factory = process_factory or subprocess.Popen
+        self.process = None
+        self.host = ''
+
+    @property
+    def running(self):
+        return self.process is not None and self.process.poll() is None
+
+    def start(self, command):
+        argv = voice_argv(command)
+        self.stop()
+        self.host = argv[-1].rsplit('@', 1)[-1]
+        self.process = self.factory(argv, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                                    stderr=subprocess.PIPE,
+                                    **({'creationflags': subprocess.CREATE_NO_WINDOW} if os.name == 'nt' else {}))
+
+    def reason(self):
+        if self.process is None or self.running:
+            return ''
+        process, self.process = self.process, None
+        error = process.stderr.read().decode('utf-8', errors='replace').strip()
+        process.stderr.close()
+        if re.search('permission denied|publickey|password', error, re.I):
+            return 'Entras con contraseña: usa «Lo hago a mano»'
+        if re.search('remote port forwarding failed|administratively prohibited', error, re.I):
+            return 'El canal de voz ya está abierto en otra conexión'
+        return error.splitlines()[-1] if error else f'Canal de voz cerrado (SSH {process.returncode}).'
+
+    def stop(self):
+        process, self.process = self.process, None
+        if process is None:
+            return
+        if process.poll() is None:
+            process.terminate()
+            try:
+                process.wait(timeout=1)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                process.wait()
+        process.stderr.close()
+
+
+def ssh_target(command):
+    message = 'Pega tu conexión SSH completa, por ejemplo: ssh pepe@mi-servidor.'
+    try:
+        tokens = shlex.split(command)
+    except ValueError:
+        raise ValueError(message) from None
+    if tokens and tokens[0] == 'ssh':
+        tokens.pop(0)
+    while tokens:
+        token = tokens.pop(0)
+        if token == '--':
+            break
+        if not token.startswith('-'):
+            return token.rsplit('@', 1)[-1]
+        # OpenSSH short options with arguments (attached or next token).
+        options = token[1:]
+        for index, option in enumerate(options):
+            if option in 'BbcDEeFIiJLlmOopQRSWw':
+                if index == len(options) - 1:
+                    if not tokens:
+                        raise ValueError(message)
+                    tokens.pop(0)
+                break
+            if option not in '46AaCfGgKkMNnqsTtVvXxYyf':
+                raise ValueError(message)
+    if tokens:
+        return tokens[0].rsplit('@', 1)[-1]
+    raise ValueError(message)
+
+
+def ssh_process(command):
+    """Extract only interactive OpenSSH destinations, never remote commands."""
+    try:
+        tokens = ssh_tokens(command)
+        if not tokens or tokens.pop(0).replace('\\', '/').rsplit('/', 1)[-1] not in ('ssh', 'ssh.exe'):
+            return None
+        for i in range(1, len(tokens) + 1):
+            prefix = tokens[:i]
+            if any(t.startswith('-F') for t in prefix):
+                return None
+            try:
+                host = ssh_target('ssh ' + shlex.join(prefix))
+            except ValueError:
+                continue
+            if i != len(tokens):
+                return None
+            active = bool(re.search(
+                r'(?:^| )-(?:R ?|o ?RemoteForward[= ])(?:[^: ]+:)?18766[: ]',
+                ' '.join(prefix[:-1])))
+            return host, active
+    except ValueError:
+        pass
+    return None
+
+
+def open_ssh_sessions(runner=subprocess.run, system=None, commands=False):
+    command = ['powershell', '-NoProfile', '-Command',
+               'Get-CimInstance Win32_Process -Filter "Name=\'ssh.exe\'" | ForEach-Object { $_.CommandLine }'] if (system or platform.system()) == 'Windows' else ['ps', '-axo', 'command=']
+    try:
+        result = runner(command, capture_output=True, text=True, timeout=3)
+        sessions = {}
+        if result.returncode == 0:
+            for line in result.stdout.splitlines():
+                parsed = ssh_process(line)
+                if parsed:
+                    host, active = parsed
+                    previous = sessions.get(host)
+                    if previous is None or active:
+                        sessions[host] = (active, line)
+        return [(host, *value) for host, value in sessions.items()] if commands else [
+            (host, value[0]) for host, value in sessions.items()]
+    except Exception:
+        return []
 
 
 def scale_pcm(data, volume):
@@ -184,43 +278,33 @@ def resolve_device(name, sd):
 
 
 class Receiver:
-    def __init__(self, settings, sd=None, reload_settings=None, state_path=None, shutdown_file=None):
+    def __init__(self, settings, sd=None, retired=None):
         self.settings = settings
         self.sd = sd
-        self.reload_settings = reload_settings
+        self.retired = retired
         self.stop_event = threading.Event()
         self.receiving = False
         self.error = ''
-        self.state_path = state_path
-        self.shutdown_file = shutdown_file
-        self.last_report = 0
 
-    def report(self, force=False):
-        if self.state_path and (force or time.monotonic() - self.last_report >= 1):
-            save_settings(dict(receiving=self.receiving, timestamp=time.time()), self.state_path)
-            self.last_report = time.monotonic()
-
-    def refresh_settings(self):
-        if self.reload_settings:
-            self.settings.update(self.reload_settings())
-        if self.shutdown_file and self.shutdown_file.exists():
+    def check_retired(self):
+        # --uninstall from another terminal stops this open client too.
+        if self.retired and self.retired.exists():
             self.stop_event.set()
-
+        return self.stop_event.is_set()
     def read_exact(self, connection, size):
         data = b''
         deadline = time.monotonic() + 1
         while len(data) < size and not self.stop_event.is_set():
-            self.refresh_settings()
             if not self.settings['enabled']:
-                raise OSError('Recepcion apagada')
+                raise OSError('Recepción apagada')
             if time.monotonic() >= deadline:
-                raise OSError('Vinculacion o cabecera incompleta')
+                raise OSError('Vinculación o cabecera incompleta')
             try:
                 chunk = connection.recv(size - len(data))
             except socket.timeout:
                 continue
             if not chunk:
-                raise OSError('Vinculacion o cabecera incompleta')
+                raise OSError('Vinculación o cabecera incompleta')
             data += chunk
         return data
 
@@ -239,7 +323,7 @@ class Receiver:
             raise OSError('Servidor sin vincular: usa Vincular servidor')
         connection.sendall(hmac.digest(key, b'cliente' + proof[32:], 'sha256'))
         if self.read_exact(connection, 44) != WAV_HEADER:
-            raise OSError('Cabecera WAV no valida')
+            raise OSError('Cabecera WAV no válida')
         if self.stop_event.is_set() or not self.settings['enabled']:
             return
         sd = self.sd or sound_device()
@@ -248,19 +332,15 @@ class Receiver:
                                 device=resolve_device(device_name, sd), blocksize=480,
                                 latency='high') as stream:
             pending = queued = b''
-            last_data = checked = 0.0
+            last_data = 0.0
             while not self.stop_event.is_set():
-                now = time.monotonic()
-                if now - checked > .5:
-                    checked = now
-                    self.refresh_settings()
                 if self.stop_event.is_set() or not self.settings['enabled'] or self.settings['device'] != device_name:
                     return
                 try:
                     chunk = connection.recv(960)
                 except socket.timeout:
                     self.receiving = False
-                    self.report()
+                    self.check_retired()
                     continue
                 if not chunk:
                     if queued:
@@ -279,7 +359,6 @@ class Receiver:
                     queued = b''
                 last_data = now
                 self.receiving = True
-                self.report()
                 if queued is not None:
                     queued += data
                     if len(queued) < 9600:
@@ -298,11 +377,7 @@ class Receiver:
             except OSError:
                 self.error = 'Puerto 18766 ocupado; cierra el otro receptor o programa que lo usa.'
                 return
-            while not self.stop_event.is_set():
-                self.refresh_settings()
-                if self.stop_event.is_set():
-                    break
-                self.report()
+            while not self.check_retired():
                 try:
                     connection, _ = listener.accept()
                 except socket.timeout:
@@ -317,171 +392,369 @@ class Receiver:
                 finally:
                     connection.close()
                     self.receiving = False
-                    self.report(force=True)
 
 
-def run_command(command):
-    subprocess.run(command, check=True, stdout=subprocess.DEVNULL)
+def retired_path():
+    return home_dir() / '.tehablo/cliente-retirado'
 
 
-class Autostart:
-    def __init__(self, home=None, appdata=None, system=None, script=None, uv=None, run=run_command):
-        self.home = home or home_dir()
-        self.system = system or platform.system()
-        self.script = (script or Path(__file__)).resolve()
-        self.uv = uv or shutil.which('uv') or 'uv'
-        self.run = run
-        if self.system == 'Windows':
-            appdata = appdata or Path(os.environ.get('APPDATA', self.home / 'AppData/Roaming'))
-            self.path = appdata / 'Microsoft/Windows/Start Menu/Programs/Startup/tehablo-cliente.vbs'
-        elif self.system == 'Darwin':
-            self.path = self.home / 'Library/LaunchAgents/com.tehablo.cliente.plist'
-        else:
-            self.path = self.home / '.config/systemd/user/tehablo-cliente.service'
-
-    def enabled(self):
-        return self.path.exists()
-
-    def enable(self):
-        args = [self.uv, 'run', '--script', str(self.script), '--fondo']
-        self.path.parent.mkdir(parents=True, exist_ok=True)
-        if self.system == 'Windows':
-            command = subprocess.list2cmdline(args).replace('"', '""')
-            self.path.write_text(f'CreateObject("WScript.Shell").Run "{command}", 0, False\n', encoding='utf-16')
-        elif self.system == 'Darwin':
-            self.path.write_bytes(plistlib.dumps(dict(Label='com.tehablo.cliente', ProgramArguments=args,
-                                                     RunAtLoad=True, KeepAlive=True)))
-            self.run(['launchctl', 'load', str(self.path)])
-        else:
-            def quote(s):
-                return '"' + s.replace('\\', '\\\\').replace('"', '\\"').replace('%', '%%') + '"'
-            command = ' '.join(quote(s) for s in args)
-            self.path.write_text('[Unit]\nDescription=teHablo cliente SSH\n[Service]\nExecStart=' + command +
-                                 '\nRestart=always\nRestartSec=3\n[Install]\nWantedBy=default.target\n', encoding='utf-8')
-            self.run(['systemctl', '--user', 'daemon-reload'])
-            self.run(['systemctl', '--user', 'enable', '--now', self.path.name])
-
-    def start_windows(self):
-        if self.system == 'Windows' and self.enabled():
-            self.run(['wscript.exe', str(self.path)])
-
-    def disable(self):
-        if not self.enabled():
-            return
-        if self.system == 'Linux':
-            self.run(['systemctl', '--user', 'disable', '--now', self.path.name])
-        elif self.system == 'Darwin':
-            self.run(['launchctl', 'unload', str(self.path)])
-        self.path.unlink(missing_ok=True)
-        if self.system == 'Linux':
-            self.run(['systemctl', '--user', 'daemon-reload'])
-
-
-class ReceptionLock:
-    """One player per user, including when the menu and autostart coexist."""
-    def __enter__(self):
-        path = home_dir() / '.tehablo/cliente.lock'
-        path.parent.mkdir(parents=True, exist_ok=True)
-        self.file = path.open('a+b')
-        self.file.seek(0)
-        if self.file.read(1) == b'':
-            self.file.write(b'0')
-            self.file.flush()
-        self.file.seek(0)
+def remove_legacy_login_entry(system=None, run=subprocess.run):
+    """Earlier test builds could register a login entry; uninstall removes it."""
+    system, home = system or platform.system(), home_dir()
+    if system == 'Windows':
+        appdata = Path(os.environ.get('APPDATA') or home / 'AppData/Roaming')
+        path, command = appdata / 'Microsoft/Windows/Start Menu/Programs/Startup/tehablo-cliente.vbs', None
+    elif system == 'Darwin':
+        path = home / 'Library/LaunchAgents/com.tehablo.cliente.plist'
+        command = ['launchctl', 'unload', str(path)]
+    else:
+        path = home / '.config/systemd/user/tehablo-cliente.service'
+        command = ['systemctl', '--user', 'disable', '--now', path.name]
+    if not path.exists():
+        return
+    if command:
         try:
-            if os.name == 'nt':
-                import msvcrt
-                msvcrt.locking(self.file.fileno(), msvcrt.LK_NBLCK, 1)
-            else:
-                import fcntl
-                fcntl.flock(self.file, fcntl.LOCK_EX | fcntl.LOCK_NB)
-            return True
-        except OSError:
-            self.file.close()
-            return False
-
-    def __exit__(self, *args):
-        if not self.file.closed:
-            self.file.close()
+            run(command, check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=10)
+        except (OSError, subprocess.SubprocessError):
+            pass
+    path.unlink(missing_ok=True)
 
 
-def uninstall(manager):
+def uninstall(output=None, system=None, run=subprocess.run):
     settings = load_settings()
     settings['enabled'] = False
     save_settings(settings)
-    (home_dir() / '.tehablo/cliente-retirado').touch()
-    manager.disable()
+    retired_path().parent.mkdir(parents=True, exist_ok=True)
+    retired_path().touch()
+    remove_legacy_login_entry(system, run)
     # Never delete the clone, only the known downloaded client.
     installed = home_dir() / '.local/share/tehablo-cliente/tehablo_cliente.py'
     installed.unlink(missing_ok=True)
-    print(f'Cliente retirado. Quita a mano {FORWARD} del Host correspondiente en {home_dir() / ".ssh/config"}.')
+    (output or print)(f'Cliente retirado. Si añadiste {FORWARD} a mano, puedes quitarlo del Host correspondiente en {home_dir() / ".ssh/config"}.')
 
 
-def menu(settings, manager, receiver):
-    while True:
-        print('\n--- teHablo: cliente SSH ---')
-        receiving = receiver.receiving
-        try:
-            state = json.loads((home_dir() / '.tehablo/cliente-estado.json').read_text(encoding='utf-8'))
-            receiving = state['receiving'] and time.time() - state['timestamp'] < 5
-        except (OSError, ValueError, KeyError, TypeError):
-            pass
-        print('Recepcion:', ('Recibiendo' if receiving else 'Esperando voz') if settings['enabled'] else 'apagada')
-        if not settings.get('codes'):
-            print('Sin vincular: elige Vincular servidor y copia el codigo de /tts status.')
-        print('Salida:', settings['device'] or 'Predeterminada', '| Volumen:', f"{settings['volume']:.0%}",
-              '| Inicio automatico:', 'si' if manager.enabled() else 'no')
-        if receiver.error:
-            print('Aviso:', receiver.error)
-        # Each option says what it will do, not a toggle the user has to guess.
-        print(f"1. {'Apagar' if settings['enabled'] else 'Encender'} recepcion\n2. Elegir salida\n3. Subir volumen\n"
-              f"4. Bajar volumen\n5. Configurar SSH\n6. {'Quitar' if manager.enabled() else 'Activar'} inicio automatico\n"
-              '7. Desinstalar\n8. Vincular servidor\n0. Salir')
-        try:
-            choice = terminal_input('Opcion: ')
-            if choice == '0':
+def status_text(settings, receiver):
+    receiving = receiver.receiving
+    if not settings['enabled']:
+        lines = ['○ Recepción apagada']
+    else:
+        lines = ['● Recibiendo voz' if receiving else '○ Listo para recibir (se conecta al usar SSH)']
+    if not settings.get('codes'):
+        lines.append('Sin vincular: escribe abajo el código que muestra /tts codigo en el servidor.')
+    if receiver.error:
+        lines.append('Aviso: ' + receiver.error)
+    return '\n'.join(lines)
+
+
+def exit_message(settings):
+    if not settings['enabled']:
+        return 'Recepción apagada: enciéndela en el menú para oír la voz.'
+    return 'Recepción detenida: abre el cliente cuando quieras oír la voz.'
+
+
+def menu_app(settings, receiver, voice=None):
+    voice = voice or VoiceChannel()
+    # Textual loads only when opening the menu.
+    from textual.app import App
+    from textual.containers import Horizontal, Vertical
+    from textual.screen import ModalScreen
+    from textual.widgets import Input, OptionList, Static
+    from textual.widgets.option_list import Option
+    from rich.text import Text
+
+    class Choices(ModalScreen):
+        BINDINGS = [('escape', 'cancel', 'Volver')]
+
+        def __init__(self, text, options):
+            super().__init__()
+            self.text, self.options = text, options
+
+        def compose(self):
+            with Vertical(id='caja'):
+                yield Static(self.text, id='pregunta', markup=False)
+                yield OptionList(*(Option(label, id=value) for value, label in self.options),
+                                 id='opciones', compact=True)
+
+        def on_option_list_option_selected(self, event):
+            self.dismiss(event.option.id)
+
+        def action_cancel(self):
+            self.dismiss(None)
+
+    class Entry(ModalScreen):
+        BINDINGS = [('escape', 'cancel', 'Volver')]
+
+        def __init__(self, text, password=False):
+            super().__init__()
+            self.text, self.password = text, password
+
+        def compose(self):
+            with Vertical(id='caja'):
+                yield Static(self.text, markup=False)
+                yield Input(password=self.password, compact=True, id='entrada')
+
+        def on_input_submitted(self, event):
+            self.dismiss(event.value)
+
+        def action_cancel(self):
+            self.dismiss(None)
+
+    class Row(Static, can_focus=True):
+        def __init__(self, label, id):
+            super().__init__('', id=id)
+            self.label = label
+
+        def show_value(self, value):
+            text = Text('▌ ' if self.has_focus else '  ')
+            text.append(f'{self.label:<20}', style='dim')
+            text.append(value)
+            self.update(text)
+
+        def on_focus(self):
+            self.app.refresh_status()
+
+        def on_blur(self):
+            self.app.refresh_status()
+
+        def on_click(self, event):
+            self.focus()
+            if self.id == 'volumen':
+                if 22 <= event.x <= 41:
+                    self.app.volume((event.x - 22) / 19)
+            else:
+                self.app.activate(self.id)
+
+        def on_key(self, event):
+            if event.key in ('up', 'down'):
+                self.screen.focus_previous() if event.key == 'up' else self.screen.focus_next()
+            elif self.id == 'volumen' and event.key in ('left', 'right'):
+                self.app.volume(settings['volume'] + (.1 if event.key == 'right' else -.1))
+            elif event.key == 'enter':
+                self.app.activate(self.id)
+            else:
                 return
-            if choice == '1':
-                settings['enabled'] = not settings['enabled']
-            elif choice == '2':
-                devices = [''] + output_devices()
-                for i, name in enumerate(devices):
-                    print(f'{i}. {name or "Predeterminada"}')
-                index = int(terminal_input('Salida: '))
-                if not 0 <= index < len(devices):
-                    raise ValueError('Salida no valida')
-                settings['device'] = devices[index]
-            elif choice in ('3', '4'):
-                settings['volume'] = round(max(0, min(1, settings['volume'] + (0.1 if choice == '3' else -0.1))), 2)
-            elif choice == '5':
-                configure_ssh(terminal_input('Alias SSH (por ejemplo mi-servidor): '))
-            elif choice == '6':
-                manager.disable() if manager.enabled() else manager.enable()
-            elif choice == '8':
-                pair(settings, terminal_input('Codigo de vinculacion del servidor (/tts status): '))
-            elif choice == '7':
-                if terminal_input('¿Desinstalar el cliente? [s/N] ').lower() in ('s', 'si', 'sí', 'yes', 'y'):
-                    uninstall(manager)
-                    return
+            event.stop()
+
+    class Menu(App):
+        TITLE = 'teHablo receptor'
+        ENABLE_COMMAND_PALETTE = False
+        CSS = '''
+        Screen { align: center top; }
+        #panel { width: 72; max-width: 100%; height: auto; padding: 1 2 0 2; }
+        #cabecera { height: 2; }
+        #titulo { width: 20; text-style: bold; }
+        #estado { width: 1fr; text-align: right; color: $accent; }
+        #alerta, #aviso { height: auto; color: $text-muted; }
+        #alerta { margin-bottom: 1; }
+        Row { height: 1; margin-bottom: 1; }
+        Row:focus { color: $accent; text-style: bold; }
+        #salir { margin-bottom: 0; }
+        .separador { height: 1; color: $text-muted; }
+        #pistas { height: 1; color: $text-muted; }
+        Choices, Entry { align: center middle; }
+        #caja { width: 90%; max-width: 92; height: auto; max-height: 95%;
+                background: $surface; padding: 1 2; overflow-y: auto; }
+        #pregunta { height: auto; margin-bottom: 1; }
+        OptionList { height: auto; max-height: 12; border: none; background: transparent; padding: 0; }
+        Input { border: none; background: transparent; }
+        '''
+        BINDINGS = [('escape', 'quit', 'Salir')]
+
+        def compose(self):
+            self.theme = 'tokyo-night'
+            with Vertical(id='panel'):
+                with Horizontal(id='cabecera'):
+                    yield Static('teHablo · receptor', id='titulo')
+                    yield Static(id='estado', markup=False)
+                yield Static(id='alerta', markup=False)
+                for label, name in [('Recepción', 'recepcion'), ('Salida', 'salida'),
+                                    ('Volumen', 'volumen')]:
+                    yield Row(label, id=name)
+                yield Static('─' * 68, classes='separador')
+                for label, name in [('Vincular servidor', 'vincular'), ('Conexión SSH', 'ssh'),
+                                    ('Desinstalar', 'desinstalar'), ('Salir', 'salir')]:
+                    yield Row(label, id=name)
+                yield Static(id='aviso', markup=False)
+                yield Static('↑↓ moverse   Enter cambiar   ←→ volumen   clic también   Esc salir', id='pistas')
+
+        def on_mount(self):
+            self.voice_reason = ''
+            self.refresh_status()
+            self.set_interval(1, self.refresh_status)
+
+        def refresh_status(self):
+            if not self.query('#estado'):
+                return
+            if receiver.retired and receiver.check_retired():
+                voice.stop()
+                self.exit('Cliente desinstalado desde otra terminal; recepción detenida.')
+                return
+            reason = voice.reason()
+            if reason:
+                self.voice_reason = reason
+                self.notice(reason)
+            lines = status_text(settings, receiver).splitlines()
+            self.query_one('#estado').update(lines[0])
+            warnings = lines[1:]
+            if not settings.get('codes'):
+                warnings[0] = 'Sin vincular: usa Vincular servidor con el código de /tts codigo.'
+            self.query_one('#alerta').update('\n'.join(warnings))
+            values = dict(recepcion='Encendida' if settings['enabled'] else 'Apagada',
+                          salida=(settings['device'] or 'Predeterminada') + ' ▾',
+                          volumen='━' * round(settings['volume'] * 20) + '─' * (20 - round(settings['volume'] * 20)) + f"  {settings['volume']:.0%}",
+                          vincular='✓ vinculado' if settings.get('codes') else 'pendiente',
+                          ssh=f'● Voz conectada a {voice.host}' if voice.running else getattr(self, 'voice_reason', '') or 'Elegir conexión ▾',
+                          desinstalar='›', salir='›')
+            for name, value in values.items():
+                self.query_one('#' + name, Row).show_value(value)
+
+        def notice(self, text):
+            self.query_one('#aviso').update(text)
+
+        def save(self):
             save_settings(settings)
-        except (EOFError, KeyboardInterrupt):
+            self.refresh_status()
+
+        def volume(self, value):
+            settings['volume'] = round(max(0, min(1, value)), 2)
+            self.save()
+
+        def guarded(self, function, value):
+            try:
+                function(value)
+            except Exception as exc:
+                self.notice(f'No se pudo completar -> {exc}')
+
+        def choose(self, text, options, callback):
+            self.push_screen(Choices(text, options),
+                             lambda value: self.guarded(callback, value) if value is not None else None)
+
+        def entry(self, text, callback, password=False):
+            self.push_screen(Entry(text, password),
+                             lambda value: self.guarded(callback, value) if value is not None else None)
+
+        def activate(self, name):
+            self.guarded(self.change, name)
+
+        def change(self, name):
+            if name == 'recepcion':
+                settings['enabled'] = not settings['enabled']
+                self.save()
+            elif name == 'salida':
+                devices = list(dict.fromkeys(['', *output_devices(), settings['device']]))
+                def select(index):
+                    settings['device'] = devices[int(index)]
+                    self.save()
+                self.choose('Salida de audio', [(str(i), value or 'Predeterminada')
+                                               for i, value in enumerate(devices)], select)
+            elif name == 'vincular':
+                def link(value):
+                    pair(settings, value)
+                    self.save()
+                    self.notice('Servidor vinculado.')
+                self.entry('Código de vinculación: cópialo de /tts codigo en el servidor.', link, True)
+            elif name == 'ssh':
+                if voice.running:
+                    def stop(value):
+                        if value == 'detener':
+                            voice.stop()
+                            self.refresh_status()
+                    self.choose(f'Voz conectada a {voice.host}', [('detener', 'Detener voz'),
+                                                               ('volver', 'Volver')], stop)
+                    return
+                if not shutil.which('ssh'):
+                    self.other_program()
+                    return
+                sessions = open_ssh_sessions(commands=True)
+                options = [(str(i), host + '   abierta ahora'
+                            + ('  ✓ voz activa en esta sesión' if active else ''))
+                           for i, (host, active, command) in enumerate(sessions)]
+                options += [('otra', 'Otra… — pega tu comando ssh'),
+                            ('programa', 'Lo hago a mano — ssh -R, PuTTY, Termius, MobaXterm…')]
+                def selected(value):
+                    if value == 'otra':
+                        self.entry('Pega tu comando ssh (por ejemplo ssh pepe@192.168.7.88)',
+                                   self.ssh)
+                    elif value == 'programa':
+                        self.other_program()
+                    else:
+                        host, active, command = sessions[int(value)]
+                        if not active:
+                            self.ssh(command)
+                self.choose('Tu conexión SSH', options, selected)
+            elif name == 'desinstalar':
+                def done(value):
+                    if value == 'si':
+                        lines = []
+                        settings['enabled'] = False
+                        receiver.stop_event.set()
+                        voice.stop()
+                        uninstall(output=lines.append)
+                        self.exit('\n'.join(lines))
+                self.choose('¿Desinstalar el cliente? Se apaga la recepción.',
+                            [('si', 'Sí, desinstalar'), ('no', 'No')], done)
+            elif name == 'salir':
+                self.exit()
+
+        def other_program(self):
+            self.choose('Hazlo tú en tu programa SSH. Sirve si entras con contraseña o usas\n'
+                        'PuTTY, Termius, MobaXterm…\n\n'
+                        'Necesitas un reenvío remoto:\n'
+                        'puerto 18766 del servidor → 127.0.0.1:18766 de esta computadora\n\n'
+                        '  ssh        ssh -R 18766:127.0.0.1:18766 pepe@192.168.7.88\n'
+                        '  ssh fijo   en ~/.ssh/config, bajo tu Host:\n'
+                        '             RemoteForward 18766 127.0.0.1:18766\n'
+                        '  PuTTY      Connection › SSH › Tunnels › Source port 18766,\n'
+                        '             Destination 127.0.0.1:18766, Remote, Add; guarda la sesión\n'
+                        '  Otros      un reenvío remoto con esos mismos datos\n\n'
+                        'Después conéctate de nuevo y deja este cliente abierto: es el que suena.',
+                        [('volver', 'Volver')], lambda value: None)
+
+        def ssh(self, command):
+            voice.start(command)
+            self.voice_reason = ''
+            self.refresh_status()
+
+        def on_unmount(self):
+            voice.stop()
+
+        def action_quit(self):
+            voice.stop()
+            self.exit()
+
+    return Menu()
+
+
+def menu(settings, receiver, voice=None):
+    if not sys.stdin.isatty():
+        # curl | sh: the menu reads the real terminal, never the downloaded script.
+        try:
+            if os.name == 'nt':
+                raise OSError
+            fd = os.open('/dev/tty', os.O_RDWR)
+            os.dup2(fd, 0)
+            os.close(fd)
+        except OSError:
+            print('No hay terminal para abrir el menú; no se cambió nada.')
             return
-        except Exception as exc:
-            print('No se pudo completar:', exc)
+    voice = voice or VoiceChannel()
+    try:
+        result = menu_app(settings, receiver, voice).run()
+    finally:
+        voice.stop()
+    if result:
+        print(result)
+        return
+    print(exit_message(settings))
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--fondo', action='store_true')
-    parser.add_argument('--yes', action='store_true')
     parser.add_argument('--uninstall', action='store_true')
-    parser.add_argument('--config-only', action='store_true')
-    parser.add_argument('--codigo', help='Codigo de vinculacion mostrado por /tts status')
-    parser.add_argument('alias', nargs='?')
+    parser.add_argument('--codigo', help='Código de vinculación mostrado por /tts codigo')
     args = parser.parse_args()
-    manager = Autostart()
     if args.uninstall:
-        uninstall(manager)
+        uninstall()
         return
     settings = load_settings()
     if args.codigo:
@@ -490,49 +763,19 @@ def main():
         except ValueError as exc:
             parser.error(str(exc))
         save_settings(settings)
-    shutdown_file = home_dir() / '.tehablo/cliente-retirado'
-    if not args.fondo:
-        shutdown_file.unlink(missing_ok=True)
-    if args.yes or args.config_only:
-        if not args.alias:
-            parser.error('Indica el alias SSH: --yes mi-servidor')
-        configure_ssh(args.alias, yes=args.yes)
-        if args.config_only:
-            return
-        settings['enabled'] = True
-        save_settings(settings)
-        manager.enable()
-        manager.start_windows()
-        print('Listo. Reconecta SSH y elige Audio: SSH en Pi.')
-        return
-    receiver = Receiver(dict(settings), reload_settings=load_settings,
-                        state_path=home_dir() / '.tehablo/cliente-estado.json', shutdown_file=shutdown_file)
-    def receive_once():
-        # The menu takes over when an existing login receiver is stopped.
-        while not receiver.stop_event.is_set():
-            with ReceptionLock() as acquired:
-                if acquired:
-                    receiver.run()
-                    return
-            if args.fondo:
-                return
-            receiver.stop_event.wait(1)
-
-    thread = threading.Thread(target=receive_once, daemon=True)
+    retired_path().unlink(missing_ok=True)
+    receiver = Receiver(settings, retired=retired_path())
+    thread = threading.Thread(target=receiver.run, daemon=True)
     thread.start()
+    voice = VoiceChannel()
     try:
-        if args.fondo:
-            while thread.is_alive():
-                thread.join(1)
-        else:
-            menu(settings, manager, receiver)
+        menu(settings, receiver, voice)
     except KeyboardInterrupt:
         pass
     finally:
+        voice.stop()
         receiver.stop_event.set()
         thread.join(7)
-    if not args.fondo:
-        manager.start_windows()
 
 
 if __name__ == '__main__':
