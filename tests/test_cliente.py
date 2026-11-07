@@ -29,14 +29,15 @@ class VoiceChannelTest(unittest.TestCase):
     def test_manual_command_argv(self):
         command = 'ssh -n -o BatchMode=yes -o "StdinNull yes" -p2222 -i "key file" -J jump pepe@host uptime'
         argv = c.voice_argv(command, interactive=True)
-        self.assertNotIn('-n', argv)
-        self.assertNotIn('BatchMode=yes', argv)
-        self.assertNotIn('StdinNull yes', argv)
-        self.assertIn('BatchMode=no', argv)
-        self.assertIn('StdinNull=no', argv)
-        self.assertIn('key file', argv)
-        self.assertIn('jump', argv)
-        self.assertNotIn('uptime', argv)
+        # Only the user's connection options plus the voice forward: short enough to copy.
+        self.assertEqual(argv, ['ssh', '-p', '2222', '-i', 'key file', '-J', 'jump',
+                                '-N', '-R', '18766:127.0.0.1:18766', 'pepe@host'])
+        self.assertEqual(c.manual_command(argv, windows=False),
+                         "ssh -p 2222 -i 'key file' -J jump -N -R 18766:127.0.0.1:18766 pepe@host")
+        self.assertEqual(c.manual_command(argv, windows=True),
+                         "ssh -p 2222 -i 'key file' -J jump -N -R 18766:127.0.0.1:18766 pepe@host")
+        plain = c.voice_argv(r'C:\WINDOWS\System32\OpenSSH\ssh.exe ld9@192.168.5.83', interactive=True)
+        self.assertEqual(c.manual_command(plain, windows=True), 'ssh -N -R 18766:127.0.0.1:18766 ld9@192.168.5.83')
         self.assertNotIn('StrictHostKeyChecking=no', argv)
     def test_literal_connection_identity(self):
         expected = c.connection_key('ssh pepe@host -p2222')
@@ -644,11 +645,11 @@ class MenuTest(unittest.IsolatedAsyncioTestCase):
             app.refresh_status()
             await pilot.pause()
             text = self.text(app.screen, '#pregunta')
-            self.assertIn('Corre este comando en otra terminal para abrir el canal de voz.', text)
+            self.assertIn('Corre este comando en otra terminal', text)
             self.assertIn('SSH te pedirá la contraseña ahí.', text)
-            self.assertIn('Déjala abierta mientras quieras oír la voz; Ctrl+C la cierra.', text)
-            if os.name != 'nt':
-                self.assertIn(c.shlex.join(c.voice_argv(command, interactive=True)), text)
+            self.assertIn('Ctrl+C la cierra.', text)
+            self.assertIn("ssh -p 2222 -i 'key file' -J jump -N -R 18766:127.0.0.1:18766 pepe@host", text)
+            self.assertNotIn('BatchMode', text)
             self.assertNotIn('Autenticar con SSH', str(app.screen.query_one('#opciones').get_option_at_index(0).prompt))
             self.assertEqual(app.screen.query_one('#opciones').option_count, 1)
             self.assertNotIn('uptime', text)
@@ -658,7 +659,7 @@ class MenuTest(unittest.IsolatedAsyncioTestCase):
     async def test_windows_manual_command_is_literal_powershell(self):
         app = c.menu_app(self.settings, self.receiver)
         app.selected_command = r'''"C:\Program Files\OpenSSH\ssh.exe" -i "C:\keys\cash$`O'Brien key" -p2222 usuario@servidor uptime'''
-        expected = r'''& 'C:\Program Files\OpenSSH\ssh.exe' '-o' 'BatchMode=no' '-o' 'StdinNull=no' '-i' 'C:\keys\cash$`O''Brien key' '-p' '2222' '-N' '-T' '-o' 'BatchMode=no' '-o' 'ExitOnForwardFailure=yes' '-o' 'ServerAliveInterval=30' '-R' '18766:127.0.0.1:18766' 'usuario@servidor' '''.rstrip()
+        expected = r'''ssh -i 'C:\keys\cash$`O''Brien key' -p 2222 -N -R 18766:127.0.0.1:18766 usuario@servidor'''
         # Public manual selection, not a private quoting helper.
         async with app.run_test(size=(100, 30)) as pilot:
             with patch.object(c.os, 'name', 'nt'):
@@ -667,7 +668,7 @@ class MenuTest(unittest.IsolatedAsyncioTestCase):
             await pilot.pause()
             text = self.text(app.screen, '#pregunta')
             self.assertIn('PowerShell', text.splitlines()[0])
-            self.assertEqual(text.splitlines()[1], expected)
+            self.assertIn('  ' + expected + '\n', text)
             self.assertNotIn('uptime', text)
             self.factory.assert_not_called()
 
@@ -677,7 +678,8 @@ class MenuTest(unittest.IsolatedAsyncioTestCase):
             app.other_program()
             await pilot.pause()
             text = self.text(app.screen, '#pregunta')
-            for part in ('1. En otra terminal', '2. En Pi', '3. Deja', '/tts codigo', 'no la contraseña SSH', 'Ctrl+C'):
+            for part in ('Corre este comando en otra terminal', 'no muestra nada más: es normal', '/tts codigo',
+                         'no es la contraseña SSH', 'Ctrl+C', 'PuTTY'):
                 self.assertIn(part, text)
 
     async def test_open_session_and_uninstall_confirmation(self):

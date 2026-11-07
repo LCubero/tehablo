@@ -153,7 +153,7 @@ En Pi, elige **Audio: SSH**. La guía de instalación aparece solo hasta que un 
    ```
    **Lo hago a mano** (o el fallo de autenticación del canal oculto) muestra el comando de la conexión seleccionada, sin comando remoto; en Windows, cópialo en **PowerShell**. No hace falta editar la configuración SSH.
 3. En Pi (servidor), elige **Audio: SSH** y ejecuta `/tts codigo`. En el cliente, usa **Vincular servidor**: este código de voz no es la contraseña SSH.
-4. Deja abiertos el cliente, la terminal del canal y tu sesión de Pi. **Ctrl+C** en la terminal del canal lo cierra.
+4. Tras la contraseña, esa terminal no muestra nada más: es normal, el canal está abierto. Deja abiertos el cliente, esa terminal y tu sesión de Pi. **Ctrl+C** en la terminal del canal lo cierra.
 
 PuTTY: **Connection › SSH › Tunnels** → Source port `18766`, Destination `127.0.0.1:18766`, **Remote**, **Add**. En Termius/MobaXterm, crea el mismo reenvío remoto. Si prefieres un reenvío fijo, puedes añadir tú `RemoteForward 18766 127.0.0.1:18766` bajo tu `Host` en `~/.ssh/config`; el cliente no lee ni modifica ese archivo.
 

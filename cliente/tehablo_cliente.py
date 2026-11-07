@@ -137,9 +137,18 @@ def voice_argv(command, interactive=False):
     if destination is None or not re.fullmatch(r'[\w.@:%\[\]-]+', destination) or destination.startswith('-'):
         raise ValueError('No se reconoce esa conexión SSH.')
     if interactive:
-        kept[1:1] = ['-o', 'BatchMode=no', '-o', 'StdinNull=no']
-    return kept + ['-N', '-T', '-o', 'BatchMode=no' if interactive else 'BatchMode=yes', '-o', 'ExitOnForwardFailure=yes',
+        # Typed by the user in a terminal: their options plus the voice forward, nothing else.
+        return ['ssh'] + kept[1:] + ['-N', '-R', '18766:127.0.0.1:18766', destination]
+    return kept + ['-N', '-T', '-o', 'BatchMode=yes', '-o', 'ExitOnForwardFailure=yes',
                    '-o', 'ServerAliveInterval=30', '-R', '18766:127.0.0.1:18766', destination]
+
+
+def manual_command(argv, windows):
+    """Copyable text; quote only what needs it (PowerShell single quotes are literal)."""
+    if not windows:
+        return shlex.join(argv)
+    return ' '.join(arg if re.fullmatch(r'[\w@%+=:,./-]+', arg) else "'" + arg.replace("'", "''") + "'"
+                    for arg in argv)
 
 
 def connection_key(command):
@@ -649,9 +658,7 @@ def menu_app(settings, receiver, voice=None):
                 self.notice(reason)
                 if voice.needs_interaction and getattr(self, 'selected_command', None):
                     voice.needs_interaction = False
-                    self.other_program('Corre este comando en otra terminal para abrir el canal de voz.\n'
-                                       'SSH te pedirá la contraseña ahí.\n'
-                                       'Déjala abierta mientras quieras oír la voz; Ctrl+C la cierra.\n\n')
+                    self.other_program()
             lines = status_text(settings, receiver).splitlines()
             self.query_one('#estado').update(lines[0])
             warnings = lines[1:]
@@ -766,20 +773,16 @@ def menu_app(settings, receiver, voice=None):
                 self.choose('¿Desinstalar el cliente? Se apaga la recepción.',
                             [('si', 'Sí, desinstalar'), ('no', 'No')], done)
 
-        def other_program(self, prefix=''):
+        def other_program(self):
             command = getattr(self, 'selected_command', None) or 'ssh usuario@servidor'
-            argv = voice_argv(command, interactive=True)
-            # PowerShell needs a call operator and literal arguments, not CRT quoting.
-            if os.name == 'nt':
-                copy = '& ' + ' '.join("'" + arg.replace("'", "''") + "'" for arg in argv)
-                terminal = ' (PowerShell)'
-            else:
-                copy, terminal = shlex.join(argv), ''
-            self.choose(prefix + '1. En otra terminal' + terminal + ' de esta computadora, ejecuta:\n'
-                        + copy + '\n\n'
-                        '2. En Pi (servidor): /tts codigo. Aquí: Vincular servidor.\n'
-                        '   Es el código de voz, no la contraseña SSH.\n'
-                        '3. Deja este cliente y esa terminal abiertos. Ctrl+C cierra el canal.\n\n'
+            windows = os.name == 'nt'
+            self.choose('Corre este comando en otra terminal' + (' (PowerShell)' if windows else '')
+                        + ' de esta computadora:\n\n'
+                        '  ' + manual_command(voice_argv(command, interactive=True), windows) + '\n\n'
+                        'SSH te pedirá la contraseña ahí. Después no muestra nada más: es normal,\n'
+                        'el canal de voz está abierto. Déjala abierta mientras quieras oír la voz,\n'
+                        'con este cliente también abierto; Ctrl+C la cierra.\n'
+                        'Código de voz: /tts codigo en Pi → Vincular servidor (no es la contraseña SSH).\n\n'
                         'PuTTY: SSH › Tunnels: Source 18766, Destination\n'
                         '127.0.0.1:18766, Remote, Add. Termius/MobaXterm: igual.',
                         [('volver', 'Volver')], lambda value: None)
