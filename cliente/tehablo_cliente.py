@@ -15,6 +15,7 @@ import os
 from pathlib import Path
 import re
 import shutil
+import signal
 import socket
 import subprocess
 import platform
@@ -96,7 +97,7 @@ def ssh_tokens(command):
             for t in shlex.split(command, posix=False)]
 
 
-def voice_argv(command):
+def voice_argv(command, interactive=False):
     """Keep connection arguments only, without shell execution or remote commands."""
     tokens = ssh_tokens(command)
     executable = 'ssh'
@@ -116,6 +117,8 @@ def voice_argv(command):
                     value = token[index + 2:] or (tokens.pop(0) if tokens else '')
                     if not value:
                         raise ValueError('No se reconoce esa conexión SSH.')
+                    if interactive and option == 'o' and re.split(r'[=\s]+', value, maxsplit=1)[0].lower() in ('batchmode', 'stdinnull'):
+                        break  # OpenSSH uses the first value, so remove conflicting originals.
                     if option not in 'LRDW' and not (option == 'o' and value.lower().startswith(
                             ('remoteforward', 'localforward', 'dynamicforward'))):
                         flags += option
@@ -124,7 +127,7 @@ def voice_argv(command):
                     break
                 if option not in '46AaCfGgKkMNnqsTtVvXxYyf':
                     raise ValueError('No se reconoce esa conexión SSH.')
-                if option not in 'ftNT':
+                if option not in ('ftNTn' if interactive else 'ftNT'):
                     flags += option
             if flags:
                 kept.append('-' + flags)
@@ -134,7 +137,9 @@ def voice_argv(command):
         destination = token
     if destination is None or not re.fullmatch(r'[\w.@:%\[\]-]+', destination) or destination.startswith('-'):
         raise ValueError('No se reconoce esa conexión SSH.')
-    return kept + ['-N', '-T', '-o', 'BatchMode=yes', '-o', 'ExitOnForwardFailure=yes',
+    if interactive:
+        kept[1:1] = ['-o', 'BatchMode=no', '-o', 'StdinNull=no']
+    return kept + ['-N', '-T', '-o', 'BatchMode=no' if interactive else 'BatchMode=yes', '-o', 'ExitOnForwardFailure=yes',
                    '-o', 'ServerAliveInterval=30', '-R', '18766:127.0.0.1:18766', destination]
 
 
@@ -173,6 +178,7 @@ class VoiceChannel:
         self.factory = process_factory or subprocess.Popen
         self.process = None
         self.host = ''
+        self.needs_interaction = False
 
     @property
     def running(self):
@@ -180,20 +186,40 @@ class VoiceChannel:
 
     def start(self, command):
         argv = voice_argv(command)
+        self.needs_interaction = False
         self.stop()
         self.host = argv[-1].rsplit('@', 1)[-1]
         self.process = self.factory(argv, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
                                     stderr=subprocess.PIPE,
                                     **({'creationflags': subprocess.CREATE_NO_WINDOW} if os.name == 'nt' else {}))
 
+    def interact(self, command, receiver):
+        """Native SSH owns the terminal; the independent receiver keeps running."""
+        self.stop()
+        self.needs_interaction = False
+        try:
+            self.process = self.factory(voice_argv(command, interactive=True))
+            while self.running:
+                if receiver.stop_event.is_set() or (receiver.retired and receiver.check_retired()):
+                    break
+                try:
+                    self.process.wait(timeout=.2)
+                except subprocess.TimeoutExpired:
+                    continue
+            return self.reason()
+        finally:
+            self.stop()
+
     def reason(self):
         if self.process is None or self.running:
             return ''
         process, self.process = self.process, None
-        error = process.stderr.read().decode('utf-8', errors='replace').strip()
-        process.stderr.close()
-        if re.search('permission denied|publickey|password', error, re.I):
-            return 'Entras con contraseña: usa «Lo hago a mano»'
+        error = process.stderr.read().decode('utf-8', errors='replace').strip() if process.stderr else ''
+        if process.stderr:
+            process.stderr.close()
+        if re.search('permission denied|publickey|password|host key verification failed|read_passphrase', error, re.I):
+            self.needs_interaction = True
+            return 'SSH necesita autenticación o confirmación; también puede ser una clave incorrecta.'
         if re.search('remote port forwarding failed|administratively prohibited', error, re.I):
             return 'El canal de voz ya está abierto en otra conexión'
         return error.splitlines()[-1] if error else f'Canal de voz cerrado (SSH {process.returncode}).'
@@ -209,7 +235,8 @@ class VoiceChannel:
             except subprocess.TimeoutExpired:
                 process.kill()
                 process.wait()
-        process.stderr.close()
+        if process.stderr:
+            process.stderr.close()
 
 
 def ssh_target(command):
@@ -638,6 +665,9 @@ def menu_app(settings, receiver, voice=None):
             if reason:
                 self.voice_reason = reason
                 self.notice(reason)
+                if voice.needs_interaction and getattr(self, 'selected_command', None):
+                    voice.needs_interaction = False
+                    self.authentication()
             lines = status_text(settings, receiver).splitlines()
             self.query_one('#estado').update(lines[0])
             warnings = lines[1:]
@@ -649,7 +679,7 @@ def menu_app(settings, receiver, voice=None):
                           volumen='━' * round(settings['volume'] * 20) + '─' * (20 - round(settings['volume'] * 20)) + f"  {settings['volume']:.0%}",
                           vincular=('Cambiar código de esta conexión' if getattr(self, 'selected_command', None)
                                     else '✓ vinculado (general)' if settings.get('codes') else 'pendiente'),
-                          ssh=f'● Voz conectada a {voice.host}' if voice.running else
+                          ssh=f'Canal SSH en ejecución: {voice.host}' if voice.running else
                           'Buscando sesiones…' if getattr(self, 'searching', False) else
                           getattr(self, 'voice_reason', '') or 'Elegir conexión ▾',
                           desinstalar='›', salir='›')
@@ -703,7 +733,7 @@ def menu_app(settings, receiver, voice=None):
                         if value == 'detener':
                             voice.stop()
                             self.refresh_status()
-                    self.choose(f'Voz conectada a {voice.host}', [('detener', 'Detener voz'),
+                    self.choose(f'Canal SSH en ejecución: {voice.host}', [('detener', 'Detener voz'),
                                                                ('volver', 'Volver')], stop)
                     return
                 if not shutil.which('ssh'):
@@ -752,18 +782,57 @@ def menu_app(settings, receiver, voice=None):
                 self.choose('¿Desinstalar el cliente? Se apaga la recepción.',
                             [('si', 'Sí, desinstalar'), ('no', 'No')], done)
 
-        def other_program(self):
-            self.choose('Hazlo tú en tu programa SSH. Sirve si entras con contraseña o usas\n'
-                        'PuTTY, Termius, MobaXterm…\n\n'
-                        'Necesitas un reenvío remoto:\n'
-                        'puerto 18766 del servidor → 127.0.0.1:18766 de esta computadora\n\n'
-                        '  ssh        ssh -R 18766:127.0.0.1:18766 pepe@192.168.7.88\n'
-                        '  ssh fijo   en ~/.ssh/config, bajo tu Host:\n'
-                        '             RemoteForward 18766 127.0.0.1:18766\n'
-                        '  PuTTY      Connection › SSH › Tunnels › Source port 18766,\n'
-                        '             Destination 127.0.0.1:18766, Remote, Add; guarda la sesión\n'
-                        '  Otros      un reenvío remoto con esos mismos datos\n\n'
-                        'Después conéctate de nuevo y deja este cliente abierto: es el que suena.',
+        def authentication(self):
+            def selected(value):
+                if value == 'manual':
+                    self.other_program()
+                elif value == 'autenticar':
+                    self.native_ssh()
+            self.choose('SSH no pudo autenticarse o confirmar el servidor.\n'
+                        'El menú vuelve cuando termine el canal; Ctrl+C lo detiene.\n'
+                        'Deja abierta tu sesión original de Pi. La contraseña la pide SSH, no teHablo.',
+                        [('autenticar', 'Autenticar con SSH'), ('manual', 'Lo hago a mano'),
+                         ('cancelar', 'Cancelar')], selected)
+
+        def native_ssh(self):
+            if (not sys.stdin.isatty() or not sys.stdout.isatty()
+                    or threading.current_thread() is not threading.main_thread()):
+                self.other_program('No hay terminal interactiva disponible.\n\n')
+                return
+            try:
+                with self.suspend():
+                    # asyncio.Runner otherwise turns the first Ctrl+C into cancellation
+                    # of Textual's main task, instead of returning to this menu.
+                    previous = signal.signal(signal.SIGINT, signal.default_int_handler)
+                    try:
+                        reason = voice.interact(self.selected_command, receiver)
+                    finally:
+                        signal.signal(signal.SIGINT, previous)
+                self.notice(reason or 'Canal SSH terminado.')
+            except KeyboardInterrupt:
+                self.notice('Canal SSH detenido con Ctrl+C.')
+            except Exception:
+                self.other_program('No se pudo usar la terminal para SSH.\n\n')
+            finally:
+                voice.stop()
+                self.refresh_status()
+
+        def other_program(self, prefix=''):
+            command = getattr(self, 'selected_command', None) or 'ssh usuario@servidor'
+            argv = voice_argv(command, interactive=True)
+            # PowerShell needs a call operator and literal arguments, not CRT quoting.
+            if os.name == 'nt':
+                copy = '& ' + ' '.join("'" + arg.replace("'", "''") + "'" for arg in argv)
+                terminal = ' (PowerShell)'
+            else:
+                copy, terminal = shlex.join(argv), ''
+            self.choose(prefix + '1. En otra terminal' + terminal + ' de esta computadora, ejecuta:\n'
+                        + copy + '\n\n'
+                        '2. En Pi (servidor): /tts codigo. Aquí: Vincular servidor.\n'
+                        '   Es el código de voz, no la contraseña SSH.\n'
+                        '3. Deja este cliente y esa terminal abiertos. Ctrl+C cierra el canal.\n\n'
+                        'PuTTY: SSH › Tunnels: Source 18766, Destination\n'
+                        '127.0.0.1:18766, Remote, Add. Termius/MobaXterm: igual.',
                         [('volver', 'Volver')], lambda value: None)
 
         def link_connection(self, command=None, after=None):
