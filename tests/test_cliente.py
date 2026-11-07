@@ -25,56 +25,8 @@ class ScriptHeaderTest(unittest.TestCase):
         self.assertIn('# [tool.uv]\n# python-preference = "system"\n', header)
 
 
-class NativeSignalTest(unittest.TestCase):
-    def test_sigint_under_real_asyncio_runner_restores_handler_and_continues(self):
-        # Real SIGINT stays inside this child process, never the test runner/parent.
-        script = r'''
-import asyncio
-from contextlib import nullcontext
-import importlib.util
-import signal
-import sys
-from unittest.mock import Mock, patch
-spec = importlib.util.spec_from_file_location('client', sys.argv[1])
-c = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(c)
-async def check():
-    for outcome in ('interrupt', 'failure', 'success', 'suspend_failure'):
-        voice = Mock()
-        app = c.menu_app(dict(c.DEFAULTS), Mock(), voice)
-        app.selected_command = 'ssh usuario@servidor'
-        app.notice = Mock()
-        app.refresh_status = Mock()
-        app.other_program = Mock()
-        original = signal.getsignal(signal.SIGINT)
-        def native(*args):
-            if outcome == 'interrupt':
-                signal.raise_signal(signal.SIGINT)
-            elif outcome == 'failure':
-                raise OSError('simulated SSH failure')
-            return ''
-        voice.interact.side_effect = native
-        suspend = Mock(return_value=nullcontext())
-        if outcome == 'suspend_failure':
-            suspend.side_effect = RuntimeError('unsupported suspend')
-        with patch.object(sys.stdin, 'isatty', return_value=True), patch.object(sys.stdout, 'isatty', return_value=True), patch.object(app, 'suspend', suspend):
-            app.native_ssh()
-        assert signal.getsignal(signal.SIGINT) is original, outcome
-        assert asyncio.current_task().cancelling() == 0, outcome
-        voice.stop.assert_called_once()
-        await asyncio.sleep(0)
-        print('MENU_CONTINUES', outcome)
-asyncio.run(check())
-'''
-        result = c.subprocess.run([sys.executable, '-B', '-c', script, str(ROOT / 'cliente/tehablo_cliente.py')],
-                                  capture_output=True, text=True, timeout=30)
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        for outcome in ('interrupt', 'failure', 'success', 'suspend_failure'):
-            self.assertIn('MENU_CONTINUES ' + outcome, result.stdout)
-
-
 class VoiceChannelTest(unittest.TestCase):
-    def test_interactive_native_argv_and_cleanup(self):
+    def test_manual_command_argv(self):
         command = 'ssh -n -o BatchMode=yes -o "StdinNull yes" -p2222 -i "key file" -J jump pepe@host uptime'
         argv = c.voice_argv(command, interactive=True)
         self.assertNotIn('-n', argv)
@@ -86,32 +38,6 @@ class VoiceChannelTest(unittest.TestCase):
         self.assertIn('jump', argv)
         self.assertNotIn('uptime', argv)
         self.assertNotIn('StrictHostKeyChecking=no', argv)
-        process = Mock(stderr=None)
-        process.poll.return_value = None
-        process.wait.side_effect = [KeyboardInterrupt(), None]
-        voice = c.VoiceChannel(Mock(return_value=process))
-        receiver = Mock(retired=None)
-        receiver.stop_event.is_set.return_value = False
-        with self.assertRaises(KeyboardInterrupt):
-            voice.interact(command, receiver)
-        self.assertEqual(voice.factory.call_args.kwargs, {})
-        process.terminate.assert_called_once()
-        process.wait.assert_called_with(timeout=1)
-        self.assertIsNone(voice.process)
-
-    def test_interactive_external_stop_kills_and_reaps(self):
-        process = Mock(stderr=None)
-        process.poll.return_value = None
-        process.wait.side_effect = [c.subprocess.TimeoutExpired('ssh', 1), 0]
-        voice = c.VoiceChannel(Mock(return_value=process))
-        receiver = Mock(retired=True)
-        receiver.check_retired.return_value = True
-        voice.interact('ssh host', receiver)
-        process.terminate.assert_called_once()
-        process.kill.assert_called_once()
-        self.assertEqual(process.wait.call_count, 2)
-        self.assertIsNone(voice.process)
-
     def test_literal_connection_identity(self):
         expected = c.connection_key('ssh pepe@host -p2222')
         for command in ('ssh -l pepe -p 2222 host', 'ssh host -o User=pepe -o Port=2222',
@@ -705,70 +631,29 @@ class MenuTest(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(options.option_count, 2)
             self.assertNotIn('secret-saved-host', str(options.get_option_at_index(0).prompt))
 
-    async def test_native_fallback_public_flow_and_terminal_restoration(self):
-        from contextlib import contextmanager
-        from textual.widgets import OptionList
+    async def test_authentication_failure_shows_manual_command_directly(self):
         command = 'ssh -p2222 -i "key file" -J jump pepe@host uptime'
         c.pair(self.settings, self.CODE)
         self.settings['connection_codes'] = {c.connection_key(command): self.CODE}
         voice = c.VoiceChannel(self.factory)
         app = c.menu_app(self.settings, self.receiver, voice)
-        restored = []
-        @contextmanager
-        def suspended():
-            try:
-                yield
-            finally:
-                restored.append(True)
-        async with app.run_test(size=(80, 24)) as pilot:
+        async with app.run_test(size=(100, 40)) as pilot:
             app.ssh(command)
             self.process.stderr = io.BytesIO(b'Permission denied (publickey,password)')
             self.process.poll.return_value = 255
             app.refresh_status()
             await pilot.pause()
             text = self.text(app.screen, '#pregunta')
-            self.assertIn('menú vuelve cuando termine', text)
-            self.assertNotIn('Recibiendo voz', self.text(app, '#estado'))
-            app.save_screenshot('after-fallback-80x24.svg', path=str(SCRATCH.parent))
-            await pilot.press('down', 'enter')
-            await pilot.pause()
-            text = self.text(app.screen, '#pregunta')
-            self.assertIn('2222', text)
-            self.assertIn('key file', text)
-            self.assertIn('jump', text)
+            self.assertIn('Corre este comando en otra terminal para abrir el canal de voz.', text)
+            self.assertIn('SSH te pedirá la contraseña ahí.', text)
+            self.assertIn('Déjala abierta mientras quieras oír la voz; Ctrl+C la cierra.', text)
+            if os.name != 'nt':
+                self.assertIn(c.shlex.join(c.voice_argv(command, interactive=True)), text)
+            self.assertNotIn('Autenticar con SSH', str(app.screen.query_one('#opciones').get_option_at_index(0).prompt))
+            self.assertEqual(app.screen.query_one('#opciones').option_count, 1)
             self.assertNotIn('uptime', text)
             self.assertNotIn(self.CODE, text)
-            options = app.screen.query_one(OptionList)
-            options.focus()
-            self.assertLess(options.region.y, 24)
-            app.save_screenshot('after-manual-80x24.svg', path=str(SCRATCH.parent))
-            await pilot.press('enter')
-            c.save_settings(self.settings)
-            before = c.settings_path().read_bytes()
-            # Native SSH, never an Input/password widget. Both action dispatch routes.
-            for click, failure in ((True, KeyboardInterrupt()), (False, OSError('unavailable'))):
-                app.authentication()
-                await pilot.pause()
-                with patch.object(sys.stdin, 'isatty', return_value=True), patch.object(
-                        sys.stdout, 'isatty', return_value=True), patch.object(
-                        app, 'suspend', suspended), patch.object(voice, 'interact', side_effect=failure):
-                    if click:
-                        await pilot.click('#opciones', offset=(2, 0))
-                    else:
-                        await pilot.press('enter')
-                    await pilot.pause()
-                self.assertIsNone(voice.process)
-                if len(app.screen_stack) > 1:
-                    await pilot.press('escape')
-            self.assertEqual(len(restored), 2)
-            self.assertEqual(c.settings_path().read_bytes(), before)
-            app.authentication()
-            await pilot.press('escape')
-            with patch.object(sys.stdin, 'isatty', return_value=False), patch.object(voice, 'interact') as native:
-                app.native_ssh()
-                await pilot.pause()
-                self.assertIn('No hay terminal interactiva', self.text(app.screen, '#pregunta'))
-                native.assert_not_called()
+            self.assertNotIn('Recibiendo voz', self.text(app, '#estado'))
 
     async def test_windows_manual_command_is_literal_powershell(self):
         app = c.menu_app(self.settings, self.receiver)
@@ -776,10 +661,6 @@ class MenuTest(unittest.IsolatedAsyncioTestCase):
         expected = r'''& 'C:\Program Files\OpenSSH\ssh.exe' '-o' 'BatchMode=no' '-o' 'StdinNull=no' '-i' 'C:\keys\cash$`O''Brien key' '-p' '2222' '-N' '-T' '-o' 'BatchMode=no' '-o' 'ExitOnForwardFailure=yes' '-o' 'ServerAliveInterval=30' '-R' '18766:127.0.0.1:18766' 'usuario@servidor' '''.rstrip()
         # Public manual selection, not a private quoting helper.
         async with app.run_test(size=(100, 30)) as pilot:
-            app.authentication()
-            await pilot.press('down', 'enter')
-            await pilot.pause()
-            await pilot.press('escape')
             with patch.object(c.os, 'name', 'nt'):
                 # Reopen through the public manual action under Windows semantics.
                 app.other_program()

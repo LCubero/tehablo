@@ -15,7 +15,6 @@ import os
 from pathlib import Path
 import re
 import shutil
-import signal
 import socket
 import subprocess
 import platform
@@ -192,23 +191,6 @@ class VoiceChannel:
         self.process = self.factory(argv, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
                                     stderr=subprocess.PIPE,
                                     **({'creationflags': subprocess.CREATE_NO_WINDOW} if os.name == 'nt' else {}))
-
-    def interact(self, command, receiver):
-        """Native SSH owns the terminal; the independent receiver keeps running."""
-        self.stop()
-        self.needs_interaction = False
-        try:
-            self.process = self.factory(voice_argv(command, interactive=True))
-            while self.running:
-                if receiver.stop_event.is_set() or (receiver.retired and receiver.check_retired()):
-                    break
-                try:
-                    self.process.wait(timeout=.2)
-                except subprocess.TimeoutExpired:
-                    continue
-            return self.reason()
-        finally:
-            self.stop()
 
     def reason(self):
         if self.process is None or self.running:
@@ -667,7 +649,9 @@ def menu_app(settings, receiver, voice=None):
                 self.notice(reason)
                 if voice.needs_interaction and getattr(self, 'selected_command', None):
                     voice.needs_interaction = False
-                    self.authentication()
+                    self.other_program('Corre este comando en otra terminal para abrir el canal de voz.\n'
+                                       'SSH te pedirá la contraseña ahí.\n'
+                                       'Déjala abierta mientras quieras oír la voz; Ctrl+C la cierra.\n\n')
             lines = status_text(settings, receiver).splitlines()
             self.query_one('#estado').update(lines[0])
             warnings = lines[1:]
@@ -781,41 +765,6 @@ def menu_app(settings, receiver, voice=None):
                         self.exit('\n'.join(lines))
                 self.choose('¿Desinstalar el cliente? Se apaga la recepción.',
                             [('si', 'Sí, desinstalar'), ('no', 'No')], done)
-
-        def authentication(self):
-            def selected(value):
-                if value == 'manual':
-                    self.other_program()
-                elif value == 'autenticar':
-                    self.native_ssh()
-            self.choose('SSH no pudo autenticarse o confirmar el servidor.\n'
-                        'El menú vuelve cuando termine el canal; Ctrl+C lo detiene.\n'
-                        'Deja abierta tu sesión original de Pi. La contraseña la pide SSH, no teHablo.',
-                        [('autenticar', 'Autenticar con SSH'), ('manual', 'Lo hago a mano'),
-                         ('cancelar', 'Cancelar')], selected)
-
-        def native_ssh(self):
-            if (not sys.stdin.isatty() or not sys.stdout.isatty()
-                    or threading.current_thread() is not threading.main_thread()):
-                self.other_program('No hay terminal interactiva disponible.\n\n')
-                return
-            try:
-                with self.suspend():
-                    # asyncio.Runner otherwise turns the first Ctrl+C into cancellation
-                    # of Textual's main task, instead of returning to this menu.
-                    previous = signal.signal(signal.SIGINT, signal.default_int_handler)
-                    try:
-                        reason = voice.interact(self.selected_command, receiver)
-                    finally:
-                        signal.signal(signal.SIGINT, previous)
-                self.notice(reason or 'Canal SSH terminado.')
-            except KeyboardInterrupt:
-                self.notice('Canal SSH detenido con Ctrl+C.')
-            except Exception:
-                self.other_program('No se pudo usar la terminal para SSH.\n\n')
-            finally:
-                voice.stop()
-                self.refresh_status()
 
         def other_program(self, prefix=''):
             command = getattr(self, 'selected_command', None) or 'ssh usuario@servidor'

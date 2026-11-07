@@ -131,9 +131,9 @@ curl -fsSL https://raw.githubusercontent.com/LCubero/tehablo/master/receptor/ins
 
 Si falta uv, muestra el comando oficial para instalarlo y se detiene sin cambios. Después abre un menú en la terminal que se usa con el ratón o el teclado: recepción on/off, salida de audio, volumen, vincular servidor (código de `/tts codigo`), conectar la voz por SSH, desinstalar y salir. Muestra «Listo para recibir» / «Recibiendo voz»; los ajustes se guardan en `~/.tehablo/cliente.json`. La voz solo llega mientras el cliente está abierto.
 
-**Conexión SSH** lista tus sesiones abiertas, sin leer `~/.ssh/config`; **Otra…** permite pegar tu comando. Primero intenta abrir un canal oculto con los mismos datos de conexión, sin editar archivos ni reconectar Pi. Si SSH necesita autenticación o confirmar el servidor, ofrece **Autenticar con SSH**, **Lo hago a mano** o cancelar. SSH pide directamente la contraseña, frase de clave o confirmación; teHablo no recoge ni guarda contraseñas y nunca acepta claves de servidor automáticamente.
+**Conexión SSH** lista tus sesiones abiertas, sin leer `~/.ssh/config`; **Otra…** permite pegar tu comando. Primero intenta abrir un canal oculto con los mismos datos de conexión, sin editar archivos ni reconectar Pi. Si SSH necesita autenticación o confirmar el servidor, muestra directamente el comando para abrir el canal de voz en otra terminal. SSH pide directamente la contraseña, frase de clave o confirmación; teHablo no recoge ni guarda contraseñas y nunca acepta claves de servidor automáticamente.
 
-Al autenticar, SSH ocupa esta terminal: el menú no está disponible hasta que termine el canal. **Ctrl+C** lo detiene y devuelve el menú; deja abierta la sesión original de Pi. El receptor sigue funcionando mientras tanto. Si no hay terminal interactiva o no se puede cederla, muestra la alternativa manual. **Canal SSH en ejecución** solo indica un proceso abierto, no autenticación ni reenvío confirmados; **Recibiendo voz** indica recepción real. El canal oculto permite **Detener voz** desde el menú. Salir o desinstalar cierra el canal propio. Las sesiones que ya llevan la voz no abren otro.
+Deja esa terminal abierta mientras quieras oír la voz; **Ctrl+C** cierra el canal. El menú sigue disponible y la sesión original de Pi permanece abierta. **Canal SSH en ejecución** solo indica un proceso abierto, no autenticación ni reenvío confirmados; **Recibiendo voz** indica recepción real. El canal oculto permite **Detener voz** desde el menú. Salir o desinstalar cierra el canal propio. Las sesiones que ya llevan la voz no abren otro.
 
 Si tienes Python de [python.org](https://www.python.org/downloads/) (3.10 o más), el cliente lo usa; si no, `uv` descarga uno. En Windows, el lanzador del Python de `uv` no lleva firma digital y algunos antivirus (por ejemplo Norton CyberCapture) lo analizan cada vez que abres el cliente; es seguro, y con el Python oficial (`winget install Python.Python.3.13`) el lanzador va firmado.
 
@@ -151,7 +151,7 @@ En Pi, elige **Audio: SSH**. La guía de instalación aparece solo hasta que un 
    ```sh
    ssh -N -R 18766:127.0.0.1:18766 usuario@servidor
    ```
-   **Lo hago a mano** muestra el comando de la conexión seleccionada, sin comando remoto; en Windows, cópialo en **PowerShell**. No hace falta editar la configuración SSH.
+   **Lo hago a mano** (o el fallo de autenticación del canal oculto) muestra el comando de la conexión seleccionada, sin comando remoto; en Windows, cópialo en **PowerShell**. No hace falta editar la configuración SSH.
 3. En Pi (servidor), elige **Audio: SSH** y ejecuta `/tts codigo`. En el cliente, usa **Vincular servidor**: este código de voz no es la contraseña SSH.
 4. Deja abiertos el cliente, la terminal del canal y tu sesión de Pi. **Ctrl+C** en la terminal del canal lo cierra.
 
