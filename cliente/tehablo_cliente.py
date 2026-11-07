@@ -60,8 +60,21 @@ def load_settings(path=None):
         codes = value.get('codes', [])
         if not isinstance(codes, list) or any(not isinstance(code, str) for code in codes):
             return dict(DEFAULTS)
-        return dict(device=value['device'], volume=value['volume'], enabled=value['enabled'],
-                    codes=[normalize_code(code) for code in codes])
+        settings = dict(device=value['device'], volume=value['volume'], enabled=value['enabled'],
+                        codes=[normalize_code(code) for code in codes])
+        associations = value.get('connection_codes')
+        if isinstance(associations, dict):
+            settings['connection_codes'] = {}
+            for key, code in associations.items():
+                try:
+                    if isinstance(code, str):
+                        code = normalize_code(code)
+                        # Associations only remember credentials already accepted by the receiver.
+                        if code in settings['codes']:
+                            settings['connection_codes'][key] = code
+                except ValueError:
+                    continue
+        return settings
     except (OSError, ValueError):
         return dict(DEFAULTS)
 
@@ -123,6 +136,36 @@ def voice_argv(command):
         raise ValueError('No se reconoce esa conexión SSH.')
     return kept + ['-N', '-T', '-o', 'BatchMode=yes', '-o', 'ExitOnForwardFailure=yes',
                    '-o', 'ServerAliveInterval=30', '-R', '18766:127.0.0.1:18766', destination]
+
+
+def connection_key(command):
+    """Literal destination/user/port only; never resolve aliases or read SSH config."""
+    argv = voice_argv(command)
+    destination = argv[-1]
+    user, host = destination.rsplit('@', 1) if '@' in destination else (None, destination)
+    port = None
+    # Explicit user@host wins; otherwise OpenSSH keeps the first User/Port option.
+    # voice_argv has already expanded attached options and removed remote commands.
+    tokens = iter(argv[1:-1])
+    for token in tokens:
+        if not token.startswith('-') or token[-1:] not in 'BbcDEeFIiJLlmOopQRSWw':
+            continue
+        value = next(tokens)
+        token = '-' + token[-1]
+        if token in ('-l', '-p', '-o'):
+            if token == '-l' and user is None:
+                user = value
+            elif token == '-p' and port is None:
+                port = value
+            elif token == '-o':
+                parts = re.split(r'[=\s]+', value, maxsplit=1)
+                if len(parts) == 2:
+                    name, value = parts
+                    if name.lower() == 'user' and user is None:
+                        user = value
+                    elif name.lower() == 'port' and port is None:
+                        port = value
+    return json.dumps([user or '', host, port or '22'], ensure_ascii=False)
 
 
 class VoiceChannel:
@@ -604,7 +647,8 @@ def menu_app(settings, receiver, voice=None):
             values = dict(recepcion='Encendida' if settings['enabled'] else 'Apagada',
                           salida=(settings['device'] or 'Predeterminada') + ' ▾',
                           volumen='━' * round(settings['volume'] * 20) + '─' * (20 - round(settings['volume'] * 20)) + f"  {settings['volume']:.0%}",
-                          vincular='✓ vinculado' if settings.get('codes') else 'pendiente',
+                          vincular=('Cambiar código de esta conexión' if getattr(self, 'selected_command', None)
+                                    else '✓ vinculado (general)' if settings.get('codes') else 'pendiente'),
                           ssh=f'● Voz conectada a {voice.host}' if voice.running else
                           'Buscando sesiones…' if getattr(self, 'searching', False) else
                           getattr(self, 'voice_reason', '') or 'Elegir conexión ▾',
@@ -652,11 +696,7 @@ def menu_app(settings, receiver, voice=None):
                 self.choose('Salida de audio', [(str(i), value or 'Predeterminada')
                                                for i, value in enumerate(devices)], select)
             elif name == 'vincular':
-                def link(value):
-                    pair(settings, value)
-                    self.save()
-                    self.notice('Servidor vinculado.')
-                self.entry('Código de vinculación: cópialo de /tts codigo en el servidor.', link, True)
+                self.link_connection(getattr(self, 'selected_command', None))
             elif name == 'ssh':
                 if voice.running:
                     def stop(value):
@@ -697,8 +737,7 @@ def menu_app(settings, receiver, voice=None):
                         self.other_program()
                     else:
                         host, active, command = sessions[int(value)]
-                        if not active:
-                            self.ssh(command)
+                        self.ssh(command, active=active)
                 self.choose('Tu conexión SSH', options, selected)
 
         def confirm_uninstall(self):
@@ -727,10 +766,33 @@ def menu_app(settings, receiver, voice=None):
                         'Después conéctate de nuevo y deja este cliente abierto: es el que suena.',
                         [('volver', 'Volver')], lambda value: None)
 
-        def ssh(self, command):
-            voice.start(command)
-            self.voice_reason = ''
-            self.refresh_status()
+        def link_connection(self, command=None, after=None):
+            key = connection_key(command) if command else None
+            label = voice_argv(command)[-1] if command else 'servidor (código general)'
+            def link(value):
+                code = normalize_code(value)  # Validate before any mutation or tunnel.
+                pair(settings, code)
+                if key is not None:
+                    settings['connection_codes'] = {**settings.get('connection_codes', {}), key: code}
+                    self.selected_command = command
+                self.save()
+                self.notice('Código guardado para ' + label + '.')
+                if after:
+                    after()
+            self.entry('Código para ' + label + ': cópialo de /tts codigo en el servidor.', link, True)
+
+        def ssh(self, command, active=False):
+            key = connection_key(command)
+            def ready():
+                self.selected_command = command
+                if not active:
+                    voice.start(command)
+                self.voice_reason = '' if not active else '✓ voz activa en esta sesión'
+                self.refresh_status()
+            if key not in settings.get('connection_codes', {}):
+                self.link_connection(command, ready)
+            else:
+                ready()
 
         def on_unmount(self):
             voice.stop()

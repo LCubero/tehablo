@@ -26,6 +26,35 @@ class ScriptHeaderTest(unittest.TestCase):
 
 
 class VoiceChannelTest(unittest.TestCase):
+    def test_literal_connection_identity(self):
+        expected = c.connection_key('ssh pepe@host -p2222')
+        for command in ('ssh -l pepe -p 2222 host', 'ssh host -o User=pepe -o Port=2222',
+                        'ssh -vl pepe host -p2222 -i "key file" uptime'):
+            self.assertEqual(c.connection_key(command), expected)
+        self.assertNotEqual(expected, c.connection_key('ssh pepe@other -p2222'))
+
+    def test_identity_explicit_destination_and_first_effective_options(self):
+        cases = [
+            ('ssh alice@host -l bob', 'ssh alice@host'),
+            ('ssh -l bob alice@host', 'ssh alice@host'),
+            ('ssh alice@host -o User=bob', 'ssh alice@host'),
+            ('ssh -o User=alice -o User=bob host', 'ssh alice@host'),
+            ('ssh -l alice -o User=bob host', 'ssh alice@host'),
+            ('ssh -o User=alice host -l bob', 'ssh alice@host'),
+            ('ssh -o Port=2222 -o Port=3333 host', 'ssh -p2222 host'),
+            ('ssh -p2222 host -p3333', 'ssh host -p 2222'),
+            ('ssh -p2222 -o Port=3333 host', 'ssh host -p2222'),
+            ('ssh -o Port=2222 host -p3333', 'ssh -p2222 host'),
+            ('ssh host -o "User alice" -o "Port 2222"', 'ssh alice@host -p2222'),
+        ]
+        for command, equivalent in cases:
+            with self.subTest(command=command):
+                self.assertEqual(c.connection_key(command), c.connection_key(equivalent))
+        self.assertNotEqual(c.connection_key('ssh alice@host -l bob'),
+                            c.connection_key('ssh bob@host'))
+        self.assertNotEqual(c.connection_key('ssh -p2222 -p3333 host'),
+                            c.connection_key('ssh -p3333 host'))
+
     def test_background_argv(self):
         tail = ['-N', '-T', '-o', 'BatchMode=yes', '-o', 'ExitOnForwardFailure=yes',
                 '-o', 'ServerAliveInterval=30', '-R', '18766:127.0.0.1:18766']
@@ -386,6 +415,107 @@ class MenuTest(unittest.IsolatedAsyncioTestCase):
     def text(self, app, selector):
         return str(app.query_one(selector).render())
 
+    async def test_orphan_association_loader_and_cancelled_prompt(self):
+        from textual.widgets import Input
+        command = 'ssh alice@host -p2222'
+        key = c.connection_key(command)
+        accepted = self.CODE.upper()
+        orphan = 'b' * 32
+        stored = dict(device='Audífonos', volume=0.4, enabled=False, codes=[accepted],
+                      connection_codes={key: orphan, 'good': accepted, 'bad': 'invalid'})
+        c.save_settings(stored)
+        before = c.settings_path().read_bytes()
+        settings = c.load_settings()
+        self.assertEqual(settings['device'], 'Audífonos')
+        self.assertEqual(settings['volume'], 0.4)
+        self.assertFalse(settings['enabled'])
+        self.assertEqual(settings['codes'], [self.CODE])
+        self.assertEqual(settings['connection_codes'], {'good': self.CODE})
+        app = c.menu_app(settings, c.Receiver(settings))
+        with patch.object(c, 'save_settings') as save:
+            async with app.run_test(size=(100, 45)) as pilot:
+                app.ssh(command)
+                await pilot.pause()
+                self.assertTrue(app.screen.query_one(Input).password)
+                await pilot.press('escape')
+                self.factory.assert_not_called()
+                save.assert_not_called()
+                self.assertEqual(c.settings_path().read_bytes(), before)
+                self.assertNotIn(key, settings['connection_codes'])
+
+    async def test_connection_pairing_cancel_invalid_reuse_and_change(self):
+        from textual.widgets import Input
+        c.pair(self.settings, self.CODE)  # An unrelated global code is not an association.
+        app = c.menu_app(self.settings, self.receiver)
+        async with app.run_test(size=(100, 45)) as pilot:
+            app.ssh('ssh pepe@host -p 2222')
+            await pilot.pause()
+            self.assertTrue(app.screen.query_one(Input).password)
+            await pilot.press('escape')
+            self.factory.assert_not_called()
+            self.assertFalse(c.settings_path().exists())
+            app.ssh('ssh pepe@host -p 2222')
+            await pilot.pause()
+            await pilot.press('x', 'enter')
+            self.factory.assert_not_called()
+            self.assertFalse(c.settings_path().exists())
+            app.ssh('ssh pepe@host -p 2222')
+            await pilot.pause()
+            await pilot.press(*self.CODE, 'enter')
+            await pilot.pause()
+            self.factory.assert_called_once()
+            saved = c.load_settings()
+            self.assertEqual(saved['connection_codes'][c.connection_key('ssh -p2222 -l pepe host')], self.CODE)
+            self.assertNotEqual(c.connection_key('ssh pepe@host'), c.connection_key('ssh pepe@host -p2222'))
+            self.assertNotEqual(c.connection_key('ssh otro@host -p2222'), c.connection_key('ssh pepe@host -p2222'))
+            # Both actual row dispatch paths must open a masked entry, even when linked.
+            for click in (True, False):
+                if click:
+                    await pilot.click('#vincular')
+                else:
+                    app.query_one('#vincular').focus()
+                    await pilot.press('enter')
+                await pilot.pause()
+                self.assertTrue(app.screen.query_one(Input).password)
+                await pilot.press('escape')
+            await pilot.click('#vincular')
+            await pilot.press(*('b' * 32), 'enter')
+            await pilot.pause()
+            self.assertEqual(c.load_settings()['connection_codes'][c.connection_key('ssh pepe@host -p2222')], 'b' * 32)
+            self.assertIn(self.CODE, self.settings['codes'])
+            app.ssh('ssh -l pepe host -p2222')
+            await pilot.pause()
+            self.assertEqual(len(app.screen_stack), 1)
+            self.assertEqual(self.factory.call_count, 2)
+
+    async def test_active_forward_pairs_without_duplicate_tunnel(self):
+        app = c.menu_app(self.settings, self.receiver)
+        async with app.run_test(size=(100, 45)) as pilot:
+            app.show_sessions([('host', True, 'ssh -R18766:127.0.0.1:18766 host')])
+            await pilot.press('enter')
+            await pilot.pause()
+            from textual.widgets import Input
+            self.assertTrue(app.screen.query_one(Input).password)
+            await pilot.press(*self.CODE, 'enter')
+            await pilot.pause()
+            self.factory.assert_not_called()
+            self.assertIn(c.connection_key('ssh host'), c.load_settings()['connection_codes'])
+
+    async def test_global_pair_dispatch_click_and_enter_when_linked(self):
+        from textual.widgets import Input
+        c.pair(self.settings, self.CODE)
+        app = c.menu_app(self.settings, self.receiver)
+        async with app.run_test(size=(100, 45)) as pilot:
+            for click in (True, False):
+                if click:
+                    await pilot.click('#vincular')
+                else:
+                    app.query_one('#vincular').focus()
+                    await pilot.press('enter')
+                await pilot.pause()
+                self.assertTrue(app.screen.query_one(Input).password)
+                await pilot.press('escape')
+
     async def test_ssh_row_says_searching_while_sessions_load(self):
         release = c.threading.Event()
         def slow_listing(**kwargs):
@@ -441,6 +571,9 @@ class MenuTest(unittest.IsolatedAsyncioTestCase):
 
     async def test_open_session_channel_and_stop(self):
         command = 'ssh -i "key file" -p 2222 pepe@servidor'
+        c.pair(self.settings, self.CODE)
+        self.settings['connection_codes'] = {c.connection_key(command): self.CODE,
+                                             c.connection_key('ssh activo'): self.CODE}
         app = c.menu_app(self.settings, self.receiver)
         with patch.object(c.shutil, 'which', return_value='ssh'), patch.object(
                 c, 'open_ssh_sessions', return_value=[('servidor', False, command),
@@ -505,6 +638,8 @@ class MenuTest(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(self.text(app.screen, '#pregunta'), expected)
 
     async def test_open_session_and_uninstall_confirmation(self):
+        c.pair(self.settings, self.CODE)
+        self.settings['connection_codes'] = {c.connection_key('ssh vps'): self.CODE}
         app = c.menu_app(self.settings, self.receiver)
         with patch.object(c.shutil, 'which', return_value='ssh'), patch.object(
                 c, 'open_ssh_sessions', return_value=[('vps', False, 'ssh vps')]):
@@ -600,6 +735,8 @@ class MenuTest(unittest.IsolatedAsyncioTestCase):
             await pilot.click('#ssh')
             await pilot.press('enter')
             await pilot.press(*'ssh pepe@192.168.7.88', 'enter')
+            await pilot.pause()
+            await pilot.press(*self.CODE, 'enter')
             await pilot.pause()
             self.assertIn('conectada a 192.168.7.88', self.text(app, '#ssh'))
             self.assertFalse(config.exists())
