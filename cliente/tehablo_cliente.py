@@ -1,6 +1,8 @@
 # /// script
 # requires-python = ">=3.10"
 # dependencies = ["sounddevice", "textual>=8,<9"]
+# [tool.uv]
+# python-preference = "system"
 # ///
 """Cliente de audio SSH de teHablo. Ejecutar con uv run --script este_archivo."""
 import argparse

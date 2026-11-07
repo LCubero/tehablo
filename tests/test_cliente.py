@@ -18,6 +18,13 @@ c = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(c)
 
 
+class ScriptHeaderTest(unittest.TestCase):
+    def test_prefers_an_installed_signed_python(self):
+        # On Windows a python.org install gives a signed venv launcher; uv's own is unsigned.
+        header = (ROOT / 'cliente/tehablo_cliente.py').read_text(encoding='utf-8').split('# ///\n')[0]
+        self.assertIn('# [tool.uv]\n# python-preference = "system"\n', header)
+
+
 class VoiceChannelTest(unittest.TestCase):
     def test_background_argv(self):
         tail = ['-N', '-T', '-o', 'BatchMode=yes', '-o', 'ExitOnForwardFailure=yes',
