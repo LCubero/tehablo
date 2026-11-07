@@ -19,6 +19,20 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'src'))
 import tehablo_server
 from tehablo_server import create_server
 
+SCRATCH = Path(__file__).resolve().parents[1] / '.repo-harness/tmp/t9-check'
+SCRATCH.mkdir(parents=True, exist_ok=True)
+CODE = '0123456789abcdef0123456789abcdef'
+
+
+def setUpModule():
+    global code_patch
+    code_patch = mock.patch.object(tehablo_server, 'load_ssh_code', return_value=CODE, create=True)
+    code_patch.start()
+
+
+def tearDownModule():
+    code_patch.stop()
+
 
 class Synth:
     sample_rate = 24000
@@ -96,86 +110,91 @@ class SSHAudioTests(unittest.TestCase):
                 self.assertEqual(before, (service.health(), service.status()))
                 self.assertNotIn('sounddevice', imports)
                 self.assertNotIn('sounddevice', sys.modules)
+                self.assertNotIn(CODE, json.dumps((service.health(), service.status())))
 
     def test_local_stream_conflict_changes_nothing(self):
         server, _ = self.start('local')
         before = server.service.health(), server.service.status()
         response = self.stream(server)
-        self.assertEqual(response.status, 409)
+        self.assertEqual(response.status, 404)
         self.assertIn('error', json.loads(response.read()))
         self.assertEqual(before, (server.service.health(), server.service.status()))
 
-    def test_header_fanout_pacing_stop_and_no_sounddevice(self):
+    def test_push_connects_only_for_reading_and_refusal_never_retries(self):
         server, _ = self.start()
-        first = self.stream(server)
-        second = self.stream(server)
-        self.assertEqual(first.status, 200)
-        self.assertEqual(first.getheader('Content-Type'), 'audio/wav')
-        expected = bytes.fromhex('52494646ffffffff57415645666d74201000000001000100c05d000080bb00000200100064617461ffffffff')
-        self.assertEqual(first.read(44), expected)
-        self.assertEqual(second.read(44), expected)
-        # Drain initial silence before synthesis starts, then both listeners must hear the same frames.
-        with mock.patch.dict(sys.modules, {'sounddevice': None}):
-            server.service.speak({'id': 'ssh', 'text': 'hola'})
-            def voiced(response):
-                for _ in range(100):
-                    packet = response.read(960)
-                    if any(packet):
-                        return packet
-                self.fail('no synthesized samples received')
-            a, b = voiced(first), voiced(second)
-            self.assertEqual(a, b)
-            self.assertEqual(np.frombuffer(a, dtype='<i2')[0], int(.1 * 1.8 * 32767))
-            started = time.monotonic()
-            first.read(24000)
-            self.assertGreater(time.monotonic() - started, .15)
-            self.assertIsNone(server.service.speech_error)
-            server.service.control('stop')
-            # Only the bounded queue (200 ms) and in-flight packets drain; then nothing is sent.
-            self.assertLessEqual(self.drain(first), 14400)
+        service = server.service
+        with mock.patch.object(tehablo_server.socket, 'create_connection', side_effect=ConnectionRefusedError('no receiver')) as connect, contextlib.redirect_stderr(io.StringIO()) as log:
+            time.sleep(.08)
+            connect.assert_not_called()
+            service.speak({'id': 'push', 'text': 'hola'})
+            deadline = time.monotonic() + 3
+            while service.id is not None and time.monotonic() < deadline:
+                time.sleep(.02)
+            self.assertIsNone(service.id)
+            self.assertIsNone(service.speech_error)
+            connect.assert_called_once_with(('127.0.0.1', 18766), timeout=.5)
+            self.assertEqual(len(log.getvalue().splitlines()), 1)
 
-    def drain(self, response):
-        """Bytes received until the stream stays quiet for the connection timeout."""
-        total = 0
-        try:
-            while total < 48000:  # One second of audio is enough to prove it never stops.
-                total += len(response.read1(960))
-        except TimeoutError:
-            pass
-        return total
+    def test_push_header_samples_pacing_pause_stop_and_resampling(self):
+        for rate in (24000, 48000):
+            with self.subTest(rate=rate):
+                server, _ = self.start(rate=rate)
+                service = server.service
+                connection = mock.Mock()
+                packets = []
+                connection.sendall.side_effect = lambda data: packets.append((time.monotonic(), data))
+                with mock.patch.object(tehablo_server.socket, 'create_connection', return_value=connection) as connect, mock.patch.dict(sys.modules, {'sounddevice': None}):
+                    time.sleep(.05)
+                    connect.assert_not_called()
+                    service.speak({'id': 'push', 'text': 'hola'})
+                    deadline = time.monotonic() + 2
+                    while len(packets) < 12 and time.monotonic() < deadline:
+                        time.sleep(.01)
+                    self.assertGreaterEqual(len(packets), 12)
+                    self.assertEqual(packets[0][1], b'TEHABLO/1 ' + CODE.encode() + b'\n')
+                    self.assertEqual(packets[1][1], bytes.fromhex('52494646ffffffff57415645666d74201000000001000100c05d000080bb00000200100064617461ffffffff'))
+                    voiced = [data for _, data in packets[2:] if any(data)]
+                    self.assertTrue(voiced)
+                    self.assertEqual(voiced[0], (np.full(480, .1 * 1.8) * 32767).astype('<i2').tobytes())
+                    self.assertGreater(packets[-1][0] - packets[1][0], .15)
+                    service.control('pause')
+                    count = len(packets)
+                    time.sleep(.08)
+                    self.assertEqual(len(packets), count)
+                    service.control('resume')
+                    time.sleep(.06)
+                    self.assertGreater(len(packets), count)
+                    service.control('stop')
+                    count = len(packets)
+                    time.sleep(.06)
+                    self.assertEqual(len(packets), count)
+                    connection.close.assert_called_once()
+                    connect.assert_called_once()
 
-    def test_sends_nothing_between_readings(self):
-        # Silence would cost about 170 MB per hour over SSH while Pi stays open.
-        server, _ = self.start()
-        conn = http.client.HTTPConnection(*server.server_address, timeout=.5)
-        self.addCleanup(conn.close)
-        conn.request('GET', '/audio.wav')
-        response = conn.getresponse()
-        response.read(44)
-        self.assertEqual(self.drain(response), 0)
-
-    def test_resamples_to_24khz(self):
-        server, _ = self.start(rate=48000)
-        response = self.stream(server)
-        response.read(44)
-        server.service.speak({'id': 'resampled', 'text': 'hola'})
-        for _ in range(100):
-            packet = response.read(960)
-            if any(packet):
-                self.assertEqual(np.frombuffer(packet, dtype='<i2')[0], int(.1 * 1.8 * 32767))
-                break
-        else:
-            self.fail('no resampled samples')
-
-    def test_stream_is_not_idle_activity_and_closes_on_exit(self):
+    def test_outbound_stream_is_not_idle_activity_and_closes_on_exit(self):
         server, thread = self.start(idle_exit=.4)
-        before = server.last_request
-        response = self.stream(server)
-        self.assertEqual(response.status, 200)
-        self.assertEqual(server.last_request, before)
-        thread.join(2)
-        self.assertFalse(thread.is_alive())
-        self.assertLess(len(response.read()), 48000)
+        connection = mock.Mock()
+        with mock.patch.object(tehablo_server.socket, 'create_connection', return_value=connection):
+            before = server.last_request
+            server.service.speak({'id': 'push', 'text': 'hola'})
+            thread.join(2)
+            self.assertFalse(thread.is_alive())
+            self.assertEqual(server.last_request, before)
+            connection.close.assert_called_once()
+
+    def test_pairing_code_file_created_once(self):
+        with tempfile.TemporaryDirectory(dir=SCRATCH) as tmp:
+            path = Path(tmp) / 'ssh-codigo'
+            first = tehablo_server.read_pairing_code(path)
+            self.assertRegex(first, r'^[0-9a-f]{32}$')
+            with mock.patch.object(tehablo_server.secrets, 'token_hex', side_effect=AssertionError('regenerated')):
+                self.assertEqual(tehablo_server.read_pairing_code(path), first)
+            if os.name != 'nt':
+                self.assertEqual(path.stat().st_mode & 0o777, 0o600)
+
+    def test_removed_route_in_ssh_mode(self):
+        server, _ = self.start()
+        self.assertEqual(self.stream(server).status, 404)
 
     def test_cli_audio_choices(self):
         for audio in ('local', 'ssh'):
@@ -998,7 +1017,7 @@ class ServerTests(unittest.TestCase):
     def test_included_voice_is_cached_with_either_spanish_weights(self):
         from unittest import mock
         from huggingface_hub import constants
-        with tempfile.TemporaryDirectory() as tmp:
+        with tempfile.TemporaryDirectory(dir=SCRATCH) as tmp:
             voices, hub = Path(tmp) / 'voices', Path(tmp) / 'hub'
             voices.mkdir()
             (voices / 'Facundo.wav').write_bytes(b'')
@@ -1091,7 +1110,7 @@ class ServerTests(unittest.TestCase):
     def test_lexicon_error_logged_once_per_change(self):
         from tehablo_lexicon import Lexicon
         self.ready()
-        with tempfile.TemporaryDirectory() as directory:
+        with tempfile.TemporaryDirectory(dir=SCRATCH) as directory:
             path = Path(directory) / 'pronunciaciones.json'
             path.write_text('{', encoding='utf-8')
             self.server.service.lexicon = Lexicon(path)

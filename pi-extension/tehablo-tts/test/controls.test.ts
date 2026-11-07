@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {createExtension, fileStore, memoryStore, readTable} from '../src/extension.ts';
-import {mkdtempSync, writeFileSync, rmSync, mkdirSync} from 'node:fs';
+import {createExtension, fileStore, memoryStore, readTable, sshCode} from '../src/extension.ts';
+import {mkdtempSync, writeFileSync, rmSync, mkdirSync, readFileSync, statSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {DEFAULTS} from '../src/settings.ts';
@@ -143,6 +143,19 @@ test('scoped controls S1: a replaced paused card returns to play while the forei
   } finally { await s.close(); }
 });
 
+test('S16 pairing code is private, stable and available before starting the server', () => {
+  const base = join(process.cwd(), '.repo-harness/tmp/t9-check');
+  mkdirSync(base, {recursive: true});
+  const dir = mkdtempSync(join(base, 'code-'));
+  try {
+    const first = sshCode(dir);
+    assert.match(first, /^(?:[A-F0-9]{4}-){7}[A-F0-9]{4}$/);
+    assert.equal(sshCode(dir), first);
+    assert.equal(readFileSync(join(dir, 'ssh-codigo'), 'utf8'), first.replaceAll('-', '').toLowerCase() + '\n');
+    if (process.platform !== 'win32') assert.equal(statSync(join(dir, 'ssh-codigo')).mode & 0o777, 0o600);
+  } finally { rmSync(dir, {recursive: true, force: true}); }
+});
+
 test('SSH audio applies on reuse, toggles live and gives the exact one-time instructions', async () => {
   const store = memoryStore(); store.save({...store.load(), audio: 'ssh'});
   const s = setup(store);
@@ -151,6 +164,7 @@ test('SSH audio applies on reuse, toggles live and gives the exact one-time inst
     assert.ok(s.configs.some(body => body.audio === 'ssh'));
     await s.command('status');
     assert.ok(s.notices.some(text => text.includes('Audio: SSH')));
+    assert.ok(s.notices.some(text => text.includes('Código de vinculación: 0123-4567-89AB-CDEF-0123-4567-89AB-CDEF')));
     await s.command('menu'); await new Promise(r => setImmediate(r));
     const c = s.windows[0].w.c;
     s.notices.length = 0;
@@ -159,7 +173,7 @@ test('SSH audio applies on reuse, toggles live and gives the exact one-time inst
     assert.equal(s.notices.length, 0);
     c.change('audio', 'ssh'); await new Promise(r => setImmediate(r));
     assert.deepEqual(s.configs.at(-1), {audio: 'ssh'});
-    assert.deepEqual(s.notices, ['TTS teHablo: Audio por SSH activado.\n\nEn la computadora desde la que te conectas, ejecuta una vez\nEn Windows: irm https://raw.githubusercontent.com/LCubero/tehablo/master/receptor/install.ps1 | iex\nEn Linux/macOS: curl -fsSL https://raw.githubusercontent.com/LCubero/tehablo/master/receptor/install.sh | sh\n\nInstala un receptor pequeño que reproduce la voz en esa computadora y, si lo aceptas, añade una línea a tu configuración SSH para que la voz viaje cifrada por tu misma conexión SSH. No abre puertos hacia internet.\n\nConsulta la documentación para más información o para hacerlo a mano.\nhttps://github.com/LCubero/tehablo#audio-por-ssh']);
+    assert.deepEqual(s.notices, ['TTS teHablo: Audio por SSH activado.\n\nEn la computadora desde la que te conectas, ejecuta una vez\nEn Windows: irm https://raw.githubusercontent.com/LCubero/tehablo/master/receptor/install.ps1 | iex\nEn Linux/macOS: curl -fsSL https://raw.githubusercontent.com/LCubero/tehablo/master/receptor/install.sh | sh\n\nInstala un receptor pequeño que espera la voz en 127.0.0.1:18766 y, si lo aceptas, añade RemoteForward 18766 127.0.0.1:18766 a tu configuración SSH para recibirla cifrada por tu misma conexión SSH solo durante cada lectura. El puerto remoto escucha en loopback por defecto; no cambies GatewayPorts. El receptor exige un código antes de reproducir; quien lo tenga (incluido un administrador) puede enviar sonido. Este código no protege la API HTTP local de teHablo en un servidor compartido. Este reenvío no permite controlar teHablo ni el servidor desde esta computadora.\nCódigo de vinculación: 0123-4567-89AB-CDEF-0123-4567-89AB-CDEF (pídelo en el cliente: Vincular servidor).\n\nConsulta la documentación para más información o para hacerlo a mano.\nhttps://github.com/LCubero/tehablo#audio-por-ssh']);
     assert.equal(store.load().audio, 'ssh');
     c.change('audio', 'ssh'); await new Promise(r => setImmediate(r));
     assert.equal(s.notices.length, 1);

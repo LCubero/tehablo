@@ -107,7 +107,7 @@ tehablo/
 | `src/tehablo_lexicon.py`, `pronunciaciones.json` | Pronunciación de términos en inglés | Sí |
 | `src/tehablo_speed.py` | Velocidad de la voz sin cambiar el tono (WSOLA con `audiotsm`) | Sí |
 | `src/tehablo_server.py` | Servidor HTTP local (`127.0.0.1:8765`) que usa la extensión de Pi | Sí |
-| `cliente/tehablo_cliente.py` | Cliente de audio SSH: menú, sounddevice, volumen, configuración SSH e inicio automático (PEP 723, uv) | Sí |
+| `cliente/tehablo_cliente.py` | Cliente de audio SSH: espera conexiones en 127.0.0.1:18766 (RemoteForward), valida el código antes del WAV; menú, sounddevice, volumen e inicio automático (PEP 723, uv) | Sí |
 | `receptor/` | Instaladores finos del cliente para [Audio por SSH](../README.md#audio-por-ssh); requieren uv, sin FFmpeg | Sí |
 | `pi-extension/tehablo-tts/` | Extensión de Pi; se instala con `pi install <ruta>` (ver README) | Sí |
 | `scripts/get_voices.py` | Descarga selectiva de voces | Sí |

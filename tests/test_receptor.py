@@ -7,7 +7,7 @@ import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
-SCRATCH = ROOT / '.repo-harness/tmp/t8-check'
+SCRATCH = ROOT / '.repo-harness/tmp/t9-check'
 SCRATCH.mkdir(parents=True, exist_ok=True)
 
 

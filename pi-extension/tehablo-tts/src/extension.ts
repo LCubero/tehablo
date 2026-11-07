@@ -2,7 +2,8 @@ import type { ExtensionAPI, ExtensionContext } from '@earendil-works/pi-coding-a
 import { ServerClient } from './server.ts';
 import { cleanText, finalText } from './text.ts';
 import { clipboardCommands, NO_CLIPBOARD, readClipboard } from './clipboard.ts';
-import { existsSync, readFileSync, statSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { randomBytes } from 'node:crypto';
 import { join } from 'node:path';
 import { ACTIONS, DEFAULTS, loadSettings, saveSettings, settingsDir, type Action, type Settings, type VoiceRow } from './settings.ts';
 import { keyOf } from './shortcuts.ts';
@@ -11,7 +12,17 @@ import { openUrl } from './browser.ts';
 import { SettingsWindow, type Controller } from './window.ts';
 
 /** Settings (user folder), token presence and voice table (project); tests use memory. */
-export interface Store { load(): Settings; save(s: Settings): void; changed?(): boolean; hasToken(): boolean; table(): VoiceRow[] }
+export interface Store { load(): Settings; save(s: Settings): void; changed?(): boolean; hasToken(): boolean; table(): VoiceRow[]; sshCode?(): string }
+/** Read privately, never through the shared HTTP API. Also works before the server starts. */
+export function sshCode(dir: string): string {
+  const path = join(dir, 'ssh-codigo');
+  mkdirSync(dir, {recursive: true, mode: 0o700});
+  try { writeFileSync(path, randomBytes(16).toString('hex') + '\n', {flag: 'wx', mode: 0o600}); }
+  catch (error) { if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error; }
+  const code = readFileSync(path, 'utf8').trim();
+  if (!/^[a-f0-9]{32}$/.test(code)) throw new Error('Código SSH no válido en ssh-codigo.');
+  return code.toUpperCase().match(/.{4}/g)!.join('-');
+}
 export const fileStore = (root: string, dir = settingsDir()): Store => {
   const stamp = () => {
     try { const s = statSync(join(dir, 'settings.json')); return `${s.mtimeMs}:${s.size}`; }
@@ -23,6 +34,7 @@ export const fileStore = (root: string, dir = settingsDir()): Store => {
     load: () => { signature = stamp(); saved = loadSettings(dir, root, saved); return structuredClone(saved); },
     save: s => { saveSettings(dir, s, saved); saved = structuredClone(s); },
     hasToken: () => hasToken(root), table: () => readTable(join(root, 'src', 'voice_table.json')),
+    sshCode: () => sshCode(dir),
   };
 };
 /** The shared voice list (src/voice_table.json), with an unknown download state. */
@@ -38,7 +50,7 @@ export function readTable(path: string): VoiceRow[] {
 export const memoryStore = (table: VoiceRow[] = []): Store => {
   let saved: Settings = {...DEFAULTS, shortcuts: {}, voices: []};
   return {load: () => structuredClone(saved), save: s => { saved = structuredClone(s); }, hasToken: () => false,
-    table: () => structuredClone(table)};
+    table: () => structuredClone(table), sshCode: () => '0123-4567-89AB-CDEF-0123-4567-89AB-CDEF'};
 };
 
 const ENTRY = 'tehablo-tts';
@@ -469,7 +481,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
         if (field === 'volume') volume = value as number;
         if (field === 'speed') speed = value as number;
         if ((field === 'audio' || field === 'device') && server !== 'ready') applied = false;
-        if (field === 'audio' && value === 'ssh' && previousAudio !== 'ssh') say(ctx, 'Audio por SSH activado.\n\nEn la computadora desde la que te conectas, ejecuta una vez\nEn Windows: irm https://raw.githubusercontent.com/LCubero/tehablo/master/receptor/install.ps1 | iex\nEn Linux/macOS: curl -fsSL https://raw.githubusercontent.com/LCubero/tehablo/master/receptor/install.sh | sh\n\nInstala un receptor pequeño que reproduce la voz en esa computadora y, si lo aceptas, añade una línea a tu configuración SSH para que la voz viaje cifrada por tu misma conexión SSH. No abre puertos hacia internet.\n\nConsulta la documentación para más información o para hacerlo a mano.\nhttps://github.com/LCubero/tehablo#audio-por-ssh', 'info');
+        if (field === 'audio' && value === 'ssh' && previousAudio !== 'ssh') say(ctx, 'Audio por SSH activado.\n\nEn la computadora desde la que te conectas, ejecuta una vez\nEn Windows: irm https://raw.githubusercontent.com/LCubero/tehablo/master/receptor/install.ps1 | iex\nEn Linux/macOS: curl -fsSL https://raw.githubusercontent.com/LCubero/tehablo/master/receptor/install.sh | sh\n\nInstala un receptor pequeño que espera la voz en 127.0.0.1:18766 y, si lo aceptas, añade RemoteForward 18766 127.0.0.1:18766 a tu configuración SSH para recibirla cifrada por tu misma conexión SSH solo durante cada lectura. El puerto remoto escucha en loopback por defecto; no cambies GatewayPorts. El receptor exige un código antes de reproducir; quien lo tenga (incluido un administrador) puede enviar sonido. Este código no protege la API HTTP local de teHablo en un servidor compartido. Este reenvío no permite controlar teHablo ni el servidor desde esta computadora.\nCódigo de vinculación: ' + store.sshCode?.() + ' (pídelo en el cliente: Vincular servidor).\n\nConsulta la documentación para más información o para hacerlo a mano.\nhttps://github.com/LCubero/tehablo#audio-por-ssh', 'info');
         if (field === 'volume' || field === 'speed' || field === 'audio' || field === 'device') run(async () => {
           await configure({[field]: value, ...(field === 'audio' && value === 'local' && settings.device ? {device: settings.device} : {})});
           if (field === 'audio' && value === 'local') await refreshDevices();
@@ -711,7 +723,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
         const status = await client.action('/status');
         if (generation !== epoch) return;
         // The multi-line status report is too long for the bar, so it stays an ordinary notice.
-        say(ctx, `Barra ${barVisible ? 'visible' : 'oculta'} · indicador ${settings.indicator ? 'visible' : 'oculto'} · automático: ${auto ? 'sí' : 'no'}\nServidor: ${status.state} · listo: ${health.ready ? 'sí' : 'no'}\nAudio: ${settings.audio === 'ssh' ? 'SSH' : 'Local'}\nSalida: ${settings.audio === 'ssh' ? '(SSH: la elige el cliente)' : settings.device || 'Predeterminada'}\nModelo: ${health.model} · voz: ${health.voice} · velocidad: ${health.speed} · volumen: ${Math.round(volume * 100)} %\nDict (diccionario de pronunciación): ${dictEnabled() ? 'sí' : 'no'}\n${help}`, 'info');
+        say(ctx, `Barra ${barVisible ? 'visible' : 'oculta'} · indicador ${settings.indicator ? 'visible' : 'oculto'} · automático: ${auto ? 'sí' : 'no'}\nServidor: ${status.state} · listo: ${health.ready ? 'sí' : 'no'}\nAudio: ${settings.audio === 'ssh' ? 'SSH' : 'Local'}${settings.audio === 'ssh' ? `\nCódigo de vinculación: ${store.sshCode?.()}` : ''}\nSalida: ${settings.audio === 'ssh' ? '(SSH: la elige el cliente)' : settings.device || 'Predeterminada'}\nModelo: ${health.model} · voz: ${health.voice} · velocidad: ${health.speed} · volumen: ${Math.round(volume * 100)} %\nDict (diccionario de pronunciación): ${dictEnabled() ? 'sí' : 'no'}\n${help}`, 'info');
       });
     },
   });

@@ -129,13 +129,14 @@ irm https://raw.githubusercontent.com/LCubero/tehablo/master/receptor/install.ps
 curl -fsSL https://raw.githubusercontent.com/LCubero/tehablo/master/receptor/install.sh | sh
 ```
 
-Si falta uv, muestra el comando oficial para instalarlo y se detiene sin cambios. Después abre un menú: recepción on/off, salida de audio, volumen, configurar SSH, inicio automático, desinstalar y salir. Muestra conexión, recepción y ajustes; se guardan en `~/.tehablo/cliente.json`.
+Si falta uv, muestra el comando oficial para instalarlo y se detiene sin cambios. Después abre un menú: recepción on/off, salida de audio, volumen, configurar SSH, vincular servidor, inicio automático, desinstalar y salir. Muestra «Esperando voz» / «Recibiendo» y ajustes; se guardan en `~/.tehablo/cliente.json`.
 
 **Configurar SSH** pide tu alias (por ejemplo `mi-servidor`), muestra el archivo y la línea y pide permiso. Si aceptas, hace copia y la añade; si no, indica cómo hacerlo a mano. Para automatizar: `sh receptor/install.sh --yes mi-servidor` o `.\receptor\install.ps1 -Yes -HostAlias mi-servidor`. Reconecta SSH después.
 
-`LocalForward 18765 127.0.0.1:8765` lleva la voz del servidor a esta computadora.
-Viaja cifrada por tu propia conexión SSH; el puerto solo escucha en esta computadora (127.0.0.1), no en internet.
-Mientras estás conectado, los programas de esta computadora pueden usar ese puerto para oír o controlar teHablo en el servidor.
+`RemoteForward 18766 127.0.0.1:18766` lleva cada lectura al receptor, que espera en 127.0.0.1:18766 sin sondeos ni tráfico en reposo.
+Viaja cifrada por tu conexión SSH; el puerto remoto escucha en loopback por defecto (no cambies `GatewayPorts`). Este reenvío no permite controlar teHablo ni el servidor desde tu computadora.
+El receptor exige un código: en Pi elige **Audio: SSH**, copia el **Código de vinculación** del aviso o de `/tts status` y añádelo en **Vincular servidor** (o `uv run cliente/tehablo_cliente.py --codigo CODIGO`). Sin él muestra «Sin vincular» y no reproduce. El código se guarda en `~/.tehablo/ssh-codigo` en el servidor (0600 en POSIX); quien lo conozca, incluido un administrador, puede enviar sonido. No protege la API HTTP local de teHablo.
+Si conservas `LocalForward 18765 127.0.0.1:8765`, ya no hace falta: puedes quitarlo a mano; el cliente nunca lo borra.
 
 En Pi, elige **Audio: SSH**. Activa el inicio automático en el cliente para recibir sin ventana al iniciar sesión (`--fondo`); cada día basta con `ssh mi-servidor`. Desde un clon: `./install.sh --cliente` o `.\install.ps1 -Cliente` (también aceptan `--receptor` / `-Receptor`). La salida y el volumen del cliente son independientes de los de Pi.
 
@@ -147,15 +148,15 @@ En Pi, elige **Audio: SSH**. Activa el inicio automático en el cliente para rec
    Host mi-servidor
        HostName <dirección del servidor>
        User <tu usuario remoto>
-       LocalForward 18765 127.0.0.1:8765
+       RemoteForward 18766 127.0.0.1:18766
    ```
-   Lleva la voz por tu propia conexión SSH; el puerto solo escucha en esta computadora.
-3. Desde el clon, ejecuta `uv run cliente/tehablo_cliente.py` en tu computadora y reconecta con `ssh mi-servidor`. El cliente reconecta cada 3 s si se corta el stream; puedes activar inicio automático desde el menú.
-4. En Pi elige **Audio: SSH**.
+   Lleva cada lectura por tu conexión SSH al receptor local; el puerto remoto escucha en loopback por defecto.
+3. Desde el clon, ejecuta `uv run cliente/tehablo_cliente.py` en tu computadora y reconecta con `ssh mi-servidor`. El cliente espera conexiones, sin sondear al servidor; puedes activar inicio automático desde el menú.
+4. En Pi elige **Audio: SSH** y copia el código de `/tts status` en **Vincular servidor** del cliente.
 
-Para desinstalar desde un clon: `sh receptor/install.sh --uninstall` o `.\receptor\install.ps1 -Uninstall`. Sin clon, vuelve a descargar el script y pásale `--uninstall` (`sh -s -- --uninstall`) o `-Uninstall` (`& ([scriptblock]::Create((irm https://raw.githubusercontent.com/LCubero/tehablo/master/receptor/install.ps1))) -Uninstall`). Quita a mano la línea `LocalForward 18765 127.0.0.1:8765` del Host correspondiente en `~/.ssh/config`.
+Para desinstalar desde un clon: `sh receptor/install.sh --uninstall` o `.\receptor\install.ps1 -Uninstall`. Sin clon, vuelve a descargar el script y pásale `--uninstall` (`sh -s -- --uninstall`) o `-Uninstall` (`& ([scriptblock]::Create((irm https://raw.githubusercontent.com/LCubero/tehablo/master/receptor/install.ps1))) -Uninstall`). Quita a mano la línea `RemoteForward 18766 127.0.0.1:18766` del Host correspondiente en `~/.ssh/config`.
 
-Solo para la extensión de Pi: no cubre TUI ni consola, no funciona con mosh ni teléfonos. Necesita SSH con reenvío de puertos permitido y el puerto local 18765 libre. macOS está escrito pero no probado.
+Solo para la extensión de Pi: no cubre TUI ni consola, no funciona con mosh ni teléfonos. Necesita SSH con reenvío de puertos permitido y el puerto 18766 libre en ambos extremos. macOS está escrito pero no probado.
 
 ## Uso en Pi
 

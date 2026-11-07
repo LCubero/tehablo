@@ -7,13 +7,11 @@ import json
 import os
 import sys
 import tempfile
-import threading
 import unittest
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from unittest.mock import MagicMock, Mock, patch
 
 ROOT = Path(__file__).resolve().parents[1]
-SCRATCH = ROOT / '.repo-harness/tmp/t8-check'
+SCRATCH = ROOT / '.repo-harness/tmp/t9-check'
 SCRATCH.mkdir(parents=True, exist_ok=True)
 spec = importlib.util.spec_from_file_location('cliente', ROOT / 'cliente/tehablo_cliente.py')
 c = importlib.util.module_from_spec(spec)
@@ -28,16 +26,16 @@ class ClientTest(unittest.TestCase):
 
     def test_ssh_matrix_idempotent_backup_only_on_change(self):
         cases = [
-            (b'Host vps\n User a\n', b'Host vps\n User a\n    LocalForward 18765 127.0.0.1:8765\n'),
-            (b'Host vps\n User a\nHost vps\n IdentityFile k\n', b'Host vps\n User a\n    LocalForward 18765 127.0.0.1:8765\nHost vps\n IdentityFile k\n'),
-            (b'Host vps\n LocalForward localhost:18765 127.0.0.1:8765\n', None),
-            (b'Host other\n User a\nHost vps\n LocalForward 18765 127.0.0.1:8765\n', None),
-            (b'Host vps\n User a\nHost vps\n LocalForward [::1]:18765 elsewhere:9\n', None),
-            (b'Host other\r\n User a', b'Host other\r\n User a\r\nHost vps\r\n    LocalForward 18765 127.0.0.1:8765\r\n'),
-            (b'Host vps\r\n User a', b'Host vps\r\n User a\r\n    LocalForward 18765 127.0.0.1:8765\r\n'),
-            (b'Host vps\nMatch all\n User b', b'Host vps\n    LocalForward 18765 127.0.0.1:8765\nMatch all\n User b'),
-            (b'Host other\n LocalForward 18765 elsewhere:9\n', b'Host other\n LocalForward 18765 elsewhere:9\nHost vps\n    LocalForward 18765 127.0.0.1:8765\n'),
-            (b'Host one vps\n User a\n', b'Host one vps\n User a\n    LocalForward 18765 127.0.0.1:8765\n'),
+            (b'Host vps\n User a\n', b'Host vps\n User a\n    RemoteForward 18766 127.0.0.1:18766\n'),
+            (b'Host vps\n User a\nHost vps\n IdentityFile k\n', b'Host vps\n User a\n    RemoteForward 18766 127.0.0.1:18766\nHost vps\n IdentityFile k\n'),
+            (b'Host vps\n RemoteForward localhost:18766 127.0.0.1:18766\n', None),
+            (b'Host other\n User a\nHost vps\n RemoteForward 18766 127.0.0.1:18766\n', None),
+            (b'Host vps\n User a\nHost vps\n RemoteForward [::1]:18766 elsewhere:9\n', None),
+            (b'Host other\r\n User a', b'Host other\r\n User a\r\nHost vps\r\n    RemoteForward 18766 127.0.0.1:18766\r\n'),
+            (b'Host vps\r\n User a', b'Host vps\r\n User a\r\n    RemoteForward 18766 127.0.0.1:18766\r\n'),
+            (b'Host vps\nMatch all\n User b', b'Host vps\n    RemoteForward 18766 127.0.0.1:18766\nMatch all\n User b'),
+            (b'Host other\n RemoteForward 18766 elsewhere:9\n', b'Host other\n RemoteForward 18766 elsewhere:9\nHost vps\n    RemoteForward 18766 127.0.0.1:18766\n'),
+            (b'Host one vps\n User a\n', b'Host one vps\n User a\n    RemoteForward 18766 127.0.0.1:18766\n'),
         ]
         for i, (before, after) in enumerate(cases):
             with self.subTest(i=i):
@@ -96,16 +94,41 @@ class ClientTest(unittest.TestCase):
         self.assertEqual(c.ssh_text(before, 'vps'), expected)
         self.assertEqual(c.ssh_text(expected, 'vps'), expected)
 
+    def test_old_forward_is_mentioned_and_never_deleted(self):
+        path = self.home / 'config'
+        before = b'Host vps\n    LocalForward 18765 127.0.0.1:8765\n'
+        path.write_bytes(before)
+        log = []
+        c.configure_ssh('vps', path=path, yes=True, output=log.append)
+        self.assertTrue(path.read_bytes().startswith(before))
+        self.assertIn('LocalForward 18765', '\n'.join(log))
+        self.assertIn('otro usuario', '\n'.join(log))
+        self.assertIn('controlar', '\n'.join(log))
+
     def test_settings(self):
         path = self.home / 'cliente.json'
         self.assertEqual(c.load_settings(path), c.DEFAULTS)
-        settings = dict(device='Fake', volume=0.4, enabled=False)
+        settings = dict(device='Fake', volume=0.4, enabled=False, codes=[])
         c.save_settings(settings, path)
         self.assertEqual(c.load_settings(path), settings)
         path.write_text('{broken')
         self.assertEqual(c.load_settings(path), c.DEFAULTS)
         path.write_text(json.dumps(dict(device=4, volume=99, enabled='yes')))
         self.assertEqual(c.load_settings(path), c.DEFAULTS)
+
+    def test_pairing_list_migration_normalization_and_idempotence(self):
+        path = self.home / 'cliente.json'
+        path.write_text(json.dumps(dict(device='Fake', volume=.4, enabled=True)))
+        settings = c.load_settings(path)
+        self.assertEqual(settings['codes'], [])
+        c.pair(settings, '0123-4567-89AB-CDEF-0123-4567-89AB-CDEF')
+        c.pair(settings, self.CODE)
+        c.pair(settings, 'f' * 32)
+        c.save_settings(settings, path)
+        self.assertEqual(c.load_settings(path)['codes'], [self.CODE, 'f' * 32])
+        self.assertEqual(c.load_settings(path)['device'], 'Fake')
+        with self.assertRaises(ValueError):
+            c.pair(settings, 'bad')
 
     def test_volume(self):
         data = array.array('h', [-32768, -100, 0, 100, 32767])
@@ -127,99 +150,76 @@ class ClientTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             c.resolve_device('Missing', sd)
 
-    def test_prebuffers_200_ms_before_playing_and_plays_everything(self):
-        # Writing each 20 ms packet as it arrives empties the device buffer on network jitter.
-        stop = threading.Event()
-        class Handler(BaseHTTPRequestHandler):
-            def do_GET(self):
-                self.send_response(200)
-                self.end_headers()
-                self.wfile.write(bytes(44))
-                for _ in range(15):
-                    self.wfile.write(b'\x01\x00' * 480)
-                    self.wfile.flush()
-            def log_message(self, *args):
-                pass
-        server = ThreadingHTTPServer(('127.0.0.1', 0), Handler)
-        threading.Thread(target=server.serve_forever, daemon=True).start()
-        self.addCleanup(server.server_close)
-        self.addCleanup(server.shutdown)
+    CODE = '0123456789abcdef0123456789abcdef'
+
+    def receive(self, chunks, settings=None, connections=1, max_recv=960):
         sd = MagicMock()
-        stream = sd.RawOutputStream.return_value.__enter__.return_value
-        receiver = c.Receiver(dict(c.DEFAULTS), sd=sd, url=f'http://127.0.0.1:{server.server_port}/audio.wav')
-        receiver.stop_event = stop
-        with patch.object(stop, 'wait', side_effect=lambda _: stop.set()):
+        receiver = c.Receiver(settings or dict(c.DEFAULTS, codes=[self.CODE]), sd=sd)
+        peers = []
+        for _ in range(connections):
+            peer = MagicMock()
+            data = bytearray(b''.join(chunks))
+            def recv(size, data=data):
+                size = min(size, max_recv)
+                result = bytes(data[:size])
+                del data[:size]
+                return result
+            peer.recv.side_effect = recv
+            peers.append(peer)
+        listener = MagicMock()
+        count = 0
+        def accept():
+            nonlocal count
+            if count == len(peers):
+                receiver.stop_event.set()
+                raise c.socket.timeout()
+            peer = peers[count]
+            count += 1
+            return peer, ('127.0.0.1', 12345)
+        listener.accept.side_effect = accept
+        with patch.object(receiver.stop_event, 'wait', side_effect=lambda _: receiver.stop_event.set()), patch.object(c.socket, 'socket') as factory:
+            factory.return_value.__enter__.return_value = listener
             receiver.run()
+        listener.bind.assert_called_once_with(('127.0.0.1', 18766))
+        self.assertFalse(receiver.receiving)
+        for peer in peers:
+            peer.close.assert_called_once()
+        return sd, receiver
+
+    def test_prebuffers_200_ms_and_returns_to_waiting_after_eof(self):
+        sd, _ = self.receive([b'TEHABLO/1 ' + self.CODE.encode() + b'\n', c.WAV_HEADER,
+                              b'\x01\x00' * (480 * 15)], connections=2)
+        stream = sd.RawOutputStream.return_value.__enter__.return_value
         sizes = [len(call.args[0]) for call in stream.write.call_args_list]
         self.assertGreaterEqual(sizes[0], 9600)
-        self.assertEqual(sum(sizes), 15 * 960)
+        self.assertEqual(sum(sizes), 2 * 15 * 960)
+        self.assertEqual(sd.RawOutputStream.call_count, 2)
+        self.assertEqual(sd.RawOutputStream.call_args.kwargs['latency'], 'high')
 
-    def test_reconnect_after_eof_no_real_audio(self):
-        calls = []
-        stop = threading.Event()
-        class Handler(BaseHTTPRequestHandler):
-            def do_GET(self):
-                calls.append(self.path)
-                self.send_response(200)
-                self.end_headers()
-                self.wfile.write(bytes(44) + b'\x64\x00' * 10)
-            def log_message(self, *args):
-                pass
-        server = ThreadingHTTPServer(('127.0.0.1', 0), Handler)
-        thread = threading.Thread(target=server.serve_forever, daemon=True)
-        thread.start()
-        self.addCleanup(server.server_close)
-        self.addCleanup(server.shutdown)
-        sd = MagicMock()
-        stream = sd.RawOutputStream.return_value.__enter__.return_value
-        def wait(seconds):
-            self.assertEqual(seconds, 3)
-            if len(calls) >= 2:
-                stop.set()
-        receiver = c.Receiver(dict(c.DEFAULTS), sd=sd, url=f'http://127.0.0.1:{server.server_port}/audio.wav')
-        receiver.stop_event = stop
-        with patch.object(stop, 'wait', side_effect=wait):
-            receiver.run()
-        self.assertEqual(calls, ['/audio.wav'] * 2)
-        self.assertEqual(stream.write.call_count, 2)
-        self.assertEqual(stream.write.call_args.args[0], b'\x64\x00' * 10)
-        self.assertEqual(sd.RawOutputStream.call_args.kwargs['samplerate'], 24000)
-        self.assertFalse(receiver.receiving)
+    def test_wrong_missing_code_and_bad_header_never_open_device(self):
+        for wire in (b'', b'TEHABLO/1 ' + b'f' * 32 + b'\n' + c.WAV_HEADER,
+                     b'TEHABLO/1 ' + self.CODE.encode() + b'\nBAD'):
+            with self.subTest(wire=wire):
+                sd, _ = self.receive([wire])
+                sd.RawOutputStream.assert_not_called()
 
-    def test_disabled_reception_never_connects_or_opens_device(self):
-        sd = Mock()
-        receiver = c.Receiver(dict(c.DEFAULTS, enabled=False), sd=sd)
-        def wait(seconds):
-            self.assertEqual(seconds, 1)
-            receiver.stop_event.set()
-        with patch.object(receiver.stop_event, 'wait', side_effect=wait), patch.object(c.urllib.request, 'urlopen') as connect:
-            receiver.run()
-        connect.assert_not_called()
-        sd.RawOutputStream.assert_not_called()
+    def test_disabled_or_unpaired_never_opens_device(self):
+        for settings in (dict(c.DEFAULTS), dict(c.DEFAULTS, codes=[self.CODE], enabled=False)):
+            sd, _ = self.receive([b'TEHABLO/1 ' + self.CODE.encode() + b'\n' + c.WAV_HEADER], settings)
+            sd.RawOutputStream.assert_not_called()
 
-    def test_short_header_retries_without_opening_device(self):
-        sd = Mock()
-        receiver = c.Receiver(dict(c.DEFAULTS), sd=sd)
-        response = MagicMock()
-        response.__enter__.return_value.read.return_value = b'bad'
-        def wait(seconds):
-            self.assertEqual(seconds, 3)
-            receiver.stop_event.set()
-        with patch.object(c.urllib.request, 'urlopen', return_value=response), patch.object(receiver.stop_event, 'wait', side_effect=wait):
-            receiver.run()
-        sd.RawOutputStream.assert_not_called()
-        self.assertIn('incompleta', receiver.error)
+    def test_short_pcm_volume(self):
+        sd, _ = self.receive([b'TEHABLO/1 ' + self.CODE.encode() + b'\n', c.WAV_HEADER,
+                              bytes([100, 0]) * 2], dict(c.DEFAULTS, codes=[self.CODE], volume=.5), max_recv=1)
+        sd.RawOutputStream.return_value.__enter__.return_value.write.assert_called_once_with(bytes([50, 0]) * 2)
 
-    def test_fragmented_pcm_and_volume_with_fake_response(self):
-        sd = MagicMock()
-        receiver = c.Receiver(dict(c.DEFAULTS, volume=0.5), sd=sd)
-        response = MagicMock()
-        response.__enter__.return_value.read.return_value = bytes(44)
-        response.__enter__.return_value.read1.side_effect = [bytes([100]), bytes([0, 100, 0]), b'']
-        with patch.object(c.urllib.request, 'urlopen', return_value=response), patch.object(receiver.stop_event, 'wait', side_effect=lambda s: receiver.stop_event.set()):
+    def test_port_busy_is_clear_warning(self):
+        receiver = c.Receiver(dict(c.DEFAULTS), sd=Mock())
+        with patch.object(receiver.stop_event, 'wait', side_effect=lambda _: receiver.stop_event.set()), patch.object(c.socket, 'socket') as factory:
+            factory.return_value.__enter__.return_value.bind.side_effect = OSError('busy')
             receiver.run()
-        stream = sd.RawOutputStream.return_value.__enter__.return_value
-        stream.write.assert_called_once_with(bytes([50, 0]) * 2)
+        self.assertIn('18766', receiver.error)
+        self.assertIn('ocupado', receiver.error)
 
     def test_yes_and_uninstall_cli_are_isolated(self):
         manager = Mock()
@@ -227,8 +227,9 @@ class ClientTest(unittest.TestCase):
         installed.parent.mkdir(parents=True)
         installed.write_text('# downloaded client')
         with patch.dict(os.environ, HOME=str(self.home), APPDATA=str(self.home / 'AppData')), patch.object(c, 'Autostart', return_value=manager), patch.object(c, 'sound_device') as sound, patch.object(c, 'print'):
-            with patch.object(sys, 'argv', ['cliente', '--yes', 'vps']):
+            with patch.object(sys, 'argv', ['cliente', '--codigo', self.CODE, '--yes', 'vps']):
                 c.main()
+            self.assertEqual(c.load_settings()['codes'], [self.CODE])
             manager.enable.assert_called_once()
             manager.start_windows.assert_called_once()
             self.assertIn(c.FORWARD, (self.home / '.ssh/config').read_text())

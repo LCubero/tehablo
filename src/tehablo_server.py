@@ -11,7 +11,7 @@ import math
 import os
 from pathlib import Path
 import socket
-import queue
+import secrets
 import struct
 import sys
 import threading
@@ -164,12 +164,33 @@ WAV_HEADER = struct.pack('<4sI4s4sIHHIIHH4sI', b'RIFF', 0xFFFFFFFF, b'WAVE',
                          b'fmt ', 16, 1, 1, 24000, 48000, 2, 16, b'data', 0xFFFFFFFF)
 
 
+def read_pairing_code(path):
+    """Create privately and exclusively; concurrent servers reuse the same code."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    except FileExistsError:
+        pass
+    else:
+        with os.fdopen(fd, 'w', encoding='ascii') as file:
+            file.write(secrets.token_hex(16) + '\n')
+    code = path.read_text(encoding='ascii').strip()
+    if len(code) != 32 or any(c not in '0123456789abcdef' for c in code):
+        raise ValueError('Invalid SSH pairing code file')
+    return code
+
+
+def load_ssh_code():
+    return read_pairing_code(Path.home() / '.tehablo/ssh-codigo')
+
+
 class SSHAudio:
-    """One real-time callback clock; slow listeners disconnect rather than accumulate delay."""
+    """One paced outbound WAV connection per reading; failure never stops playback."""
     def __init__(self, service):
         self.service = service
-        self.lock = threading.Lock()
-        self.listeners = set()
+        self.lock = threading.RLock()
+        self.connection = None
+        self.attempted = False
         self.rate = 24000
         self.callback = None
         self.closed = threading.Event()
@@ -178,36 +199,53 @@ class SSHAudio:
 
     def attach(self, rate, callback):
         with self.lock:
+            self.disconnect()
+            self.attempted = False
             self.rate, self.callback = rate, callback
         return self
 
     def close(self):
-        # A reading's sink is closed before the next reading, not the HTTP stream.
+        # The clock closes after its final callback packet, including queue promotion.
         with self.lock:
             self.callback = None
 
-    def subscribe(self):
-        listener = queue.Queue(maxsize=10)  # at most 200 ms; no stale speech on reconnect
-        with self.lock:
-            self.listeners.add(listener)
-        return listener
+    def disconnect(self):
+        if self.connection is not None:
+            self.connection.close()
+            self.connection = None
 
-    def unsubscribe(self, listener):
-        with self.lock:
-            self.listeners.discard(listener)
+    def failed(self, exc):
+        self.disconnect()
+        reason = ' '.join(str(exc).splitlines())
+        print(f'SSH audio skipped for this reading: {reason}', file=sys.stderr, flush=True)
 
     def shutdown(self):
         self.closed.set()
         self.thread.join(timeout=2)
+        with self.lock:
+            self.disconnect()
 
     def run(self):
-        while not self.closed.wait(.02):
-            with self.lock:
+        next_tick = time.monotonic() + .02
+        while not self.closed.wait(max(0, next_tick - time.monotonic())):
+            next_tick = max(next_tick + .02, time.monotonic())
+            # Same lock order as control/clear; the callback re-enters the condition.
+            with self.service.condition, self.lock:
                 rate, callback = self.rate, self.callback
-                # Nothing playing (idle, paused, stopped), nothing to send: the sink stays open
-                # between readings, and its silence would cost ~170 MB/h over SSH.
-                if callback is None or self.service.audio != 'ssh' or self.service.state not in ('generating', 'playing'):
+                if callback is None or self.service.audio != 'ssh' or self.service.state not in ('generating', 'playing', 'paused'):
+                    self.disconnect()
                     continue
+                if self.service.state == 'paused':
+                    continue
+                if not self.attempted:
+                    self.attempted = True
+                    try:
+                        self.connection = socket.create_connection(('127.0.0.1', 18766), timeout=.5)
+                        self.connection.settimeout(.1)
+                        self.connection.sendall(b'TEHABLO/1 ' + load_ssh_code().encode('ascii') + b'\n')
+                        self.connection.sendall(WAV_HEADER)
+                    except (OSError, ValueError) as exc:
+                        self.failed(exc)
                 frames = round(rate * .02)
                 samples = np.zeros((frames, 1), dtype=np.float32)
                 callback(samples, frames, None, None)
@@ -215,11 +253,13 @@ class SSHAudio:
                 if rate != 24000:
                     data = np.interp(np.arange(480) * rate / 24000, np.arange(frames), data)
                 packet = (np.clip(data, -1, 1) * 32767).astype('<i2').tobytes()
-                for listener in list(self.listeners):
+                if self.connection is not None:
                     try:
-                        listener.put_nowait(packet)
-                    except queue.Full:
-                        self.listeners.discard(listener)
+                        self.connection.sendall(packet)
+                    except OSError as exc:
+                        self.failed(exc)
+                if self.callback is None or self.service.state not in ('generating', 'playing', 'paused'):
+                    self.disconnect()
 
 
 class SpeechService:
@@ -361,6 +401,7 @@ class SpeechService:
                     **({'promoted': list(self.promoted)} if self.promoted else {})}
 
     def clear(self):
+        self.ssh_audio.close()
         self.speech_error = None
         self.cancel.set()
         self.pending = None
@@ -685,7 +726,7 @@ class SpeechHTTPServer(ThreadingHTTPServer):
 class Handler(BaseHTTPRequestHandler):
     def parse_request(self):
         parsed = super().parse_request()
-        if parsed and self.path != '/audio.wav':
+        if parsed:
             self.server.last_request = time.monotonic()
         return parsed
 
@@ -716,34 +757,6 @@ class Handler(BaseHTTPRequestHandler):
         if self.reject_origin():
             return
         service = self.server.service
-        if self.path == '/audio.wav':
-            if service.audio != 'ssh':
-                self.reply(409, {'error': 'audio stream requires ssh mode'})
-                return
-            listener = service.ssh_audio.subscribe()
-            self.close_connection = True
-            self.connection.settimeout(.25)
-            try:
-                self.send_response(200)
-                self.send_header('Content-Type', 'audio/wav')
-                self.end_headers()
-                self.wfile.write(WAV_HEADER)
-                self.wfile.flush()
-                while not service.closed and service.audio == 'ssh' and not self.server.streams_closed.is_set():
-                    with service.ssh_audio.lock:
-                        if listener not in service.ssh_audio.listeners:
-                            break
-                    try:
-                        packet = listener.get(timeout=.1)
-                    except queue.Empty:
-                        continue
-                    self.wfile.write(packet)
-                    self.wfile.flush()
-            except (OSError, ConnectionError):
-                pass
-            finally:
-                service.ssh_audio.unsubscribe(listener)
-            return
         routes = {'/health': service.health, '/status': service.status, '/devices': service.devices,
                   '/voices': lambda: {'voices': service.voices(), 'catalog': service.voice_table()}}
         if self.path not in routes:

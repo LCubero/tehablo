@@ -6,22 +6,38 @@
 import argparse
 from array import array
 import json
+import hmac
 import os
 from pathlib import Path
 import platform
 import plistlib
 import re
 import shutil
+import socket
+import struct
 import subprocess
 import sys
 import threading
 import time
-import urllib.request
 import uuid
 
-URL = 'http://127.0.0.1:18765/audio.wav'
-FORWARD = 'LocalForward 18765 127.0.0.1:8765'
-DEFAULTS = dict(device='', volume=1.0, enabled=True)
+ADDRESS = ('127.0.0.1', 18766)
+FORWARD = 'RemoteForward 18766 127.0.0.1:18766'
+DEFAULTS = dict(device='', volume=1.0, enabled=True, codes=[])
+WAV_HEADER = struct.pack('<4sI4s4sIHHIIHH4sI', b'RIFF', 0xFFFFFFFF, b'WAVE',
+                         b'fmt ', 16, 1, 1, 24000, 48000, 2, 16, b'data', 0xFFFFFFFF)
+
+
+def normalize_code(value):
+    code = value.replace('-', '').replace(' ', '').lower()
+    if not re.fullmatch(r'[0-9a-f]{32}', code):
+        raise ValueError('Codigo no valido: copia el codigo completo de /tts status en el servidor.')
+    return code
+
+
+def pair(settings, code):
+    code = normalize_code(code)
+    settings['codes'] = list(dict.fromkeys([*settings.get('codes', []), code]))
 
 
 def home_dir():
@@ -39,7 +55,11 @@ def load_settings(path=None):
                 or type(value.get('volume')) not in (int, float)
                 or not 0 <= value['volume'] <= 1 or type(value.get('enabled')) is not bool):
             return dict(DEFAULTS)
-        return {key: value[key] for key in DEFAULTS}
+        codes = value.get('codes', [])
+        if not isinstance(codes, list) or any(not isinstance(code, str) for code in codes):
+            return dict(DEFAULTS)
+        return dict(device=value['device'], volume=value['volume'], enabled=value['enabled'],
+                    codes=[normalize_code(code) for code in codes])
     except (OSError, ValueError):
         return dict(DEFAULTS)
 
@@ -48,7 +68,10 @@ def save_settings(settings, path=None):
     path = path or settings_path()
     path.parent.mkdir(parents=True, exist_ok=True)
     temp = path.with_suffix('.json.tmp')
-    temp.write_text(json.dumps(settings, ensure_ascii=False), encoding='utf-8')
+    # Pairing codes are bearer credentials, not ordinary public preferences.
+    fd = os.open(temp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, 'w', encoding='utf-8') as file:
+        file.write(json.dumps(settings, ensure_ascii=False))
     temp.replace(path)
 
 
@@ -77,7 +100,7 @@ def ssh_text(text, alias):
         end = headers[i + 1].start() if i + 1 < len(headers) else len(text)
         if tokens[0].lower() == 'host' and alias in tokens[1:]:
             body = text[header.start():end]
-            if re.search(r'(?im)^[ \t]*LocalForward[ \t]+(?:\S*:)?18765(?:[ \t]|$)', body):
+            if re.search(r'(?im)^[ \t]*RemoteForward[ \t]+(?:\S*:)?18766(?:[ \t]|$)', body):
                 return text
             if insert_at is None:
                 insert_at = end
@@ -96,11 +119,15 @@ def configure_ssh(alias, path=None, yes=False, ask=None, output=print):
     before = path.read_bytes() if path.exists() else b''
     text = before.decode('utf-8')
     after = ssh_text(text, alias).encode('utf-8')
+    if re.search(r'(?im)^[ \t]*LocalForward[ \t]+(?:\S*:)?18765[ \t]+127\.0\.0\.1:8765(?:[ \t\r\n]|$)', text):
+        output('La linea antigua LocalForward 18765 127.0.0.1:8765 ya no hace falta; puedes quitarla a mano. No la borramos.')
     if before == after:
-        output(f'{path} ya reenvia el puerto 18765 para {alias}; no se cambia.')
+        output(f'{path} ya reenvia el puerto 18766 para {alias}; no se cambia.')
         return False
     for line in (f'Archivo: {path}', f'Host {alias}', '    ' + FORWARD,
-                 'Lleva la voz del servidor a esta computadora por tu conexion SSH; el puerto solo escucha en esta computadora (127.0.0.1).',
+                 'Lleva la voz a este receptor (127.0.0.1:18766) por tu conexion SSH; el puerto remoto escucha en loopback por defecto (no cambies GatewayPorts).',
+                 'En un servidor compartido, otro usuario podria intentar enviar sonido: el receptor exige el codigo de vinculacion. Quien conozca el codigo puede enviar voz; un administrador puede leerlo.',
+                 'Nada en esta computadora puede controlar teHablo ni el servidor por este reenvio. El codigo no protege la API HTTP local de teHablo en un servidor compartido.',
                  'Se hara una copia de seguridad del archivo existente antes de cambiarlo.'):
         output(line)
     if not yes:
@@ -153,14 +180,12 @@ def resolve_device(name, sd):
 
 
 class Receiver:
-    def __init__(self, settings, sd=None, url=URL, reload_settings=None, state_path=None, shutdown_file=None):
+    def __init__(self, settings, sd=None, reload_settings=None, state_path=None, shutdown_file=None):
         self.settings = settings
         self.sd = sd
-        self.url = url
         self.reload_settings = reload_settings
         self.stop_event = threading.Event()
         self.receiving = False
-        self.reachable = False
         self.error = ''
         self.state_path = state_path
         self.shutdown_file = shutdown_file
@@ -171,73 +196,121 @@ class Receiver:
             save_settings(dict(receiving=self.receiving, timestamp=time.time()), self.state_path)
             self.last_report = time.monotonic()
 
-    def run(self):
-        while not self.stop_event.is_set():
-            if self.shutdown_file and self.shutdown_file.exists():
-                return
-            if self.reload_settings:
-                self.settings.update(self.reload_settings())
+    def refresh_settings(self):
+        if self.reload_settings:
+            self.settings.update(self.reload_settings())
+        if self.shutdown_file and self.shutdown_file.exists():
+            self.stop_event.set()
+
+    def read_exact(self, connection, size):
+        data = b''
+        deadline = time.monotonic() + 1
+        while len(data) < size and not self.stop_event.is_set():
+            self.refresh_settings()
             if not self.settings['enabled']:
-                self.receiving = False
-                self.report()
-                self.stop_event.wait(1)
-                continue
+                raise OSError('Recepcion apagada')
+            if time.monotonic() >= deadline:
+                raise OSError('Vinculacion o cabecera incompleta')
             try:
-                # Timeout bounds idle waits and shutdown; no busy polling without data.
-                with urllib.request.urlopen(self.url, timeout=3) as response:
-                    self.reachable = True
-                    header = response.read(44)
-                    if len(header) != 44:
-                        raise OSError('Cabecera WAV incompleta')
-                    sd = self.sd or sound_device()
-                    device_name = self.settings['device']
-                    with sd.RawOutputStream(samplerate=24000, channels=1, dtype='int16',
-                                            device=resolve_device(device_name, sd), blocksize=480,
-                                            latency='high') as stream:
-                        pending = queued = b''
-                        last_data = checked = 0.0
-                        while not self.stop_event.is_set():
-                            now = time.monotonic()
-                            if self.reload_settings and now - checked > .5:
-                                # Reading the settings file on every packet costs disk I/O and causes cuts.
-                                checked = now
-                                self.settings.update(self.reload_settings())
-                            if not self.settings['enabled'] or self.settings['device'] != device_name:
-                                break
-                            chunk = response.read1(960)
-                            if not chunk:
-                                break
-                            now = time.monotonic()
-                            data = pending + chunk
-                            pending = data[len(data) // 2 * 2:]
-                            data = data[:len(data) // 2 * 2]
-                            if not data:
-                                continue
-                            # After a pause the server sends nothing; keep ~200 ms before playing again
-                            # so network jitter does not empty the device buffer (micro cuts).
-                            if now - last_data > .3:
-                                if queued:  # a very short reading never reached 200 ms
-                                    stream.write(scale_pcm(queued, self.settings['volume']))
-                                queued = b''
-                            last_data = now
-                            if queued is not None:
-                                queued += data
-                                if len(queued) < 9600:
-                                    continue
-                                data, queued = queued, None
-                            self.receiving = True
-                            stream.write(scale_pcm(data, self.settings['volume']))
-                            self.report()
-                        if queued:
-                            stream.write(scale_pcm(queued, self.settings['volume']))
-                    self.error = ''
-            except Exception as exc:
-                self.reachable = False
-                self.error = str(exc)
-            finally:
-                self.receiving = False
-                self.report(force=True)
-            self.stop_event.wait(3)
+                chunk = connection.recv(size - len(data))
+            except socket.timeout:
+                continue
+            if not chunk:
+                raise OSError('Vinculacion o cabecera incompleta')
+            data += chunk
+        return data
+
+    def play(self, connection):
+        line = self.read_exact(connection, 43)
+        if not line.startswith(b'TEHABLO/1 ') or not line.endswith(b'\n'):
+            raise OSError('Codigo de vinculacion no valido')
+        code = line[10:-1]
+        # Compare every saved code; never open the sound device before authentication.
+        valid = False
+        for saved in self.settings.get('codes', []):
+            valid |= hmac.compare_digest(code, saved.encode('ascii'))
+        if not valid:
+            raise OSError('Servidor sin vincular: usa Vincular servidor')
+        if self.read_exact(connection, 44) != WAV_HEADER:
+            raise OSError('Cabecera WAV no valida')
+        if self.stop_event.is_set() or not self.settings['enabled']:
+            return
+        sd = self.sd or sound_device()
+        device_name = self.settings['device']
+        with sd.RawOutputStream(samplerate=24000, channels=1, dtype='int16',
+                                device=resolve_device(device_name, sd), blocksize=480,
+                                latency='high') as stream:
+            pending = queued = b''
+            last_data = checked = 0.0
+            while not self.stop_event.is_set():
+                now = time.monotonic()
+                if now - checked > .5:
+                    checked = now
+                    self.refresh_settings()
+                if self.stop_event.is_set() or not self.settings['enabled'] or self.settings['device'] != device_name:
+                    return
+                try:
+                    chunk = connection.recv(960)
+                except socket.timeout:
+                    self.receiving = False
+                    self.report()
+                    continue
+                if not chunk:
+                    if queued:
+                        stream.write(scale_pcm(queued, self.settings['volume']))
+                    return
+                now = time.monotonic()
+                data = pending + chunk
+                pending = data[len(data) // 2 * 2:]
+                data = data[:len(data) // 2 * 2]
+                if not data:
+                    continue
+                # Keep the existing 200 ms prebuffer, including after pauses.
+                if now - last_data > .3:
+                    if queued:
+                        stream.write(scale_pcm(queued, self.settings['volume']))
+                    queued = b''
+                last_data = now
+                self.receiving = True
+                self.report()
+                if queued is not None:
+                    queued += data
+                    if len(queued) < 9600:
+                        continue
+                    data, queued = queued, None
+                stream.write(scale_pcm(data, self.settings['volume']))
+
+    def run(self):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as listener:
+            try:
+                if os.name == 'nt':
+                    listener.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
+                listener.bind(ADDRESS)
+                listener.listen(1)
+                listener.settimeout(.5)
+            except OSError:
+                self.error = 'Puerto 18766 ocupado; cierra el otro receptor o programa que lo usa.'
+                return
+            while not self.stop_event.is_set():
+                self.refresh_settings()
+                if self.stop_event.is_set():
+                    break
+                self.report()
+                try:
+                    connection, _ = listener.accept()
+                except socket.timeout:
+                    continue
+                try:
+                    connection.settimeout(.5)
+                    if self.settings['enabled'] and self.settings.get('codes'):
+                        self.play(connection)
+                        self.error = ''
+                except Exception as exc:
+                    self.error = str(exc)
+                finally:
+                    connection.close()
+                    self.receiving = False
+                    self.report(force=True)
 
 
 def run_command(command):
@@ -339,21 +412,16 @@ def uninstall(manager):
 
 def menu(settings, manager, receiver):
     while True:
-        try:
-            with urllib.request.urlopen('http://127.0.0.1:18765/health', timeout=0.4):
-                reachable = True
-        except OSError:
-            reachable = False
         print('\n--- teHablo: cliente SSH ---')
-        print('Servidor por tunel:', 'accesible' if reachable else 'sin conexion')
         receiving = receiver.receiving
         try:
             state = json.loads((home_dir() / '.tehablo/cliente-estado.json').read_text(encoding='utf-8'))
             receiving = state['receiving'] and time.time() - state['timestamp'] < 5
         except (OSError, ValueError, KeyError, TypeError):
             pass
-        print('Recepcion:', 'activada' if settings['enabled'] else 'apagada',
-              '| Recibiendo:', 'si' if receiving else 'no')
+        print('Recepcion:', ('Recibiendo' if receiving else 'Esperando voz') if settings['enabled'] else 'apagada')
+        if not settings.get('codes'):
+            print('Sin vincular: elige Vincular servidor y copia el codigo de /tts status.')
         print('Salida:', settings['device'] or 'Predeterminada', '| Volumen:', f"{settings['volume']:.0%}",
               '| Inicio automatico:', 'si' if manager.enabled() else 'no')
         if receiver.error:
@@ -361,7 +429,7 @@ def menu(settings, manager, receiver):
         # Each option says what it will do, not a toggle the user has to guess.
         print(f"1. {'Apagar' if settings['enabled'] else 'Encender'} recepcion\n2. Elegir salida\n3. Subir volumen\n"
               f"4. Bajar volumen\n5. Configurar SSH\n6. {'Quitar' if manager.enabled() else 'Activar'} inicio automatico\n"
-              '7. Desinstalar\n0. Salir')
+              '7. Desinstalar\n8. Vincular servidor\n0. Salir')
         try:
             choice = terminal_input('Opcion: ')
             if choice == '0':
@@ -382,6 +450,8 @@ def menu(settings, manager, receiver):
                 configure_ssh(terminal_input('Alias SSH (por ejemplo mi-servidor): '))
             elif choice == '6':
                 manager.disable() if manager.enabled() else manager.enable()
+            elif choice == '8':
+                pair(settings, terminal_input('Codigo de vinculacion del servidor (/tts status): '))
             elif choice == '7':
                 if terminal_input('¿Desinstalar el cliente? [s/N] ').lower() in ('s', 'si', 'sí', 'yes', 'y'):
                     uninstall(manager)
@@ -399,6 +469,7 @@ def main():
     parser.add_argument('--yes', action='store_true')
     parser.add_argument('--uninstall', action='store_true')
     parser.add_argument('--config-only', action='store_true')
+    parser.add_argument('--codigo', help='Codigo de vinculacion mostrado por /tts status')
     parser.add_argument('alias', nargs='?')
     args = parser.parse_args()
     manager = Autostart()
@@ -406,6 +477,12 @@ def main():
         uninstall(manager)
         return
     settings = load_settings()
+    if args.codigo:
+        try:
+            pair(settings, args.codigo)
+        except ValueError as exc:
+            parser.error(str(exc))
+        save_settings(settings)
     shutdown_file = home_dir() / '.tehablo/cliente-retirado'
     if not args.fondo:
         shutdown_file.unlink(missing_ok=True)
