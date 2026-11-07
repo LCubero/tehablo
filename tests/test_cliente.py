@@ -386,6 +386,26 @@ class MenuTest(unittest.IsolatedAsyncioTestCase):
     def text(self, app, selector):
         return str(app.query_one(selector).render())
 
+    async def test_ssh_row_says_searching_while_sessions_load(self):
+        release = c.threading.Event()
+        def slow_listing(**kwargs):
+            release.wait(5)
+            return []
+        app = c.menu_app(self.settings, self.receiver)
+        async with app.run_test(size=(100, 45)) as pilot:
+            with patch.object(c, 'open_ssh_sessions', side_effect=slow_listing):
+                await pilot.click('#ssh')
+                await pilot.pause()
+                self.assertIn('Buscando sesiones…', self.text(app, '#ssh'))
+                await pilot.click('#ssh')  # a second click while searching starts nothing new
+                release.set()
+                for _ in range(20):
+                    await pilot.pause(0.05)
+                    if app.screen is not app.screen_stack[0]:
+                        break
+                self.assertNotIn('Buscando', self.text(app, '#ssh'))
+                self.assertEqual(len(app.screen_stack), 2)
+
     async def test_menu_is_clickable_and_saves_every_option(self):
         app = c.menu_app(self.settings, self.receiver)
         async with app.run_test(size=(100, 45)) as pilot:

@@ -605,7 +605,9 @@ def menu_app(settings, receiver, voice=None):
                           salida=(settings['device'] or 'Predeterminada') + ' ▾',
                           volumen='━' * round(settings['volume'] * 20) + '─' * (20 - round(settings['volume'] * 20)) + f"  {settings['volume']:.0%}",
                           vincular='✓ vinculado' if settings.get('codes') else 'pendiente',
-                          ssh=f'● Voz conectada a {voice.host}' if voice.running else getattr(self, 'voice_reason', '') or 'Elegir conexión ▾',
+                          ssh=f'● Voz conectada a {voice.host}' if voice.running else
+                          'Buscando sesiones…' if getattr(self, 'searching', False) else
+                          getattr(self, 'voice_reason', '') or 'Elegir conexión ▾',
                           desinstalar='›', salir='›')
             for name, value in values.items():
                 self.query_one('#' + name, Row).show_value(value)
@@ -667,7 +669,21 @@ def menu_app(settings, receiver, voice=None):
                 if not shutil.which('ssh'):
                     self.other_program()
                     return
-                sessions = open_ssh_sessions(commands=True)
+                if getattr(self, 'searching', False):
+                    return
+                # Listing processes can take ~1.5 s on Windows: show it and keep the menu responsive.
+                self.searching = True
+                self.refresh_status()
+                threading.Thread(target=lambda: self.call_from_thread(
+                    self.show_sessions, open_ssh_sessions(commands=True)), daemon=True).start()
+            elif name == 'desinstalar':
+                self.confirm_uninstall()
+            elif name == 'salir':
+                self.exit()
+
+        def show_sessions(self, sessions):
+                self.searching = False
+                self.refresh_status()
                 options = [(str(i), host + '   abierta ahora'
                             + ('  ✓ voz activa en esta sesión' if active else ''))
                            for i, (host, active, command) in enumerate(sessions)]
@@ -684,7 +700,8 @@ def menu_app(settings, receiver, voice=None):
                         if not active:
                             self.ssh(command)
                 self.choose('Tu conexión SSH', options, selected)
-            elif name == 'desinstalar':
+
+        def confirm_uninstall(self):
                 def done(value):
                     if value == 'si':
                         lines = []
@@ -695,8 +712,6 @@ def menu_app(settings, receiver, voice=None):
                         self.exit('\n'.join(lines))
                 self.choose('¿Desinstalar el cliente? Se apaga la recepción.',
                             [('si', 'Sí, desinstalar'), ('no', 'No')], done)
-            elif name == 'salir':
-                self.exit()
 
         def other_program(self):
             self.choose('Hazlo tú en tu programa SSH. Sirve si entras con contraseña o usas\n'
