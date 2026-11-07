@@ -89,7 +89,7 @@ Este archivo proyecta solo hechos verificados del proyecto: registros activos, b
 - `RH-W-0038` (`proposed`, P2): primer release o release candidate, después del instalador.
 - `RH-W-0039` (`proposed`, P3): página de producto, probablemente como proyecto aparte.
 - `RH-W-0040` (`proposed`, P3): investigar teHablo en el celular.
-- `RH-W-0044` (`active`, P2): audio por SSH para la extensión de Pi; funciona y está probado en Docker (Ubuntu 26.04) con Windows, en la rama `feat/ssh-audio` sin publicar; faltan instalador con menú, prueba real del instalador e inicio automático, prueba Linux con Linux y macOS.
+- `RH-W-0044` (`active`, P2): audio por SSH para la extensión de Pi; funciona y está probado en Docker (Ubuntu 26.04) con Windows, en la rama `feat/ssh-audio` sin publicar; el cliente de la PC tiene menú con ratón y teclado (Textual), abre su propio canal de voz desde una sesión SSH abierta sin tocar `~/.ssh/config`, funciona solo mientras está abierto (sin inicio automático) y prefiere el Python oficial si está instalado (evita avisos de antivirus en Windows); faltan la prueba real del instalador en Windows y Linux, la prueba Linux con Linux y macOS.
 
 ## Siguiente paso
 
