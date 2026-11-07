@@ -549,7 +549,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
   /** The bar of one response (`card`), or of the start bar while there is none; `current` says whether to draw it. */
   function bar(card: Card, current: () => boolean, theme: any) {
     // Only single-column symbols, so click columns match Array.from lengths (≡ replaced ⚙, which some terminals draw two columns wide).
-    // The menu [ ≡ ] stays on the closed bar, outside the expanded sound controls.
+    // Keep the menu before expand when closed, and before power when open.
     const layout = () => {
       const pending = preparing.has(card.messageId);
       const promotedHere = playback.id === promotedReading && owned.get(playback.id!) === card.messageId;
@@ -566,11 +566,12 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
         : [...(card === START ? [] : [{text: '[ ▶ ]', action: 'play', gap: ' '}]), ...(clipboardAvailable ? [{text: '[ ▶ copiado ]', action: 'copied', gap: ' '}] : [])];
       const controls = [
         ...lead,
-        {text: open ? '[ → ]' : '[ ⋯ ]', action: 'toggle', gap: ' '},
-        ...(!open ? [menu] : []),
+        ...(!open ? [{...menu, gap: ' '}] : []),
+        {text: open ? '[ → ]' : '[ ⋯ ]', action: 'toggle', gap: open ? ' ' : ''},
         ...(open ? [
           // ":" only separates the close button from the sound controls.
           {text: ':', action: '', gap: '  '},
+          {...menu, gap: ' '},
           {text: '[ ⏻ ]', action: 'powerOff', gap: '  '},
           {text: 'Vol', action: '', gap: ' '},
           {text: '[-', action: 'volume-', gap: ' '},
