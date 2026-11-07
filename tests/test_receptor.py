@@ -29,7 +29,7 @@ class InstallerTest(unittest.TestCase):
 
     def test_missing_uv_leaves_home_unchanged(self):
         before = sorted(p.relative_to(self.home) for p in self.home.rglob('*'))
-        result = self.run_installer('--yes', 'vps')
+        result = self.run_installer()
         self.assertNotEqual(result.returncode, 0)
         self.assertIn('https://astral.sh/uv/install.sh', result.stdout + result.stderr)
         self.assertEqual(sorted(p.relative_to(self.home) for p in self.home.rglob('*')), before)
@@ -42,22 +42,22 @@ class InstallerTest(unittest.TestCase):
             path = self.bin / name
             path.write_text(content, encoding='utf-8', newline='\n')
             path.chmod(0o755)
-        result = subprocess.run([self.sh, '-s', '--', '--yes', 'vps'],
+        result = subprocess.run([self.sh, '-s', '--', '--uninstall'],
                                 input='PATH="$HOME/bin:/usr/bin:/bin"; export PATH\n' + (ROOT / 'receptor/install.sh').read_text(), env=self.env,
                                 capture_output=True, text=True, timeout=15)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertTrue((self.home / '.local/share/tehablo-cliente/tehablo_cliente.py').exists())
         self.assertIn('https://raw.githubusercontent.com/LCubero/tehablo/master/cliente/tehablo_cliente.py',
                       (self.home / 'curl-args').read_text())
-        self.assertEqual((self.home / 'uv-args').read_text().splitlines()[-2:], ['--yes', 'vps'])
+        self.assertEqual((self.home / 'uv-args').read_text().splitlines()[-1:], ['--uninstall'])
         self.assertFalse((self.home / '.ssh').exists())
 
-    def test_yes_and_uninstall_delegate_to_uv(self):
+    def test_menu_and_uninstall_delegate_to_uv(self):
         # A shell stub logs only; it never runs the real client.
         stub = self.bin / 'uv'
         stub.write_text('#!/bin/sh\nprintf "%s\\n" "$@" > "$HOME/uv-args"\n', encoding='utf-8', newline='\n')
         stub.chmod(0o755)
-        for args in (('--yes', 'vps'), ('--uninstall',)):
+        for args in ((), ('--uninstall',)):
             result = self.run_installer(*args)
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
             actual = (self.home / 'uv-args').read_text().splitlines()
@@ -65,6 +65,14 @@ class InstallerTest(unittest.TestCase):
             self.assertTrue(actual[2].replace('\\', '/').endswith('/cliente/tehablo_cliente.py'))
             self.assertEqual(actual[3:], list(args))
             self.assertFalse((self.home / '.ssh').exists())
+
+
+    def test_removed_flags_are_rejected(self):
+        for flag in ('--yes', '--config-only', 'vps'):
+            result = self.run_installer(flag)
+            self.assertEqual(result.returncode, 2)
+            self.assertIn('Uso:', result.stderr)
+            self.assertFalse((self.home / 'uv-args').exists())
 
 
 if __name__ == '__main__':

@@ -1,8 +1,6 @@
+[CmdletBinding()]
 param(
-    [string]$HostAlias,
-    [switch]$Uninstall,
-    [switch]$ConfigOnly,
-    [switch]$Yes
+    [switch]$Uninstall
 )
 $ErrorActionPreference = 'Stop'
 # Works through irm | iex too. No writes before the dependency check.
@@ -25,8 +23,5 @@ if (-not (Test-Path -LiteralPath $client -PathType Leaf)) {
 }
 $clientArgs = @('run', '--script', $client)
 if ($Uninstall) { $clientArgs += '--uninstall' }
-if ($ConfigOnly) { $clientArgs += '--config-only' }
-if ($Yes) { $clientArgs += '--yes' }
-if ($HostAlias) { $clientArgs += $HostAlias }
 & uv @clientArgs
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

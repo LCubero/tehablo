@@ -1,5 +1,11 @@
 #!/bin/sh
 set -eu
+for arg in "$@"; do
+    case "$arg" in
+        --uninstall) ;;
+        *) printf '%s\n' 'Uso: install.sh [--uninstall]' >&2; exit 2 ;;
+    esac
+done
 # Also works via curl | sh. Never change anything before checking uv.
 if ! command -v uv >/dev/null 2>&1; then
     printf '%s\n' 'Falta uv. Instalalo y vuelve a ejecutar:' \
