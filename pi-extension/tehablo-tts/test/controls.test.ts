@@ -187,7 +187,7 @@ test('text icons render all states and changing the window saves and redraws imm
   const clip = deferred<string>(), store = memoryStore();
   const s = setup(store, () => clip.promise);
   const ready = '[ |> ] [ |> copiado ]';
-  const tail = '[ <- ] :  [ = ] [ off ]  Vol [- 100% +]  Vel [- 1.00x +]  ';
+  const tail = '[ = ] [ <- ] :  [ off ]  Vol [- 100% +]  Vel [- 1.00x +]  ';
   try {
     await s.command('menu'); await new Promise(r => setImmediate(r));
     const renders = s.renders();
@@ -879,7 +879,7 @@ test('controls toggle shows and hides volume and speed',async()=>{
     await start(s);
     assert.equal(s.line(),'[ ▶ ] [ ▶ copiado ] [ ≡ ] [ ⋯ ]');
     await clickAt(s,'[ ⋯ ]',2);
-    assert.equal(s.line(),'[ ▶ ] [ ▶ copiado ] [ → ] :  [ ≡ ] [ ⏻ ]  Vol [- 100% +]  Vel [- 1.00x +]  [ ✗ auto ]');
+    assert.equal(s.line(),'[ ▶ ] [ ▶ copiado ] [ ≡ ] [ → ] :  [ ⏻ ]  Vol [- 100% +]  Vel [- 1.00x +]  [ ✗ auto ]');
     await clickAt(s,'[ → ]',2);
     assert.equal(s.line(),'[ ▶ ] [ ▶ copiado ] [ ≡ ] [ ⋯ ]');assert.equal(s.configs.length,0);
   } finally {await s.close();}
@@ -916,8 +916,8 @@ test('active states use icons, pause/resume/stop clicks and command fallbacks',a
     await click(s.card,5);await click(s.card,199);assert.equal(s.calls.length,before);
     await click(s.card,2);assert.ok(s.calls.includes('/pause'));assert.equal(s.line(),'[ ▶ ] [ ■ ] [ ≡ ] [ ⋯ ]');
     await click(s.card,2);assert.ok(s.calls.includes('/resume'));assert.equal(s.line(),'[ ‖ ] [ ■ ] [ ≡ ] [ ⋯ ]');
-    await clickAt(s,'[ ⋯ ]',2);assert.equal(s.line(),'[ ‖ ] [ ■ ] [ → ] :  [ ≡ ] [ ⏻ ]  Vol [- 100% +]  Vel [- 1.00x +]  [ ✗ auto ]');
-    await click(s.card,8);assert.ok(s.calls.includes('/stop'));assert.equal(s.line(),'[ ▶ ] [ ▶ copiado ] [ → ] :  [ ≡ ] [ ⏻ ]  Vol [- 100% +]  Vel [- 1.00x +]  [ ✗ auto ]');
+    await clickAt(s,'[ ⋯ ]',2);assert.equal(s.line(),'[ ‖ ] [ ■ ] [ ≡ ] [ → ] :  [ ⏻ ]  Vol [- 100% +]  Vel [- 1.00x +]  [ ✗ auto ]');
+    await click(s.card,8);assert.ok(s.calls.includes('/stop'));assert.equal(s.line(),'[ ▶ ] [ ▶ copiado ] [ ≡ ] [ → ] :  [ ⏻ ]  Vol [- 100% +]  Vel [- 1.00x +]  [ ✗ auto ]');
     for(const state of ['loading','generating','playing','paused']) {
       s.set(state);await s.command('play 1');await tick();
       assert.match(s.line(),state==='paused'?/^\[ ▶ \] \[ ■ \]/:/^\[ ‖ \] \[ ■ \]/);
@@ -1000,7 +1000,7 @@ for (const icons of ['symbols', 'text'] as const) test(`S17 exact layout and men
     await clickAt(s,menu);await new Promise(r=>setImmediate(r));assert.equal(s.windows.length,1);
     await clickAt(s,menu);assert.equal(s.windows[0].closed,true);
     await clickAt(s,more);
-    const open=`${lead} ${close} :  ${menu} ${text?'[ off ]':'[ ⏻ ]'}  Vol [- 100% +]  Vel [- 1.10x +]  `;
+    const open=`${lead} ${menu} ${close} :  ${text?'[ off ]':'[ ⏻ ]'}  Vol [- 100% +]  Vel [- 1.10x +]  `;
     assert.equal(s.line(),open+(text?'[ x auto ]':'[ ✗ auto ]'));
     await clickAt(s,' : ',1);assert.equal(s.line(),open+(text?'[ x auto ]':'[ ✗ auto ]'));
     await clickAt(s,menu);await new Promise(r=>setImmediate(r));assert.equal(s.windows.length,2);
@@ -1032,7 +1032,7 @@ test('open controls: [ ✗ auto ] / [ ✓ auto ] turn auto reading on and off; t
   const s=setup();try {
     s.set('idle',null);await start(s);
     await clickAt(s,'[ ⋯ ]');
-    const open='[ ▶ ] [ ▶ copiado ] [ → ] :  [ ≡ ] [ ⏻ ]  Vol [- 100% +]  Vel [- 1.00x +]  ';
+    const open='[ ▶ ] [ ▶ copiado ] [ ≡ ] [ → ] :  [ ⏻ ]  Vol [- 100% +]  Vel [- 1.00x +]  ';
     assert.equal(s.line(),open+'[ ✗ auto ]');
     for(const offset of [0,2,9]){
       await clickAt(s,'[ ✗ auto ]',offset);assert.equal(s.line(),open+'[ ✓ auto ]');assert.equal(s.statuses.at(-1),'TTS auto');
@@ -1144,19 +1144,19 @@ test('the server voice and its download states are used once known',async()=>{
   }finally{await s.close();}
 });
 
-test('menu stays before expand when closed and before power when open in both modes', async () => {
+test('menu stays before expand in both bars and both icon modes', async () => {
   const s = setup();
   try {
     await start(s);
     assert.equal(s.line(), '[ ▶ ] [ ▶ copiado ] [ ≡ ] [ ⋯ ]');
     await clickAt(s, '[ ⋯ ]');
-    assert.match(s.line(), /:  \[ ≡ \] \[ ⏻ \]/);
+    assert.match(s.line(), /\[ ≡ \] \[ → \] :  \[ ⏻ \]/);
     await clickAt(s, '[ → ]');
     await clickAt(s, '[ ≡ ]');
     s.windows[0].w.c.change('icons', 'text');
     assert.equal(s.line(), '[ |> ] [ |> copiado ] [ = ] [ ... ]');
     await clickAt(s, '[ ... ]');
-    assert.match(s.line(), /:  \[ = \] \[ off \]/);
+    assert.match(s.line(), /\[ = \] \[ <- \] :  \[ off \]/);
   } finally { await s.close(); }
 });
 

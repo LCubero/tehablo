@@ -566,12 +566,11 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
         : [...(card === START ? [] : [{text: '[ ▶ ]', action: 'play', gap: ' '}]), ...(clipboardAvailable ? [{text: '[ ▶ copiado ]', action: 'copied', gap: ' '}] : [])];
       const controls = [
         ...lead,
-        ...(!open ? [{...menu, gap: ' '}] : []),
+        {...menu, gap: ' '},
         {text: open ? '[ → ]' : '[ ⋯ ]', action: 'toggle', gap: open ? ' ' : ''},
         ...(open ? [
           // ":" only separates the close button from the sound controls.
           {text: ':', action: '', gap: '  '},
-          {...menu, gap: ' '},
           {text: '[ ⏻ ]', action: 'powerOff', gap: '  '},
           {text: 'Vol', action: '', gap: ' '},
           {text: '[-', action: 'volume-', gap: ' '},

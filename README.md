@@ -169,7 +169,7 @@ Pi empieza con el servidor **apagado**, en modo manual. Pulsa `[ ⏻ TTS ]` para
 | Apagado | `[ ⏻ TTS ] [ ≡ ]` |
 | Cargando | `[ Cargando… ] [ ≡ ]` |
 | Listo | `[ ▶ ] [ ▶ copiado ] [ ≡ ] [ ⋯ ]` |
-| Controles abiertos | `[ ▶ ] [ ▶ copiado ] [ → ] :  [ ≡ ] [ ⏻ ]  Vol [- 100% +]  Vel [- 1.10x +]  [ ✗ auto ]` |
+| Controles abiertos | `[ ▶ ] [ ▶ copiado ] [ ≡ ] [ → ] :  [ ⏻ ]  Vol [- 100% +]  Vel [- 1.10x +]  [ ✗ auto ]` |
 | Sonando | `[ ‖ ] [ ■ ] [ ≡ ] [ ⋯ ]` |
 | En pausa | `[ ▶ ] [ ■ ] [ ≡ ] [ ⋯ ]` |
 | Preparando copiado | `[ ■ ] Preparando… [ ≡ ] [ ⋯ ]` |
