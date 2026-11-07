@@ -168,7 +168,10 @@ def sound_device():
 
 def output_devices(sd=None):
     sd = sd or sound_device()
-    return [d['name'] for d in sd.query_devices() if d['max_output_channels'] > 0]
+    hostapi = sd.query_devices(kind='output')['hostapi']
+    indices = sd.query_hostapis(hostapi)['devices']
+    return [d['name'] for i, d in enumerate(sd.query_devices())
+            if i in indices and d['max_output_channels'] > 0]
 
 
 def resolve_device(name, sd):

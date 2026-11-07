@@ -20,6 +20,7 @@ export interface Settings {
   indicator: boolean;
   icons: 'symbols' | 'text';
   audio: 'local' | 'ssh';
+  sshListo: boolean;
   device: string;
   policy: 'stop' | 'wait';
   dict: Record<string, boolean>;
@@ -27,7 +28,7 @@ export interface Settings {
   /** Last voice table seen from the server, shown while it is off. */
   voices: VoiceRow[];
 }
-export const DEFAULTS: Settings = {model: '', voice: '', volume: 1, speed: 1, auto: false, toolbar: true, indicator: true, icons: 'symbols', audio: 'local', device: '', policy: 'stop', shortcutsOn: false, shortcuts: {}, voices: [], dict: {}};
+export const DEFAULTS: Settings = {model: '', voice: '', volume: 1, speed: 1, auto: false, toolbar: true, indicator: true, icons: 'symbols', audio: 'local', sshListo: false, device: '', policy: 'stop', shortcutsOn: false, shortcuts: {}, voices: [], dict: {}};
 
 const FILE = 'settings.json';
 const OLD_FILE = 'tehablo-settings.json';
@@ -48,6 +49,7 @@ export function loadSettings(dir: string, project?: string, fallback: Settings =
   if (SPEEDS.includes(raw.speed)) s.speed = raw.speed;
   if (typeof raw.toolbar === 'boolean') s.toolbar = raw.toolbar;
   if (typeof raw.indicator === 'boolean') s.indicator = raw.indicator;
+  if (typeof raw.sshListo === 'boolean') s.sshListo = raw.sshListo;
   if (typeof raw.device === 'string') s.device = raw.device;
   if (raw.audio === 'local' || raw.audio === 'ssh') s.audio = raw.audio;
   if (raw.icons === 'text' || raw.icons === 'symbols') s.icons = raw.icons;
@@ -65,7 +67,7 @@ export function loadSettings(dir: string, project?: string, fallback: Settings =
 export function saveSettings(dir: string, settings: Settings, previous?: Settings): void {
   const merged = previous ? loadSettings(dir, undefined, previous) : structuredClone(settings);
   if (previous) {
-    for (const key of ['volume', 'speed', 'toolbar', 'indicator', 'icons', 'audio', 'device', 'policy', 'shortcutsOn', 'voices'] as const)
+    for (const key of ['volume', 'speed', 'toolbar', 'indicator', 'icons', 'audio', 'sshListo', 'device', 'policy', 'shortcutsOn', 'voices'] as const)
       if (JSON.stringify(settings[key]) !== JSON.stringify(previous[key])) (merged as any)[key] = settings[key];
     if (settings.model !== previous.model || settings.voice !== previous.voice) {
       merged.model = settings.model; merged.voice = settings.voice;

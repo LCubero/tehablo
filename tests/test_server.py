@@ -66,6 +66,20 @@ class Sink:
         self.thread.join()
 
 
+class SSHFailureTests(unittest.TestCase):
+    def test_failure_stops_only_current_reading_and_reports_error(self):
+        service = mock.Mock()
+        # The final callback can already have promoted the next queued reading.
+        service.id = 'next-reading'
+        audio = object.__new__(tehablo_server.SSHAudio)
+        audio.service, audio.connection = service, mock.Mock()
+        with mock.patch('sys.stderr', new_callable=io.StringIO) as log:
+            audio.failed(OSError('gone'), 'reading')
+        service.control.assert_called_once_with('stop', 'reading')
+        self.assertEqual(service.speech_error, 'Sin receptor de audio por SSH: abre el cliente en tu computadora.')
+        self.assertEqual(len(log.getvalue().splitlines()), 1)
+
+
 class AuthenticationTests(unittest.TestCase):
     def test_api_rejects_without_state_change(self):
         server = create_server(port=0, model='spanish', catalog=['lola'], idle_exit=0,
@@ -209,7 +223,9 @@ class SSHAudioTests(unittest.TestCase):
             while service.id is not None and time.monotonic() < deadline:
                 time.sleep(.02)
             self.assertIsNone(service.id)
-            self.assertIsNone(service.speech_error)
+            self.assertEqual(service.speech_error, 'Sin receptor de audio por SSH: abre el cliente en tu computadora.')
+            self.assertEqual(service.state, 'idle')
+            self.assertFalse(service.health()['sshReceiver'])
             connect.assert_called_once_with(('127.0.0.1', 18766), timeout=.5)
             self.assertEqual(len(log.getvalue().splitlines()), 1)
 
@@ -230,6 +246,7 @@ class SSHAudioTests(unittest.TestCase):
                     while len(packets) < 12 and time.monotonic() < deadline:
                         time.sleep(.01)
                     self.assertGreaterEqual(len(packets), 12)
+                    self.assertTrue(service.health()['sshReceiver'])
                     self.assertEqual(len(packets[0][1]), 48)
                     self.assertNotIn(CODE.encode(), b''.join(data for _, data in packets))
                     self.assertEqual(packets[1][1], bytes.fromhex('52494646ffffffff57415645666d74201000000001000100c05d000080bb00000200100064617461ffffffff'))
@@ -250,6 +267,23 @@ class SSHAudioTests(unittest.TestCase):
                     self.assertEqual(len(packets), count)
                     connection.close.assert_called_once()
                     connect.assert_called_once()
+
+    def test_disconnect_stops_reading_and_cancels_generation(self):
+        server, _ = self.start()
+        service = server.service
+        connection = mock.Mock()
+        with mock.patch.object(tehablo_server.socket, 'create_connection', return_value=connection), mock.patch.object(tehablo_server, 'authenticate_audio'), contextlib.redirect_stderr(io.StringIO()) as log:
+            connection.sendall.side_effect = [None, OSError('disconnected')]
+            service.speak({'id': 'push', 'text': 'hola'})
+            deadline = time.monotonic() + 2
+            while service.id is not None and time.monotonic() < deadline:
+                time.sleep(.02)
+            self.assertIsNone(service.id)
+            self.assertEqual(service.state, 'idle')
+            self.assertTrue(service.cancel.is_set())
+            self.assertEqual(service.speech_error, 'Sin receptor de audio por SSH: abre el cliente en tu computadora.')
+            self.assertTrue(service.health()['sshReceiver'])
+            self.assertEqual(len(log.getvalue().splitlines()), 1)
 
     def test_outbound_stream_is_not_idle_activity_and_closes_on_exit(self):
         server, thread = self.start(idle_exit=.4)

@@ -11,6 +11,16 @@ const withDirs = (run: (dir: string, project: string) => void) => {
   try { run(join(base, 'home', '.tehablo'), base); } finally { rmSync(base, {recursive: true, force: true}); }
 };
 
+test('S21 receiver success persists and survives unrelated stale-session saves', () => withDirs((dir) => {
+  assert.equal(loadSettings(dir).sshListo, false);
+  saveSettings(dir, DEFAULTS);
+  const stale = loadSettings(dir);
+  saveSettings(dir, {...stale, sshListo: true}, stale);
+  saveSettings(dir, {...stale, volume: .5}, stale);
+  assert.equal(loadSettings(dir).sshListo, true);
+  assert.equal(loadSettings(dir).volume, .5);
+}));
+
 test('settings live in .tehablo inside the user folder', () => {
   assert.equal(settingsDir(), join(homedir(), '.tehablo'));
 });

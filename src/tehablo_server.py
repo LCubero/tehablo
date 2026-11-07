@@ -213,12 +213,13 @@ def authenticate_audio(connection, code):
 
 
 class SSHAudio:
-    """One paced outbound WAV connection per reading; failure never stops playback."""
+    """One paced authenticated WAV connection per reading; failure stops that reading."""
     def __init__(self, service):
         self.service = service
         self.lock = threading.RLock()
         self.connection = None
         self.attempted = False
+        self.receiver_authenticated = False
         self.rate = 24000
         self.callback = None
         self.closed = threading.Event()
@@ -242,10 +243,11 @@ class SSHAudio:
             self.connection.close()
             self.connection = None
 
-    def failed(self, exc):
+    def failed(self, exc, identifier):
         self.disconnect()
-        reason = ' '.join(str(exc).splitlines())
-        print(f'SSH audio skipped for this reading: {reason}', file=sys.stderr, flush=True)
+        self.service.control('stop', identifier)
+        self.service.speech_error = 'Sin receptor de audio por SSH: abre el cliente en tu computadora.'
+        print(self.service.speech_error, file=sys.stderr, flush=True)
 
     def shutdown(self):
         self.closed.set()
@@ -265,16 +267,19 @@ class SSHAudio:
                     continue
                 if self.service.state == 'paused':
                     continue
+                identifier = self.service.id
                 if not self.attempted:
                     self.attempted = True
                     try:
                         self.connection = socket.create_connection(('127.0.0.1', 18766), timeout=.5)
                         self.connection.settimeout(.1)
                         authenticate_audio(self.connection, load_ssh_code())
+                        self.receiver_authenticated = True
                         self.connection.settimeout(.1)
                         self.connection.sendall(WAV_HEADER)
                     except (OSError, ValueError) as exc:
-                        self.failed(exc)
+                        self.failed(exc, identifier)
+                        continue
                 frames = round(rate * .02)
                 samples = np.zeros((frames, 1), dtype=np.float32)
                 callback(samples, frames, None, None)
@@ -286,7 +291,7 @@ class SSHAudio:
                     try:
                         self.connection.sendall(packet)
                     except OSError as exc:
-                        self.failed(exc)
+                        self.failed(exc, identifier)
                 if self.callback is None or self.service.state not in ('generating', 'playing', 'paused'):
                     self.disconnect()
 
@@ -421,7 +426,8 @@ class SpeechService:
         with self.condition:
             return {'ok': True, 'ready': self.ready, 'model': self.model_name,
                     'voice': self.voice, 'speed': float(self.speed), 'volume': self.volume, 'audio': self.audio, 'device': self.device,
-                    'error': self.error, 'fallback': self.fallback}
+                    'error': self.error, 'fallback': self.fallback,
+                    'sshReceiver': self.ssh_audio.receiver_authenticated}
 
     def status(self):
         with self.condition:

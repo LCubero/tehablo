@@ -138,7 +138,7 @@ Viaja cifrada por tu conexión SSH; el puerto remoto escucha en loopback por def
 El receptor exige un código: en Pi elige **Audio: SSH**, ejecuta `/tts codigo` para ver el **Código de vinculación** y añádelo en **Vincular servidor** (o `uv run cliente/tehablo_cliente.py --codigo CODIGO`). Sin él muestra «Sin vincular» y no reproduce. El código se guarda en `~/.tehablo/ssh-codigo` en el servidor (0600 en POSIX); quien lo conozca, incluido un administrador, puede enviar sonido. No protege la API HTTP local de teHablo.
 Si conservas `LocalForward 18765 127.0.0.1:8765`, ya no hace falta: puedes quitarlo a mano; el cliente nunca lo borra.
 
-En Pi, elige **Audio: SSH**. Activa el inicio automático en el cliente para recibir sin ventana al iniciar sesión (`--fondo`); cada día basta con `ssh mi-servidor`. Desde un clon: `./install.sh --cliente` o `.\install.ps1 -Cliente` (también aceptan `--receptor` / `-Receptor`). La salida y el volumen del cliente son independientes de los de Pi.
+En Pi, elige **Audio: SSH**. La guía de instalación aparece solo hasta que un cliente se autentique por primera vez; después, al activarlo, solo confirma «Audio por SSH activado.». Si no hay receptor o se desconecta, se detiene esa lectura y Pi avisa: «Sin receptor de audio por SSH: abre el cliente en tu computadora.». Activa el inicio automático en el cliente para recibir sin ventana al iniciar sesión (`--fondo`); cada día basta con `ssh mi-servidor`. Desde un clon: `./install.sh --cliente` o `.\install.ps1 -Cliente` (también aceptan `--receptor` / `-Receptor`). La salida y el volumen del cliente son independientes de los de Pi.
 
 ### Hacerlo a mano
 
@@ -195,7 +195,7 @@ Significado de los iconos (aunque se vean como cuadros):
 - `[ ⋯ ]` abre volumen y velocidad; `[ → ]` los oculta. `[ ≡ ]` abre ajustes antes de `[ ⋯ ]` en la barra cerrada y antes de `[ ⏻ ]` en la abierta, también en modo Texto.
 - `[ ⏻ ]` apaga el servidor y libera el modelo, sin perder tus ajustes.
 - Con varias sesiones de Pi abiertas, todas usan el mismo servidor: encenderlo o apagarlo en una lo hace en todas, y la barra de las demás lo muestra en unos segundos. Cada lectura nueva decide si interrumpe o espera, según sus ajustes. Empezar otro turno o cerrar la sesión cancela solo sus lecturas, sin vaciar la cola de otras sesiones. Cerrar o recargar una sesión nunca apaga el servidor compartido; se apaga solo unos 30 s después de que ninguna sesión de Pi lo use. `[ ⏻ ]` o `/tts` lo siguen apagando para todas.
-- Antes de la primera respuesta, la barra aparece sobre el editor sin el botón de leer respuesta.
+- Antes de la primera respuesta, la barra aparece sobre el editor sin el botón de leer respuesta. En Audio: SSH muestra `TTS SSH [ ≡ ] [ ⋯ ]`; apagada, `[ ⏻ TTS SSH ] [ ≡ ]` (mismas posiciones en modo Texto).
 
 ### Comandos
 

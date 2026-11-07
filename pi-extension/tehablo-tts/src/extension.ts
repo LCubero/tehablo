@@ -123,7 +123,13 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
     if (value === 'ready' && windowOpen) void refreshVoices().then(() => redrawWindow?.(), () => {});
   };
   const cancelReady = () => { readyEpoch++; if (readyTimer) clearTimeout(readyTimer); readyTimer = undefined; };
+  const rememberReceiver = (health: any) => {
+    if (health?.sshReceiver === true && !settings.sshListo) {
+      settings.sshListo = true; persist();
+    }
+  };
   const sync = (health: any) => {
+    rememberReceiver(health);
     if (typeof health?.volume === 'number') volume = health.volume;
     if (typeof health?.speed === 'number') speed = health.speed;
     if (typeof health?.model === 'string' && typeof health?.voice === 'string') current = {model: health.model, voice: health.voice};
@@ -212,6 +218,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
         let observed: typeof server;
         try {
           const health = await client.request('/health');
+          rememberReceiver(health);
           observed = typeof health?.error === 'string' && health.error ? 'off' : health?.ready === true ? 'ready' : 'loading';
         } catch { observed = 'off'; }
         if (generation !== watchEpoch) return;
@@ -481,7 +488,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
         if (field === 'volume') volume = value as number;
         if (field === 'speed') speed = value as number;
         if ((field === 'audio' || field === 'device') && server !== 'ready') applied = false;
-        if (field === 'audio' && value === 'ssh' && previousAudio !== 'ssh') say(ctx, 'Audio por SSH activado.\n\nEn la computadora desde la que te conectas, ejecuta una vez\nEn Windows: irm https://raw.githubusercontent.com/LCubero/tehablo/master/receptor/install.ps1 | iex\nEn Linux/macOS: curl -fsSL https://raw.githubusercontent.com/LCubero/tehablo/master/receptor/install.sh | sh\n\nInstala un receptor pequeño que espera la voz en 127.0.0.1:18766 y, si lo aceptas, añade RemoteForward 18766 127.0.0.1:18766 a tu configuración SSH para recibirla cifrada por tu misma conexión SSH solo durante cada lectura. El puerto remoto escucha en loopback por defecto; no cambies GatewayPorts. El receptor exige un código antes de reproducir; quien lo tenga (incluido un administrador) puede enviar sonido. Este código no protege la API HTTP local de teHablo en un servidor compartido. Este reenvío no permite controlar teHablo ni el servidor desde esta computadora.\nCódigo de vinculación: oculto (/tts codigo para verlo)\n\nConsulta la documentación para más información o para hacerlo a mano.\nhttps://github.com/LCubero/tehablo#audio-por-ssh', 'info');
+        if (field === 'audio' && value === 'ssh' && previousAudio !== 'ssh') say(ctx, settings.sshListo ? 'Audio por SSH activado.' : 'Audio por SSH activado.\n\nEn la computadora desde la que te conectas, ejecuta una vez\nEn Windows: irm https://raw.githubusercontent.com/LCubero/tehablo/master/receptor/install.ps1 | iex\nEn Linux/macOS: curl -fsSL https://raw.githubusercontent.com/LCubero/tehablo/master/receptor/install.sh | sh\n\nInstala un cliente pequeño que recibe la voz por tu misma conexión SSH (cifrada), solo mientras habla. Pide permiso antes de añadir una línea a tu configuración SSH. Cliente y servidor se comprueban con un código de vinculación sin enviarlo.\nCódigo de vinculación: oculto (/tts codigo para verlo)\n\nConsulta la documentación para más información o para hacerlo a mano.\nhttps://github.com/LCubero/tehablo#audio-por-ssh', 'info');
         if (field === 'volume' || field === 'speed' || field === 'audio' || field === 'device') run(async () => {
           await configure({[field]: value, ...(field === 'audio' && value === 'local' && settings.device ? {device: settings.device} : {})});
           if (field === 'audio' && value === 'local') await refreshDevices();
@@ -556,14 +563,14 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
       const waiting = !promotedHere && [...queued].find(id => owned.get(id) === card.messageId);
       const active = (owned.get(playback.id!) ?? playback.id) === card.messageId && playback.state !== 'idle' && !waiting;
       const menu = {text: '[ ≡ ]', action: 'settings', gap: ''};
-      if (!pending && !active && !waiting && server === 'off') return [{text: '[ ⏻ TTS ]', action: 'start', gap: ' '}, menu];
+      if (!pending && !active && !waiting && server === 'off') return [{text: settings.audio === 'ssh' ? '[ ⏻ TTS SSH ]' : '[ ⏻ TTS ]', action: 'start', gap: ' '}, menu];
       if (!pending && !active && !waiting && server === 'loading') return [{text: '[ Cargando… ]', action: '', gap: ' '}, menu];
       const paused = playback.state === 'paused';
       const lead = pending ? [{text: '[ ■ ]', action: 'stop', gap: ' '}, {text: 'Preparando…', action: '', gap: ' '}]
         : waiting ? [{text: '[ ■ ]', action: 'cancelQueued', gap: ' '}, {text: 'En espera', action: '', gap: ' '}]
         : active
         ? [{text: paused ? '[ ▶ ]' : '[ ‖ ]', action: paused ? 'resume' : 'pause', gap: ' '}, {text: '[ ■ ]', action: 'stop', gap: ' '}]
-        : [...(card === START ? [] : [{text: '[ ▶ ]', action: 'play', gap: ' '}]), ...(clipboardAvailable ? [{text: '[ ▶ copiado ]', action: 'copied', gap: ' '}] : [])];
+        : [...(card === START ? (settings.audio === 'ssh' ? [{text: 'TTS SSH', action: '', gap: ' '}] : []) : [{text: '[ ▶ ]', action: 'play', gap: ' '}]), ...(clipboardAvailable ? [{text: '[ ▶ copiado ]', action: 'copied', gap: ' '}] : [])];
       const controls = [
         ...lead,
         {...menu, gap: ' '},
@@ -589,7 +596,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
     };
     const segments = () => {
       const textLabels: Record<string, string> = {
-        '[ ⏻ TTS ]': '[ TTS ]', '[ Cargando… ]': '[ Cargando... ]',
+        '[ ⏻ TTS SSH ]': '[ TTS SSH ]', '[ ⏻ TTS ]': '[ TTS ]', '[ Cargando… ]': '[ Cargando... ]',
         '[ ▶ ]': '[ |> ]', '[ ▶ copiado ]': '[ |> copiado ]', '[ ‖ ]': '[ || ]',
         '[ ■ ]': '[ [] ]', '[ ⋯ ]': '[ ... ]', '[ → ]': '[ <- ]', '[ ⏻ ]': '[ off ]',
         '[ ≡ ]': '[ = ]', '[ ✓ auto ]': '[ v auto ]', '[ ✗ auto ]': '[ x auto ]',

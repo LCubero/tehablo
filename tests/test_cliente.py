@@ -143,7 +143,11 @@ class ClientTest(unittest.TestCase):
 
     def test_devices(self):
         sd = Mock()
-        sd.query_devices.return_value = [dict(name='Mic', max_output_channels=0), dict(name='Speaker', max_output_channels=2)]
+        sd.query_devices.return_value = [dict(name='Mic', max_output_channels=0, hostapi=0), dict(name='Speaker', max_output_channels=2, hostapi=1), dict(name='Duplicate', max_output_channels=2, hostapi=0)]
+        sd.query_devices.side_effect = lambda *args, **kwargs: (sd.query_devices.return_value[1] if args or kwargs else sd.query_devices.return_value)
+        sd.query_hostapis.return_value = dict(name='Default', devices=[0, 1])
+        # API membership (not a substring/name heuristic) controls the menu.
+        sd.query_devices.return_value[0]['hostapi'] = 1
         self.assertEqual(c.output_devices(sd), ['Speaker'])
         self.assertIsNone(c.resolve_device('', sd))
         self.assertEqual(c.resolve_device('Speaker', sd), 1)
