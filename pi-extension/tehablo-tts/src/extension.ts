@@ -314,7 +314,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
         for (const id of owned.keys()) if (!inFlight.has(id) && id !== status.id && !queue.includes(id)) { owned.delete(id); queued.delete(id); }
         if (status.state === 'idle' && !queued.size && !inFlight.size) {
           if (typeof status.error === 'string' && status.error.length > 0)
-            say(context, `No se pudo reproducir: ${status.error}`, 'warning');
+            say(context, `No se pudo reproducir -> ${status.error}`, 'warning');
           resetPlayback();
           return;
         }

@@ -839,7 +839,7 @@ test('speech failure warns once and resets playback',async()=>{
   const s=setup();try {
     await s.command('play');s.set('idle',null);s.setError('speech failed: broken playback');
     await tick();
-    assert.deepEqual(s.notices,['TTS teHablo: No se pudo reproducir: speech failed: broken playback']);
+    assert.deepEqual(s.notices,['TTS teHablo: No se pudo reproducir -> speech failed: broken playback']);
     assert.match(s.line(),/^\[ ▶ \] \[ ▶ copiado \]/);
     const count=s.calls.length;await tick();assert.equal(s.calls.length,count);
     assert.equal(s.notices.length,1);
