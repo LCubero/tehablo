@@ -133,6 +133,8 @@ Si falta uv, muestra el comando oficial para instalarlo y se detiene sin cambios
 
 **Conexión SSH** lista solo tus sesiones abiertas, sin leer `~/.ssh/config`; **Otra…** permite pegar tu comando, por ejemplo `ssh pepe@192.168.7.88`. Al elegirlo abre un canal de voz SSH oculto con los mismos datos de conexión, sin editar archivos ni reconectar tu sesión. Necesita autenticación por clave (sin preguntas de contraseña); si entras con contraseña, usa **Lo hago a mano**. La fila muestra **● Voz conectada a…** y permite **Detener voz**. Salir o desinstalar cierra ese canal; el orden de apertura de SSH, Pi y cliente no importa. Las conexiones que ya llevan la voz no abren otro canal.
 
+En Windows, algunos antivirus (por ejemplo Norton CyberCapture) analizan el cliente cada vez que lo abres: `uv` crea un lanzador `python.exe` sin firma digital y distinto en cada PC. Es seguro; uv planea firmar sus ejecutables ([astral-sh/uv#22869](https://github.com/astral-sh/uv/issues/22869)).
+
 `RemoteForward 18766 127.0.0.1:18766` lleva cada lectura al receptor, que espera en 127.0.0.1:18766 sin sondeos ni tráfico en reposo.
 Viaja cifrada por tu conexión SSH; el puerto remoto escucha en loopback por defecto (no cambies `GatewayPorts`). Este reenvío no permite controlar teHablo ni el servidor desde tu computadora.
 El receptor exige un código: en Pi elige **Audio: SSH**, ejecuta `/tts codigo` para ver el **Código de vinculación** y añádelo en **Vincular servidor** (o `uv run cliente/tehablo_cliente.py --codigo CODIGO`). Sin él muestra «Sin vincular» y no reproduce. El código se guarda en `~/.tehablo/ssh-codigo` en el servidor (0600 en POSIX); quien lo conozca, incluido un administrador, puede enviar sonido. El mismo código también protege la API HTTP local de teHablo.
