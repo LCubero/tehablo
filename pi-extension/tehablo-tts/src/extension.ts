@@ -57,7 +57,7 @@ const ENTRY = 'tehablo-tts';
 /** Every message from this extension starts with this prefix. */
 const say = (c: ExtensionContext | undefined, text: string, level: 'info' | 'warning') => c?.ui.notify(`TTS teHablo: ${text}`, level);
 interface Card { messageId: string; number: number }
-const help = '/tts · auto · play [n] · copy · pause · stop · toolbar · indicator · menu · dict · status\n/tts enciende o apaga el servidor para todos; pause pausa o reanuda solo tu lectura actual; stop detiene tus lecturas actuales y en espera; play sin número lee la última respuesta y play 3 la tercera de la sesión; toolbar muestra u oculta la barra; indicator muestra u oculta el indicador de estado; menu abre los ajustes; dict activa o desactiva el diccionario de pronunciación (pronunciaciones.json) para la voz actual.';
+const help = '/tts · auto · play [n] · copy · pause · stop · toolbar · indicator · menu · dict · status · codigo\n/tts enciende o apaga el servidor para todos; pause pausa o reanuda solo tu lectura actual; stop detiene tus lecturas actuales y en espera; play sin número lee la última respuesta y play 3 la tercera de la sesión; toolbar muestra u oculta la barra; indicator muestra u oculta el indicador de estado; menu abre los ajustes; dict activa o desactiva el diccionario de pronunciación (pronunciaciones.json) para la voz actual.';
 
 export function createExtension(pi: ExtensionAPI, client = new ServerClient(), store: Store = client.root ? fileStore(client.root) : memoryStore(),
   clipboard: () => Promise<string> = () => readClipboard(), watchMs = 0, noteMs = 4000,
@@ -481,7 +481,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
         if (field === 'volume') volume = value as number;
         if (field === 'speed') speed = value as number;
         if ((field === 'audio' || field === 'device') && server !== 'ready') applied = false;
-        if (field === 'audio' && value === 'ssh' && previousAudio !== 'ssh') say(ctx, 'Audio por SSH activado.\n\nEn la computadora desde la que te conectas, ejecuta una vez\nEn Windows: irm https://raw.githubusercontent.com/LCubero/tehablo/master/receptor/install.ps1 | iex\nEn Linux/macOS: curl -fsSL https://raw.githubusercontent.com/LCubero/tehablo/master/receptor/install.sh | sh\n\nInstala un receptor pequeño que espera la voz en 127.0.0.1:18766 y, si lo aceptas, añade RemoteForward 18766 127.0.0.1:18766 a tu configuración SSH para recibirla cifrada por tu misma conexión SSH solo durante cada lectura. El puerto remoto escucha en loopback por defecto; no cambies GatewayPorts. El receptor exige un código antes de reproducir; quien lo tenga (incluido un administrador) puede enviar sonido. Este código no protege la API HTTP local de teHablo en un servidor compartido. Este reenvío no permite controlar teHablo ni el servidor desde esta computadora.\nCódigo de vinculación: ' + store.sshCode?.() + ' (pídelo en el cliente: Vincular servidor).\n\nConsulta la documentación para más información o para hacerlo a mano.\nhttps://github.com/LCubero/tehablo#audio-por-ssh', 'info');
+        if (field === 'audio' && value === 'ssh' && previousAudio !== 'ssh') say(ctx, 'Audio por SSH activado.\n\nEn la computadora desde la que te conectas, ejecuta una vez\nEn Windows: irm https://raw.githubusercontent.com/LCubero/tehablo/master/receptor/install.ps1 | iex\nEn Linux/macOS: curl -fsSL https://raw.githubusercontent.com/LCubero/tehablo/master/receptor/install.sh | sh\n\nInstala un receptor pequeño que espera la voz en 127.0.0.1:18766 y, si lo aceptas, añade RemoteForward 18766 127.0.0.1:18766 a tu configuración SSH para recibirla cifrada por tu misma conexión SSH solo durante cada lectura. El puerto remoto escucha en loopback por defecto; no cambies GatewayPorts. El receptor exige un código antes de reproducir; quien lo tenga (incluido un administrador) puede enviar sonido. Este código no protege la API HTTP local de teHablo en un servidor compartido. Este reenvío no permite controlar teHablo ni el servidor desde esta computadora.\nCódigo de vinculación: oculto (/tts codigo para verlo)\n\nConsulta la documentación para más información o para hacerlo a mano.\nhttps://github.com/LCubero/tehablo#audio-por-ssh', 'info');
         if (field === 'volume' || field === 'speed' || field === 'audio' || field === 'device') run(async () => {
           await configure({[field]: value, ...(field === 'audio' && value === 'local' && settings.device ? {device: settings.device} : {})});
           if (field === 'audio' && value === 'local') await refreshDevices();
@@ -714,6 +714,9 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
           case 'stop': if (server !== 'off' || preparing.size) await action('stop'); return;
           // Not awaited: the window stays open until closed, and the command should return now.
           case 'menu': void safe(ctx, () => openSettings(ctx)); return;
+          case 'codigo':
+            say(ctx, `Código de vinculación: ${store.sshCode?.()}\nSirve para vincular el cliente de la PC (menú «Vincular servidor»). No lo compartas.`);
+            return;
           case 'status': break;
           default: say(ctx, `Uso: ${help}`, 'warning'); return;
         }
@@ -723,7 +726,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
         const status = await client.action('/status');
         if (generation !== epoch) return;
         // The multi-line status report is too long for the bar, so it stays an ordinary notice.
-        say(ctx, `Barra ${barVisible ? 'visible' : 'oculta'} · indicador ${settings.indicator ? 'visible' : 'oculto'} · automático: ${auto ? 'sí' : 'no'}\nServidor: ${status.state} · listo: ${health.ready ? 'sí' : 'no'}\nAudio: ${settings.audio === 'ssh' ? 'SSH' : 'Local'}${settings.audio === 'ssh' ? `\nCódigo de vinculación: ${store.sshCode?.()}` : ''}\nSalida: ${settings.audio === 'ssh' ? '(SSH: la elige el cliente)' : settings.device || 'Predeterminada'}\nModelo: ${health.model} · voz: ${health.voice} · velocidad: ${health.speed} · volumen: ${Math.round(volume * 100)} %\nDict (diccionario de pronunciación): ${dictEnabled() ? 'sí' : 'no'}\n${help}`, 'info');
+        say(ctx, `Barra ${barVisible ? 'visible' : 'oculta'} · indicador ${settings.indicator ? 'visible' : 'oculto'} · automático: ${auto ? 'sí' : 'no'}\nServidor: ${status.state} · listo: ${health.ready ? 'sí' : 'no'}\nAudio: ${settings.audio === 'ssh' ? 'SSH' : 'Local'}${settings.audio === 'ssh' ? '\nCódigo de vinculación: oculto (/tts codigo para verlo)' : ''}\nSalida: ${settings.audio === 'ssh' ? '(SSH: la elige el cliente)' : settings.device || 'Predeterminada'}\nModelo: ${health.model} · voz: ${health.voice} · velocidad: ${health.speed} · volumen: ${Math.round(volume * 100)} %\nDict (diccionario de pronunciación): ${dictEnabled() ? 'sí' : 'no'}\n${help}`, 'info');
       });
     },
   });

@@ -164,7 +164,8 @@ test('SSH audio applies on reuse, toggles live and gives the exact one-time inst
     assert.ok(s.configs.some(body => body.audio === 'ssh'));
     await s.command('status');
     assert.ok(s.notices.some(text => text.includes('Audio: SSH')));
-    assert.ok(s.notices.some(text => text.includes('Código de vinculación: 0123-4567-89AB-CDEF-0123-4567-89AB-CDEF')));
+    assert.ok(s.notices.some(text => text.includes('Código de vinculación: oculto (/tts codigo para verlo)')));
+    assert.ok(s.notices.every(text => !text.includes(store.sshCode())));
     await s.command('menu'); await new Promise(r => setImmediate(r));
     const c = s.windows[0].w.c;
     s.notices.length = 0;
@@ -173,13 +174,23 @@ test('SSH audio applies on reuse, toggles live and gives the exact one-time inst
     assert.equal(s.notices.length, 0);
     c.change('audio', 'ssh'); await new Promise(r => setImmediate(r));
     assert.deepEqual(s.configs.at(-1), {audio: 'ssh'});
-    assert.deepEqual(s.notices, ['TTS teHablo: Audio por SSH activado.\n\nEn la computadora desde la que te conectas, ejecuta una vez\nEn Windows: irm https://raw.githubusercontent.com/LCubero/tehablo/master/receptor/install.ps1 | iex\nEn Linux/macOS: curl -fsSL https://raw.githubusercontent.com/LCubero/tehablo/master/receptor/install.sh | sh\n\nInstala un receptor pequeño que espera la voz en 127.0.0.1:18766 y, si lo aceptas, añade RemoteForward 18766 127.0.0.1:18766 a tu configuración SSH para recibirla cifrada por tu misma conexión SSH solo durante cada lectura. El puerto remoto escucha en loopback por defecto; no cambies GatewayPorts. El receptor exige un código antes de reproducir; quien lo tenga (incluido un administrador) puede enviar sonido. Este código no protege la API HTTP local de teHablo en un servidor compartido. Este reenvío no permite controlar teHablo ni el servidor desde esta computadora.\nCódigo de vinculación: 0123-4567-89AB-CDEF-0123-4567-89AB-CDEF (pídelo en el cliente: Vincular servidor).\n\nConsulta la documentación para más información o para hacerlo a mano.\nhttps://github.com/LCubero/tehablo#audio-por-ssh']);
+    assert.deepEqual(s.notices, ['TTS teHablo: Audio por SSH activado.\n\nEn la computadora desde la que te conectas, ejecuta una vez\nEn Windows: irm https://raw.githubusercontent.com/LCubero/tehablo/master/receptor/install.ps1 | iex\nEn Linux/macOS: curl -fsSL https://raw.githubusercontent.com/LCubero/tehablo/master/receptor/install.sh | sh\n\nInstala un receptor pequeño que espera la voz en 127.0.0.1:18766 y, si lo aceptas, añade RemoteForward 18766 127.0.0.1:18766 a tu configuración SSH para recibirla cifrada por tu misma conexión SSH solo durante cada lectura. El puerto remoto escucha en loopback por defecto; no cambies GatewayPorts. El receptor exige un código antes de reproducir; quien lo tenga (incluido un administrador) puede enviar sonido. Este código no protege la API HTTP local de teHablo en un servidor compartido. Este reenvío no permite controlar teHablo ni el servidor desde esta computadora.\nCódigo de vinculación: oculto (/tts codigo para verlo)\n\nConsulta la documentación para más información o para hacerlo a mano.\nhttps://github.com/LCubero/tehablo#audio-por-ssh']);
+    assert.ok(s.notices.every(text => !text.includes(store.sshCode())));
     assert.equal(store.load().audio, 'ssh');
     c.change('audio', 'ssh'); await new Promise(r => setImmediate(r));
     assert.equal(s.notices.length, 1);
     c.change('icons', 'text');
     assert.equal(store.load().icons, 'text');
     assert.equal(store.load().audio, 'ssh');
+  } finally { await s.close(); }
+});
+
+test('/tts codigo reveals the pairing code only on request, without starting the server', async () => {
+  const store = memoryStore(), s = setup(store);
+  try {
+    await s.command('codigo');
+    assert.deepEqual(s.notices, [`TTS teHablo: Código de vinculación: ${store.sshCode()}\nSirve para vincular el cliente de la PC (menú «Vincular servidor»). No lo compartas.`]);
+    assert.equal(s.ensures(), 0);
   } finally { await s.close(); }
 });
 
