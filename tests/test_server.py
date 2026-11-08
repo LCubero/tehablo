@@ -368,11 +368,28 @@ class IdleTests(unittest.TestCase):
         self.assertFalse(thread.is_alive())
         self.assertEqual(output.getvalue(), 'Idle: no requests for 0.2 s; shutting down\n')
 
+    def test_health_without_valid_code_does_not_refresh_activity(self):
+        server, thread = self.start(0)
+        before = server.service.health(), server.service.status()
+        for headers in ({}, {'X-Tehablo-Codigo': 'wrong'}, {'X-Tehablo-Codigo': CODE}):
+            previous = server.last_request
+            conn = http.client.HTTPConnection(*server.server_address, timeout=1)
+            conn.request('GET', '/health', headers=headers)
+            response = conn.getresponse()
+            self.assertEqual(response.status, 200)
+            self.assertEqual(json.loads(response.read()), before[0])
+            conn.close()
+            self.assertEqual(server.service.status(), before[1])
+            if headers.get('X-Tehablo-Codigo') == CODE:
+                self.assertGreater(server.last_request, previous)
+            else:
+                self.assertEqual(server.last_request, previous)
+
     def test_requests_keep_server_alive_then_idle_exits(self):
         server, thread = self.start(.3)
         for _ in range(8):
             conn = http.client.HTTPConnection(*server.server_address, timeout=1)
-            conn.request('GET', '/health')
+            conn.request('GET', '/health', headers={'X-Tehablo-Codigo': CODE})
             response = conn.getresponse()
             self.assertEqual(response.status, 200)
             response.read()

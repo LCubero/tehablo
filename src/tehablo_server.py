@@ -762,17 +762,18 @@ class Handler(BaseHTTPRequestHandler):
     def parse_request(self):
         parsed = super().parse_request()
         if parsed:
-            if not (self.command == 'GET' and self.path == '/health'):
-                supplied = self.headers.get('X-Tehablo-Codigo', '').encode('utf-8')
-                try:
-                    valid = hmac.compare_digest(supplied, load_ssh_code().encode('ascii'))
-                except (OSError, ValueError):
-                    valid = False
-                if not valid:
-                    self.close_connection = True
-                    self.reply(403, {'error': 'forbidden'})
-                    return False
-            self.server.last_request = time.monotonic()
+            supplied = self.headers.get('X-Tehablo-Codigo', '').encode('utf-8')
+            try:
+                valid = hmac.compare_digest(supplied, load_ssh_code().encode('ascii'))
+            except (OSError, ValueError):
+                valid = False
+            if not valid and not (self.command == 'GET' and self.path == '/health'):
+                self.close_connection = True
+                self.reply(403, {'error': 'forbidden'})
+                return False
+            if valid:
+                # An unauthenticated /health still answers but never keeps the server alive.
+                self.server.last_request = time.monotonic()
         return parsed
 
     def log_message(self, format, *args):
