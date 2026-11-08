@@ -4,6 +4,17 @@
 
 Este archivo registra los cambios completados en orden cronológico.
 
+## 2026-11-08
+
+- Instalación: `install.sh` e `install.ps1` descargan el modelo Pocket `spanish`, Lola y Rafael sin cuenta, así que esas voces quedan listas al terminar; si una descarga falla, avisan y siguen. Todo lo que conviene leer (PortAudio, cómo iniciar, `pi install`, audio por SSH, Phonon, descargas fallidas) sale junto al final, bajo «Listo. Lee esto:». Sin publicar.
+- Pi: **Descargar y usar** descarga la voz al pulsarlo, también con el servidor apagado (Regina e Iker con su token, Rafael sin cuenta), y avisa «Descargando …» y «… lista» o el error; el token de Hugging Face ya no aparece en errores, avisos ni en el log (`hf_***`). Sin publicar.
+
+## 2026-11-07
+
+- Audio por SSH: si SSH pide contraseña o la frase de tu clave, el cliente la pide en un campo oculto y abre el canal con el mecanismo estándar de OpenSSH (`SSH_ASKPASS`); no se guarda, se prueba una sola vez por intento y nunca acepta claves de servidor automáticamente. **Esc** muestra el comando manual. Comprobado con la VM Ubuntu (`RH-W-0044`, sin publicar).
+- Audio por SSH, seguridad: con el canal del cliente abierto, solo se acepta el código de esa conexión; al cambiar el código de una conexión, el viejo se borra si ninguna otra lo usa; `/health` sin código ya no mantiene encendido el servidor. El aviso de Pi dice que la contraseña la pide el cliente (`RH-W-0044`, sin publicar).
+- Cliente de audio: si la salida guardada (por ejemplo, audífonos Bluetooth) no está conectada, suena por la predeterminada y lo avisa, sin perder la elección; cuando vuelve a estar, se usa otra vez (comprobado por la persona responsable).
+
 ## 2026-11-06
 
 - Pi: **Salida** en `[ ≡ ]` elige el dispositivo donde suena la voz en uso normal (en Audio: SSH lo elige el cliente de la PC).
