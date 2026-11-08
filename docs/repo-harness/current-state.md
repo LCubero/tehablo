@@ -27,6 +27,7 @@ Este archivo proyecta solo hechos verificados del proyecto: registros activos, b
 
 <!-- doc-role:recent-work -->
 
+- Voces e instalador (2026-11-08, rama `feat/ssh-audio`, sin publicar): `install.sh` e `install.ps1` descargan el modelo Pocket `spanish`, Lola y Rafael sin cuenta (comprobado en Windows y en un contenedor Ubuntu limpio) y muestran al final un bloque ordenado «Listo. Lee esto:»; «Descargar y usar» en Pi descarga de verdad, también con el servidor apagado, y avisa «Descargando…» / «… lista»; el token de Hugging Face ya no aparece en errores ni en el log (`hf_***`). Falta la prueba de la persona responsable en el contenedor limpio reconstruido (Regina con token y servidor apagado); detalle en `odd/tasks/voices-ready.md`.
 - `RH-W-0010` (`completed`): diccionario configurable por voz con `/tts dict` y *Dict*; comprobado por escucha en Windows.
 - `RH-W-0031` (`completed`): barra visible al iniciar salvo que se dejara oculta; comprobada físicamente en Windows.
 - `RH-W-0033` (`completed`): las barras reflejan el servidor compartido y apagar afecta a todas; comprobado en Windows.
