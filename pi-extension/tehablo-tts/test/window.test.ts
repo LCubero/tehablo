@@ -104,12 +104,28 @@ test('S7 S8 the download dialog stays open: Descargando…, then Descargada with
   assert.ok(e.text().includes('[ Descargar y usar ]') && e.text().includes('[ Volver ]'));
 });
 
-test('S10 Descargada is plain text in the voice table', () => {
+test('S10 Descargada is gray in the voice table and in the download dialog', async () => {
   const s = setup({theme: {fg: (st: string, t: string) => `<${st}>${t}</${st}>`}});
   s.key('\r');
   const row = s.w.render(100).find(l => l.includes('lola ('))!;
-  assert.match(row, /<\/warning>Descargada {9}<accent>|<\/warning>Descargada\s+</);
-  assert.ok(!/<\w+>Descargada/.test(row), row);
+  assert.match(row, /<dim>Descargada\s*<\/dim>/, row);
+  s.w.choose(ROWS[2]); s.w.confirm();
+  await new Promise(resolve => setImmediate(resolve));
+  assert.match(s.text(), /<dim> rafael \(España\): Descargada\.<\/dim>/);
+});
+
+test('S11 S12 a refused token is shown on the token page and asked again', async () => {
+  const s = setup();
+  s.w.choose(ROWS[0]);
+  s.w.token = 'hf_wrong'; s.w.saveToken();
+  assert.equal(s.w.page, 'download');
+  (s.w.c as any).download = async () => { s.state.token = false; throw new Error('Hugging Face rechazó el token.'); };
+  s.w.confirm();
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(s.w.page, 'token');
+  assert.equal(s.w.token, '');
+  assert.match(s.text(), /Hugging Face rechazó el token\./);
+  assert.ok(s.text().includes('Token: '));
 });
 
 test('S4 Regina and Iker keep token then prepare their own model', async () => {

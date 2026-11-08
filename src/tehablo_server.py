@@ -35,6 +35,15 @@ BASE_GAIN = 1.8
 LIMIT = 0.8
 
 
+TOKEN_REFUSED = ('Hugging Face rechazó el token: revisa que esté completo y que aceptaste los términos '
+                 'en huggingface.co/gradium/phonon-40m-es.')
+
+
+def token_refused(reason):
+    """Whether Hugging Face refused the token (invalid, or the gated terms not accepted)."""
+    return any(mark in reason for mark in ('Authentication required', 'GatedRepo', '401 Client Error', '403 Client Error'))
+
+
 def hide_token(error):
     """Error text safe for logs, API and notices: never the Hugging Face token."""
     text = str(error)
@@ -654,6 +663,13 @@ class SpeechService:
                                     continue
                                 print(f'Phonon unavailable ({reason}); using spanish with lola',
                                       file=sys.stderr, flush=True)
+                                # A Regina/Iker download ends here with its own reason, never as a Pocket voice.
+                                job = self.preparation
+                                if job and job['state'] == 'downloading' and job['revision'] == revision:
+                                    if token_refused(reason):
+                                        job.update(state='error', error=TOKEN_REFUSED, code='token')
+                                    else:
+                                        job.update(state='error', error=f'No se pudo descargar Phonon: {reason}')
                                 self.fallback = self.voice
                                 self.model_name, self.voice = 'spanish', 'lola'
                                 name = 'spanish'

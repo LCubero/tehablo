@@ -83,7 +83,11 @@ export class SettingsWindow {
         if (!this.c.download) throw new Error('No se puede descargar: vuelve a cargar la extensión.');
         await this.c.download(voice);
         this.notice = `${voice.name} lista`; this.result = 'done';
-      } catch (error) { this.notice = error instanceof Error ? error.message : String(error); this.result = 'error'; }
+      } catch (error) {
+        this.notice = error instanceof Error ? error.message : String(error); this.result = 'error';
+        // A refused token was dropped: ask for a new one on the token page, with the reason.
+        if (voice.kind === 'account' && !this.c.state().token) { this.token = ''; this.error = this.notice; this.page = 'token'; }
+      }
       finally { this.downloading = false; this.redraw(); }
     })();
   }
@@ -270,7 +274,7 @@ export class SettingsWindow {
       line([{text: '   ' + '─'.repeat(IN - 4), style: 'dim'}]);
       this.order().forEach((v, i) => {
         const sel = i === this.pick, pickIt = () => { this.pick = i; this.choose(v); };
-        const style = v.downloaded ? undefined : v.kind === 'account' && !this.c.state().token ? 'warning' : 'dim';
+        const style = v.downloaded ? 'dim' : v.kind === 'account' && !this.c.state().token ? 'warning' : 'dim';
         line([{text: sel ? ' ▶ ' : '   ', style: 'accent', fn: pickIt},
           {text: fit(`${this.isActive(v) ? '●' : ' '} ${v.name}${v.kind === 'account' ? ' *' : ''} (${v.note})`, 31), style: this.isActive(v) ? 'warning' : sel ? 'accent' : undefined, fn: pickIt},
           {text: fit(this.typeLabel(v), 19), style, fn: pickIt},
@@ -283,7 +287,7 @@ export class SettingsWindow {
     } else if (this.page === 'download') {
       const v = this.target!;
       if (this.downloading || this.result === 'done') {
-        line([{text: this.downloading ? ` Descargando ${v.name}…` : ` ${v.name} (${v.note}): Descargada.`}]);
+        line([{text: this.downloading ? ` Descargando ${v.name}…` : ` ${v.name} (${v.note}): Descargada.`, style: this.downloading ? undefined : 'dim'}]);
         line([{text: this.downloading ? ' Esc vuelve al menú; la descarga sigue.' : ' Ya funciona sin internet.', style: 'dim'}]);
         line();
         line(this.downloading ? [] : [{text: ' '}, {text: '[ Cerrar ]', style: this.col === 0 ? 'accent' : undefined, fn: () => this.done()},

@@ -1021,6 +1021,34 @@ for (const kind of ['account', 'download']) for (const alreadyOn of [false, true
   });
 }
 
+for (const envToken of [false, true]) {
+  test(`voices-ready S11 S12 a refused token is not kept (${envToken ? '.env' : 'typed'} token)`, async () => {
+    const row = {name: 'Regina', voice: 'Regina', model: 'phonon', kind: 'account', note: 'México', downloaded: false};
+    const store = memoryStore(); store.table = () => [row] as any; store.hasToken = () => envToken;
+    const s = setup(store), request = s.client.request;
+    let prepared = false;
+    s.client.request = async (path: string, body: any) => {
+      if (path === '/prepare') { prepared = true; return {id: 'job'}; }
+      if (path === '/health' && prepared) return {ready: true, model: 'spanish', voice: 'lola',
+        preparation: {id: 'job', state: 'error', code: 'token', error: 'Hugging Face rechazó el token.'}};
+      return request(path, body);
+    };
+    try {
+      await clickAt(s, '[ ≡ ]');
+      const w = s.windows[0].w;
+      if (!envToken) w.c.saveToken('hf_wrong_placeholder');
+      assert.equal(w.c.state().token, true);
+      await assert.rejects(w.c.download(row), /rechazó el token/);
+      assert.equal(w.c.state().token, false);
+      assert.equal(w.typeLabel(w.c.voices()[0]), 'Con cuenta gratis');
+      w.choose(w.c.voices()[0]);
+      assert.equal(w.page, 'token');
+      w.c.saveToken('hf_new_placeholder');
+      assert.equal(w.c.state().token, true);
+    } finally { await s.close(); }
+  });
+}
+
 test('voices-ready S3 starts a stopped server, prepares immediately, refreshes voices and reports failures', async () => {
   for (const failure of ['', 'offline', 'download failed']) {
     const s = setup();

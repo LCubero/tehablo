@@ -120,7 +120,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
   // Server lifecycle shown by the start button; `open` shows the volume and speed controls.
   let server: 'off' | 'loading' | 'ready' = 'off', open = false;
   let readyTimer: ReturnType<typeof setTimeout> | undefined, readyEpoch = 0, readyTries = 0;
-  let warnedFallback: string | undefined;
+  let warnedFallback: string | undefined, tokenRefused = false;
   const READY_TRIES = 240;
   // Status line: "TTS off" while the server is off, else "TTS manual" or "TTS auto".
   // Short notices go to the end of the visible bar as "// text" for noteMs, so they do not take another line;
@@ -481,7 +481,8 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
     await refreshDevices();
     const controller: Controller = {
       devices: () => devices,
-      state: () => ({settings, server, token: !!client.token || store.hasToken()}),
+      // A token Hugging Face refused counts as none, so the window asks for it again.
+      state: () => ({settings, server, token: !tokenRefused && (!!client.token || store.hasToken())}),
       // Shared table order and notes; a voice on disk is downloaded, otherwise the server's state once known.
       voices: () => {
         const known = new Map(settings.voices.map(v => [v.name, v]));
@@ -511,7 +512,10 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
             const health = await client.request('/health');
             const preparation = health?.preparation;
             if (preparation?.id !== job?.id) throw new Error('La descarga cambió en otra sesión.');
-            if (preparation.state === 'error') throw new Error(preparation.error || 'No se pudo descargar la voz.');
+            if (preparation.state === 'error') {
+              if (preparation.code === 'token') { client.token = undefined; tokenRefused = true; }
+              throw new Error(preparation.error || 'No se pudo descargar la voz.');
+            }
             if (preparation.state === 'ready') {
               sync(health);
               await refreshVoices();
@@ -551,7 +555,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
       // Only needed to download an account voice, so it stays in memory and is never written.
       saveToken: value => {
         checkToken(value);
-        client.token = value;
+        client.token = value; tokenRefused = false;
         // A running or loading server got its environment at spawn, so it restarts to see the token.
         if (server !== 'off') run(async () => { await powerOff(); await boot(); });
       },

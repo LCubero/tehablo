@@ -168,6 +168,30 @@ class VoicePreparationTests(unittest.TestCase):
             service.close()
 
 
+    def test_refused_token_says_so_and_failed_phonon_never_becomes_a_catalog_error(self):
+        refused = OSError('cannot fetch `config.json` from hf://gradium/phonon-40m-es: Authentication required: '
+                          'Access to model gradium/phonon-40m-es is restricted. (error_code=GatedRepo)')
+        for error, code, text in ((refused, 'token', 'token'), (OSError('disk full'), None, 'disk full')):
+            with self.subTest(error=error):
+                def factory(name):
+                    if name == 'phonon':
+                        raise error
+                    return Synth()
+                service = tehablo_server.SpeechService('spanish', 'lola', 1, factory, Sink, ['lola'])
+                try:
+                    with contextlib.redirect_stderr(io.StringIO()):
+                        service.prepare({'model': 'phonon', 'voice': 'Regina'})
+                        deadline = time.monotonic() + 2
+                        while service.health()['preparation']['state'] == 'downloading' and time.monotonic() < deadline:
+                            time.sleep(.01)
+                    job = service.health()['preparation']
+                    self.assertEqual(job['state'], 'error')
+                    self.assertEqual(job.get('code'), code)
+                    self.assertIn(text, job['error'])
+                    self.assertNotIn('catalog name', job['error'])
+                finally:
+                    service.close()
+
 class TokenRedactionTests(unittest.TestCase):
     def test_model_errors_never_show_the_hugging_face_token(self):
         token = 'hf_' + 'x' * 34
