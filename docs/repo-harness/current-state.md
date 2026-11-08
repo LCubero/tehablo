@@ -77,6 +77,7 @@ Este archivo proyecta solo hechos verificados del proyecto: registros activos, b
 - `RH-W-0017` (`active`, P2): en Pi, cada lectura ya sigue la salida predeterminada del sistema (comprobado físicamente en Windows y en Linux); en Windows la lectura en curso no cambia de salida, en Linux sí. Elegir el dispositivo queda para después.
 - `RH-W-0018` (`deferred`, P3): roles de voz (locutor, profesor, motivador y otros) con frases y muletillas propias.
 - `RH-W-0019` (`deferred`, P3): exportar audiolibros.
+- `RH-W-0045` (`proposed`, P2): versión visible del cliente, la extensión de Pi y el servidor, para saber qué corre en cada lado.
 - `RH-W-0020` (`excluded`): funciones de app lectora de escritorio (atajo global, portapapeles, bandeja, documentos, sonidos de fondo, plugin de navegador).
 - `RH-W-0022` (`proposed`, P3): opciones de lectura (bloques de código, pausas, aviso al terminar, retroceder o repetir, historial).
 - `RH-W-0023` (`proposed`, P2): CI mínima en Windows y Linux entregada el 2026-11-03; quedan revisión de seguridad, buenas prácticas (linter), control (límites) y rendimiento (medición de regresiones); dependencias limitadas a versiones probadas el 2026-10-30.
