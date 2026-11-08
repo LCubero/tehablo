@@ -125,6 +125,96 @@ class VoiceChannelTest(unittest.TestCase):
         self.assertFalse(voice.running)
 
 
+class AskpassTest(unittest.TestCase):
+    """S33: the password is typed in the client and handed to OpenSSH via SSH_ASKPASS."""
+
+    def answer(self, prompt, environ):
+        out = io.StringIO()
+        with patch.object(sys, 'stdout', out):
+            code = c.askpass(prompt, environ)
+        return code, out.getvalue()
+
+    def test_answers_only_password_and_passphrase_prompts(self):
+        env = {c.ASKPASS_ENV: 'p&ss "w0rd"'}
+        for prompt in ("pepe@host's password: ", '(pepe@host) Password: ',
+                       "Enter passphrase for key 'clave de prueba': "):
+            self.assertEqual(self.answer(prompt, env), (0, 'p&ss "w0rd"\n'))
+        for prompt in ('Are you sure you want to continue connecting (yes/no/[fingerprint])? ',
+                       "Please type 'yes', 'no' or the fingerprint: ", 'Verification code: ', ''):
+            self.assertEqual(self.answer(prompt, env), (1, ''))
+        self.assertEqual(self.answer("pepe@host's password: ", {}), (1, ''))
+
+    def test_cli_askpass_mode_skips_menu_and_settings(self):
+        out = io.StringIO()
+        with patch.dict(os.environ, {c.ASKPASS_ENV: 'secreto'}), patch.object(sys, 'stdout', out), \
+                patch.object(sys, 'argv', ['cliente', '--askpass', "pepe@host's password: "]), \
+                patch.object(c, 'load_settings') as load, patch.object(c, 'menu') as menu:
+            with self.assertRaises(SystemExit) as done:
+                c.main()
+        self.assertEqual(done.exception.code, 0)
+        self.assertEqual(out.getvalue(), 'secreto\n')
+        load.assert_not_called()
+        menu.assert_not_called()
+
+    def test_supported_openssh_versions(self):
+        for output, expected in [('OpenSSH_for_Windows_9.5p1, LibreSSL 3.8.2', True),
+                                 ('OpenSSH_8.6p1, OpenSSL 1.1.1', True),
+                                 ('OpenSSH_8.4p1 Debian', True),
+                                 ('OpenSSH_8.2p1 Ubuntu-4ubuntu0.5', False),
+                                 ('OpenSSH_for_Windows_8.1p1, LibreSSL 3.0.2', False),
+                                 ('OpenSSH_for_Windows_8.5p1', False),
+                                 ('OpenSSH_for_Windows_8.6p1', True),
+                                 ('PuTTY Release 0.81', False)]:
+            run = Mock(return_value=Mock(stdout='', stderr=output))
+            self.assertEqual(c.askpass_supported('ssh', run), expected, output)
+            self.assertEqual(run.call_args.args[0], ['ssh', '-V'])
+        self.assertFalse(c.askpass_supported('ssh', Mock(side_effect=OSError)))
+
+    def test_password_channel_argv_env_and_helper(self):
+        with tempfile.TemporaryDirectory(dir=SCRATCH) as home, \
+                patch.dict(os.environ, HOME=home, USERPROFILE=home):
+            process = Mock()
+            process.poll.return_value = None
+            factory = Mock(return_value=process)
+            voice = c.VoiceChannel(factory)
+            voice.start('ssh -o BatchMode=yes -o NumberOfPasswordPrompts=3 -p2222 pepe@h', password='s3cr&t')
+            argv, env = factory.call_args.args[0], factory.call_args.kwargs['env']
+            self.assertNotIn('BatchMode=yes', argv)
+            self.assertNotIn('NumberOfPasswordPrompts=3', argv)
+            self.assertIn('NumberOfPasswordPrompts=1', argv)
+            self.assertEqual(argv[-3:], ['-R', '18766:127.0.0.1:18766', 'pepe@h'])
+            self.assertEqual(env['SSH_ASKPASS_REQUIRE'], 'force')
+            self.assertEqual(env[c.ASKPASS_ENV], 's3cr&t')
+            helper = Path(env['SSH_ASKPASS'])
+            self.assertTrue(helper.is_file())
+            self.assertNotIn('s3cr&t', helper.read_text(encoding='utf-8'))
+            self.assertIn('--askpass', helper.read_text(encoding='utf-8'))
+            self.assertNotIn('s3cr&t', repr(vars(voice)))
+            voice.start('ssh pepe@h')
+            self.assertNotIn('env', factory.call_args.kwargs)
+            self.assertIn('BatchMode=yes', factory.call_args.args[0])
+
+    @unittest.skipUnless(os.name == 'nt', 'cmd.exe helper')
+    def test_windows_helper_escapes_percent_in_paths(self):
+        with tempfile.TemporaryDirectory(dir=SCRATCH) as home, \
+                patch.dict(os.environ, HOME=home, USERPROFILE=home), \
+                patch.object(c.sys, 'executable', r'C:\a%PATH%b\python.exe'):
+            text = c.askpass_helper().read_text(encoding='oem')
+        self.assertIn(r'C:\a%%PATH%%b\python.exe', text)
+        self.assertTrue(text.rstrip().endswith('--askpass %*'))
+
+    def test_host_key_failure_is_not_a_password_problem(self):
+        for error, kind in [(b'Permission denied (publickey,password).', 'auth'),
+                            (b'Host key verification failed.', 'host')]:
+            process = Mock()
+            process.poll.return_value = 255
+            process.stderr = io.BytesIO(error)
+            voice = c.VoiceChannel(Mock(return_value=process))
+            voice.process = process
+            voice.reason()
+            self.assertEqual(voice.needs_interaction, kind)
+
+
 class SshPickerTest(unittest.TestCase):
     def test_targets(self):
         for command, host in [('ssh pepe@192.168.7.88', '192.168.7.88'),
@@ -412,7 +502,8 @@ class MenuTest(unittest.IsolatedAsyncioTestCase):
         self.home = Path(self.tmp.name)
         for patcher in (patch.dict(os.environ, HOME=str(self.home), APPDATA=str(self.home / 'AppData/Roaming')),
                         patch.object(c, 'open_ssh_sessions', return_value=[]),
-                        patch.object(c, 'output_devices', return_value=['Altavoces', 'Audífonos'])):
+                        patch.object(c, 'output_devices', return_value=['Altavoces', 'Audífonos']),
+                        patch.object(c, 'askpass_supported', return_value=False, create=True)):
             patcher.start()
             self.addCleanup(patcher.stop)
         self.settings = c.load_settings()
@@ -655,6 +746,46 @@ class MenuTest(unittest.IsolatedAsyncioTestCase):
             self.assertNotIn('uptime', text)
             self.assertNotIn(self.CODE, text)
             self.assertNotIn('Recibiendo voz', self.text(app, '#estado'))
+
+    async def test_password_prompt_retry_escape_and_host_key(self):
+        from textual.widgets import Input
+        command = 'ssh pepe@host'
+        c.pair(self.settings, self.CODE)
+        self.settings['connection_codes'] = {c.connection_key(command): self.CODE}
+        voice = c.VoiceChannel(self.factory)
+        app = c.menu_app(self.settings, self.receiver, voice)
+
+        async def fail(error):
+            self.process.stderr = io.BytesIO(error)
+            self.process.poll.return_value = 255
+            app.refresh_status()
+            await pilot.pause()
+
+        with patch.object(c, 'askpass_supported', return_value=True):
+            async with app.run_test(size=(100, 40)) as pilot:
+                app.ssh(command)
+                await fail(b'Permission denied (publickey,password).')
+                self.assertTrue(app.screen.query_one(Input).password)
+                self.assertIn('Contraseña SSH', self.text(app.screen, '#pregunta'))
+                self.assertIn('No se guarda', self.text(app.screen, '#pregunta'))
+                self.process.poll.return_value = None
+                await pilot.press(*'clave1', 'enter')
+                await pilot.pause()
+                self.assertEqual(self.factory.call_args.kwargs['env'][c.ASKPASS_ENV], 'clave1')
+                await fail(b'Permission denied (publickey,password).')
+                self.assertIn('Contraseña incorrecta', self.text(app.screen, '#pregunta'))
+                await pilot.press('escape')
+                await pilot.pause()
+                self.assertIn('Corre este comando en otra terminal', self.text(app.screen, '#pregunta'))
+                await pilot.press('escape')
+                self.process.poll.return_value = None
+                self.process.stderr = io.BytesIO()
+                app.ssh(command)
+                await fail(b'Host key verification failed.')
+                self.assertIn('Corre este comando en otra terminal', self.text(app.screen, '#pregunta'))
+        for path in self.home.rglob('*'):
+            if path.is_file():
+                self.assertNotIn(b'clave1', path.read_bytes(), path)
 
     async def test_windows_manual_command_is_literal_powershell(self):
         app = c.menu_app(self.settings, self.receiver)

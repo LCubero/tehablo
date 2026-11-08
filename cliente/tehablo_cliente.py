@@ -96,7 +96,7 @@ def ssh_tokens(command):
             for t in shlex.split(command, posix=False)]
 
 
-def voice_argv(command, interactive=False):
+def voice_argv(command, interactive=False, password=False):
     """Keep connection arguments only, without shell execution or remote commands."""
     tokens = ssh_tokens(command)
     executable = 'ssh'
@@ -116,7 +116,8 @@ def voice_argv(command, interactive=False):
                     value = token[index + 2:] or (tokens.pop(0) if tokens else '')
                     if not value:
                         raise ValueError('No se reconoce esa conexión SSH.')
-                    if interactive and option == 'o' and re.split(r'[=\s]+', value, maxsplit=1)[0].lower() in ('batchmode', 'stdinnull'):
+                    if (interactive or password) and option == 'o' and re.split(r'[=\s]+', value, maxsplit=1)[0].lower() in (
+                            ('batchmode', 'stdinnull', 'numberofpasswordprompts') if password else ('batchmode', 'stdinnull')):
                         break  # OpenSSH uses the first value, so remove conflicting originals.
                     if option not in 'LRDW' and not (option == 'o' and value.lower().startswith(
                             ('remoteforward', 'localforward', 'dynamicforward'))):
@@ -139,8 +140,56 @@ def voice_argv(command, interactive=False):
     if interactive:
         # Typed by the user in a terminal: their options plus the voice forward, nothing else.
         return ['ssh'] + kept[1:] + ['-N', '-R', '18766:127.0.0.1:18766', destination]
-    return kept + ['-N', '-T', '-o', 'BatchMode=yes', '-o', 'ExitOnForwardFailure=yes',
+    # With a typed password: one attempt only, so a typo never counts three times against server lockouts.
+    auth = ['-o', 'NumberOfPasswordPrompts=1'] if password else ['-o', 'BatchMode=yes']
+    return kept + ['-N', '-T', *auth, '-o', 'ExitOnForwardFailure=yes',
                    '-o', 'ServerAliveInterval=30', '-R', '18766:127.0.0.1:18766', destination]
+
+
+ASKPASS_ENV = 'TEHABLO_SSH_SECRETO'
+
+
+def askpass(prompt, environ=os.environ):
+    """SSH_ASKPASS answer: the typed password, only for password or key passphrase prompts."""
+    secret = environ.get(ASKPASS_ENV)
+    if (secret is None or not re.search('password|passphrase', prompt, re.I)
+            or re.search('yes/no|fingerprint', prompt, re.I)):
+        return 1  # Host key confirmations and any other question are refused, never accepted.
+    sys.stdout.write(secret + '\n')
+    return 0
+
+
+def askpass_supported(executable='ssh', run=subprocess.run):
+    """SSH_ASKPASS_REQUIRE=force needs OpenSSH 8.4+ (Win32-OpenSSH 8.6+)."""
+    try:
+        result = run([executable, '-V'], capture_output=True, text=True, timeout=5,
+                     **({'creationflags': subprocess.CREATE_NO_WINDOW} if os.name == 'nt' else {}))
+    except (OSError, subprocess.SubprocessError):
+        return False
+    match = re.search(r'OpenSSH\w*?_(\d+)\.(\d+)', (result.stdout or '') + (result.stderr or ''))
+    if not match:
+        return False
+    minimum = (8, 6) if 'windows' in match[0].lower() else (8, 4)
+    return (int(match[1]), int(match[2])) >= minimum
+
+
+def askpass_helper():
+    """Launcher without secrets: OpenSSH runs it with its prompt; it calls this client with --askpass."""
+    folder = home_dir() / '.tehablo'
+    folder.mkdir(parents=True, exist_ok=True)
+    client = str(Path(__file__).resolve())
+    if os.name == 'nt':
+        # cmd.exe reads batch files in the OEM code page.
+        # %% keeps a literal % in a path from expanding as a variable.
+        python, client = sys.executable.replace('%', '%%'), client.replace('%', '%%')
+        path, text, encoding = folder / 'askpass.cmd', f'@"{python}" "{client}" --askpass %*\r\n', 'oem'
+    else:
+        path, encoding = folder / 'askpass.sh', 'utf-8'
+        text = f'#!/bin/sh\nexec {shlex.quote(sys.executable)} {shlex.quote(client)} --askpass "$@"\n'
+    if not path.exists() or path.read_bytes() != text.encode(encoding):
+        path.write_bytes(text.encode(encoding))
+    path.chmod(0o700)
+    return path
 
 
 def manual_command(argv, windows):
@@ -187,19 +236,25 @@ class VoiceChannel:
         self.process = None
         self.host = ''
         self.needs_interaction = False
+        self.used_password = False
 
     @property
     def running(self):
         return self.process is not None and self.process.poll() is None
 
-    def start(self, command):
-        argv = voice_argv(command)
+    def start(self, command, password=None):
+        argv = voice_argv(command, password=password is not None)
         self.needs_interaction = False
+        self.used_password = password is not None
         self.stop()
         self.host = argv[-1].rsplit('@', 1)[-1]
+        extra = {'creationflags': subprocess.CREATE_NO_WINDOW} if os.name == 'nt' else {}
+        if password is not None:
+            # Only this ssh child and its askpass helper see the password; it is never stored.
+            extra['env'] = {**os.environ, 'SSH_ASKPASS': str(askpass_helper()),
+                            'SSH_ASKPASS_REQUIRE': 'force', ASKPASS_ENV: password}
         self.process = self.factory(argv, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
-                                    stderr=subprocess.PIPE,
-                                    **({'creationflags': subprocess.CREATE_NO_WINDOW} if os.name == 'nt' else {}))
+                                    stderr=subprocess.PIPE, **extra)
 
     def reason(self):
         if self.process is None or self.running:
@@ -208,8 +263,13 @@ class VoiceChannel:
         error = process.stderr.read().decode('utf-8', errors='replace').strip() if process.stderr else ''
         if process.stderr:
             process.stderr.close()
-        if re.search('permission denied|publickey|password|host key verification failed|read_passphrase', error, re.I):
-            self.needs_interaction = True
+        if re.search('host key verification failed', error, re.I):
+            self.needs_interaction = 'host'
+            return 'SSH necesita confirmar la huella del servidor: hazlo una vez en una terminal.'
+        if re.search('permission denied|publickey|password|read_passphrase', error, re.I):
+            self.needs_interaction = 'auth'
+            if self.used_password:
+                return 'Contraseña incorrecta.'
             return 'SSH necesita autenticación o confirmación; también puede ser una clave incorrecta.'
         if re.search('remote port forwarding failed|administratively prohibited', error, re.I):
             return 'El canal de voz ya está abierto en otra conexión'
@@ -493,6 +553,8 @@ def uninstall(output=None, system=None, run=subprocess.run):
     # Never delete the clone, only the known downloaded client.
     installed = home_dir() / '.local/share/tehablo-cliente/tehablo_cliente.py'
     installed.unlink(missing_ok=True)
+    for helper in ('askpass.cmd', 'askpass.sh'):
+        (home_dir() / '.tehablo' / helper).unlink(missing_ok=True)
     (output or print)(f'Cliente retirado. Si añadiste {FORWARD} a mano, puedes quitarlo del Host correspondiente en {home_dir() / ".ssh/config"}.')
 
 
@@ -553,7 +615,7 @@ def menu_app(settings, receiver, voice=None):
 
         def compose(self):
             with Vertical(id='caja'):
-                yield Static(self.text, markup=False)
+                yield Static(self.text, id='pregunta', markup=False)
                 yield Input(password=self.password, compact=True, id='entrada')
 
         def on_input_submitted(self, event):
@@ -657,8 +719,11 @@ def menu_app(settings, receiver, voice=None):
                 self.voice_reason = reason
                 self.notice(reason)
                 if voice.needs_interaction and getattr(self, 'selected_command', None):
-                    voice.needs_interaction = False
-                    self.other_program()
+                    kind, voice.needs_interaction = voice.needs_interaction, False
+                    if kind == 'auth' and askpass_supported(voice_argv(self.selected_command)[0]):
+                        self.ask_password(voice.used_password)
+                    else:
+                        self.other_program()
             lines = status_text(settings, receiver).splitlines()
             self.query_one('#estado').update(lines[0])
             warnings = lines[1:]
@@ -787,6 +852,19 @@ def menu_app(settings, receiver, voice=None):
                         '127.0.0.1:18766, Remote, Add. Termius/MobaXterm: igual.',
                         [('volver', 'Volver')], lambda value: None)
 
+        def ask_password(self, retry=False):
+            target = voice_argv(self.selected_command)[-1]
+            self.push_screen(Entry(('Contraseña incorrecta. ' if retry else '')
+                                   + f'Contraseña SSH de {target} (o la frase de tu clave).\n'
+                                   'No se guarda. Esc: comando para otra terminal.', True),
+                             lambda value: self.guarded(self.start_with_password, value) if value
+                             else self.other_program())
+
+        def start_with_password(self, password):
+            voice.start(self.selected_command, password=password)
+            self.voice_reason = ''
+            self.refresh_status()
+
         def link_connection(self, command=None, after=None):
             key = connection_key(command) if command else None
             label = voice_argv(command)[-1] if command else 'servidor (código general)'
@@ -849,6 +927,11 @@ def menu(settings, receiver, voice=None):
 
 
 def main():
+    if sys.argv[1:2] == ['--askpass']:
+        # Called by OpenSSH through the askpass helper: answer and exit, no menu or settings.
+        if hasattr(sys.stdout, 'reconfigure'):
+            sys.stdout.reconfigure(encoding='utf-8')  # OpenSSH reads UTF-8, not the console code page.
+        sys.exit(askpass(' '.join(sys.argv[2:])))
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--uninstall', action='store_true')
     parser.add_argument('--codigo', help='Código de vinculación mostrado por /tts codigo')
