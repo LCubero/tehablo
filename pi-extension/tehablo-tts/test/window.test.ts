@@ -24,6 +24,7 @@ function setup(over: Partial<Record<string, any>> = {}) {
     active: () => state.settings.voice ? {model: state.settings.model, voice: state.settings.voice} : {model: 'spanish', voice: 'lola'},
     voices: () => ROWS,
     choose: row => { calls.push(['choose', row.voice, row.model]); state.settings = {...state.settings, voice: row.voice, model: row.model}; },
+    download: async row => { c.choose(row); },
     change: (field, value) => { calls.push(['change', field, value]); (state.settings as any)[field] = value; },
     power: action => { calls.push(['power', action]); if (action !== 'restart') state.server = action === 'on' ? 'ready' : 'off'; },
     saveToken: value => { if (value === 'bad') throw new Error('El token no es válido: copia el token completo de Hugging Face.'); calls.push(['token', value.length]); state.token = true; },
@@ -42,6 +43,35 @@ function setup(over: Partial<Record<string, any>> = {}) {
       w.handleMouse({type: 'click', button: 'left', x, y});
     }};
 }
+
+test('S3 download confirmation prepares now and reports completion or error', async () => {
+  const s = setup();
+  let finish!: () => void;
+  (s.w.c as any).download = () => new Promise<void>(resolve => { finish = resolve; });
+  s.w.choose(ROWS[2]);
+  s.w.confirm();
+  assert.match(s.text(), /Descargando rafael…/);
+  finish();
+  await new Promise(resolve => setImmediate(resolve));
+  assert.match(s.text(), /rafael lista/);
+  (s.w.c as any).download = async () => { throw new Error('Sin conexión'); };
+  s.w.choose(ROWS[2]); s.w.confirm();
+  await new Promise(resolve => setImmediate(resolve));
+  assert.match(s.text(), /Sin conexión/);
+});
+
+test('S3 Regina and Iker keep token then choose, never Pocket download', () => {
+  for (const row of ROWS.slice(0, 2)) {
+    const s = setup();
+    (s.w.c as any).download = () => { assert.fail('account voice used Pocket preparation'); };
+    s.w.choose(row);
+    assert.equal(s.w.page, 'token');
+    s.w.token = 'test-placeholder'; s.w.saveToken();
+    assert.equal(s.w.page, 'download');
+    s.w.confirm();
+    assert.deepEqual(s.calls, [['token', 16], ['choose', row.voice, row.model]]);
+  }
+});
 
 test('main window shows active voice, sound, auto, shortcuts and server buttons', () => {
   const s = setup();

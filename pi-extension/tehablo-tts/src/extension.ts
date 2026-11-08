@@ -478,6 +478,36 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
       dict: row => dictFor(row.voice, row.model),
       toggleDict: row => { toggleDict(row.voice, row.model); },
       choose: row => { settings = {...settings, model: row.model, voice: row.voice}; persist(); run(() => configure({model: row.model, voice: row.voice})); },
+      download: async row => {
+        const generation = epoch;
+        settings = {...settings, model: row.model, voice: row.voice}; persist();
+        say(ctx, `Descargando ${row.name}…`, 'info');
+        try {
+          await boot();
+          await applying;
+          if (generation !== epoch) throw new Error('Descarga cancelada: el servidor se apagó.');
+          const job = await client.request('/prepare', {model: row.model, voice: row.voice});
+          for (;;) {
+            if (generation !== epoch) throw new Error('Descarga cancelada: el servidor se apagó.');
+            const health = await client.request('/health');
+            const preparation = health?.preparation;
+            if (preparation?.id !== job?.id) throw new Error('La descarga cambió en otra sesión.');
+            if (preparation.state === 'error') throw new Error(preparation.error || 'No se pudo descargar la voz.');
+            if (preparation.state === 'ready') {
+              sync(health);
+              await refreshVoices();
+              redrawWindow?.();
+              say(ctx, `${row.name} lista`, 'info');
+              return;
+            }
+            if (health?.error) throw new Error(health.error);
+            await new Promise(resolve => setTimeout(resolve, 250));
+          }
+        } catch (error) {
+          warn(error);
+          throw error;
+        }
+      },
       change: (field, value) => {
         const previousAudio = settings.audio;
         settings = {...settings, [field]: value}; if (field !== 'auto') persist();

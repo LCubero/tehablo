@@ -132,9 +132,12 @@ class PocketSynthesizer:
         self.sample_rate = self.model.sample_rate
         self.voices = {}
 
-    def stream(self, text, voice, stop):
+    def prepare(self, voice):
         if voice not in self.voices:
             self.voices[voice] = self.model.get_state_for_audio_prompt(voice, truncate=True)
+
+    def stream(self, text, voice, stop):
+        self.prepare(voice)
         if stop.is_set():
             return
         for chunk in self.model.generate_audio_stream(self.voices[voice], text, stop=stop):
@@ -323,6 +326,7 @@ class SpeechService:
         self.state = 'loading'
         self.id = None
         self.pending = None
+        self.preparation = None
         self.queue = deque()
         self.promoted = deque(maxlen=10)
         self.cancel = threading.Event()
@@ -427,6 +431,7 @@ class SpeechService:
             return {'ok': True, 'ready': self.ready, 'model': self.model_name,
                     'voice': self.voice, 'speed': float(self.speed), 'volume': self.volume, 'audio': self.audio, 'device': self.device,
                     'error': self.error, 'fallback': self.fallback,
+                    'preparation': dict(self.preparation) if self.preparation else None,
                     'sshReceiver': self.ssh_audio.receiver_authenticated}
 
     def status(self):
@@ -523,6 +528,21 @@ class SpeechService:
                     self.condition.notify_all()
             return {'state': self.state}
 
+    def prepare(self, body):
+        """Queue only account-free catalog downloads on the model's existing worker."""
+        if set(body) != {'model', 'voice'} or not any(
+                model == body.get('model') and name == body.get('voice') and kind == 'download'
+                for name, model, kind, _ in VOICE_TABLE):
+            raise ValueError('expected an account-free download voice')
+        with self.condition:
+            if self.preparation and self.preparation['state'] == 'downloading':
+                raise RuntimeError('Ya se está descargando una voz.')
+            self.configure(body)
+            self.preparation = {'id': secrets.token_hex(8), 'voice': body['voice'],
+                                'revision': self.revision, 'state': 'downloading', 'error': None}
+            self.condition.notify_all()
+            return dict(self.preparation)
+
     def configure(self, body):
         with self.condition:
             self.validate(body)
@@ -603,7 +623,8 @@ class SpeechService:
         try:
             while True:
                 with self.condition:
-                    self.condition.wait_for(lambda: self.closed or loaded_revision != self.revision or self.pending)
+                    self.condition.wait_for(lambda: self.closed or loaded_revision != self.revision or self.pending
+                                            or (self.preparation and self.preparation['state'] == 'downloading'))
                     if self.closed:
                         return
                     revision, name = self.revision, self.model_name
@@ -638,6 +659,8 @@ class SpeechService:
                                 self.clear()
                                 self.ready = False
                                 self.error = f'model load failed: {exc}'
+                                if self.preparation and self.preparation['state'] == 'downloading':
+                                    self.preparation.update(state='error', error=self.error)
                                 self.state = 'error'
                             self.condition.wait_for(lambda: self.closed or self.revision != revision)
                         continue
@@ -649,6 +672,22 @@ class SpeechService:
                         if not self.pending:
                             self.state = 'idle'
                             self.next_reading()
+                with self.condition:
+                    job = self.preparation
+                    if job and job['state'] == 'downloading':
+                        if job['revision'] != revision or revision != self.revision:
+                            job.update(state='error', error='La voz cambió durante la descarga.')
+                            continue
+                    else:
+                        job = None
+                if job:
+                    try:
+                        synth.prepare(self.resolve_voice(job['voice'], name))
+                        with self.condition:
+                            job.update(state='ready')
+                    except Exception as exc:
+                        with self.condition:
+                            job.update(state='error', error=str(exc))
                 with self.condition:
                     if not self.pending or revision != self.revision:
                         continue
@@ -814,7 +853,7 @@ class Handler(BaseHTTPRequestHandler):
         if self.reject_origin():
             return
         service = self.server.service
-        if self.path not in {'/speak', '/pause', '/resume', '/stop', '/config', '/shutdown'}:
+        if self.path not in {'/speak', '/pause', '/resume', '/stop', '/config', '/prepare', '/shutdown'}:
             self.reply(404, {'error': 'unknown path'})
             return
         if self.headers.get('Content-Type', '').split(';', 1)[0].strip().lower() != 'application/json':
@@ -832,6 +871,8 @@ class Handler(BaseHTTPRequestHandler):
                 self.reply(202, service.speak(body))
             elif self.path == '/config':
                 self.reply(200, service.configure(body))
+            elif self.path == '/prepare':
+                self.reply(202, service.prepare(body))
             elif self.path == '/shutdown':
                 self.reply(200, {'ok': True})
                 threading.Thread(target=self.server.stop_serving, daemon=True).start()

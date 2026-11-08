@@ -989,6 +989,40 @@ test('[ ≡ ] opens the centered settings window with the server off; choices ar
   }finally{await s.close();}
 });
 
+test('voices-ready S3 starts a stopped server, prepares immediately, refreshes voices and reports failures', async () => {
+  for (const failure of ['', 'offline', 'download failed']) {
+    const s = setup();
+    const row = {name: 'rafael', voice: 'rafael', model: 'spanish', kind: 'download', note: 'España', downloaded: false};
+    const request = s.client.request;
+    let preparing = false;
+    s.client.request = async (path: string, body: any) => {
+      if (path === '/prepare') {
+        assert.deepEqual(body, {model: 'spanish', voice: 'rafael'});
+        preparing = true; s.calls.push(path); return {id: 'job'};
+      }
+      if (path === '/health' && preparing) return {ready: true, model: 'spanish', voice: 'rafael',
+        preparation: {id: 'job', state: failure ? 'error' : 'ready', error: failure}};
+      if (path === '/voices') { s.calls.push(path); return {catalog: [{...row, downloaded: true}]}; }
+      return request(path, body);
+    };
+    try {
+      await clickAt(s, '[ ≡ ]');
+      if (failure === 'offline') s.fail();
+      const download = s.windows[0].w.c.download(row);
+      if (failure) await assert.rejects(download, new RegExp(failure)); else await download;
+      assert.ok(s.ensures() > 0);
+      assert.ok(s.notices.some(n => n.includes('Descargando rafael…')));
+      if (!failure) {
+        assert.ok(s.notices.some(n => n.includes('rafael lista')));
+        assert.ok(s.calls.includes('/voices'));
+        assert.equal(s.store.load().voices[0].downloaded, true);
+        assert.equal(s.store.load().voice, 'rafael');
+      } else assert.ok(s.notices.some(n => n.includes(failure)));
+      assert.equal(preparing, failure !== 'offline');
+    } finally { await s.close(); }
+  }
+});
+
 test('saved voice, volume and speed are applied once after the server starts',async()=>{
   const store=memoryStore();store.save({...DEFAULTS,model:'phonon',voice:'Iker',volume:0.75,speed:1.25});
   const s=setup(store);try {

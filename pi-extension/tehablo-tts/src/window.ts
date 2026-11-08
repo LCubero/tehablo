@@ -16,6 +16,7 @@ export interface Controller {
   voices(): VoiceRow[];
   devices?(): string[];
   choose(row: VoiceRow): void;
+  download?(row: VoiceRow): Promise<void>;
   change(field: 'volume' | 'speed' | 'auto' | 'shortcutsOn' | 'toolbar' | 'indicator' | 'policy' | 'icons' | 'audio' | 'device', value: string | number | boolean | 'stop' | 'wait' | 'symbols' | 'text' | 'local' | 'ssh'): void;
   power(action: 'on' | 'off' | 'restart'): void;
   /** Throws an Error with a message safe to show (never the token). */
@@ -44,6 +45,7 @@ export class SettingsWindow {
   capturing = false; scRow = 0; scError = '';
   row = 0; col = 0; pick = 0; token = ''; error = '';
   target?: VoiceRow;
+  notice = ''; downloading = false;
   hits: {y: number; x0: number; x1: number; fn: () => void}[] = [];
   c: Controller; th: Theme; kb: Keys; done: () => void; redraw: () => void;
   constructor(c: Controller, th: Theme, kb: Keys, done: () => void, redraw: () => void) {
@@ -68,7 +70,21 @@ export class SettingsWindow {
     else if (v.kind === 'account' && !token) { this.token = ''; this.error = ''; this.page = 'token'; }
     else { this.page = 'download'; this.col = 0; }
   }
-  confirm() { if (this.target) this.c.choose(this.target); this.home(); }
+  confirm() {
+    if (!this.target) return;
+    const voice = this.target;
+    if (voice.kind !== 'download') { this.c.choose(voice); this.home(); return; }
+    if (this.downloading) return;
+    this.home(); this.downloading = true; this.notice = `Descargando ${voice.name}…`; this.redraw();
+    void (async () => {
+      try {
+        if (!this.c.download) throw new Error('No se puede descargar: vuelve a cargar la extensión.');
+        await this.c.download(voice);
+        this.notice = `${voice.name} lista`;
+      } catch (error) { this.notice = error instanceof Error ? error.message : String(error); }
+      finally { this.downloading = false; this.redraw(); }
+    })();
+  }
   saveToken() {
     const value = this.token.trim();
     if (!value) return;
@@ -242,7 +258,7 @@ export class SettingsWindow {
         });
         line(segs);
       });
-      line();
+      line(this.notice ? [{text: ' ' + this.notice}] : []);
       line([{text: ' '}, {text: '[ Cerrar ]', style: 'accent', fn: () => this.done()}, {text: '   ↑↓ elegir · ←→ cambiar · Enter · Esc', style: 'dim'}]);
     } else if (this.page === 'voices') {
       line([{text: '   ' + fit('Voz', 31) + fit('Estado', 19) + fit('RAM aprox.', 11) + 'Dict', style: 'dim'}]);
