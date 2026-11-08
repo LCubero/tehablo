@@ -42,24 +42,25 @@ const fit = (t: string, n: number) => { const a = Array.from(t); return a.length
 const nearest = (list: number[], value: number) => list.reduce((best, v, i) => Math.abs(v - value) < Math.abs(list[best] - value) ? i : best, 0);
 
 export class SettingsWindow {
-  page: 'main' | 'voices' | 'download' | 'token' | 'shortcuts' = 'main';
+  page: 'main' | 'voices' | 'download' | 'token' | 'shortcuts' | 'code' = 'main';
   capturing = false; scRow = 0; scError = '';
   row = 0; col = 0; pick = 0; token = ''; error = '';
   target?: VoiceRow;
   notice = ''; downloading = false;
   code = ''; codeStatus = '';
-  async showCode(copy = false) {
-    this.codeStatus = '';
-    try {
-      // Reveal first: OSC 52 cannot confirm acceptance, so the code remains a fallback.
-      this.code = await this.c.sshCode(copy);
-      if (copy) this.codeStatus = 'Copiado';
-    } catch {
-      try { this.code = await this.c.sshCode(); } catch { /* Never display raw errors or secrets. */ }
-      this.codeStatus = 'No se pudo copiar o ver el código';
-    }
+  /** Copiar only copies and says so: the code is never shown for it. */
+  async copyCode() {
+    try { await this.c.sshCode(true); this.codeStatus = 'Copiado'; }
+    catch { this.codeStatus = 'No se pudo copiar'; }
     this.redraw();
   }
+  /** Ver opens its own window with the code; leaving it forgets the code. */
+  async openCode() {
+    this.codeStatus = '';
+    try { this.code = await this.c.sshCode(); } catch { this.codeStatus = 'No se pudo leer el código'; return this.redraw(); }
+    this.page = 'code'; this.col = 0; this.redraw();
+  }
+  closeCode() { this.page = 'main'; this.code = ''; this.col = 0; }
   /** Download dialog result: '' to confirm, 'done' when downloaded, 'error' to show notice and try again. */
   result: '' | 'done' | 'error' = '';
   hits: {y: number; x0: number; x1: number; fn: () => void}[] = [];
@@ -140,7 +141,12 @@ export class SettingsWindow {
       {label: 'Barra de controles', value: s.toolbar ? 'visible' : 'oculta', step: () => this.c.change('toolbar', !s.toolbar)},
       {label: 'Indicador de estado', value: s.indicator ? 'visible' : 'oculto', step: () => this.c.change('indicator', !s.indicator)},
       {label: 'Iconos', value: s.icons === 'text' ? 'Texto' : 'Símbolos', step: () => this.c.change('icons', s.icons === 'text' ? 'symbols' : 'text')},
-      {label: 'Audio', value: s.audio === 'ssh' ? 'SSH' : 'Local', step: () => this.c.change('audio', s.audio === 'ssh' ? 'local' : 'ssh')},
+      {label: 'Audio', value: s.audio === 'ssh' ? 'SSH' : 'Local', step: () => this.c.change('audio', s.audio === 'ssh' ? 'local' : 'ssh'),
+        // With SSH the pairing code sits right of the value: Enter opens Ver, a click on Copiar copies.
+        ...(s.audio === 'ssh' ? {status: this.codeStatus, buttons: [
+          ['[ Ver ]', () => { void this.openCode(); }],
+          ['[ Copiar ]', () => { void this.copyCode(); }],
+        ]} : {})},
       s.audio === 'ssh'
         ? {label: 'Salida', text: '(SSH: la elige el cliente)'}
         : {label: 'Salida', value: s.device || 'Predeterminada', step: (d: number) => {
@@ -148,10 +154,6 @@ export class SettingsWindow {
           const i = Math.max(0, devices.indexOf(s.device));
           this.c.change('device', devices[(i + d + devices.length) % devices.length]);
         }},
-      ...(s.audio === 'ssh' ? [{label: 'Código SSH', code: this.code, status: this.codeStatus, buttons: [
-        ['[ Ver ]', () => { void this.showCode(); }],
-        ['[ Copiar ]', () => { void this.showCode(true); }],
-      ]}] : []),
       {label: on ? 'Servidor ● activo' : 'Servidor ○ apagado', buttons: [
         [on ? '[ Apagar ]' : '[ Encender ]', () => { this.c.power(on ? 'off' : 'on'); this.col = 0; }],
         ['[ Reiniciar ]', on ? () => this.c.power('restart') : undefined],
@@ -190,6 +192,14 @@ export class SettingsWindow {
       else if (k === 'back' || (k === 'enter' && this.col === 1 && this.c.state().settings.shortcuts[ACTIONS[this.scRow]])) {
         this.c.setShortcut(ACTIONS[this.scRow], undefined); this.col = 0;
       } else if (k === 'enter') { this.col = 0; this.capturing = true; this.scError = ''; }
+      this.redraw();
+      return;
+    }
+    if (this.page === 'code') {
+      const actions = [() => { void this.copyCode(); }, () => this.closeCode(), () => this.done()];
+      if (k === 'esc') this.closeCode();
+      else if (k === 'left' || k === 'right') this.col = Math.max(0, Math.min(2, this.col + (k === 'right' ? 1 : -1)));
+      else if (k === 'enter') { const run = actions[this.col]; if (this.col === 2) { run(); return; } run(); }
       this.redraw();
       return;
     }
@@ -263,7 +273,7 @@ export class SettingsWindow {
       }
       line([{text: ' ' + current, style: 'error'}]);
     };
-    const titles = {shortcuts: ' Atajos de teclado ', main: ' teHablo · Ajustes ', voices: ' Elegir voz ', download: ' Descargar voz ', token: ' Activar voces con cuenta gratis '};
+    const titles = {shortcuts: ' Atajos de teclado ', main: ' teHablo · Ajustes ', code: ' Código SSH ', voices: ' Elegir voz ', download: ' Descargar voz ', token: ' Activar voces con cuenta gratis '};
     const title = titles[this.page], left = Math.floor((IN - width(title)) / 2);
     out.push(th.fg('border', '╭' + '─'.repeat(left)) + th.fg('accent', title) + th.fg('border', '─'.repeat(IN - left - width(title)) + '╮'));
     line();
@@ -284,6 +294,16 @@ export class SettingsWindow {
       line(this.capturing ? [{text: ' Presiona la combinación (Ctrl o Alt + letra o número) · Esc cancela', style: 'warning'}] : []);
       line(this.scError ? [{text: ' ' + this.scError, style: 'error'}] : []);
       line([{text: ' '}, {text: '[ Volver ]', style: 'accent', fn: () => this.home()}, {text: '   ↑↓ fila · ←→ botón · Enter · ⌫ quitar · Esc', style: 'dim'}]);
+    } else if (this.page === 'code') {
+      line([{text: ' Código de vinculación de este servidor:'}]);
+      line();
+      line([{text: '   ' + this.code, style: 'accent'}]);
+      line();
+      line([{text: ' Escríbelo en el cliente de tu computadora («Vincular servidor»). No lo compartas.', style: 'dim'}]);
+      line(this.codeStatus ? [{text: ' ' + this.codeStatus, style: 'dim'}] : []);
+      const buttons: [string, () => void][] = [['[ Copiar ]', () => { void this.copyCode(); }], ['[ Volver ]', () => this.closeCode()], ['[ Cerrar ]', () => this.done()]];
+      line([{text: ' '}, ...buttons.flatMap(([text, fn], j) => [{text, style: this.col === j ? 'accent' : undefined, fn}, {text: ' '}]),
+        {text: '  ←→ elegir · Enter · Esc', style: 'dim'}]);
     } else if (this.page === 'main') {
       this.mainRows().forEach((r: any, i: number) => {
         const sel = i === this.row;
@@ -299,8 +319,6 @@ export class SettingsWindow {
         });
         if (r.status) segs.push({text: r.status, style: 'dim'});
         line(segs);
-        // Keep the full 128-bit formatted code in its row, without truncation at 72 columns.
-        if (r.code) line([{text: '    ' + r.code}]);
       });
       line(this.downloading && this.notice ? [{text: ' ' + this.notice}] : []);
       line([{text: ' '}, {text: '[ Cerrar ]', style: 'accent', fn: () => this.done()}, {text: '   ↑↓ elegir · ←→ cambiar · Enter · Esc', style: 'dim'}]);

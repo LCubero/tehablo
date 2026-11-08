@@ -45,25 +45,40 @@ function setup(over: Partial<Record<string, any>> = {}) {
     }};
 }
 
-test('S37 SSH code is hidden in Local; Ver and Copiar work by keyboard and click', async () => {
+test('S37 Ver and Copiar sit right of SSH on the Audio row; Copiar only says Copiado; Ver opens a window', async () => {
+  const CODE = /0123-4567-89AB-CDEF-0123-4567-89AB-CDEF/;
   const s = setup();
-  assert.doesNotMatch(s.text(), /Código SSH/);
+  assert.doesNotMatch(s.text(), /\[ Ver \]|\[ Copiar \]/);
   s.state.settings.audio = 'ssh';
-  assert.match(s.text(), /Código SSH/);
-  assert.doesNotMatch(s.text(), /0123-4567/);
-  s.w.row = s.w.mainRows().findIndex(r => r.label === 'Código SSH');
+  const rows = s.w.mainRows();
+  assert.equal(rows.filter(r => r.label === 'Código SSH').length, 0);
+  assert.match(s.w.render(100).find(l => l.includes('Audio'))!, /◀ SSH ▶ +\[ Ver \] \[ Copiar \]/);
+  s.click('[ Copiar ]');
+  await new Promise(r => setImmediate(r));
+  assert.deepEqual(s.calls, [['sshCode', true]]);
+  assert.match(s.w.render(100).find(l => l.includes('Audio'))!, /Copiado/);
+  assert.doesNotMatch(s.text(), CODE);
+  // Enter on the Audio row opens Ver; ←→ still switch Local/SSH there.
+  s.w.row = rows.findIndex(r => r.label === 'Audio'); s.w.col = 0;
   s.key('\r');
   await new Promise(r => setImmediate(r));
-  assert.match(s.text(), /0123-4567-89AB-CDEF-0123-4567-89AB-CDEF/);
-  s.key('\x1b[C'); s.key('\r');
+  assert.equal(s.w.page, 'code');
+  assert.match(s.text(), CODE);
+  for (const b of ['[ Copiar ]', '[ Volver ]', '[ Cerrar ]']) assert.ok(s.text().includes(b), b);
+  assert.doesNotMatch(s.text(), /[Gg]enerar/);
+  s.key('\r');
   await new Promise(r => setImmediate(r));
-  assert.deepEqual(s.calls, [['sshCode', false], ['sshCode', true]]);
+  assert.deepEqual(s.calls.slice(1), [['sshCode', false], ['sshCode', true]]);
   assert.match(s.text(), /Copiado/);
-  assert.match(s.text(), /0123-4567-89AB-CDEF-0123-4567-89AB-CDEF/);
-  s.click('[ Ver ]'); s.click('[ Copiar ]');
-  await new Promise(r => setImmediate(r));
-  assert.deepEqual(s.calls.slice(2), [['sshCode', false], ['sshCode', true]]);
-  assert.doesNotMatch(setup().text(), /0123-4567/);
+  s.click('[ Volver ]');
+  assert.equal(s.w.page, 'main');
+  assert.doesNotMatch(s.text(), CODE);
+  s.key('\r'); await new Promise(r => setImmediate(r));
+  s.key('\x1b');
+  assert.equal(s.w.page, 'main');
+  s.key('\r'); await new Promise(r => setImmediate(r));
+  s.click('[ Cerrar ]');
+  assert.equal(s.closed(), true);
 });
 
 test('S3 download confirmation prepares now and reports completion or error', async () => {
