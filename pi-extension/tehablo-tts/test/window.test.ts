@@ -60,16 +60,17 @@ test('S3 download confirmation prepares now and reports completion or error', as
   assert.match(s.text(), /Sin conexión/);
 });
 
-test('S3 Regina and Iker keep token then choose, never Pocket download', () => {
+test('S4 Regina and Iker keep token then prepare their own model', async () => {
   for (const row of ROWS.slice(0, 2)) {
     const s = setup();
-    (s.w.c as any).download = () => { assert.fail('account voice used Pocket preparation'); };
+    (s.w.c as any).download = async (voice: any) => { s.calls.push(['prepare', voice.voice, voice.model]); };
     s.w.choose(row);
     assert.equal(s.w.page, 'token');
     s.w.token = 'test-placeholder'; s.w.saveToken();
     assert.equal(s.w.page, 'download');
     s.w.confirm();
-    assert.deepEqual(s.calls, [['token', 16], ['choose', row.voice, row.model]]);
+    await new Promise(resolve => setImmediate(resolve));
+    assert.deepEqual(s.calls, [['token', 16], ['prepare', row.voice, row.model]]);
   }
 });
 
@@ -221,12 +222,13 @@ test('voice table shows the active voice name in yellow (warning), also under th
   assert.match(s.w.render(100).find(l => l.includes('rafael ('))!, /<accent>  rafael \(/);
 });
 
-test('choosing by type: downloaded activates, downloadable confirms, account asks for the token first', () => {
+test('choosing by type: downloaded activates, downloadable confirms, account asks for the token first', async () => {
   const s = setup();
   s.click('[ Cambiar ]'); s.click('rafael (');
   assert.ok(s.text().includes('[ Descargar y usar ]'));
   s.click('[ Descargar y usar ]');
   assert.deepEqual(s.calls.at(-1), ['choose', 'rafael', 'spanish']);
+  await new Promise(resolve => setImmediate(resolve));
   s.click('[ Cambiar ]'); s.click('Regina * (');
   const guide = s.text();
   for (const part of ['huggingface.co/join', 'huggingface.co/settings/tokens', 'Token:']) assert.ok(guide.includes(part), part);
@@ -344,7 +346,7 @@ test('mouse Quitar still removes the shortcut and updates the table', () => {
   assert.ok(!s.text().includes('Ctrl+Alt+P'));
 });
 
-test('with the server off, unknown download state is shown by kind and chosen without a download step', () => {
+test('with the server off, unknown download state is shown by kind and asks for download confirmation', () => {
   const rows = [{name: 'lola', voice: 'lola', model: 'spanish', kind: 'download', note: 'la de siempre', downloaded: null},
     {name: 'Regina', voice: 'Regina', model: 'phonon', kind: 'account', note: 'México', downloaded: null}];
   const s = setup({settings: {...DEFAULTS}});
@@ -354,7 +356,8 @@ test('with the server off, unknown download state is shown by kind and chosen wi
   assert.ok(text.includes('Sin cuenta') && text.includes('Con cuenta gratis'));
   assert.match(text.split('\n').find(l => l.includes('lola ('))!, /● lola \(/);
   s.click('lola (');
-  assert.deepEqual(s.calls.at(-1), ['choose', 'lola', 'spanish']);
+  assert.equal(s.w.page, 'download');
+  assert.deepEqual(s.calls, []);
 });
 
 test('the main row names the active voice even when none was chosen', () => {

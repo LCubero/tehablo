@@ -97,7 +97,7 @@ class VoicePreparationTests(unittest.TestCase):
             self.assertIsNone(server.service.preparation)
             self.assertEqual(post('/config', {'prepare': True})[0], 400)
             self.assertEqual(post('/config', {'voice': 'missing'})[0], 400)
-            self.assertEqual(post('/prepare', {'model': 'phonon', 'voice': 'Iker'})[0], 400)
+            self.assertEqual(post('/prepare', {'model': 'phonon', 'voice': 'unknown'})[0], 400)
             status, job = post('/prepare', {'model': 'spanish', 'voice': 'rafael'})
             self.assertEqual(status, 202)
             self.assertIn('id', job)
@@ -128,9 +128,29 @@ class VoicePreparationTests(unittest.TestCase):
             self.assertEqual((synth.voice, synth.thread), ('rafael', 'speech-worker'))
             self.assertEqual(synth.calls, [])
             self.assertTrue(next(v for v in service.voice_table() if v['name'] == 'rafael')['downloaded'])
-            for body in ({'model': 'phonon', 'voice': 'Regina'}, {'model': 'spanish', 'voice': 'rafael', 'speed': 1}):
+            for body in ({'model': 'phonon', 'voice': 'unknown'}, {'model': 'spanish', 'voice': 'rafael', 'speed': 1}):
                 with self.assertRaises(ValueError):
                     service.prepare(body)
+        finally:
+            service.close()
+
+    def test_account_download_loads_model_without_audio(self):
+        loaded = threading.Event()
+        def factory(name):
+            self.assertEqual(name, 'phonon')
+            loaded.set()
+            return Synth()  # Phonon voices are bundled in the model, no Pocket prepare.
+        service = tehablo_server.SpeechService('phonon', 'Regina', 1, factory,
+                                              mock.Mock(side_effect=AssertionError('audio opened')), ['Regina'])
+        try:
+            service.prepare({'model': 'phonon', 'voice': 'Regina'})
+            self.assertTrue(loaded.wait(2))
+            deadline = time.monotonic() + 2
+            while service.health()['preparation']['state'] == 'downloading' and time.monotonic() < deadline:
+                time.sleep(.01)
+            self.assertEqual(service.health()['preparation']['state'], 'ready')
+            with self.assertRaises(ValueError):
+                service.configure({'model': 'phonon', 'voice': 'nonexistent'})
         finally:
             service.close()
 
@@ -146,6 +166,28 @@ class VoicePreparationTests(unittest.TestCase):
             self.assertEqual(service.health()['preparation']['error'], 'download failed')
         finally:
             service.close()
+
+
+class TokenRedactionTests(unittest.TestCase):
+    def test_model_errors_never_show_the_hugging_face_token(self):
+        token = 'hf_' + 'x' * 34
+        def factory(model):
+            raise RuntimeError(f'401 for url with token {token}\nretry')
+        errors = io.StringIO()
+        with mock.patch.dict(os.environ, HF_TOKEN=token), contextlib.redirect_stderr(errors):
+            server = create_server(port=0, model='phonon', catalog=['lola'], idle_exit=0,
+                                   synthesizer_factory=factory, audio_factory=lambda *_: None)
+            try:
+                deadline = time.monotonic() + 5
+                while not server.service.health()['error'] and time.monotonic() < deadline:
+                    time.sleep(.02)
+                health = server.service.health()
+            finally:
+                server.server_close()
+        self.assertIn('model load failed', health['error'])
+        self.assertNotIn(token, json.dumps(health))
+        self.assertNotIn(token, errors.getvalue())
+        self.assertIn('401', health['error'])
 
 
 class SSHFailureTests(unittest.TestCase):

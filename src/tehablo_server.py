@@ -9,6 +9,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
 import hmac
 import math
+import re
 import os
 from pathlib import Path
 import socket
@@ -32,6 +33,15 @@ MODELS = {'phonon', 'spanish', 'spanish_24l'}
 # (peak -6 dBFS); 1.8x was chosen by listening with lola (2026-11-04).
 BASE_GAIN = 1.8
 LIMIT = 0.8
+
+
+def hide_token(error):
+    """Error text safe for logs, API and notices: never the Hugging Face token."""
+    text = str(error)
+    token = os.environ.get('HF_TOKEN')
+    if token:
+        text = text.replace(token, 'hf_***')
+    return re.sub(r'hf_[A-Za-z0-9]{20,}', 'hf_***', text)
 
 
 def soft_limit(x):
@@ -529,11 +539,11 @@ class SpeechService:
             return {'state': self.state}
 
     def prepare(self, body):
-        """Queue only account-free catalog downloads on the model's existing worker."""
+        """Queue catalog downloads on the model's existing worker (never speech)."""
         if set(body) != {'model', 'voice'} or not any(
-                model == body.get('model') and name == body.get('voice') and kind == 'download'
+                model == body.get('model') and name == body.get('voice')
                 for name, model, kind, _ in VOICE_TABLE):
-            raise ValueError('expected an account-free download voice')
+            raise ValueError('expected a catalog download voice')
         with self.condition:
             if self.preparation and self.preparation['state'] == 'downloading':
                 raise RuntimeError('Ya se está descargando una voz.')
@@ -638,7 +648,7 @@ class SpeechService:
                         except Exception as exc:
                             if name != 'phonon':
                                 raise
-                            reason = ' '.join(str(exc).splitlines())
+                            reason = ' '.join(hide_token(exc).splitlines())
                             with self.condition:
                                 if self.closed or revision != self.revision:
                                     continue
@@ -652,6 +662,7 @@ class SpeechService:
                                     self.pending = (text, cancel, 'lola', speed, lexicon)
                             synth = self.factory(name)
                     except Exception as exc:
+                        exc = hide_token(exc)
                         print(f'Model load failed: {exc}', file=sys.stderr)
                         with self.condition:
                             loaded_revision = revision
@@ -682,12 +693,14 @@ class SpeechService:
                         job = None
                 if job:
                     try:
-                        synth.prepare(self.resolve_voice(job['voice'], name))
+                        # Phonon downloads all its bundled voices when the model loads.
+                        if name != 'phonon':
+                            synth.prepare(self.resolve_voice(job['voice'], name))
                         with self.condition:
                             job.update(state='ready')
                     except Exception as exc:
                         with self.condition:
-                            job.update(state='error', error=str(exc))
+                            job.update(state='error', error=hide_token(exc))
                 with self.condition:
                     if not self.pending or revision != self.revision:
                         continue
@@ -736,6 +749,7 @@ class SpeechService:
                                     self.state, self.id = 'idle', None
                                     self.next_reading()
                 except Exception as exc:
+                    exc = hide_token(exc)
                     print(f'Speech failed: {exc}', file=sys.stderr)
                     with self.condition:
                         if not cancel.is_set():

@@ -66,14 +66,13 @@ export class SettingsWindow {
   choose(v: VoiceRow) {
     this.target = v;
     const token = this.c.state().token;
-    if (v.downloaded || (v.downloaded === null && (v.kind === 'download' || token))) { this.c.choose(v); this.home(); }
+    if (v.downloaded) { this.c.choose(v); this.home(); }
     else if (v.kind === 'account' && !token) { this.token = ''; this.error = ''; this.page = 'token'; }
     else { this.page = 'download'; this.col = 0; }
   }
   confirm() {
     if (!this.target) return;
     const voice = this.target;
-    if (voice.kind !== 'download') { this.c.choose(voice); this.home(); return; }
     if (this.downloading) return;
     this.home(); this.downloading = true; this.notice = `Descargando ${voice.name}…`; this.redraw();
     void (async () => {

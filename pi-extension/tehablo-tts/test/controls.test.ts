@@ -196,7 +196,7 @@ test('SSH audio applies on reuse, toggles live and gives the exact one-time inst
     assert.equal(s.notices.length, 0);
     c.change('audio', 'ssh'); await new Promise(r => setImmediate(r));
     assert.deepEqual(s.configs.at(-1), {audio: 'ssh'});
-    assert.deepEqual(s.notices, ['TTS teHablo: Audio por SSH activado.\n\nEn la computadora desde la que te conectas, ejecuta una vez\nEn Windows: irm https://raw.githubusercontent.com/LCubero/tehablo/master/receptor/install.ps1 | iex\nEn Linux/macOS: curl -fsSL https://raw.githubusercontent.com/LCubero/tehablo/master/receptor/install.sh | sh\n\nInstala un cliente pequeño que recibe la voz por tu misma conexión SSH (cifrada), solo mientras habla. Ábrelo y elige tu sesión SSH; si hace falta contraseña, la pide SSH. No cambia tu configuración SSH. Cliente y servidor se comprueban con un código de vinculación sin enviarlo.\nCódigo de vinculación: oculto (/tts codigo para verlo)\n\nConsulta la documentación para más información o para hacerlo a mano.\nhttps://github.com/LCubero/tehablo#audio-por-ssh']);
+    assert.deepEqual(s.notices, ['TTS teHablo: Audio por SSH activado.\n\nEn la computadora desde la que te conectas, ejecuta una vez\nEn Windows: irm https://raw.githubusercontent.com/LCubero/tehablo/master/receptor/install.ps1 | iex\nEn Linux/macOS: curl -fsSL https://raw.githubusercontent.com/LCubero/tehablo/master/receptor/install.sh | sh\n\nInstala un cliente pequeño que recibe la voz por tu misma conexión SSH (cifrada), solo mientras habla. Ábrelo y elige tu sesión SSH; si hace falta contraseña, la pide el cliente. No cambia tu configuración SSH. Cliente y servidor se comprueban con un código de vinculación sin enviarlo.\nCódigo de vinculación: oculto (/tts codigo para verlo)\n\nConsulta la documentación para más información o para hacerlo a mano.\nhttps://github.com/LCubero/tehablo#audio-por-ssh']);
     assert.ok(s.notices.every(text => !text.includes(store.sshCode())));
     assert.equal(store.load().audio, 'ssh');
     c.change('audio', 'ssh'); await new Promise(r => setImmediate(r));
@@ -988,6 +988,38 @@ test('[ ≡ ] opens the centered settings window with the server off; choices ar
     assert.deepEqual([saved.volume,saved.model,saved.voice],[0.75,'phonon','Iker']);
   }finally{await s.close();}
 });
+
+for (const kind of ['account', 'download']) for (const alreadyOn of [false, true]) {
+  test(`voices-ready S4 window downloads ${kind} with server ${alreadyOn ? 'on' : 'off'}`, async () => {
+    const row = {name: kind === 'account' ? 'Regina' : 'rafael', voice: kind === 'account' ? 'Regina' : 'rafael', model: kind === 'account' ? 'phonon' : 'spanish', kind, note: '', downloaded: null};
+    const store = memoryStore(); store.table = () => [row] as any;
+    const s = setup(store), request = s.client.request;
+    let prepared = false;
+    s.client.request = async (path: string, body: any) => {
+      if (path === '/prepare') { assert.deepEqual(body, {model: row.model, voice: row.voice}); prepared = true; return {id: 'job'}; }
+      if (path === '/health' && prepared) return {ready: true, model: row.model, voice: row.voice, preparation: {id: 'job', state: 'ready'}};
+      if (path === '/voices') return {catalog: [{...row, downloaded: prepared}]};
+      return request(path, body);
+    };
+    try {
+      if (alreadyOn) await start(s);
+      await clickAt(s, '[ ≡ ]');
+      const w = s.windows[0].w;
+      assert.equal(w.c.state().server, alreadyOn ? 'ready' : 'off');
+      w.choose(w.c.voices()[0]);
+      if (kind === 'account') { w.token = 'hf_test_placeholder'; w.saveToken(); }
+      assert.equal(w.page, 'download');
+      w.confirm();
+      assert.match(w.notice, new RegExp(`Descargando ${row.name}`));
+      for (let i = 0; i < 20 && w.downloading; i++) await new Promise(r => setImmediate(r));
+      assert.equal(prepared, true);
+      assert.equal(w.notice, `${row.name} lista`);
+      assert.equal(w.typeLabel(w.c.voices()[0]), 'Descargada');
+      assert.equal(w.c.state().server, 'ready');
+      assert.doesNotMatch(JSON.stringify(store.load()) + s.notices.join(''), /hf_test_placeholder/);
+    } finally { await s.close(); }
+  });
+}
 
 test('voices-ready S3 starts a stopped server, prepares immediately, refreshes voices and reports failures', async () => {
   for (const failure of ['', 'offline', 'download failed']) {
