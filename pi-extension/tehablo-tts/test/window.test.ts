@@ -45,25 +45,27 @@ function setup(over: Partial<Record<string, any>> = {}) {
     }};
 }
 
-test('S37 Ver and Copiar sit right of SSH on the Audio row; Copiar only says Copiado; Ver opens a window', async () => {
+test('S37 Copiar then Ver sit right of SSH on the Audio row; Enter copies; Copiar only says Copiado; Ver opens a window', async () => {
   const CODE = /0123-4567-89AB-CDEF-0123-4567-89AB-CDEF/;
   const s = setup();
   assert.doesNotMatch(s.text(), /\[ Ver \]|\[ Copiar \]/);
   s.state.settings.audio = 'ssh';
   const rows = s.w.mainRows();
   assert.equal(rows.filter(r => r.label === 'Código SSH').length, 0);
-  assert.match(s.w.render(100).find(l => l.includes('Audio'))!, /◀ SSH ▶ +\[ Ver \] \[ Copiar \]/);
-  s.click('[ Copiar ]');
+  assert.match(s.w.render(100).find(l => l.includes('Audio'))!, /◀ SSH ▶ +\[ Copiar \] \[ Ver \]/);
+  // Enter on the Audio row copies at once; ←→ still switch Local/SSH there.
+  s.w.row = rows.findIndex(r => r.label === 'Audio'); s.w.col = 0;
+  s.key('\r');
   await new Promise(r => setImmediate(r));
   assert.deepEqual(s.calls, [['sshCode', true]]);
   assert.match(s.w.render(100).find(l => l.includes('Audio'))!, /Copiado/);
   assert.doesNotMatch(s.text(), CODE);
-  // Enter on the Audio row opens Ver; ←→ still switch Local/SSH there.
-  s.w.row = rows.findIndex(r => r.label === 'Audio'); s.w.col = 0;
-  s.key('\r');
+  s.click('[ Ver ]');
   await new Promise(r => setImmediate(r));
   assert.equal(s.w.page, 'code');
   assert.match(s.text(), CODE);
+  for (const l of s.w.render(100)) assert.ok(Array.from(l).length <= 72, l);
+  assert.match(s.text().replace(/[│\s]+/g, ' '), /«Vincular servidor»\)\. No lo compartas\./);
   for (const b of ['[ Copiar ]', '[ Volver ]', '[ Cerrar ]']) assert.ok(s.text().includes(b), b);
   assert.doesNotMatch(s.text(), /[Gg]enerar/);
   s.key('\r');
@@ -73,10 +75,10 @@ test('S37 Ver and Copiar sit right of SSH on the Audio row; Copiar only says Cop
   s.click('[ Volver ]');
   assert.equal(s.w.page, 'main');
   assert.doesNotMatch(s.text(), CODE);
-  s.key('\r'); await new Promise(r => setImmediate(r));
+  s.click('[ Ver ]'); await new Promise(r => setImmediate(r));
   s.key('\x1b');
   assert.equal(s.w.page, 'main');
-  s.key('\r'); await new Promise(r => setImmediate(r));
+  s.click('[ Ver ]'); await new Promise(r => setImmediate(r));
   s.click('[ Cerrar ]');
   assert.equal(s.closed(), true);
 });

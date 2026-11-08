@@ -142,10 +142,10 @@ export class SettingsWindow {
       {label: 'Indicador de estado', value: s.indicator ? 'visible' : 'oculto', step: () => this.c.change('indicator', !s.indicator)},
       {label: 'Iconos', value: s.icons === 'text' ? 'Texto' : 'Símbolos', step: () => this.c.change('icons', s.icons === 'text' ? 'symbols' : 'text')},
       {label: 'Audio', value: s.audio === 'ssh' ? 'SSH' : 'Local', step: () => this.c.change('audio', s.audio === 'ssh' ? 'local' : 'ssh'),
-        // With SSH the pairing code sits right of the value: Enter opens Ver, a click on Copiar copies.
+        // With SSH the pairing code sits right of the value: Enter copies it at once, a click on Ver shows it.
         ...(s.audio === 'ssh' ? {status: this.codeStatus, buttons: [
-          ['[ Ver ]', () => { void this.openCode(); }],
           ['[ Copiar ]', () => { void this.copyCode(); }],
+          ['[ Ver ]', () => { void this.openCode(); }],
         ]} : {})},
       s.audio === 'ssh'
         ? {label: 'Salida', text: '(SSH: la elige el cliente)'}
@@ -299,7 +299,8 @@ export class SettingsWindow {
       line();
       line([{text: '   ' + this.code, style: 'accent'}]);
       line();
-      line([{text: ' Escríbelo en el cliente de tu computadora («Vincular servidor»). No lo compartas.', style: 'dim'}]);
+      line([{text: ' Escríbelo en el cliente de tu computadora («Vincular servidor»).', style: 'dim'}]);
+      line([{text: ' No lo compartas.', style: 'dim'}]);
       line(this.codeStatus ? [{text: ' ' + this.codeStatus, style: 'dim'}] : []);
       const buttons: [string, () => void][] = [['[ Copiar ]', () => { void this.copyCode(); }], ['[ Volver ]', () => this.closeCode()], ['[ Cerrar ]', () => this.done()]];
       line([{text: ' '}, ...buttons.flatMap(([text, fn], j) => [{text, style: this.col === j ? 'accent' : undefined, fn}, {text: ' '}]),
