@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {createExtension, fileStore, memoryStore, readTable, sshCode} from '../src/extension.ts';
+import {createExtension, fileStore, hfHub, memoryStore, readTable, sshCode} from '../src/extension.ts';
 import {mkdtempSync, writeFileSync, rmSync, mkdirSync, readFileSync, statSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
@@ -1269,7 +1269,7 @@ test('watcher readiness refreshes both Phonon voices in an already open window',
     s.setReady(false);
     await s.command('menu'); await new Promise(r => setTimeout(r, 40));
     const w = s.windows[0].w;
-    assert.equal(w.c.voices()[0].downloaded, null);
+    assert.equal(w.c.voices()[0].downloaded, false, 'not on disk while the server is not ready');
     s.setReady(true);
     await new Promise(r => setTimeout(r, 80));
     assert.deepEqual(w.c.voices().map((v: any) => v.downloaded), [true, true]);
@@ -1346,6 +1346,50 @@ test('the shared table maps included voices (with a source) to their .safetensor
       {name: 'Facundo', model: 'spanish', kind: 'download', note: 'Argentina', source: 'ar-hombre-4310'}]));
     assert.deepEqual(readTable(path).map(v => v.voice), ['lola', 'Regina', 'Facundo.safetensors']);
   } finally { rmSync(dir, {recursive: true, force: true}); }
+});
+
+test('voices-ready S9 voices already on disk show Descargada with the server off, from the local cache only', async () => {
+  const base = join(process.cwd(), '.repo-harness', 'tmp');
+  mkdirSync(base, {recursive: true});
+  const root = mkdtempSync(join(base, 'disk-'));
+  try {
+    const path = join(root, 'src', 'voice_table.json'), hub = join(root, 'hub');
+    mkdirSync(join(root, 'src')); mkdirSync(join(root, 'voices'));
+    writeFileSync(path, JSON.stringify([
+      {name: 'lola', model: 'spanish', kind: 'download', note: 'la de siempre', default: true},
+      {name: 'rafael', model: 'spanish', kind: 'download', note: 'España'},
+      {name: 'Regina', model: 'phonon', kind: 'account', note: 'México'},
+      {name: 'Facundo', model: 'spanish', kind: 'download', note: 'Argentina', source: 'ar-hombre-4310'},
+      {name: 'Camila', model: 'spanish', kind: 'download', note: 'Chile', source: 'cl-mujer'}]));
+    const states = () => Object.fromEntries(readTable(path, hub).map(v => [v.name, v.downloaded]));
+    assert.deepEqual(states(), {lola: false, rafael: false, Regina: false, Facundo: false, Camila: false}, 'empty cache');
+    const pocket = join(hub, 'models--kyutai--pocket-tts-without-voice-cloning', 'snapshots', 'abc', 'languages', 'spanish');
+    mkdirSync(join(pocket, 'embeddings'), {recursive: true});
+    writeFileSync(join(pocket, 'model.safetensors'), ''); writeFileSync(join(pocket, 'embeddings', 'lola.safetensors'), '');
+    writeFileSync(join(root, 'voices', 'Facundo.safetensors'), '');
+    assert.deepEqual(states(), {lola: true, rafael: false, Regina: false, Facundo: true, Camila: false},
+      'installer voice and included voice with the model; Camila lacks its file');
+    const phonon = join(hub, 'models--gradium--phonon-40m-es', 'snapshots', 'def');
+    mkdirSync(phonon, {recursive: true}); writeFileSync(join(phonon, 'model.q8.gguf'), '');
+    assert.equal(states().Regina, true);
+    // The window uses these states while the server is off, and a known server state never hides a voice on disk.
+    const store = memoryStore(readTable(path, hub));
+    store.save({...store.load(), voices: [{...readTable(path, hub)[0], downloaded: false}, {...readTable(path, hub)[1], downloaded: true}]});
+    const s = setup(store);
+    try {
+      await clickAt(s, '[ ≡ ]');
+      const w = s.windows[0].w;
+      assert.deepEqual(w.c.voices().map((v: any) => [v.name, v.downloaded]),
+        [['lola', true], ['rafael', true], ['Regina', true], ['Facundo', true], ['Camila', false]]);
+    } finally { await s.close(); }
+  } finally { rmSync(root, {recursive: true, force: true}); }
+});
+
+test('voices-ready S9 the local cache folder follows Hugging Face: HF_HUB_CACHE, then HF_HOME, then XDG_CACHE_HOME, then ~/.cache', () => {
+  assert.equal(hfHub({HF_HUB_CACHE: join('a', 'hub'), HF_HOME: 'b'}, 'h'), join('a', 'hub'));
+  assert.equal(hfHub({HF_HOME: 'b', XDG_CACHE_HOME: 'x'}, 'h'), join('b', 'hub'));
+  assert.equal(hfHub({XDG_CACHE_HOME: 'x'}, 'h'), join('x', 'huggingface', 'hub'));
+  assert.equal(hfHub({}, 'h'), join('h', '.cache', 'huggingface', 'hub'));
 });
 
 test('the bar follows another Pi session turning the shared server on and off, without starting it or warning',async()=>{

@@ -46,6 +46,8 @@ export class SettingsWindow {
   row = 0; col = 0; pick = 0; token = ''; error = '';
   target?: VoiceRow;
   notice = ''; downloading = false;
+  /** Download dialog result: '' to confirm, 'done' when downloaded, 'error' to show notice and try again. */
+  result: '' | 'done' | 'error' = '';
   hits: {y: number; x0: number; x1: number; fn: () => void}[] = [];
   c: Controller; th: Theme; kb: Keys; done: () => void; redraw: () => void;
   constructor(c: Controller, th: Theme, kb: Keys, done: () => void, redraw: () => void) {
@@ -68,19 +70,20 @@ export class SettingsWindow {
     const token = this.c.state().token;
     if (v.downloaded) { this.c.choose(v); this.home(); }
     else if (v.kind === 'account' && !token) { this.token = ''; this.error = ''; this.page = 'token'; }
-    else { this.page = 'download'; this.col = 0; }
+    else { this.page = 'download'; this.col = 0; this.result = ''; }
   }
   confirm() {
     if (!this.target) return;
     const voice = this.target;
     if (this.downloading) return;
-    this.home(); this.downloading = true; this.notice = `Descargando ${voice.name}…`; this.redraw();
+    // The dialog stays open: «Descargando…», then «Descargada» (or the error) in the same place.
+    this.downloading = true; this.result = ''; this.col = 0; this.notice = `Descargando ${voice.name}…`; this.redraw();
     void (async () => {
       try {
         if (!this.c.download) throw new Error('No se puede descargar: vuelve a cargar la extensión.');
         await this.c.download(voice);
-        this.notice = `${voice.name} lista`;
-      } catch (error) { this.notice = error instanceof Error ? error.message : String(error); }
+        this.notice = `${voice.name} lista`; this.result = 'done';
+      } catch (error) { this.notice = error instanceof Error ? error.message : String(error); this.result = 'error'; }
       finally { this.downloading = false; this.redraw(); }
     })();
   }
@@ -88,7 +91,7 @@ export class SettingsWindow {
     const value = this.token.trim();
     if (!value) return;
     try { this.c.saveToken(value); } catch (e) { this.error = e instanceof Error ? e.message : 'No se pudo usar el token.'; return; }
-    this.token = ''; this.error = ''; this.page = 'download'; this.col = 0;
+    this.token = ''; this.error = ''; this.page = 'download'; this.col = 0; this.result = '';
   }
 
   capture(data: string) {
@@ -189,8 +192,11 @@ export class SettingsWindow {
       else if (k === 'enter' && list[this.pick]) this.choose(list[this.pick]);
       else if ((k === 'left' || k === 'right') && list[this.pick]) this.c.toggleDict(list[this.pick]);
     } else if (this.page === 'download') {
-      if (k === 'esc') this.page = 'voices';
+      const done = this.result === 'done' && !this.downloading;
+      if (k === 'esc') { if (done || this.downloading) this.home(); else this.page = 'voices'; }
+      else if (this.downloading) { /* Wait: Esc goes back to the menu, the download goes on. */ }
       else if (k === 'left' || k === 'right') this.col = k === 'right' ? 1 : 0;
+      else if (k === 'enter' && done) { if (this.col === 0) { this.done(); return; } this.home(); }
       else if (k === 'enter') { if (this.col === 0) this.confirm(); else this.page = 'voices'; }
     } else {
       if (k === 'esc') this.page = 'voices';
@@ -257,14 +263,14 @@ export class SettingsWindow {
         });
         line(segs);
       });
-      line(this.notice ? [{text: ' ' + this.notice}] : []);
+      line(this.downloading && this.notice ? [{text: ' ' + this.notice}] : []);
       line([{text: ' '}, {text: '[ Cerrar ]', style: 'accent', fn: () => this.done()}, {text: '   ↑↓ elegir · ←→ cambiar · Enter · Esc', style: 'dim'}]);
     } else if (this.page === 'voices') {
       line([{text: '   ' + fit('Voz', 31) + fit('Estado', 19) + fit('RAM aprox.', 11) + 'Dict', style: 'dim'}]);
       line([{text: '   ' + '─'.repeat(IN - 4), style: 'dim'}]);
       this.order().forEach((v, i) => {
         const sel = i === this.pick, pickIt = () => { this.pick = i; this.choose(v); };
-        const style = v.downloaded ? 'success' : v.kind === 'account' && !this.c.state().token ? 'warning' : 'dim';
+        const style = v.downloaded ? undefined : v.kind === 'account' && !this.c.state().token ? 'warning' : 'dim';
         line([{text: sel ? ' ▶ ' : '   ', style: 'accent', fn: pickIt},
           {text: fit(`${this.isActive(v) ? '●' : ' '} ${v.name}${v.kind === 'account' ? ' *' : ''} (${v.note})`, 31), style: this.isActive(v) ? 'warning' : sel ? 'accent' : undefined, fn: pickIt},
           {text: fit(this.typeLabel(v), 19), style, fn: pickIt},
@@ -276,12 +282,21 @@ export class SettingsWindow {
       line([{text: ' '}, {text: '[ Volver ]', style: 'accent', fn: () => this.home()}, {text: '   ↑↓ elegir · Enter usar · ←→ dict · Esc', style: 'dim'}]);
     } else if (this.page === 'download') {
       const v = this.target!;
+      if (this.downloading || this.result === 'done') {
+        line([{text: this.downloading ? ` Descargando ${v.name}…` : ` ${v.name} (${v.note}): Descargada.`}]);
+        line([{text: this.downloading ? ' Esc vuelve al menú; la descarga sigue.' : ' Ya funciona sin internet.', style: 'dim'}]);
+        line();
+        line(this.downloading ? [] : [{text: ' '}, {text: '[ Cerrar ]', style: this.col === 0 ? 'accent' : undefined, fn: () => this.done()},
+          {text: ' '}, {text: '[ Volver al menú ]', style: this.col === 1 ? 'accent' : undefined, fn: () => this.home()}]);
+        out.push(th.fg('border', '╰' + '─'.repeat(IN) + '╯'));
+        return out;
+      }
       line([{text: ` ${v.name} (${v.note}) no está descargada.`}]);
       line([{text: ' Se descarga 1 sola vez al usarla y luego funciona sin internet.', style: 'dim'}]);
       // Every Phonon voice lives in one model file, so one download brings them all (Pocket voices download one by one).
       const also = v.model === 'phonon' ? this.c.voices().filter(o => o.model === 'phonon' && o.voice !== v.voice) : [];
       if (also.length) line([{text: ` Incluye también: ${also.map(o => `${o.name} (${o.note})`).join(', ')}.`, style: 'dim'}]);
-      line();
+      line(this.result === 'error' ? [{text: ' ' + this.notice, style: 'error'}] : []);
       line([{text: ' '}, {text: '[ Descargar y usar ]', style: this.col === 0 ? 'accent' : undefined, fn: () => this.confirm()},
         {text: ' '}, {text: '[ Volver ]', style: this.col === 1 ? 'accent' : undefined, fn: () => { this.page = 'voices'; }}]);
     } else {

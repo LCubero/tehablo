@@ -2,9 +2,10 @@ import type { ExtensionAPI, ExtensionContext } from '@earendil-works/pi-coding-a
 import { ServerClient } from './server.ts';
 import { cleanText, finalText } from './text.ts';
 import { clipboardCommands, NO_CLIPBOARD, readClipboard } from './clipboard.ts';
-import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { randomBytes } from 'node:crypto';
-import { join } from 'node:path';
+import { homedir } from 'node:os';
+import { dirname, join } from 'node:path';
 import { ACTIONS, DEFAULTS, loadSettings, saveSettings, settingsDir, type Action, type Settings, type VoiceRow } from './settings.ts';
 import { keyOf } from './shortcuts.ts';
 import { checkToken, hasToken } from './token.ts';
@@ -37,13 +38,31 @@ export const fileStore = (root: string, dir = settingsDir()): Store => {
     sshCode: () => sshCode(dir),
   };
 };
-/** The shared voice list (src/voice_table.json), with an unknown download state. */
-export function readTable(path: string): VoiceRow[] {
+/** The Hugging Face cache folder, resolved like huggingface_hub does. */
+export function hfHub(env: Record<string, string | undefined> = process.env, home = homedir()): string {
+  return env.HF_HUB_CACHE || join(env.HF_HOME || join(env.XDG_CACHE_HOME || join(home, '.cache'), 'huggingface'), 'hub');
+}
+/** Whether any cached snapshot of a Hugging Face repository holds this file (only looks at the disk). */
+function cachedFile(hub: string, repo: string, file: string) {
+  const snapshots = join(hub, `models--${repo.replace('/', '--')}`, 'snapshots');
+  try { return readdirSync(snapshots).some(s => existsSync(join(snapshots, s, file))); } catch { return false; }
+}
+/** Same rules as the server's cached(), so the list is right while the server is off. */
+function onDisk(v: any, hub: string, voices: string) {
+  if (v.model === 'phonon') return cachedFile(hub, 'gradium/phonon-40m-es', 'model.q8.gguf');
+  const pocket = (file: string) => ['kyutai/pocket-tts', 'kyutai/pocket-tts-without-voice-cloning']
+    .some(repo => cachedFile(hub, repo, `languages/${v.model}/${file}`));
+  if (v.source) return existsSync(join(voices, `${v.name}.safetensors`)) && pocket('model.safetensors');
+  return pocket(`embeddings/${v.name}.safetensors`);
+}
+/** The shared voice list (src/voice_table.json), with the download state found on disk. */
+export function readTable(path: string, hub = hfHub()): VoiceRow[] {
   try {
     if (!existsSync(path)) return [];
+    const voices = join(dirname(path), '..', 'voices');
     return (JSON.parse(readFileSync(path, 'utf8')) as any[]).map(v => ({
       name: v.name, voice: v.source ? `${v.name}.safetensors` : v.name, model: v.model,
-      kind: v.kind, note: v.note, downloaded: null, ...(v.default ? {default: true} : {}),
+      kind: v.kind, note: v.note, downloaded: onDisk(v, hub, voices), ...(v.default ? {default: true} : {}),
     }));
   } catch { return []; }
 }
@@ -463,11 +482,11 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
     const controller: Controller = {
       devices: () => devices,
       state: () => ({settings, server, token: !!client.token || store.hasToken()}),
-      // Shared table order and notes; download states from the server once known.
+      // Shared table order and notes; a voice on disk is downloaded, otherwise the server's state once known.
       voices: () => {
         const known = new Map(settings.voices.map(v => [v.name, v]));
         const table = store.table();
-        return table.length ? table.map(v => ({...v, downloaded: known.get(v.name)?.downloaded ?? null})) : settings.voices;
+        return table.length ? table.map(v => ({...v, downloaded: v.downloaded || (known.get(v.name)?.downloaded ?? v.downloaded)})) : settings.voices;
       },
       active: () => {
         if (settings.voice) return {model: settings.model || current?.model || 'spanish', voice: settings.voice};

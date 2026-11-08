@@ -53,11 +53,63 @@ test('S3 download confirmation prepares now and reports completion or error', as
   assert.match(s.text(), /Descargando rafael…/);
   finish();
   await new Promise(resolve => setImmediate(resolve));
-  assert.match(s.text(), /rafael lista/);
+  assert.match(s.text(), /rafael \(España\): Descargada\./);
   (s.w.c as any).download = async () => { throw new Error('Sin conexión'); };
   s.w.choose(ROWS[2]); s.w.confirm();
   await new Promise(resolve => setImmediate(resolve));
   assert.match(s.text(), /Sin conexión/);
+});
+
+test('S7 S8 the download dialog stays open: Descargando…, then Descargada with Cerrar or Volver al menú', async () => {
+  const s = setup();
+  let finish!: () => void;
+  (s.w.c as any).download = () => new Promise<void>(resolve => { finish = resolve; });
+  s.w.choose(ROWS[2]);
+  s.key('\r');
+  assert.equal(s.w.page, 'download');
+  assert.match(s.text(), /Descargando rafael…/);
+  assert.ok(!s.text().includes('[ Descargar y usar ]'), 'no second download while downloading');
+  s.key('\r');
+  assert.equal(s.w.page, 'download', 'Enter does nothing while downloading');
+  finish();
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(s.w.page, 'download');
+  assert.match(s.text(), /rafael \(España\): Descargada\./);
+  assert.ok(s.text().includes('[ Cerrar ]') && s.text().includes('[ Volver al menú ]'));
+  s.key('\r');
+  assert.equal(s.closed(), true, 'Enter on [ Cerrar ] closes the window');
+  // Mouse: back to the menu, and the menu body carries no download line.
+  const m = setup();
+  (m.w.c as any).download = async () => {};
+  m.w.choose(ROWS[2]); m.click('[ Descargar y usar ]');
+  await new Promise(resolve => setImmediate(resolve));
+  m.click('[ Volver al menú ]');
+  assert.equal(m.w.page, 'main');
+  assert.ok(!m.text().includes('Descargada') && !m.text().includes('rafael lista'));
+  // Keyboard: right then Enter goes back to the menu.
+  const k = setup();
+  (k.w.c as any).download = async () => {};
+  k.w.choose(ROWS[2]); k.key('\r');
+  await new Promise(resolve => setImmediate(resolve));
+  k.key('\x1b[C'); k.key('\r');
+  assert.equal(k.w.page, 'main');
+  assert.equal(k.closed(), false);
+  // An error stays in the same dialog and the download can be tried again.
+  const e = setup();
+  (e.w.c as any).download = async () => { throw new Error('Sin conexión'); };
+  e.w.choose(ROWS[2]); e.key('\r');
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(e.w.page, 'download');
+  assert.match(e.text(), /Sin conexión/);
+  assert.ok(e.text().includes('[ Descargar y usar ]') && e.text().includes('[ Volver ]'));
+});
+
+test('S10 Descargada is plain text in the voice table', () => {
+  const s = setup({theme: {fg: (st: string, t: string) => `<${st}>${t}</${st}>`}});
+  s.key('\r');
+  const row = s.w.render(100).find(l => l.includes('lola ('))!;
+  assert.match(row, /<\/warning>Descargada {9}<accent>|<\/warning>Descargada\s+</);
+  assert.ok(!/<\w+>Descargada/.test(row), row);
 });
 
 test('S4 Regina and Iker keep token then prepare their own model', async () => {
@@ -197,7 +249,7 @@ test('each voice row shows and toggles its own pronunciation fixes by click or �
   const row = (n: string) => s.w.render(100).find(l => l.includes(n + ' (') || l.includes(n + ' * ('))!;
   assert.match(row('lola'), /~1 GB\s+sí\s*│$/);
   assert.match(row('Regina'), /~0,3 GB\s+no\s*│$/);
-  s.key('[C');
+  s.key('\x1b[C');
   assert.match(row('lola'), /\s+no\s*│$/);
   const lines = s.w.render(100), y = lines.indexOf(row('Regina'));
   s.w.handleMouse({type: 'click', button: 'left', x: Array.from(lines[y]).length - 4, y});
@@ -229,6 +281,7 @@ test('choosing by type: downloaded activates, downloadable confirms, account ask
   s.click('[ Descargar y usar ]');
   assert.deepEqual(s.calls.at(-1), ['choose', 'rafael', 'spanish']);
   await new Promise(resolve => setImmediate(resolve));
+  s.click('[ Volver al menú ]');
   s.click('[ Cambiar ]'); s.click('Regina * (');
   const guide = s.text();
   for (const part of ['huggingface.co/join', 'huggingface.co/settings/tokens', 'Token:']) assert.ok(guide.includes(part), part);
