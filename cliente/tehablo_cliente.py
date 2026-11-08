@@ -25,7 +25,7 @@ import time
 
 ADDRESS = ('127.0.0.1', 18766)
 FORWARD = 'RemoteForward 18766 127.0.0.1:18766'
-DEFAULTS = dict(device='', volume=1.0, enabled=True, codes=[])
+DEFAULTS = dict(device='', volume=1.0, enabled=True, codes=[], general=[])
 WAV_HEADER = struct.pack('<4sI4s4sIHHIIHH4sI', b'RIFF', 0xFFFFFFFF, b'WAVE',
                          b'fmt ', 16, 1, 1, 24000, 48000, 2, 16, b'data', 0xFFFFFFFF)
 
@@ -37,9 +37,24 @@ def normalize_code(value):
     return code
 
 
-def pair(settings, code):
+def pair(settings, code, connection=None):
     code = normalize_code(code)
-    settings['codes'] = list(dict.fromkeys([*settings.get('codes', []), code]))
+    codes = settings.get('codes', [])
+    general = settings.get('general', list(codes))
+    associations = settings.get('connection_codes', {})
+    if connection is not None and associations.get(connection) == code:
+        return False
+    previous = associations.get(connection) if connection is not None else None
+    settings['codes'] = list(dict.fromkeys([*codes, code]))
+    settings['general'] = list(general)
+    if connection is None:
+        settings['general'] = list(dict.fromkeys([*general, code]))
+    else:
+        settings['connection_codes'] = {**associations, connection: code}
+        if (previous and previous not in general
+                and previous not in settings['connection_codes'].values()):
+            settings['codes'].remove(previous)
+    return True
 
 
 def home_dir():
@@ -62,6 +77,15 @@ def load_settings(path=None):
             return dict(DEFAULTS)
         settings = dict(device=value['device'], volume=value['volume'], enabled=value['enabled'],
                         codes=[normalize_code(code) for code in codes])
+        general = value.get('general')
+        try:
+            general = [normalize_code(code) for code in general] if isinstance(general, list) else None
+        except (TypeError, ValueError, AttributeError):
+            general = None
+        # Missing or damaged origin counts as general: saved codes are never lost or auto-revoked.
+        if general is None or any(code not in settings['codes'] for code in general):
+            general = list(settings['codes'])
+        settings['general'] = general
         associations = value.get('connection_codes')
         if isinstance(associations, dict):
             settings['connection_codes'] = {}
@@ -877,11 +901,11 @@ def menu_app(settings, receiver, voice=None):
             label = voice_argv(command)[-1] if command else 'servidor (código general)'
             def link(value):
                 code = normalize_code(value)  # Validate before any mutation or tunnel.
-                pair(settings, code)
+                changed = pair(settings, code, connection=key)
                 if key is not None:
-                    settings['connection_codes'] = {**settings.get('connection_codes', {}), key: code}
                     self.selected_command = command
-                self.save()
+                if changed:
+                    self.save()
                 self.notice('Código guardado para ' + label + '.')
                 if after:
                     after()

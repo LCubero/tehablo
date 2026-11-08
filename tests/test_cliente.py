@@ -257,7 +257,7 @@ class ClientTest(unittest.TestCase):
     def test_settings(self):
         path = self.home / 'cliente.json'
         self.assertEqual(c.load_settings(path), c.DEFAULTS)
-        settings = dict(device='Fake', volume=0.4, enabled=False, codes=[])
+        settings = dict(device='Fake', volume=0.4, enabled=False, codes=[], general=[])
         c.save_settings(settings, path)
         self.assertEqual(c.load_settings(path), settings)
         path.write_text('{broken')
@@ -278,6 +278,26 @@ class ClientTest(unittest.TestCase):
         self.assertEqual(c.load_settings(path)['device'], 'Fake')
         with self.assertRaises(ValueError):
             c.pair(settings, 'bad')
+
+    def test_general_pair_origin(self):
+        settings = dict(c.DEFAULTS)
+        c.pair(settings, self.CODE)
+        path = self.home / 'cliente.json'
+        c.save_settings(settings, path)
+        self.assertEqual(json.loads(path.read_text())['general'], [self.CODE])
+
+    def test_general_loader_migration_and_validation(self):
+        path = self.home / 'cliente.json'
+        value = dict(device='', volume=1, enabled=True, codes=[self.CODE])
+        path.write_text(json.dumps(value))
+        self.assertEqual(c.load_settings(path)['general'], [self.CODE])
+        for invalid in (None, {}, 'bad', [3], ['bad'], ['f' * 32]):
+            # Damaged origin never loses saved codes: they all count as general (never auto-revoked).
+            path.write_text(json.dumps(dict(value, general=invalid)))
+            loaded = c.load_settings(path)
+            self.assertEqual((loaded['codes'], loaded['general']), ([self.CODE], [self.CODE]), invalid)
+        path.write_text(json.dumps(dict(value, general=[self.CODE.upper()])))
+        self.assertEqual(c.load_settings(path)['general'], [self.CODE])
 
     def test_volume(self):
         data = array.array('h', [-32768, -100, 0, 100, 32767])
@@ -464,6 +484,7 @@ class ClientTest(unittest.TestCase):
             with patch.object(sys, 'argv', ['cliente', '--codigo', self.CODE]), patch.object(c, 'menu'), patch.object(c.threading, 'Thread'):
                 c.main()
             self.assertEqual(c.load_settings()['codes'], [self.CODE])
+            self.assertEqual(json.loads(c.settings_path().read_text())['general'], [self.CODE])
             self.assertTrue(c.load_settings()['enabled'])
             self.assertEqual(sorted(str(p.relative_to(self.home)).replace('\\', '/') for p in self.home.rglob('*') if p.is_file()),
                              sorted(['.local/share/tehablo-cliente/tehablo_cliente.py',
@@ -471,6 +492,7 @@ class ClientTest(unittest.TestCase):
             with patch.object(sys, 'argv', ['cliente', '--uninstall']):
                 c.main()
             self.assertFalse(installed.exists())
+            self.assertEqual(json.loads(c.settings_path().read_text())['general'], [self.CODE])
             self.assertFalse(c.load_settings()['enabled'])
             self.assertEqual(c.load_settings()['codes'], [self.CODE])
             self.assertTrue((self.home / '.tehablo/cliente-retirado').exists())
@@ -631,6 +653,44 @@ class MenuTest(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(len(app.screen_stack), 1)
             self.assertEqual(self.factory.call_count, 2)
 
+    async def test_relink_revokes_only_exclusive_connection_code(self):
+        for general, shared, legacy in ((False, False, False), (True, False, False),
+                                        (False, True, False), (False, False, True)):
+            with self.subTest(general=general, shared=shared, legacy=legacy):
+                command = 'ssh alice@host'
+                key = c.connection_key(command)
+                settings = dict(device='', volume=1, enabled=True, codes=[self.CODE],
+                                connection_codes={key: self.CODE})
+                if not legacy:
+                    settings['general'] = [self.CODE] if general else []
+                if shared:
+                    settings['connection_codes']['other'] = self.CODE
+                c.save_settings(settings)
+                settings = c.load_settings()
+                app = c.menu_app(settings, c.Receiver(settings))
+                async with app.run_test() as pilot:
+                    app.link_connection(command)
+                    await pilot.press(*('b' * 32), 'enter')
+                    await pilot.pause()
+                    saved = json.loads(c.settings_path().read_text())
+                    self.assertEqual(self.CODE in saved['codes'], general or shared or legacy)
+                    self.assertEqual(saved['connection_codes'][key], 'b' * 32)
+
+    async def test_relink_same_rejected_invalid_preserves_file(self):
+        command = 'ssh alice@host'
+        settings = dict(device='', volume=1, enabled=True, codes=[self.CODE],
+                        connection_codes={c.connection_key(command): self.CODE})
+        c.save_settings(settings)
+        c.settings_path().write_text(json.dumps(settings, indent=4))
+        before = c.settings_path().read_bytes()
+        app = c.menu_app(c.load_settings(), self.receiver)
+        async with app.run_test() as pilot:
+            for keys in (('escape',), ('x', 'enter'), (*self.CODE, 'enter')):
+                app.link_connection(command)
+                await pilot.press(*keys)
+                await pilot.pause()
+                self.assertEqual(c.settings_path().read_bytes(), before)
+
     async def test_active_forward_pairs_without_duplicate_tunnel(self):
         app = c.menu_app(self.settings, self.receiver)
         async with app.run_test(size=(100, 45)) as pilot:
@@ -658,6 +718,16 @@ class MenuTest(unittest.IsolatedAsyncioTestCase):
                 await pilot.pause()
                 self.assertTrue(app.screen.query_one(Input).password)
                 await pilot.press('escape')
+
+    async def test_general_menu_saves_origin(self):
+        app = c.menu_app(self.settings, self.receiver)
+        async with app.run_test() as pilot:
+            await pilot.click('#vincular')
+            await pilot.press(*self.CODE, 'enter')
+            await pilot.pause()
+            saved = json.loads(c.settings_path().read_text())
+            self.assertEqual(saved['codes'], [self.CODE])
+            self.assertEqual(saved['general'], [self.CODE])
 
     async def test_ssh_row_says_searching_while_sessions_load(self):
         release = c.threading.Event()
