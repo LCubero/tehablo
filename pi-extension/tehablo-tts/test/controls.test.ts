@@ -1333,6 +1333,19 @@ test('menu stays before expand in both bars and both icon modes', async () => {
   } finally { await s.close(); }
 });
 
+test('voices-ready S15 a voice saved as downloaded but gone from the disk is not shown Descargada', async () => {
+  const table = ['Regina', 'Iker'].map(name => ({name, voice: name, model: 'phonon', kind: 'account', note: '', downloaded: false}));
+  const store = memoryStore(table);
+  store.save({...store.load(), voices: table.map(v => ({...v, downloaded: true})) as any});
+  const s = setup(store);
+  try {
+    await clickAt(s, '[ ≡ ]');
+    const w = s.windows[0].w;
+    assert.deepEqual(w.c.voices().map((v: any) => v.downloaded), [false, false]);
+    assert.equal(w.typeLabel(w.c.voices()[0]), 'Con cuenta gratis');
+  } finally { await s.close(); }
+});
+
 test('watcher readiness refreshes both Phonon voices in an already open window', async () => {
   const table = ['Regina', 'Iker'].map(name => ({name, voice: name, model: 'phonon', kind: 'account', note: '', downloaded: false}));
   const s = setup(memoryStore(table), undefined, 10);
@@ -1446,7 +1459,8 @@ test('voices-ready S9 voices already on disk show Descargada with the server off
     const phonon = join(hub, 'models--gradium--phonon-40m-es', 'snapshots', 'def');
     mkdirSync(phonon, {recursive: true}); writeFileSync(join(phonon, 'model.q8.gguf'), '');
     assert.equal(states().Regina, true);
-    // The window uses these states while the server is off, and a known server state never hides a voice on disk.
+    // The window uses these states while the server is off: a saved server state never hides a voice on disk,
+    // and never shows Descargada for one that is not on disk (voices-ready S15).
     const store = memoryStore(readTable(path, hub));
     store.save({...store.load(), voices: [{...readTable(path, hub)[0], downloaded: false}, {...readTable(path, hub)[1], downloaded: true}]});
     const s = setup(store);
@@ -1454,7 +1468,7 @@ test('voices-ready S9 voices already on disk show Descargada with the server off
       await clickAt(s, '[ ≡ ]');
       const w = s.windows[0].w;
       assert.deepEqual(w.c.voices().map((v: any) => [v.name, v.downloaded]),
-        [['lola', true], ['rafael', true], ['Regina', true], ['Facundo', true], ['Camila', false]]);
+        [['lola', true], ['rafael', false], ['Regina', true], ['Facundo', true], ['Camila', false]]);
     } finally { await s.close(); }
   } finally { rmSync(root, {recursive: true, force: true}); }
 });

@@ -493,11 +493,13 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
       devices: () => devices,
       // A token Hugging Face refused counts as none, so the window asks for it again.
       state: () => ({settings, server, token: !tokenRefused && (!!client.token || store.hasToken())}),
-      // Shared table order and notes; a voice on disk is downloaded, otherwise the server's state once known.
+      // Shared table order and notes; a voice on disk is downloaded, otherwise the running server's state.
       voices: () => {
         const known = new Map(settings.voices.map(v => [v.name, v]));
         const table = store.table();
-        return table.length ? table.map(v => ({...v, downloaded: v.downloaded || (known.get(v.name)?.downloaded ?? v.downloaded)})) : settings.voices;
+        // The saved list can be stale (a cache deleted since), so only a running server's fresh answer adds to the disk.
+        const live = server === 'ready';  // the last `|| v.downloaded` keeps an unknown (null) state unknown
+        return table.length ? table.map(v => ({...v, downloaded: v.downloaded || (live && known.get(v.name)?.downloaded) || v.downloaded})) : settings.voices;
       },
       active: () => {
         if (settings.voice) return {model: settings.model || current?.model || 'spanish', voice: settings.voice};
