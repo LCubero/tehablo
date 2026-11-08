@@ -580,6 +580,56 @@ class MenuTest(unittest.IsolatedAsyncioTestCase):
                 self.assertEqual(len(sent), 2 if accepted else 1)
                 self.assertEqual(c.load_settings(), before)
 
+    async def test_pairing_failure_prompt_scoped_once_cancel_and_replace(self):
+        command = 'ssh alice@host -p2222'
+        key = c.connection_key(command)
+        old, new = self.CODE, 'f' * 32
+        c.pair(self.settings, old, connection=key)
+        self.receiver.settings = self.settings
+        app = c.menu_app(self.settings, self.receiver)
+        async with app.run_test() as pilot:
+            app.ssh(command)
+            peer = Mock()
+            peer.recv.return_value = b'x' * 48
+            with self.assertRaisesRegex(OSError, 'Servidor sin vincular'):
+                self.receiver.play(peer)
+            app.refresh_status()
+            await pilot.pause()
+            self.assertIn('El servidor no reconoce', str(app.screen.query_one('#pregunta').render()))
+            self.assertTrue(app.screen.query_one('Input').password)
+            depth = len(app.screen_stack)
+            self.receiver.pairing_failures.put((key, old))
+            app.refresh_status()
+            self.assertEqual(len(app.screen_stack), depth)
+            await pilot.press('escape')
+            self.assertEqual(self.settings['connection_codes'][key], old)
+            app.refresh_status()
+            self.assertEqual(len(app.screen_stack), 1)
+            self.receiver.pairing_failures.put((c.connection_key('ssh alice@host -p2223'), old))
+            app.refresh_status()
+            self.assertEqual(len(app.screen_stack), 1)
+            self.receiver.pairing_failures.put((key, old))
+            app.refresh_status()
+            await pilot.pause()
+            app.screen.query_one('Input').value = new
+            await pilot.press('enter')
+            self.assertEqual(self.settings['connection_codes'][key], new)
+            self.assertNotIn(old, self.settings['codes'])
+            sent = []
+            peer.sendall.side_effect = sent.append
+            data = bytearray()
+            def recv(size):
+                if not data:
+                    data.extend(c.hmac.digest(new.encode(), b'servidor' + sent[0], 'sha256')
+                                + b's' * 16 + b'BAD')
+                result = bytes(data[:size])
+                del data[:size]
+                return result
+            peer.recv.side_effect = recv
+            with self.assertRaisesRegex(OSError, 'Cabecera WAV'):
+                self.receiver.play(peer)
+            self.assertEqual(len(sent), 2)
+
     async def test_orphan_association_loader_and_cancelled_prompt(self):
         from textual.widgets import Input
         command = 'ssh alice@host -p2222'

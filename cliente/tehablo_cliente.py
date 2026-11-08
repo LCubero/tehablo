@@ -14,6 +14,7 @@ import shlex
 import os
 from pathlib import Path
 import re
+import queue
 import shutil
 import socket
 import subprocess
@@ -433,6 +434,8 @@ class Receiver:
         self.receiving = False
         self.error = ''
         self.connection_code = lambda: None
+        self.connection_scope = lambda: None
+        self.pairing_failures = queue.SimpleQueue()
 
     def check_retired(self):
         # --uninstall from another terminal stops this open client too.
@@ -463,12 +466,15 @@ class Receiver:
         proof = self.read_exact(connection, 48)
         key = None
         # An owned live channel is scoped; manual reception keeps general pairing.
-        selected = self.connection_code()
-        for saved in ([selected] if selected else self.settings.get('codes', [])):
+        scope = self.connection_scope()
+        selected = scope[1] if scope else self.connection_code()
+        for saved in ([selected] if selected else [] if scope else self.settings.get('codes', [])):
             candidate = saved.encode('ascii')
             if hmac.compare_digest(proof[:32], hmac.digest(candidate, b'servidor' + nonce, 'sha256')):
                 key = candidate
         if key is None:
+            if scope:
+                self.pairing_failures.put(scope)
             raise OSError('Servidor sin vincular: usa Vincular servidor')
         connection.sendall(hmac.digest(key, b'cliente' + proof[32:], 'sha256'))
         if self.read_exact(connection, 44) != WAV_HEADER:
@@ -537,7 +543,7 @@ class Receiver:
                     continue
                 try:
                     connection.settimeout(.5)
-                    if self.settings['enabled'] and self.settings.get('codes'):
+                    if self.settings['enabled'] and (self.settings.get('codes') or self.connection_scope()):
                         self.device_note = ''
                         self.play(connection)
                         self.error = self.device_note
@@ -745,6 +751,7 @@ def menu_app(settings, receiver, voice=None):
                 voice.stop()
                 self.exit('Cliente desinstalado desde otra terminal; recepción detenida.')
                 return
+            self.consume_pairing_failures()
             reason = voice.reason()
             if reason:
                 self.voice_reason = reason
@@ -772,6 +779,34 @@ def menu_app(settings, receiver, voice=None):
                           desinstalar='›', salir='›')
             for name, value in values.items():
                 self.query_one('#' + name, Row).show_value(value)
+
+        def consume_pairing_failures(self):
+            while not receiver.pairing_failures.empty():
+                scope = receiver.pairing_failures.get()
+                command = getattr(self, 'selected_command', None)
+                current = (connection_key(command), settings.get('connection_codes', {}).get(
+                    connection_key(command))) if command else None
+                if (scope != current or scope != receiver.connection_scope()
+                        or getattr(self, 'pairing_prompt', False)):
+                    continue
+                # Do not stack a pairing dialog over password or other input.
+                if len(self.screen_stack) > 1:
+                    receiver.pairing_failures.put(scope)
+                    return
+                self.pairing_prompt = True
+                def done(value, command=command, scope=scope):
+                    self.pairing_prompt = False
+                    selected = getattr(self, 'selected_command', None)
+                    if (value is not None and selected and connection_key(selected) == scope[0]
+                            and settings.get('connection_codes', {}).get(scope[0]) == scope[1]):
+                        self.guarded(lambda value: self.store_connection_code(command, value), value)
+                self.push_screen(Entry('El servidor no reconoce el código de esta conexión. '
+                                       'Escribe el código que muestra /tts codigo (o Audio en /tts menu).', True), done)
+
+        def store_connection_code(self, command, value):
+            code = normalize_code(value)
+            if pair(settings, code, connection=connection_key(command)):
+                self.save()
 
         def notice(self, text):
             self.query_one('#aviso').update(text)
@@ -915,6 +950,7 @@ def menu_app(settings, receiver, voice=None):
             key = connection_key(command)
             def ready():
                 self.selected_command = command
+                self.selected_active = active
                 if not active:
                     voice.start(command)
                 self.voice_reason = '' if not active else '✓ voz activa en esta sesión'
@@ -932,6 +968,11 @@ def menu_app(settings, receiver, voice=None):
             self.exit()
 
     app = Menu()
+    receiver.connection_scope = lambda: (
+        (connection_key(app.selected_command), settings.get('connection_codes', {}).get(
+            connection_key(app.selected_command)))
+        if (voice.running or getattr(app, 'selected_active', False))
+        and getattr(app, 'selected_command', None) else None)
     receiver.connection_code = lambda: (
         settings.get('connection_codes', {}).get(connection_key(app.selected_command))
         if voice.running and getattr(app, 'selected_command', None) else None)
