@@ -10,6 +10,7 @@ fi
 if ! command -v uv >/dev/null 2>&1; then
     printf '%s\n' 'Falta uv. Instálalo con:' \
         'curl -LsSf https://astral.sh/uv/install.sh | sh' \
+        'source $HOME/.local/bin/env   # o abre otra terminal' \
         'Documentación: https://docs.astral.sh/uv/' >&2
     exit 1
 fi
