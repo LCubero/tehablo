@@ -83,6 +83,24 @@ test('S37 Copiar then Ver sit right of SSH on the Audio row; Enter copies; Copia
   assert.equal(s.closed(), true);
 });
 
+test('S37 Tab moves between Copiar and Ver on the Audio row, so Ver opens with the keyboard', async () => {
+  const s = setup();
+  s.state.settings.audio = 'ssh';
+  s.w.row = s.w.mainRows().findIndex(r => r.label === 'Audio'); s.w.col = 0;
+  assert.match(s.text(), /Tab botón/);
+  s.key('\t'); s.key('\r');
+  await new Promise(r => setImmediate(r));
+  assert.equal(s.w.page, 'code');
+  assert.deepEqual(s.calls, [['sshCode', false]]);
+  s.key('\x1b');
+  s.key('\r');
+  await new Promise(r => setImmediate(r));
+  assert.equal(s.w.page, 'main');
+  assert.deepEqual(s.calls.slice(1), [['sshCode', true]]);
+  assert.equal(s.w.mainRows()[s.w.row].label, 'Audio');
+  assert.equal(s.state.settings.audio, 'ssh');
+});
+
 test('S3 download confirmation prepares now and reports completion or error', async () => {
   const s = setup();
   let finish!: () => void;

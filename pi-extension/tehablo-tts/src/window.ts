@@ -209,6 +209,11 @@ export class SettingsWindow {
       if (k === 'up') { this.row = Math.max(0, this.row - 1); this.col = 0; }
       else if (k === 'down') { this.row = Math.min(rows.length - 1, this.row + 1); this.col = 0; }
       else if ((k === 'left' || k === 'right') && r.step) r.step(k === 'right' ? 1 : -1);
+      // Tab moves between the buttons of a row whose ←→ already change its value (Audio SSH: Copiar, Ver).
+      else if (data === '	' && r.buttons) {
+        const usable = r.buttons.map((b: any, i: number) => b[1] ? i : -1).filter((i: number) => i >= 0);
+        this.col = usable[(usable.indexOf(this.col) + 1) % usable.length] ?? 0;
+      }
       else if ((k === 'left' || k === 'right') && r.buttons) {
         const usable = r.buttons.map((b: any, i: number) => b[1] ? i : -1).filter((i: number) => i >= 0);
         this.col = usable[Math.max(0, Math.min(usable.length - 1, usable.indexOf(this.col) + (k === 'right' ? 1 : -1)))] ?? 0;
@@ -322,7 +327,7 @@ export class SettingsWindow {
         line(segs);
       });
       line(this.downloading && this.notice ? [{text: ' ' + this.notice}] : []);
-      line([{text: ' '}, {text: '[ Cerrar ]', style: 'accent', fn: () => this.done()}, {text: '   ↑↓ elegir · ←→ cambiar · Enter · Esc', style: 'dim'}]);
+      line([{text: ' '}, {text: '[ Cerrar ]', style: 'accent', fn: () => this.done()}, {text: '   ↑↓ elegir · ←→ cambiar · Tab botón · Enter · Esc', style: 'dim'}]);
     } else if (this.page === 'voices') {
       line([{text: '   ' + fit('Voz', 31) + fit('Estado', 19) + fit('RAM aprox.', 11) + 'Dict', style: 'dim'}]);
       line([{text: '   ' + '─'.repeat(IN - 4), style: 'dim'}]);
