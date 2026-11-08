@@ -527,6 +527,37 @@ class MenuTest(unittest.IsolatedAsyncioTestCase):
     def text(self, app, selector):
         return str(app.query_one(selector).render())
 
+    async def test_selected_channel_restricts_receiver_but_manual_keeps_list(self):
+        command = 'ssh alice@host'
+        other = 'f' * 32
+        self.settings.update(codes=[self.CODE, other],
+                             connection_codes={c.connection_key(command): self.CODE})
+        self.receiver.settings = self.settings
+        voice = c.VoiceChannel()
+        app = c.menu_app(self.settings, self.receiver, voice)
+        async with app.run_test() as pilot:
+            app.ssh(command)
+            before = c.load_settings()
+            for running, code, accepted in [(True, other, False), (True, self.CODE, True),
+                                             (False, other, True)]:
+                voice.process = self.process if running else None
+                peer = Mock()
+                sent = []
+                peer.sendall.side_effect = sent.append
+                data = bytearray()
+                def recv(size):
+                    if not data:
+                        data.extend(c.hmac.digest(code.encode(), b'servidor' + sent[0], 'sha256')
+                                    + b's' * 16 + b'BAD')
+                    result = bytes(data[:size])
+                    del data[:size]
+                    return result
+                peer.recv.side_effect = recv
+                with self.assertRaises(OSError):
+                    self.receiver.play(peer)
+                self.assertEqual(len(sent), 2 if accepted else 1)
+                self.assertEqual(c.load_settings(), before)
+
     async def test_orphan_association_loader_and_cancelled_prompt(self):
         from textual.widgets import Input
         command = 'ssh alice@host -p2222'

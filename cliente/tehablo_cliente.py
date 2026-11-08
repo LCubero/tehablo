@@ -408,6 +408,7 @@ class Receiver:
         self.stop_event = threading.Event()
         self.receiving = False
         self.error = ''
+        self.connection_code = lambda: None
 
     def check_retired(self):
         # --uninstall from another terminal stops this open client too.
@@ -437,8 +438,9 @@ class Receiver:
         connection.sendall(nonce)
         proof = self.read_exact(connection, 48)
         key = None
-        # Compare every saved code before choosing a matching server.
-        for saved in self.settings.get('codes', []):
+        # An owned live channel is scoped; manual reception keeps general pairing.
+        selected = self.connection_code()
+        for saved in ([selected] if selected else self.settings.get('codes', [])):
             candidate = saved.encode('ascii')
             if hmac.compare_digest(proof[:32], hmac.digest(candidate, b'servidor' + nonce, 'sha256')):
                 key = candidate
@@ -905,7 +907,11 @@ def menu_app(settings, receiver, voice=None):
             voice.stop()
             self.exit()
 
-    return Menu()
+    app = Menu()
+    receiver.connection_code = lambda: (
+        settings.get('connection_codes', {}).get(connection_key(app.selected_command))
+        if voice.running and getattr(app, 'selected_command', None) else None)
+    return app
 
 
 def menu(settings, receiver, voice=None):
