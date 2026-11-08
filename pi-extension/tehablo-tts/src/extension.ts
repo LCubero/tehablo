@@ -80,7 +80,11 @@ const help = '/tts · auto · play [n] · copy · pause · stop · toolbar · in
 
 export function createExtension(pi: ExtensionAPI, client = new ServerClient(), store: Store = client.root ? fileStore(client.root) : memoryStore(),
   clipboard: () => Promise<string> = () => readClipboard(), watchMs = 0, noteMs = 4000,
-  clipboardAvailable = clipboardCommands(process.platform, process.env).length > 0) {
+  clipboardAvailable = clipboardCommands(process.platform, process.env).length > 0,
+  copier: (text: string) => Promise<void> = async text => {
+    const {copyToClipboard} = await import('@earendil-works/pi-coding-agent');
+    await copyToClipboard(text);
+  }) {
   let settings: Settings = store.load();
   let applied = false, windowOpen = false;
   let applying: Promise<void> = Promise.resolve();
@@ -480,6 +484,12 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
     };
     await refreshDevices();
     const controller: Controller = {
+      sshCode: async (copy = false) => {
+        const code = store.sshCode?.();
+        if (!code) throw new Error('Código SSH no disponible.');
+        if (copy) await copier(code);
+        return code;
+      },
       devices: () => devices,
       // A token Hugging Face refused counts as none, so the window asks for it again.
       state: () => ({settings, server, token: !tokenRefused && (!!client.token || store.hasToken())}),

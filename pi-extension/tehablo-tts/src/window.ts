@@ -15,6 +15,7 @@ export interface Controller {
   active(): {model: string; voice: string};
   voices(): VoiceRow[];
   devices?(): string[];
+  sshCode(copy?: boolean): Promise<string>;
   choose(row: VoiceRow): void;
   download?(row: VoiceRow): Promise<void>;
   change(field: 'volume' | 'speed' | 'auto' | 'shortcutsOn' | 'toolbar' | 'indicator' | 'policy' | 'icons' | 'audio' | 'device', value: string | number | boolean | 'stop' | 'wait' | 'symbols' | 'text' | 'local' | 'ssh'): void;
@@ -46,6 +47,19 @@ export class SettingsWindow {
   row = 0; col = 0; pick = 0; token = ''; error = '';
   target?: VoiceRow;
   notice = ''; downloading = false;
+  code = ''; codeStatus = '';
+  async showCode(copy = false) {
+    this.codeStatus = '';
+    try {
+      // Reveal first: OSC 52 cannot confirm acceptance, so the code remains a fallback.
+      this.code = await this.c.sshCode(copy);
+      if (copy) this.codeStatus = 'Copiado';
+    } catch {
+      try { this.code = await this.c.sshCode(); } catch { /* Never display raw errors or secrets. */ }
+      this.codeStatus = 'No se pudo copiar o ver el código';
+    }
+    this.redraw();
+  }
   /** Download dialog result: '' to confirm, 'done' when downloaded, 'error' to show notice and try again. */
   result: '' | 'done' | 'error' = '';
   hits: {y: number; x0: number; x1: number; fn: () => void}[] = [];
@@ -134,6 +148,10 @@ export class SettingsWindow {
           const i = Math.max(0, devices.indexOf(s.device));
           this.c.change('device', devices[(i + d + devices.length) % devices.length]);
         }},
+      ...(s.audio === 'ssh' ? [{label: 'Código SSH', code: this.code, status: this.codeStatus, buttons: [
+        ['[ Ver ]', () => { void this.showCode(); }],
+        ['[ Copiar ]', () => { void this.showCode(true); }],
+      ]}] : []),
       {label: on ? 'Servidor ● activo' : 'Servidor ○ apagado', buttons: [
         [on ? '[ Apagar ]' : '[ Encender ]', () => { this.c.power(on ? 'off' : 'on'); this.col = 0; }],
         ['[ Reiniciar ]', on ? () => this.c.power('restart') : undefined],
@@ -231,6 +249,16 @@ export class SettingsWindow {
       }
       out.push(th.fg('border', '│') + body + ' '.repeat(Math.max(0, IN - (x - 1))) + th.fg('border', '│'));
     };
+    // A long error is split by words over several lines, so it never runs past the border.
+    const errorLines = (text: string) => {
+      if (!text) { line(); return; }
+      let current = '';
+      for (const word of text.split(/\s+/)) {
+        if (current && width(current) + 1 + width(word) > IN - 2) { line([{text: ' ' + current, style: 'error'}]); current = word; }
+        else current = current ? `${current} ${word}` : word;
+      }
+      line([{text: ' ' + current, style: 'error'}]);
+    };
     const titles = {shortcuts: ' Atajos de teclado ', main: ' teHablo · Ajustes ', voices: ' Elegir voz ', download: ' Descargar voz ', token: ' Activar voces con cuenta gratis '};
     const title = titles[this.page], left = Math.floor((IN - width(title)) / 2);
     out.push(th.fg('border', '╭' + '─'.repeat(left)) + th.fg('accent', title) + th.fg('border', '─'.repeat(IN - left - width(title)) + '╮'));
@@ -265,7 +293,10 @@ export class SettingsWindow {
           segs.push({text: b[0], style: !enabled ? 'dim' : sel && this.col === j ? 'accent' : undefined,
             fn: enabled ? () => { this.row = i; this.col = j; b[1](); } : undefined}, {text: ' '});
         });
+        if (r.status) segs.push({text: r.status, style: 'dim'});
         line(segs);
+        // Keep the full 128-bit formatted code in its row, without truncation at 72 columns.
+        if (r.code) line([{text: '    ' + r.code}]);
       });
       line(this.downloading && this.notice ? [{text: ' ' + this.notice}] : []);
       line([{text: ' '}, {text: '[ Cerrar ]', style: 'accent', fn: () => this.done()}, {text: '   ↑↓ elegir · ←→ cambiar · Enter · Esc', style: 'dim'}]);
@@ -300,7 +331,7 @@ export class SettingsWindow {
       // Every Phonon voice lives in one model file, so one download brings them all (Pocket voices download one by one).
       const also = v.model === 'phonon' ? this.c.voices().filter(o => o.model === 'phonon' && o.voice !== v.voice) : [];
       if (also.length) line([{text: ` Incluye también: ${also.map(o => `${o.name} (${o.note})`).join(', ')}.`, style: 'dim'}]);
-      line(this.result === 'error' ? [{text: ' ' + this.notice, style: 'error'}] : []);
+      errorLines(this.result === 'error' ? this.notice : '');
       line([{text: ' '}, {text: '[ Descargar y usar ]', style: this.col === 0 ? 'accent' : undefined, fn: () => this.confirm()},
         {text: ' '}, {text: '[ Volver ]', style: this.col === 1 ? 'accent' : undefined, fn: () => { this.page = 'voices'; }}]);
     } else {
@@ -317,7 +348,7 @@ export class SettingsWindow {
       line([{text: ' 4. Pégalo aquí (no se guarda; solo se usa en esta sesión):'}]);
       line();
       line([{text: ' Token: '}, {text: '•'.repeat(Math.min(50, width(this.token))) + '▏', style: 'accent'}]);
-      line(this.error ? [{text: ' ' + this.error, style: 'error'}] : []);
+      errorLines(this.error);
       line();
       line([{text: ' '}, {text: '[ Usar ]', style: 'accent', fn: () => this.saveToken()}, {text: ' '},
         {text: '[ Volver ]', style: 'accent', fn: () => { this.page = 'voices'; }}, {text: '   Enter · Esc · clic en un enlace lo abre', style: 'dim'}]);

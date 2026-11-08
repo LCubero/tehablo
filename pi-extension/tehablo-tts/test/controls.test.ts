@@ -7,18 +7,40 @@ import {join} from 'node:path';
 import {DEFAULTS} from '../src/settings.ts';
 import {ServerClient} from '../src/server.ts';
 
-function setup(store=memoryStore(),clipboard?:()=>Promise<string>,watchMs=0,noteMs=4000, clipboardAvailable=true) {
+function setup(store=memoryStore(),clipboard?:()=>Promise<string>,watchMs=0,noteMs=4000, clipboardAvailable=true, copier?: (text: string) => Promise<void>) {
   const windows:any[]=[], keyHandlers:any[]=[];
   const configs:any[]=[], notices:string[]=[], statuses:(string|undefined)[]=[], settings={volume:1,speed:1,audio:'local',error:null as string|null,fallback:null as string|null};
   const hooks:any={}, calls:string[]=[], entries:any[]=[{type:'message',id:'a',message:{role:'assistant',content:'Hola'}} ,{type:'custom',customType:'tehablo-tts',data:{messageId:'a',number:1}}];
   let renderer:any, command:any, state='playing', id:string|null='a', renders=0, fail=false, ready=true, ensures=0;
   const client:any={beginSession(){},ensure:async()=>{ensures++;},stop:async()=>{},shutdown:async()=>{},powerOff:async()=>{calls.push('/shutdown');},request:async(path:string)=>{calls.push(path);if(fail)throw Error('offline');if(path==='/health')return {...settings,ready};return {state,id,error:settings.error};},action:async(path:string,body:any)=>{calls.push(path);if(path==='/config'){configs.push(body);Object.assign(settings,body);return {...settings,ready};}if(path==='/health')return {...settings,ready};if(path==='/pause')state='paused';if(path==='/resume')state='playing';return {state};}};
   const ctx:any={mode:'tui',sessionManager:{getBranch:()=>entries},ui:{onTerminalInput:(h:any)=>{keyHandlers.push(h);return()=>{keyHandlers.splice(keyHandlers.indexOf(h),1);};},custom:(factory:any,options:any)=>new Promise<void>(resolve=>{const entry:any={options,closed:false};entry.renders=0;entry.w=factory({requestRender(){entry.renders++;}},{fg:(_:any,t:string)=>t},{matches:()=>false},()=>{entry.closed=true;resolve();});windows.push(entry);}),notify(text:string){notices.push(text);},setStatus(_:string,text:string|undefined){renders++;statuses.push(text);},setWidget(){}}};
-  createExtension({appendEntry:(customType:string,data:any)=>entries.push({type:'custom',customType,data}),on:(n:string,h:any)=>hooks[n]=h,registerCommand:(_:any,c:any)=>command=c.handler,registerEntryRenderer:(_:any,r:any)=>renderer=r} as any,client,store,clipboard,watchMs,noteMs,clipboardAvailable);
+  createExtension({appendEntry:(customType:string,data:any)=>entries.push({type:'custom',customType,data}),on:(n:string,h:any)=>hooks[n]=h,registerCommand:(_:any,c:any)=>command=c.handler,registerEntryRenderer:(_:any,r:any)=>renderer=r} as any,client,store,clipboard,watchMs,noteMs,clipboardAvailable,copier);
   hooks.session_start({},ctx);
   const card=renderer(entries[1],{}, {fg:(_:any,t:string)=>t});
   return {entries,hooks,ctx,store,windows,keyHandlers,press:(d:string)=>keyHandlers.map(h=>h(d)),client,calls,card,configs,notices,statuses,line:()=>{const l=card.render(200)[0];if(l!==undefined)assert.equal(l[0],' ');return l?.slice(1);}, command:(s:string)=>command(s,ctx),set:(s:string,i:string|null='a')=>{state=s;id=i;},setReady:(value:boolean)=>{ready=value;},setError:(value:string)=>{settings.error=value;},setFallback:(value:string|null)=>{settings.fallback=value;},ensures:()=>ensures,close:()=>hooks.session_shutdown({},ctx),agentStart:()=>hooks.agent_start({},ctx),fail:(value=true)=>{fail=value;},renders:()=>renders};
 }
+test('S37 menu copies exactly the private store code without persisting settings', async () => {
+  const store = memoryStore(), copied: string[] = [];
+  const code = 'ABCD-0123-4567-89AB-CDEF-0123-4567-89AB';
+  store.sshCode = () => code;
+  const s = setup(store, undefined, 0, 4000, true, async text => { copied.push(text); });
+  try {
+    const opening = s.command('menu');
+    await new Promise(r => setImmediate(r));
+    const c = s.windows[0].w.c;
+    let saves = 0;
+    store.save = () => { saves++; };
+    assert.equal(await c.sshCode(), code);
+    assert.deepEqual(copied, []);
+    assert.equal(await c.sshCode(true), code);
+    assert.deepEqual(copied, [code]);
+    assert.equal(saves, 0);
+    assert.doesNotMatch(JSON.stringify(store.load()), /ABCD-0123/);
+    assert.ok(s.notices.every(n => !n.includes(code)));
+    s.windows[0].w.done(); await opening;
+  } finally { await s.close(); }
+});
+
 for (const control of ['command', 'shortcut', 'toolbar'] as const) {
   test(`scoped controls S2: ${control} pause/resume never changes a foreign current reading`, async () => {
     const store = memoryStore();

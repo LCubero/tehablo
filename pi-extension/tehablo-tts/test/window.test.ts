@@ -20,6 +20,7 @@ function setup(over: Partial<Record<string, any>> = {}) {
   let closed = false;
   const state = {settings: {...DEFAULTS, voice: 'lola', model: 'spanish'}, server: 'off' as 'off' | 'loading' | 'ready', token: false, ...over};
   const c: Controller = {
+    sshCode: async (copy = false) => { calls.push(['sshCode', copy]); return '0123-4567-89AB-CDEF-0123-4567-89AB-CDEF'; },
     state: () => state as any,
     active: () => state.settings.voice ? {model: state.settings.model, voice: state.settings.voice} : {model: 'spanish', voice: 'lola'},
     voices: () => ROWS,
@@ -43,6 +44,27 @@ function setup(over: Partial<Record<string, any>> = {}) {
       w.handleMouse({type: 'click', button: 'left', x, y});
     }};
 }
+
+test('S37 SSH code is hidden in Local; Ver and Copiar work by keyboard and click', async () => {
+  const s = setup();
+  assert.doesNotMatch(s.text(), /Código SSH/);
+  s.state.settings.audio = 'ssh';
+  assert.match(s.text(), /Código SSH/);
+  assert.doesNotMatch(s.text(), /0123-4567/);
+  s.w.row = s.w.mainRows().findIndex(r => r.label === 'Código SSH');
+  s.key('\r');
+  await new Promise(r => setImmediate(r));
+  assert.match(s.text(), /0123-4567-89AB-CDEF-0123-4567-89AB-CDEF/);
+  s.key('\x1b[C'); s.key('\r');
+  await new Promise(r => setImmediate(r));
+  assert.deepEqual(s.calls, [['sshCode', false], ['sshCode', true]]);
+  assert.match(s.text(), /Copiado/);
+  assert.match(s.text(), /0123-4567-89AB-CDEF-0123-4567-89AB-CDEF/);
+  s.click('[ Ver ]'); s.click('[ Copiar ]');
+  await new Promise(r => setImmediate(r));
+  assert.deepEqual(s.calls.slice(2), [['sshCode', false], ['sshCode', true]]);
+  assert.doesNotMatch(setup().text(), /0123-4567/);
+});
 
 test('S3 download confirmation prepares now and reports completion or error', async () => {
   const s = setup();
@@ -442,4 +464,22 @@ test('account voices carry a * and the table explains it', () => {
   assert.ok(lines.find(l => l.includes('ar-hombre-4310'))!.includes('ar-hombre-4310 * ('));
   assert.ok(!lines.find(l => l.includes('lola ('))!.includes('*'));
   assert.ok(lines.some(l => l.includes('* necesita una cuenta gratis de Hugging Face (1 sola vez)')));
+});
+
+test('voices-ready S13 a long error wraps inside the window on the token page and in the download dialog', async () => {
+  const long = 'Hugging Face rechazó el token: revisa que esté completo y que aceptaste los términos en huggingface.co/gradium/phonon-40m-es.';
+  const s = setup();
+  s.w.choose(ROWS[0]); s.w.token = 'hf_wrong'; s.w.saveToken();
+  (s.w.c as any).download = async () => { s.state.token = false; throw new Error(long); };
+  s.w.confirm();
+  await new Promise(resolve => setImmediate(resolve));
+  const d = setup();
+  d.w.choose(ROWS[2]);
+  (d.w.c as any).download = async () => { throw new Error(long); };
+  d.w.confirm();
+  await new Promise(resolve => setImmediate(resolve));
+  for (const lines of [s.w.render(100), d.w.render(100)]) {
+    for (const l of lines) assert.ok(Array.from(l).length <= 72, l);
+    assert.ok(lines.join(' ').replace(/[│\s]+/g, ' ').includes(long), lines.join('\n'));
+  }
 });
