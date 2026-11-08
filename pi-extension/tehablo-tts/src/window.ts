@@ -253,8 +253,12 @@ export class SettingsWindow {
     const errorLines = (text: string) => {
       if (!text) { line(); return; }
       let current = '';
-      for (const word of text.split(/\s+/)) {
-        if (current && width(current) + 1 + width(word) > IN - 2) { line([{text: ' ' + current, style: 'error'}]); current = word; }
+      const max = IN - 2;
+      // A word longer than a line (a URL, an id) is cut into pieces that fit.
+      const words = text.split(/\s+/).flatMap(w => Array.from({length: Math.ceil(Array.from(w).length / max) || 1},
+        (_, k) => Array.from(w).slice(k * max, (k + 1) * max).join('')));
+      for (const word of words) {
+        if (current && width(current) + 1 + width(word) > max) { line([{text: ' ' + current, style: 'error'}]); current = word; }
         else current = current ? `${current} ${word}` : word;
       }
       line([{text: ' ' + current, style: 'error'}]);

@@ -467,7 +467,7 @@ test('account voices carry a * and the table explains it', () => {
 });
 
 test('voices-ready S13 a long error wraps inside the window on the token page and in the download dialog', async () => {
-  const long = 'Hugging Face rechazó el token: revisa que esté completo y que aceptaste los términos en huggingface.co/gradium/phonon-40m-es.';
+  const long = 'Hugging Face rechazó el token: revisa que esté completo y que aceptaste los términos en huggingface.co/gradium/phonon-40m-es. https://huggingface.co/gradium/phonon-40m-es/resolve/main/config.json?request_id=Root-1-6af0bbcc-3df83a047675b5ee065af9dc';
   const s = setup();
   s.w.choose(ROWS[0]); s.w.token = 'hf_wrong'; s.w.saveToken();
   (s.w.c as any).download = async () => { s.state.token = false; throw new Error(long); };
@@ -480,6 +480,6 @@ test('voices-ready S13 a long error wraps inside the window on the token page an
   await new Promise(resolve => setImmediate(resolve));
   for (const lines of [s.w.render(100), d.w.render(100)]) {
     for (const l of lines) assert.ok(Array.from(l).length <= 72, l);
-    assert.ok(lines.join(' ').replace(/[│\s]+/g, ' ').includes(long), lines.join('\n'));
+    assert.ok(lines.join('').replace(/[│\s]+/g, '').includes(long.replace(/\s+/g, '')), lines.join('\n'));
   }
 });
