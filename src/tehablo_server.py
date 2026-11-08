@@ -41,7 +41,9 @@ TOKEN_REFUSED = ('Hugging Face rechazó el token: revisa que esté completo y qu
 
 def token_refused(reason):
     """Whether Hugging Face refused the token (invalid, or the gated terms not accepted)."""
-    return any(mark in reason for mark in ('Authentication required', 'GatedRepo', '401 Client Error', '403 Client Error'))
+    # A 401/403 from a proxy is not Hugging Face refusing the token.
+    return 'huggingface.co' in reason and any(
+        mark in reason for mark in ('Authentication required', 'GatedRepo', '401 Client Error', '403 Client Error'))
 
 
 def hide_token(error):

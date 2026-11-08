@@ -170,8 +170,11 @@ class VoicePreparationTests(unittest.TestCase):
 
     def test_refused_token_says_so_and_failed_phonon_never_becomes_a_catalog_error(self):
         refused = OSError('cannot fetch `config.json` from hf://gradium/phonon-40m-es: Authentication required: '
-                          'Access to model gradium/phonon-40m-es is restricted. (error_code=GatedRepo)')
-        for error, code, text in ((refused, 'token', 'token'), (OSError('disk full'), None, 'disk full')):
+                          'Access to model gradium/phonon-40m-es is restricted. '
+                          '(url=https://huggingface.co/gradium/phonon-40m-es/resolve/main/config.json, error_code=GatedRepo)')
+        proxy = OSError('403 Client Error: Forbidden for url: http://proxy.local/')
+        for error, code, text in ((refused, 'token', 'token'), (OSError('disk full'), None, 'disk full'),
+                                  (proxy, None, 'proxy.local')):
             with self.subTest(error=error):
                 def factory(name):
                     if name == 'phonon':
