@@ -32,10 +32,13 @@ if ($LASTEXITCODE -ne 0) { exit 1 }
 & ".\$python" -c 'import pocket_tts, ptts, sounddevice, torch; print(torch.__version__); assert torch.version.cuda is None'
 if ($LASTEXITCODE -ne 0) { exit 1 }
 
+& ".\$python" scripts/prepare_pocket.py
+if ($LASTEXITCODE -ne 0) { Write-Host 'Aviso: no se pudo preparar Pocket spanish; vuelve a ejecutar el instalador.' }
+
 Write-Host 'Audio por SSH (en tu PC): .\install.ps1 -Cliente (-Receptor tambien funciona)'
 Write-Host "Listo: $envDir"
 Write-Host "Para iniciar: .\$python src/tehablo_tui.py"
-Write-Host 'Los modelos se descargan en el primer uso.'
+Write-Host 'Pocket spanish, Lola y Rafael: descarga durante la instalacion (revisa los avisos); los otros modelos se descargan al usarlos.'
 Write-Host 'Para usarlo en Pi (una vez, para todos tus proyectos):'
 Write-Host "  pi install `"$PSScriptRoot\pi-extension\tehablo-tts`""
 Write-Host "  (o con gentle-shell: gentle-shell install `"$PSScriptRoot\pi-extension\tehablo-tts`")"

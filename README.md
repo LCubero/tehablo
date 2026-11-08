@@ -32,15 +32,15 @@ Son referencias, no requisitos mínimos: cambian con el modelo, el sistema y la 
 
 > 🔇 GitHub muestra los videos silenciados: pulsa el altavoz del reproductor para escuchar.
 
-| Voz | Modelo | Peso de la voz | RAM en uso | ¿Incluida? |
+| Voz | Modelo | Peso de la voz | RAM en uso | Disponibilidad |
 |---|---|---|---|---|
-| Lola, Rafael | Pocket | 5–6 MB (se descarga) | ~1 GB | Sí |
-| Facundo, Santiago, Camila, Javiera, Diego, Felipe | Pocket | 10–12 MB (incluida) | ~1 GB | Sí |
-| Regina, Iker | Phonon | dentro del modelo | ~0,3 GB | No, gratis para descarga¹ |
+| Lola, Rafael | Pocket | Lola 5,3 MB; Rafael 6,0 MB | ~1 GB | Descargadas por el instalador, sin cuenta |
+| Facundo, Santiago, Camila, Javiera, Diego, Felipe | Pocket | 9,2–11,5 MB | ~1 GB | Incluidas en el repositorio |
+| Regina, Iker | Phonon | 0,25 MB cada una, dentro del modelo | ~0,3 GB | Descarga al elegirlas, con cuenta gratis de Hugging Face¹ |
 
 ¹ Necesita una cuenta gratis de Hugging Face.
 
-El modelo se descarga una vez y lo comparten todas sus voces: Pocket `spanish` 219 MB, Phonon 144 MB. Pesos medidos en Windows; RAM medida en Fedora.
+El modelo se descarga una vez y lo comparten todas sus voces: Pocket `spanish` 209 MB (instalador), Phonon 72 MB (al elegirlo). Pesos medidos en Docker el 2026-11-07; RAM medida en Fedora.
 
 **Lola** · la de siempre · Pocket
 
@@ -103,7 +103,7 @@ Con [uv](https://docs.astral.sh/uv/) instalado, ejecuta desde la raíz del repos
 | Linux / macOS | `./install.sh` |
 | Windows (PowerShell) | `powershell -ExecutionPolicy Bypass -File install.ps1` |
 
-Los scripts preparan el entorno, instalan las dependencias y comprueban Torch sin CUDA. En Linux indican cómo instalar PortAudio si falta. Los modelos se descargan al usarlos por primera vez.
+Los scripts preparan el entorno, instalan las dependencias, comprueban Torch sin CUDA y descargan Pocket `spanish`, Lola y Rafael sin cuenta. Si falla una descarga, avisan y continúan; vuelve a ejecutar el instalador para reintentar. En Linux indican cómo instalar PortAudio si falta. Los demás modelos se descargan al usarlos por primera vez.
 
 Después instala la extensión en Pi con la **ruta absoluta** de tu repositorio:
 
@@ -235,7 +235,7 @@ Los ajustes se guardan por usuario en `~/.tehablo/settings.json` y se comparten 
 
 | Nombre | Modelo en Pi | ¿Incluida? | Licencia de pesos / voz |
 |---|---|---|---|
-| [`lola`](https://cdn.jsdelivr.net/gh/LCubero/tehablo@master/docs/samples/lola.mp3) (inicial), [`rafael`](https://cdn.jsdelivr.net/gh/LCubero/tehablo@master/docs/samples/rafael.mp3) | Pocket `spanish` | Sí | CC BY 4.0 |
+| [`lola`](https://cdn.jsdelivr.net/gh/LCubero/tehablo@master/docs/samples/lola.mp3) (inicial), [`rafael`](https://cdn.jsdelivr.net/gh/LCubero/tehablo@master/docs/samples/rafael.mp3) | Pocket `spanish` | No: las descarga el instalador, sin cuenta | CC BY 4.0 |
 | [`Facundo`](https://cdn.jsdelivr.net/gh/LCubero/tehablo@master/docs/samples/Facundo.mp3), [`Santiago`](https://cdn.jsdelivr.net/gh/LCubero/tehablo@master/docs/samples/Santiago.mp3) (Argentina) | Pocket `spanish` | Sí | Pesos CC BY 4.0; voces CC BY-SA 4.0 |
 | [`Camila`](https://cdn.jsdelivr.net/gh/LCubero/tehablo@master/docs/samples/Camila.mp3), [`Javiera`](https://cdn.jsdelivr.net/gh/LCubero/tehablo@master/docs/samples/Javiera.mp3), [`Diego`](https://cdn.jsdelivr.net/gh/LCubero/tehablo@master/docs/samples/Diego.mp3) (Chile), [`Felipe`](https://cdn.jsdelivr.net/gh/LCubero/tehablo@master/docs/samples/Felipe.mp3) (Colombia) | Pocket `spanish` | Sí | Pesos CC BY 4.0; voces CC BY-SA 4.0 |
 | [`Regina`](https://cdn.jsdelivr.net/gh/LCubero/tehablo@master/docs/samples/Regina.mp3) (México), [`Iker`](https://cdn.jsdelivr.net/gh/LCubero/tehablo@master/docs/samples/Iker.mp3) (España) | Phonon 40M es | No, gratis para descarga¹ | CC BY-NC 4.0: no comercial |

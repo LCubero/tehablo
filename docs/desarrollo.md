@@ -134,6 +134,14 @@ del directorio de trabajo. `/leer` conserva las rutas relativas al directorio ac
 
 ## Pruebas
 
+`tests/test_install_voices.py` comprueba sin red ni audio la preparación de Pocket `spanish`, Lola y Rafael: ambos instaladores llaman a `scripts/prepare_pocket.py`, se reutiliza la caché de Hugging Face y los fallos no detienen las demás descargas. Necesita las dependencias Pocket instaladas:
+
+```powershell
+.venv-pocket/Scripts/python tests/test_install_voices.py
+```
+
+En Linux/macOS, usa `.venv-pocket/bin/python` con el mismo archivo de prueba.
+
 `tests/test_tech.py`, `tests/test_numbers.py`, `tests/test_lexicon.py`, `tests/test_speed.py`, `tests/test_server.py`, `tests/test_startup.py`, `tests/test_console_imports.py`, `tests/test_quantize.py` `tests/test_cliente.py` y `tests/test_receptor.py` comprueban el texto técnico, la conversión de números, el diccionario de pronunciación, el cambio de velocidad, el servidor HTTP, los diagnósticos de arranque, la cuantización predeterminada y el cliente de audio por SSH (configuración, volumen, salidas, reconexión con audio falso e inicio automático en carpetas aisladas) y sus instaladores (uv falso; necesita `sh`) sin modelo ni audio; terminan con código 0 si todos los casos pasan:
 
 ```powershell

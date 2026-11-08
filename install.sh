@@ -53,11 +53,14 @@ if ! output=$("$env_dir/bin/python" -c 'import sounddevice' 2>&1); then
         exit 1
     fi
 fi
+if ! "$env_dir/bin/python" scripts/prepare_pocket.py; then
+    printf '%s\n' 'Aviso: no se pudo preparar Pocket spanish; vuelve a ejecutar el instalador.' >&2
+fi
 printf '%s\n' 'Audio por SSH (en tu PC): ./install.sh --cliente (--receptor tambien funciona)'
 printf 'Listo: %s\n' "$env_dir"
 printf 'Para iniciar: %s/bin/python src/tehablo_tui.py\n' "$env_dir"
 extension="$PWD/pi-extension/tehablo-tts"
-printf '%s\n' 'Los modelos se descargan en el primer uso.' \
+printf '%s\n' 'Pocket spanish, Lola y Rafael: descarga durante la instalación (revisa los avisos); los otros modelos se descargan al usarlos.' \
     'Para usarlo en Pi (una vez, para todos tus proyectos):' \
     "  pi install \"$extension\"" \
     "  (o con gentle-shell: gentle-shell install \"$extension\")" \
