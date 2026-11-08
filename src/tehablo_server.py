@@ -214,6 +214,10 @@ def load_ssh_code():
     return read_pairing_code(Path.home() / '.tehablo/ssh-codigo')
 
 
+class AudioPairingError(OSError):
+    """A peer supplied a nonce but did not complete the pairing proof."""
+
+
 def authenticate_audio(connection, code):
     """Fixed-size mutual proof; the shared secret never crosses the socket."""
     def receive(size):
@@ -230,10 +234,13 @@ def authenticate_audio(connection, code):
         return data
     key = code.encode('ascii')
     client_nonce = receive(16)
-    server_nonce = secrets.token_bytes(16)
-    connection.sendall(hmac.digest(key, b'servidor' + client_nonce, 'sha256') + server_nonce)
-    if not hmac.compare_digest(receive(32), hmac.digest(key, b'cliente' + server_nonce, 'sha256')):
-        raise OSError('Audio authentication failed')
+    try:
+        server_nonce = secrets.token_bytes(16)
+        connection.sendall(hmac.digest(key, b'servidor' + client_nonce, 'sha256') + server_nonce)
+        if not hmac.compare_digest(receive(32), hmac.digest(key, b'cliente' + server_nonce, 'sha256')):
+            raise OSError('Audio authentication failed')
+    except OSError as exc:
+        raise AudioPairingError('Audio authentication failed') from exc
 
 
 class SSHAudio:
@@ -267,10 +274,15 @@ class SSHAudio:
             self.connection.close()
             self.connection = None
 
-    def failed(self, exc, identifier):
+    def failed(self, exc, identifier, streaming=False):
         self.disconnect()
         self.service.control('stop', identifier)
-        self.service.speech_error = 'Sin receptor de audio por SSH: abre el cliente en tu computadora.'
+        if streaming:
+            self.service.speech_error = 'Se cortó el audio por SSH: revisa el cliente en tu computadora.'
+        elif isinstance(exc, AudioPairingError):
+            self.service.speech_error = 'El cliente de tu computadora no está vinculado con este servidor: en el cliente usa «Vincular servidor» con el código de /tts codigo (o Audio en /tts menu).'
+        else:
+            self.service.speech_error = 'Sin cliente de audio por SSH: abre el cliente en tu computadora y elige esta sesión SSH.'
         print(self.service.speech_error, file=sys.stderr, flush=True)
 
     def shutdown(self):
@@ -294,15 +306,17 @@ class SSHAudio:
                 identifier = self.service.id
                 if not self.attempted:
                     self.attempted = True
+                    streaming = False
                     try:
                         self.connection = socket.create_connection(('127.0.0.1', 18766), timeout=.5)
                         self.connection.settimeout(.1)
                         authenticate_audio(self.connection, load_ssh_code())
                         self.receiver_authenticated = True
+                        streaming = True
                         self.connection.settimeout(.1)
                         self.connection.sendall(WAV_HEADER)
                     except (OSError, ValueError) as exc:
-                        self.failed(exc, identifier)
+                        self.failed(exc, identifier, streaming=streaming)
                         continue
                 frames = round(rate * .02)
                 samples = np.zeros((frames, 1), dtype=np.float32)
@@ -315,7 +329,7 @@ class SSHAudio:
                     try:
                         self.connection.sendall(packet)
                     except OSError as exc:
-                        self.failed(exc, identifier)
+                        self.failed(exc, identifier, streaming=True)
                 if self.callback is None or self.service.state not in ('generating', 'playing', 'paused'):
                     self.disconnect()
 

@@ -227,7 +227,7 @@ class SSHFailureTests(unittest.TestCase):
         with mock.patch('sys.stderr', new_callable=io.StringIO) as log:
             audio.failed(OSError('gone'), 'reading')
         service.control.assert_called_once_with('stop', 'reading')
-        self.assertEqual(service.speech_error, 'Sin receptor de audio por SSH: abre el cliente en tu computadora.')
+        self.assertEqual(service.speech_error, 'Sin cliente de audio por SSH: abre el cliente en tu computadora y elige esta sesión SSH.')
         self.assertEqual(len(log.getvalue().splitlines()), 1)
 
 
@@ -363,6 +363,46 @@ class SSHAudioTests(unittest.TestCase):
         self.assertIn('error', json.loads(response.read()))
         self.assertEqual(before, (server.service.health(), server.service.status()))
 
+    def test_failure_stage_messages(self):
+        no_client = 'Sin cliente de audio por SSH: abre el cliente en tu computadora y elige esta sesión SSH.'
+        unpaired = 'El cliente de tu computadora no está vinculado con este servidor: en el cliente usa «Vincular servidor» con el código de /tts codigo (o Audio en /tts menu).'
+        lost = 'Se cortó el audio por SSH: revisa el cliente en tu computadora.'
+        for stage, expected in [('connect', no_client), ('nonce_eof', no_client),
+                                ('nonce_timeout', no_client), ('proof', unpaired),
+                                ('proof_eof', unpaired), ('header', lost), ('pcm', lost)]:
+            with self.subTest(stage=stage):
+                server, _ = self.start()
+                service = server.service
+                connection = mock.Mock()
+                packets = []
+                def receive(size):
+                    if stage == 'nonce_timeout':
+                        raise socket.timeout()
+                    if stage == 'nonce_eof' or (stage == 'proof_eof' and size == 32):
+                        return b''
+                    if size == 16:
+                        return b'n' * 16
+                    if stage == 'proof':
+                        return b'x' * 32
+                    return tehablo_server.hmac.digest(CODE.encode(), b'cliente' + packets[0][32:], 'sha256')
+                def send(data):
+                    packets.append(data)
+                    if (stage == 'header' and len(packets) == 2) or (stage == 'pcm' and len(packets) == 3):
+                        raise OSError('stream lost')
+                connection.recv.side_effect = receive
+                connection.sendall.side_effect = send
+                with mock.patch.object(tehablo_server.socket, 'create_connection',
+                                       side_effect=ConnectionRefusedError() if stage == 'connect' else None,
+                                       return_value=connection), contextlib.redirect_stderr(io.StringIO()):
+                    service.speak({'id': 'stage', 'text': 'hola'})
+                    deadline = time.monotonic() + 3
+                    while service.id is not None and time.monotonic() < deadline:
+                        time.sleep(.02)
+                    self.assertIsNone(service.id)
+                    self.assertEqual(service.state, 'idle')
+                    self.assertEqual(service.speech_error, expected)
+                    self.assertEqual(service.health()['sshReceiver'], stage in ('header', 'pcm'))
+
     def test_push_connects_only_for_reading_and_refusal_never_retries(self):
         server, _ = self.start()
         service = server.service
@@ -374,7 +414,7 @@ class SSHAudioTests(unittest.TestCase):
             while service.id is not None and time.monotonic() < deadline:
                 time.sleep(.02)
             self.assertIsNone(service.id)
-            self.assertEqual(service.speech_error, 'Sin receptor de audio por SSH: abre el cliente en tu computadora.')
+            self.assertEqual(service.speech_error, 'Sin cliente de audio por SSH: abre el cliente en tu computadora y elige esta sesión SSH.')
             self.assertEqual(service.state, 'idle')
             self.assertFalse(service.health()['sshReceiver'])
             connect.assert_called_once_with(('127.0.0.1', 18766), timeout=.5)
@@ -432,7 +472,7 @@ class SSHAudioTests(unittest.TestCase):
             self.assertIsNone(service.id)
             self.assertEqual(service.state, 'idle')
             self.assertTrue(service.cancel.is_set())
-            self.assertEqual(service.speech_error, 'Sin receptor de audio por SSH: abre el cliente en tu computadora.')
+            self.assertEqual(service.speech_error, 'Se cortó el audio por SSH: revisa el cliente en tu computadora.')
             self.assertTrue(service.health()['sshReceiver'])
             self.assertEqual(len(log.getvalue().splitlines()), 1)
 
