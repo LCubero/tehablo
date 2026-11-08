@@ -397,7 +397,7 @@ def resolve_device(name, sd):
     for i, device in enumerate(sd.query_devices()):
         if device['max_output_channels'] > 0 and device['name'] == name:
             return i
-    raise ValueError(f'Salida no disponible: {name}. Elige otra en el menu.')
+    return None  # Disconnected (Bluetooth, headset): play on the system default.
 
 
 class Receiver:
@@ -451,8 +451,12 @@ class Receiver:
             return
         sd = self.sd or sound_device()
         device_name = self.settings['device']
+        device = resolve_device(device_name, sd)
+        # Checked on every reading: the saved choice is kept and used again once it reconnects.
+        self.device_note = (f'{device_name} no está conectada: suena por la predeterminada.'
+                            if device_name and device is None else '')
         with sd.RawOutputStream(samplerate=24000, channels=1, dtype='int16',
-                                device=resolve_device(device_name, sd), blocksize=480,
+                                device=device, blocksize=480,
                                 latency='high') as stream:
             pending = queued = b''
             last_data = 0.0
@@ -508,8 +512,9 @@ class Receiver:
                 try:
                     connection.settimeout(.5)
                     if self.settings['enabled'] and self.settings.get('codes'):
+                        self.device_note = ''
                         self.play(connection)
-                        self.error = ''
+                        self.error = self.device_note
                 except Exception as exc:
                     self.error = str(exc)
                 finally:

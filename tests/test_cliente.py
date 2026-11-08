@@ -300,8 +300,7 @@ class ClientTest(unittest.TestCase):
         self.assertEqual(c.output_devices(sd), ['Speaker'])
         self.assertIsNone(c.resolve_device('', sd))
         self.assertEqual(c.resolve_device('Speaker', sd), 1)
-        with self.assertRaises(ValueError):
-            c.resolve_device('Missing', sd)
+        self.assertIsNone(c.resolve_device('Missing', sd))  # Disconnected: system default.
 
     CODE = '0123456789abcdef0123456789abcdef'
 
@@ -356,6 +355,15 @@ class ClientTest(unittest.TestCase):
         self.assertEqual(sum(sizes), 2 * 15 * 960)
         self.assertEqual(sd.RawOutputStream.call_count, 2)
         self.assertEqual(sd.RawOutputStream.call_args.kwargs['latency'], 'high')
+
+    def test_disconnected_saved_output_plays_on_default_and_keeps_choice(self):
+        settings = dict(c.DEFAULTS, codes=[self.CODE], device='Audífonos BT')
+        sd, receiver = self.receive([b'TEHABLO/1 ' + self.CODE.encode() + b'\n', c.WAV_HEADER,
+                                     b'\x01\x00' * 480], settings=settings)
+        self.assertIsNone(sd.RawOutputStream.call_args.kwargs['device'])
+        sd.RawOutputStream.return_value.__enter__.return_value.write.assert_called()
+        self.assertEqual(receiver.error, 'Audífonos BT no está conectada: suena por la predeterminada.')
+        self.assertEqual(settings['device'], 'Audífonos BT')
 
     def test_wrong_missing_code_and_bad_header_never_open_device(self):
         for wire in (b'', b'TEHABLO/1 ' + b'f' * 32 + b'\n' + c.WAV_HEADER,
