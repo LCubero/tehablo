@@ -1071,6 +1071,30 @@ for (const envToken of [false, true]) {
   });
 }
 
+test('voices-ready S14 a failed download keeps the previous voice; a finished one saves the new voice', async () => {
+  for (const failure of ['Hugging Face rechazó el token.', '']) {
+    const row = {name: 'Regina', voice: 'Regina', model: 'phonon', kind: 'account', note: 'México', downloaded: false};
+    const store = memoryStore(); store.table = () => [row] as any;
+    store.save({...store.load(), model: 'spanish', voice: 'rafael'});
+    const s = setup(store), request = s.client.request;
+    let prepared = false;
+    s.client.request = async (path: string, body: any) => {
+      if (path === '/prepare') { prepared = true; return {id: 'job'}; }
+      if (path === '/health' && prepared) return {ready: true, model: failure ? 'spanish' : 'phonon', voice: failure ? 'lola' : 'Regina',
+        preparation: {id: 'job', state: failure ? 'error' : 'ready', error: failure || null}};
+      if (path === '/voices') return {catalog: [{...row, downloaded: !failure}]};
+      return request(path, body);
+    };
+    try {
+      await clickAt(s, '[ ≡ ]');
+      const download = s.windows[0].w.c.download(row);
+      if (failure) await assert.rejects(download); else await download;
+      const saved = store.load();
+      assert.deepEqual([saved.model, saved.voice], failure ? ['spanish', 'rafael'] : ['phonon', 'Regina']);
+    } finally { await s.close(); }
+  }
+});
+
 test('voices-ready S3 starts a stopped server, prepares immediately, refreshes voices and reports failures', async () => {
   for (const failure of ['', 'offline', 'download failed']) {
     const s = setup();

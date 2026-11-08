@@ -510,7 +510,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
       choose: row => { settings = {...settings, model: row.model, voice: row.voice}; persist(); run(() => configure({model: row.model, voice: row.voice})); },
       download: async row => {
         const generation = epoch;
-        settings = {...settings, model: row.model, voice: row.voice}; persist();
+        // The voice is saved only once it is downloaded, so a failed download keeps the previous one.
         say(ctx, `Descargando ${row.name}…`, 'info');
         try {
           await boot();
@@ -527,6 +527,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
               throw new Error(preparation.error || 'No se pudo descargar la voz.');
             }
             if (preparation.state === 'ready') {
+              settings = {...settings, model: row.model, voice: row.voice}; persist();
               sync(health);
               await refreshVoices();
               redrawWindow?.();
