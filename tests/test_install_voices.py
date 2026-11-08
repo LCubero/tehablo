@@ -19,6 +19,41 @@ class InstallVoicesTests(unittest.TestCase):
             self.assertIn('scripts/prepare_pocket.py', text.replace('\\', '/'))
             self.assertLess(text.index('prepare_pocket.py'), text.index('Listo:'))
 
+    def test_final_notes_are_last_and_grouped(self):
+        for name in ('install.sh', 'install.ps1'):
+            text = (ROOT / name).read_text(encoding='utf-8')
+            before, block = text.split('Listo. Lee esto:', 1)
+            self.assertIn('prepare_pocket.py --installer', before)
+            self.assertIn('Aviso:', before)  # captured warnings are collected, not discarded
+            for note in ('Listo:', 'Para iniciar:', 'pi install', 'Audio por SSH (en tu PC)',
+                         'Phonon 40M', 'pide el token', 'Pocket spanish, Lola y Rafael'):
+                self.assertIn(note, block)
+            self.assertNotIn('tambien', text)
+            self.assertNotIn('prepare_pocket.py', block)
+            self.assertNotIn('uv pip', block)
+            self.assertIn('notes', block.lower())
+            self.assertTrue(block.rstrip().endswith("'  pide el token solo para descargarla y no lo guarda.'"))
+            self.assertIn('1. Avisos de instalación:', block)
+            self.assertIn('Con Audio: SSH no hace falta PortAudio', before)
+            self.assertIn('falta PortAudio', before)
+
+    def test_installer_mode_collects_failures_without_stderr(self):
+        with patch.object(prepare_pocket, 'assets', return_value=[('lola', 'a'), ('rafael', 'b')]), \
+                patch.object(prepare_pocket, 'fetch', side_effect=[RuntimeError('private'), 'cached']), \
+                contextlib.redirect_stdout(io.StringIO()) as out, \
+                contextlib.redirect_stderr(io.StringIO()) as errors:
+            prepare_pocket.main(installer=True)
+        self.assertEqual(errors.getvalue(), '')
+        self.assertEqual(out.getvalue(), 'Aviso: no se pudo descargar lola; vuelve a ejecutar el instalador.\nPreparado: rafael\n')
+
+    def test_installer_mode_reports_config_failure(self):
+        with patch.object(prepare_pocket, 'assets', side_effect=RuntimeError('private')), \
+                contextlib.redirect_stdout(io.StringIO()) as out, \
+                contextlib.redirect_stderr(io.StringIO()) as errors:
+            prepare_pocket.main(installer=True)
+        self.assertEqual(errors.getvalue(), '')
+        self.assertEqual(out.getvalue(), 'Aviso: no se pudo preparar Pocket spanish; vuelve a ejecutar el instalador.\n')
+
     def test_assets_follow_installed_pocket_config_and_catalog(self):
         from pocket_tts.utils.config import CONFIGS_DIR
         from pocket_tts.utils.utils import get_predefined_voice

@@ -24,12 +24,14 @@ def assets():
             *[(name, get_predefined_voice('spanish', name)) for name in ('lola', 'rafael')]]
 
 
-def main():
+def main(installer=False):
     import sys
+    # Installers collect notices from stdout; download progress stays on stderr.
+    notices = sys.stdout if installer else sys.stderr
     try:
         pending = assets()
     except Exception:
-        print('Aviso: no se pudo preparar Pocket spanish; vuelve a ejecutar el instalador.', file=sys.stderr)
+        print('Aviso: no se pudo preparar Pocket spanish; vuelve a ejecutar el instalador.', file=notices)
         return
     for name, uris in pending:
         for uri in uris if isinstance(uris, tuple) else (uris,):
@@ -40,8 +42,9 @@ def main():
             except Exception:
                 continue
         else:
-            print(f'Aviso: no se pudo descargar {name}; vuelve a ejecutar el instalador.', file=sys.stderr)
+            print(f'Aviso: no se pudo descargar {name}; vuelve a ejecutar el instalador.', file=notices)
 
 
 if __name__ == '__main__':
-    main()
+    import sys
+    main(installer='--installer' in sys.argv[1:])

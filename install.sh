@@ -34,36 +34,45 @@ else
     printf '%s\n' "$output" >&2
     exit 1
 fi
+notes=()
 # PortAudio is only needed to play on this machine; a server without sound can use Audio: SSH.
 if ! output=$("$env_dir/bin/python" -c 'import sounddevice' 2>&1); then
     if printf '%s\n' "$output" | grep -qi portaudio; then
-        printf '%s\n' 'Aviso: falta PortAudio, así que la voz no puede sonar en este equipo.' \
-            'Si usas Pi aquí por SSH, elige Audio: SSH en los ajustes de Pi (README, Audio por SSH).' \
-            'Para que suene en este equipo, instálalo y vuelve a ejecutar este script:'
+        notes+=('Aviso: falta PortAudio, así que la voz no puede sonar en este equipo.'
+            'Con Audio: SSH no hace falta PortAudio: elígelo en los ajustes de Pi (README, Audio por SSH).'
+            'Para que suene en este equipo, instálalo y vuelve a ejecutar este script:')
         if command -v dnf >/dev/null 2>&1; then
-            printf '%s\n' 'sudo dnf install portaudio'
+            notes+=('sudo dnf install portaudio')
         elif command -v apt-get >/dev/null 2>&1; then
-            printf '%s\n' 'sudo apt install libportaudio2'
+            notes+=('sudo apt install libportaudio2')
         else
-            printf '%s\n' 'sudo dnf install portaudio      # Fedora' \
-                'sudo apt install libportaudio2  # Debian / Ubuntu'
+            notes+=('sudo dnf install portaudio      # Fedora'
+                'sudo apt install libportaudio2  # Debian / Ubuntu')
         fi
     else
         printf '%s\n' "$output" >&2
         exit 1
     fi
 fi
-if ! "$env_dir/bin/python" scripts/prepare_pocket.py; then
-    printf '%s\n' 'Aviso: no se pudo preparar Pocket spanish; vuelve a ejecutar el instalador.' >&2
+if ! preparation=$("$env_dir/bin/python" scripts/prepare_pocket.py --installer); then
+    notes+=('Aviso: no se pudo preparar Pocket spanish; vuelve a ejecutar el instalador.')
 fi
-printf '%s\n' 'Audio por SSH (en tu PC): ./install.sh --cliente (--receptor tambien funciona)'
-printf 'Listo: %s\n' "$env_dir"
-printf 'Para iniciar: %s/bin/python src/tehablo_tui.py\n' "$env_dir"
+while IFS= read -r line; do
+    case "$line" in
+        Aviso:*) notes+=("$line") ;;
+        *) [[ -z "$line" ]] || printf '%s\n' "$line" ;;
+    esac
+done <<< "$preparation"
 extension="$PWD/pi-extension/tehablo-tts"
+printf '\n%s\n' 'Listo. Lee esto:' '1. Avisos de instalación:'
+if ((${#notes[@]})); then printf '  %s\n' "${notes[@]}"; else printf '  Sin avisos.\n'; fi
+printf '2. Listo: %s\n' "$env_dir"
+printf 'Para iniciar: %s/bin/python src/tehablo_tui.py\n' "$env_dir"
 printf '%s\n' 'Pocket spanish, Lola y Rafael: descarga durante la instalación (revisa los avisos); los otros modelos se descargan al usarlos.' \
-    'Para usarlo en Pi (una vez, para todos tus proyectos):' \
+    '3. Para usarlo en Pi (una vez, para todos tus proyectos):' \
     "  pi install \"$extension\"" \
     "  (o con gentle-shell: gentle-shell install \"$extension\")" \
-    'Voz opcional más natural en Pi: Phonon 40M es (Regina, Iker; acceso restringido, uso no comercial).' \
+    '4. Audio por SSH (en tu PC): ./install.sh --cliente (--receptor también funciona)' \
+    '5. Voz opcional más natural en Pi: Phonon 40M es (Regina, Iker; acceso restringido, uso no comercial).' \
     '  Acepta los términos en https://huggingface.co/gradium/phonon-40m-es y elígela en los ajustes de Pi (/tts menu):' \
     '  pide el token solo para descargarla y no lo guarda.'
