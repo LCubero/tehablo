@@ -33,7 +33,7 @@ Local, free Spanish text-to-speech with Kyutai Pocket TTS and Phonon (CPU only),
 | Sizing a change, deciding when to stop, how work is done | `.repo-harness/rules/working-agreements.md` |
 | Saving or recalling across sessions, memory unavailable | `.repo-harness/rules/memory.md` |
 | An answer requires a notice, pending action, question, approval, visible next action, or contextual explanation | `.repo-harness/rules/response-contract.md` |
-| Creating, moving, or deleting a document | [documentation map](docs/repo-harness/README.md) |
+| Creating, editing, moving, or deleting project documentation | [documentation map](docs/repo-harness/README.md) |
 | Where the project stands and what shipped | [current state](docs/repo-harness/current-state.md), then [CHANGELOG.md](CHANGELOG.md) |
 | Why something was decided, or a standing constraint | [decisions](docs/repo-harness/decisions.md) |
 | Proposing changes to this project | [CONTRIBUTING.md](CONTRIBUTING.md) |

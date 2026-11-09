@@ -16,6 +16,13 @@
 
 Los resúmenes de sesión de Engram siguen siendo entradas temporales de continuidad y deben reconciliarse con la evidencia del repositorio. No se convierten en verdad durable hasta reconciliarse con la evidencia del repositorio y promoverse al propietario canónico correspondiente.
 
+## README breve y guías en `docs/`
+
+- `README.md` presenta el producto: qué ofrece, demostración, requisitos importantes e instalación y uso básicos. Debe ser corto, con lo mínimo necesario para entender teHablo y empezar; no es un manual ni un registro de pruebas.
+- Las instrucciones detalladas, referencias de controles y ajustes, instalación manual, límites por plataforma y diagnóstico van en guías dentro de `docs/`, enlazadas desde el README cuando haga falta.
+- Ampliar primero la guía que ya posee el tema. Crear otra solo si tiene un propósito distinto y añadirla al mapa de abajo; no duplicar instrucciones ni abrir una guía por cada cambio.
+- Al documentar una función, no ampliar el README automáticamente: actualizar su guía y dejar en la presentación solo lo esencial. El estado del trabajo y la evidencia siguen en sus propietarios canónicos.
+
 ## Guías del producto
 
 - [Catálogo gratuito](../catalogo-gratuito.md): motores y herramientas, licencias y estado de evaluación.

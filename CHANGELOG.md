@@ -6,6 +6,7 @@ Este archivo registra los cambios completados en orden cronológico.
 
 ## 2026-11-08
 
+- Documentación: README abreviado; uso detallado e instalación manual reunidos en [Desarrollo](docs/desarrollo.md), con enlaces actualizados y una sola tabla de voces.
 - Pi, salida de audio: el submenú se abre con Enter o clic en el nombre; filtra por la API de audio predeterminada y permite **Mostrar ocultos** y **Refrescar** con descubrimiento nuevo, también con TTS apagado sin arrancarlo. Si faltan los audífonos guardados, usa la salida predeterminada sin olvidar la elección y los recupera en la siguiente lectura al reconectarlos; comprobado por la persona responsable (`RH-W-0017`).
 - Pi: navegación circular en las cuatro listas y retorno al foco de origen al volver; la navegación fue comprobada por la persona responsable y el último ajuste de foco solo por pruebas automatizadas (ventana 39/39; extensión 217/217).
 
