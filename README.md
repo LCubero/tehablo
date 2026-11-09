@@ -219,7 +219,17 @@ Significado de los iconos (aunque se vean como cuadros):
 
 ### Ajustes `[ ≡ ]` (menú)
 
+La navegación con **↑↓** es circular en el menú principal y las listas de voces, atajos y dispositivos: desde el primero, **↑** lleva al último; desde el último, **↓** vuelve al primero. Moverse no aplica ninguna selección. Al volver de un submenú, queda seleccionada la opción del menú principal desde la que entraste.
+
 Elige **Audio: Local / SSH**, **Salida: nombre / Predeterminada** (en Local; en SSH se elige en el cliente), **voz**, **volumen**, **velocidad**, **lectura automática**, **atajos de teclado** e **indicador de estado**, o enciende, apaga y reinicia el servidor. Usa clics o ↑↓, ←→, Enter y Esc.
+
+En **Salida**, pulsa **Enter** o haz clic en el nombre para abrir la lista: **↑↓** mueve la selección, **Enter** la aplica y vuelve, y **Esc** cancela sin cambiarla. **←→** en la fila principal sigue cambiando la salida como antes.
+
+Los dispositivos se consultan al abrir los ajustes, incluso con el TTS apagado, sin arrancar la síntesis. En el submenú, **Refrescar (R)** vuelve a consultar las listas filtrada y completa; úsalo después de conectar o desconectar una salida. La consulta no interrumpe una lectura ni cambia la salida elegida.
+
+La lista de **Salida** usa de inicio el mismo filtro que el cliente SSH: salidas de la API de audio predeterminada, sin duplicados. En el submenú, **Mostrar ocultos** permite ver también las salidas de las otras API; pulsa **Tab** y **Enter**, o haz clic, para alternarlo. Solo cambia la lista, no la salida elegida, y se restablece al cerrar los ajustes. El nombre guardado se conserva aunque no figure en la lista; los nombres largos se acortan solo en pantalla.
+
+Si la **Salida** elegida no está conectada, la lectura usa la predeterminada del sistema y Pi muestra un aviso. La elección se conserva: al reconectar el dispositivo, vuelve a usarse en la siguiente lectura. No cambia de salida a mitad de una lectura. Con **Predeterminada**, cada lectura usa la salida predeterminada actual.
 
 **Iconos: Símbolos / Texto** conserva los símbolos actuales por defecto. Elige **Texto** si ves cuadros: usa etiquetas ASCII como `[ TTS ]`, `[ |> ]`, `[ || ]`, `[ [] ]`, `[ off ]` y `[ = ]` (ajustes). Se guarda, se comparte entre sesiones y actualiza las barras al cambiarla; [tabla completa](docs/desarrollo.md#iconos-en-modo-texto).
 

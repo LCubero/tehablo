@@ -9,15 +9,15 @@ import {ServerClient} from '../src/server.ts';
 
 function setup(store=memoryStore(),clipboard?:()=>Promise<string>,watchMs=0,noteMs=4000, clipboardAvailable=true, copier?: (text: string) => Promise<void>) {
   const windows:any[]=[], keyHandlers:any[]=[];
-  const configs:any[]=[], notices:string[]=[], statuses:(string|undefined)[]=[], settings={volume:1,speed:1,audio:'local',error:null as string|null,fallback:null as string|null};
+  const configs:any[]=[], notices:string[]=[], statuses:(string|undefined)[]=[], settings={volume:1,speed:1,audio:'local',error:null as string|null,note:null as string|null,fallback:null as string|null};
   const hooks:any={}, calls:string[]=[], entries:any[]=[{type:'message',id:'a',message:{role:'assistant',content:'Hola'}} ,{type:'custom',customType:'tehablo-tts',data:{messageId:'a',number:1}}];
   let renderer:any, command:any, state='playing', id:string|null='a', renders=0, fail=false, ready=true, ensures=0;
-  const client:any={beginSession(){},ensure:async()=>{ensures++;},stop:async()=>{},shutdown:async()=>{},powerOff:async()=>{calls.push('/shutdown');},request:async(path:string)=>{calls.push(path);if(fail)throw Error('offline');if(path==='/health')return {...settings,ready};return {state,id,error:settings.error};},action:async(path:string,body:any)=>{calls.push(path);if(path==='/config'){configs.push(body);Object.assign(settings,body);return {...settings,ready};}if(path==='/health')return {...settings,ready};if(path==='/pause')state='paused';if(path==='/resume')state='playing';return {state};}};
+  const client:any={outputDevices:async()=>({devices:[],allDevices:[]}),beginSession(){},ensure:async()=>{ensures++;},stop:async()=>{},shutdown:async()=>{},powerOff:async()=>{calls.push('/shutdown');},request:async(path:string)=>{calls.push(path);if(fail)throw Error('offline');if(path==='/health')return {...settings,ready};return {state,id,error:settings.error,...(settings.note?{note:settings.note}:{})};},action:async(path:string,body:any)=>{calls.push(path);if(path==='/config'){configs.push(body);Object.assign(settings,body);return {...settings,ready};}if(path==='/health')return {...settings,ready};if(path==='/pause')state='paused';if(path==='/resume')state='playing';return {state};}};
   const ctx:any={mode:'tui',sessionManager:{getBranch:()=>entries},ui:{onTerminalInput:(h:any)=>{keyHandlers.push(h);return()=>{keyHandlers.splice(keyHandlers.indexOf(h),1);};},custom:(factory:any,options:any)=>new Promise<void>(resolve=>{const entry:any={options,closed:false};entry.renders=0;entry.w=factory({requestRender(){entry.renders++;}},{fg:(_:any,t:string)=>t},{matches:()=>false},()=>{entry.closed=true;resolve();});windows.push(entry);}),notify(text:string){notices.push(text);},setStatus(_:string,text:string|undefined){renders++;statuses.push(text);},setWidget(){}}};
   createExtension({appendEntry:(customType:string,data:any)=>entries.push({type:'custom',customType,data}),on:(n:string,h:any)=>hooks[n]=h,registerCommand:(_:any,c:any)=>command=c.handler,registerEntryRenderer:(_:any,r:any)=>renderer=r} as any,client,store,clipboard,watchMs,noteMs,clipboardAvailable,copier);
   hooks.session_start({},ctx);
   const card=renderer(entries[1],{}, {fg:(_:any,t:string)=>t});
-  return {entries,hooks,ctx,store,windows,keyHandlers,press:(d:string)=>keyHandlers.map(h=>h(d)),client,calls,card,configs,notices,statuses,line:()=>{const l=card.render(200)[0];if(l!==undefined)assert.equal(l[0],' ');return l?.slice(1);}, command:(s:string)=>command(s,ctx),set:(s:string,i:string|null='a')=>{state=s;id=i;},setReady:(value:boolean)=>{ready=value;},setError:(value:string)=>{settings.error=value;},setFallback:(value:string|null)=>{settings.fallback=value;},ensures:()=>ensures,close:()=>hooks.session_shutdown({},ctx),agentStart:()=>hooks.agent_start({},ctx),fail:(value=true)=>{fail=value;},renders:()=>renders};
+  return {entries,hooks,ctx,store,windows,keyHandlers,press:(d:string)=>keyHandlers.map(h=>h(d)),client,calls,card,configs,notices,statuses,line:()=>{const l=card.render(200)[0];if(l!==undefined)assert.equal(l[0],' ');return l?.slice(1);}, command:(s:string)=>command(s,ctx),set:(s:string,i:string|null='a')=>{state=s;id=i;},setReady:(value:boolean)=>{ready=value;},setError:(value:string)=>{settings.error=value;},setNote:(value:string)=>{settings.note=value;},setFallback:(value:string|null)=>{settings.fallback=value;},ensures:()=>ensures,close:()=>hooks.session_shutdown({},ctx),agentStart:()=>hooks.agent_start({},ctx),fail:(value=true)=>{fail=value;},renders:()=>renders};
 }
 test('S37 menu copies exactly the private store code without persisting settings', async () => {
   const store = memoryStore(), copied: string[] = [];
@@ -301,20 +301,57 @@ test('audio changes from another session apply live without duplicate SSH notice
   } finally { await s.close(); }
 });
 
+test('devices are discovered with TTS off without starting synthesis', async () => {
+  const s = setup();
+  s.fail(); s.hooks.session_start({}, s.ctx);
+  let queries = 0;
+  s.client.outputDevices = async () => { queries++; return {devices: ['Speakers'], allDevices: ['Speakers', 'Headphones']}; };
+  try {
+    await s.command('menu'); await new Promise(r => setImmediate(r));
+    const c = s.windows[0].w.c;
+    assert.equal(c.state().server, 'off');
+    assert.deepEqual(c.devices(), ['Speakers']); assert.deepEqual(c.devices(true), ['Speakers', 'Headphones']);
+    c.change('device', 'Headphones'); await new Promise(r => setImmediate(r));
+    assert.equal(s.store.load().device, 'Headphones');
+    assert.equal(queries, 1); assert.equal(s.ensures(), 0); assert.deepEqual(s.configs, []);
+  } finally { await s.close(); }
+});
+
+test('pending device discovery cannot redraw closed, replaced or shutdown settings', async () => {
+  const s = setup(), pending: ((data: any) => void)[] = [];
+  s.fail(); s.hooks.session_start({}, s.ctx);
+  s.client.outputDevices = () => new Promise(resolve => pending.push(resolve));
+  try {
+    await s.command('menu'); await new Promise(r => setImmediate(r));
+    assert.equal(s.windows.length, 1, 'overlay opens before discovery completes'); assert.equal(pending.length, 1);
+    const first = s.windows[0]; first.w.done(); await new Promise(r => setImmediate(r));
+    await s.command('menu'); await new Promise(r => setImmediate(r));
+    const second = s.windows[1], firstRenders = first.renders, secondRenders = second.renders;
+    pending[0]({devices: ['Old'], allDevices: ['Old']}); await new Promise(r => setImmediate(r));
+    assert.equal(first.renders, firstRenders); assert.equal(second.renders, secondRenders);
+    pending[1]({devices: ['New'], allDevices: ['New', 'Hidden']}); await new Promise(r => setImmediate(r));
+    assert.deepEqual(second.w.c.devices(), ['New']);
+    const refreshing = second.w.c.refreshDevices();
+    await s.close(); const renders = second.renders;
+    s.ctx.ui.notify = () => assert.fail('stale notification');
+    pending[2]({devices: ['Late'], allDevices: ['Late']});
+    assert.equal(await refreshing, false); assert.equal(second.renders, renders);
+    assert.deepEqual(second.w.c.devices(), ['New']);
+  } finally { await s.close(); }
+});
+
 test('S11 device list is fetched on open, selection saves/configures and shares live', async () => {
   let changed = false;
   const store = {...memoryStore(), changed: () => { const result = changed; changed = false; return result; }};
   const s = setup(store, undefined, 10);
-  const request = s.client.request; let queries = 0;
-  s.client.request = async (path: string, body: any) => {
-    if (path === '/devices') { queries++; return {devices: [{index: 1, name: 'Speakers', default: true}]}; }
-    return request(path, body);
-  };
+  let queries = 0;
+  s.client.outputDevices = async () => { queries++; return {devices: ['Speakers'], allDevices: ['Speakers', 'Other API DAC']}; };
   try {
     await start(s);
     await s.command('menu'); await new Promise(r => setImmediate(r));
     const w = s.windows[0].w;
     assert.deepEqual(w.c.devices?.(), ['Speakers']);
+    assert.deepEqual(w.c.devices?.(true), ['Speakers', 'Other API DAC']);
     w.mainRows().find(r => r.label === 'Salida').step(1);
     await new Promise(r => setImmediate(r));
     assert.equal(store.load().device, 'Speakers');
@@ -324,6 +361,10 @@ test('S11 device list is fetched on open, selection saves/configures and shares 
     assert.ok(s.configs.some(body => body.device === 'Headphones'));
     assert.equal(w.c.state().settings.device, 'Headphones');
     assert.equal(queries, 1, 'devices are not polled');
+    s.client.outputDevices = async () => { throw new Error('No se pudieron consultar los dispositivos.'); };
+    await w.c.refreshDevices();
+    assert.deepEqual(w.c.devices?.(true), ['Speakers', 'Other API DAC']);
+    assert.match(w.c.state().deviceError, /No se pudieron consultar los dispositivos/);
   } finally { await s.close(); }
 });
 
@@ -856,6 +897,15 @@ const tick=()=>new Promise(r=>setTimeout(r,550));
 const click=async(card:any,x:number)=>{card.handleMouse({type:'click',button:'left',x:x+1,y:0});await new Promise(r=>setImmediate(r));};
 const clickAt=async(s:any,text:string,offset=0)=>{const line=s.line();assert.ok(line.includes(text),`${text} in ${line}`);await click(s.card,Array.from(line.slice(0,line.indexOf(text))).length+offset);};
 const start=async(s:any)=>{await clickAt(s,'⏻ TTS');await tick();};
+
+test('disconnected output device warns once after the reading',async()=>{
+  const s=setup();try {
+    await s.command('play');s.set('idle',null);s.setNote('Audífonos BT no está conectada: suena por la predeterminada.');
+    await tick();
+    assert.deepEqual(s.notices,['TTS teHablo: Audífonos BT no está conectada: suena por la predeterminada.']);
+    await tick();assert.equal(s.notices.length,1);
+  }finally{await s.close();}
+});
 
 test('speech failure warns once and resets playback',async()=>{
   const s=setup();try {

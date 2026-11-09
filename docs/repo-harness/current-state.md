@@ -27,6 +27,7 @@ Este archivo proyecta solo hechos verificados del proyecto: registros activos, b
 
 <!-- doc-role:recent-work -->
 
+- `RH-W-0017` (`completed`, 2026-11-08): mejorado el selector de salida de Pi, con filtro, refresco sin arrancar TTS y recuperación de los audífonos guardados en la siguiente lectura; comprobado por la persona responsable. Navegación circular en las cuatro listas; retorno al foco de origen cubierto solo por pruebas automatizadas. [Alcance y límites](roadmap.md#rh-w-0017-cambio-de-dispositivo-de-audio); sin afirmar entrega Git ni publicación.
 - Voces e instalador (2026-11-08, en `master` desde el PR #1): `install.sh` e `install.ps1` descargan el modelo Pocket `spanish`, Lola y Rafael sin cuenta y muestran al final un bloque ordenado «Listo. Lee esto:»; «Descargar y usar» descarga de verdad, también con el servidor apagado, con su ventana abierta hasta «Descargada»; «Elegir voz» lee el disco («Descargada» en gris); un token rechazado por Hugging Face se explica y se vuelve a pedir; una descarga fallida no cambia la voz elegida; el token nunca aparece en errores ni en el log (`hf_***`). Todo comprobado por la persona responsable en un contenedor Ubuntu limpio salvo la última regla (cubierta por pruebas); detalle en `odd/tasks/voices-ready.md`.
 - `RH-W-0010` (`completed`): diccionario configurable por voz con `/tts dict` y *Dict*; comprobado por escucha en Windows.
 - `RH-W-0031` (`completed`): barra visible al iniciar salvo que se dejara oculta; comprobada físicamente en Windows.
@@ -66,7 +67,7 @@ Este archivo proyecta solo hechos verificados del proyecto: registros activos, b
 
 - Registrar todo pendiente no trivial en [roadmap.md](roadmap.md), sin mantener un segundo backlog aquí.
 - `RH-W-0002` (`deferred`, P3): pronunciaciones en inglés y limpieza de símbolos aplicadas (hashes omitidos, separadores, flechas, paréntesis y barras); quedan las extensiones de archivo y la confirmación por escucha ([guía de pronunciación](../pronunciacion.md)).
-- `RH-W-0004` (`deferred`, P3): la ventana de ajustes `[ ≡ ]` de Pi ya existe (2026-11-04); quedan la guía en la TUI y la documentación, escuchar una voz antes de elegirla, la salida de audio y la robustez ante muchos clics.
+- `RH-W-0004` (`deferred`, P3): la ventana de ajustes `[ ≡ ]` de Pi ya existe (2026-11-04); quedan la guía en la TUI y la documentación, escuchar una voz antes de elegirla y la robustez ante muchos clics.
 - `RH-W-0005` (`active`, P3): probadas a ciegas voces sin token y, con token, las 18 de `voices/` clonadas con Pocket TTS ([resumen y resultados](../pruebas-de-voces.md#resumen-2026-10-30)); varias suenan mejor que `lola`. Sigue la prueba con NeuTTS y el ajuste castellano; ya incorporadas Phonon y 6 clonadas aprobadas; falta decidir sobre otros motores. El 2026-11-03, en Fedora, Phonon 40M es (`Regina`, `Iker`) sonó a ciegas mucho más natural que `lola` gastando menos (303 MiB y 8 s de CPU frente a 961 MiB y 10,6 s); licencia no comercial y sin probar todavía con los ajustes de tehablo ([resultados](../pruebas-de-voces.md#phonon-40m-es-frente-a-lola-spanish_24l-y-kokoro-2026-11-03-fedora)). Corregida solo la salida nueva del descargador a PCM16 (pruebas deterministas sin red); los originales existentes siguen en coma flotante. El lector de Pocket TTS acepta una copia PCM16 donde rechaza el original, pero esta corrección no verifica una clonación completa ni añade escuchas.
 - `RH-W-0007` (`deferred`, P3): modo GPU opcional, manteniendo CPU como predeterminado.
 - `RH-W-0009` (`deferred`, P2): versión Docker y despliegue seguro en VPS; depende de `RH-W-0001` y `RH-W-0008`.
@@ -75,7 +76,7 @@ Este archivo proyecta solo hechos verificados del proyecto: registros activos, b
 - `RH-W-0014` (`deferred`, P3): evaluar una API y la integración con CLIProxyAPI.
 - `RH-W-0015` (`proposed`, P3): añadir palabras a `pronunciaciones.json` desde la TUI o la extensión de Pi.
 - `RH-W-0016` (`proposed`, P3): ajuste para sugerir, no sugerir o añadir automáticamente pronunciaciones de términos nuevos en inglés.
-- `RH-W-0017` (`active`, P2): en Pi, cada lectura ya sigue la salida predeterminada del sistema (comprobado físicamente en Windows y en Linux); en Windows la lectura en curso no cambia de salida, en Linux sí. Elegir el dispositivo queda para después.
+- `RH-W-0017` (`completed`): selección de salida implementada en Pi; en Windows el cambio durante una lectura sigue excluido, en Linux ya ocurre ([evidencia](roadmap.md#rh-w-0017-cambio-de-dispositivo-de-audio)).
 - `RH-W-0018` (`deferred`, P3): roles de voz (locutor, profesor, motivador y otros) con frases y muletillas propias.
 - `RH-W-0019` (`deferred`, P3): exportar audiolibros.
 - `RH-W-0045` (`proposed`, P2): versión visible del cliente, la extensión de Pi y el servidor, para saber qué corre en cada lado.
@@ -105,7 +106,7 @@ Orden aprobado por la persona responsable el 2026-11-05 («me parece dale»); ca
 4. **Roles de voz** (`RH-W-0018`).
 5. **Mostrarlo:** volver a grabar el video con aviso de sonido y miniatura (resto de `RH-W-0036`).
 6. **Instalar y publicar:** instalador (`RH-W-0037`, con `RH-W-0028`), seguridad mínima (`RH-W-0023`) y primera versión (`RH-W-0038`).
-7. **Extras y largo plazo:** página de producto (`RH-W-0039`), voces por API (`RH-W-0029`), menú de audio (`RH-W-0017`), portabilidad (`RH-W-0011`), celular (`RH-W-0040`), Docker y VPS (`RH-W-0009`), API (`RH-W-0014`), audiolibros (`RH-W-0019`), resto de calidad (`RH-W-0023`), versión lite (`RH-W-0025`), GPU (`RH-W-0007`) y modelo propio (`RH-W-0012`).
+7. **Extras y largo plazo:** página de producto (`RH-W-0039`), voces por API (`RH-W-0029`), portabilidad (`RH-W-0011`), celular (`RH-W-0040`), Docker y VPS (`RH-W-0009`), API (`RH-W-0014`), audiolibros (`RH-W-0019`), resto de calidad (`RH-W-0023`), versión lite (`RH-W-0025`), GPU (`RH-W-0007`) y modelo propio (`RH-W-0012`).
 
 Siguiente: revisar más voces (`RH-W-0005`), fase 2 del orden aprobado.
 

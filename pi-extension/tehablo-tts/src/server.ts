@@ -1,4 +1,5 @@
-import { spawn as nodeSpawn } from 'node:child_process';
+import { spawn as nodeSpawn, execFile as nodeExecFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import { closeSync, existsSync, mkdirSync, openSync, readFileSync, writeFileSync, linkSync, unlinkSync } from 'node:fs';
 import { randomBytes } from 'node:crypto';
 import { homedir } from 'node:os';
@@ -6,10 +7,11 @@ import { resolve, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const OS_NAMES: Record<string, string> = { win32: 'windows', linux: 'linux', darwin: 'macos' };
+const runFile = promisify(nodeExecFile);
 
 type Options = {
   root?: string; platform?: string; port?: string; exists?: (path: string) => boolean;
-  fetch?: typeof fetch; spawn?: typeof nodeSpawn; delay?: (ms: number) => Promise<void>;
+  fetch?: typeof fetch; spawn?: typeof nodeSpawn; execFile?: typeof runFile; delay?: (ms: number) => Promise<void>;
   openLog?: (path: string) => number; closeLog?: (fd: number) => void;
   codePath?: string;
 };
@@ -102,6 +104,23 @@ export class ServerClient {
     const binary = platform === 'win32' ? 'Scripts/python.exe' : 'bin/python';
     const envs = ['.venv-pocket', ...(OS_NAMES[platform] ? [`.venv-pocket-${OS_NAMES[platform]}`] : [])];
     return envs.map(env => join(this.root, env, binary));
+  }
+  /** A fresh PortAudio table without starting TTS or disturbing its active output stream. */
+  async outputDevices(): Promise<{devices: string[]; allDevices: string[]}> {
+    const python = this.pythonCandidates().find(this.options.exists ?? existsSync);
+    if (!python) throw new Error('No se encontró el entorno Python de teHablo.');
+    const code = 'import sys,json; sys.path.insert(0,sys.argv[1]); from tehablo_server import output_devices; '
+      + 'print(json.dumps({"devices":[d["name"] for d in output_devices()],"allDevices":[d["name"] for d in output_devices(True)]}))';
+    try {
+      const {stdout} = await (this.options.execFile ?? runFile)(python, ['-c', code, join(this.root, 'src')],
+        {cwd: this.root, encoding: 'utf8', windowsHide: true, timeout: 5000, maxBuffer: 65536});
+      const result = JSON.parse(stdout);
+      const names = (value: unknown) => Array.isArray(value) && value.every(name => typeof name === 'string');
+      if (!names(result?.devices) || !names(result?.allDevices)) throw new Error('Invalid device response');
+      return result;
+    } catch {
+      throw new Error('No se pudieron consultar los dispositivos de audio. Revisa el entorno Python de teHablo.');
+    }
   }
   private async start() {
     try { await this.request('/health'); this.spawned = !!this.child; return; } catch { /* Start only when unavailable. */ }

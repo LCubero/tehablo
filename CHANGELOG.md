@@ -6,6 +6,9 @@ Este archivo registra los cambios completados en orden cronológico.
 
 ## 2026-11-08
 
+- Pi, salida de audio: el submenú se abre con Enter o clic en el nombre; filtra por la API de audio predeterminada y permite **Mostrar ocultos** y **Refrescar** con descubrimiento nuevo, también con TTS apagado sin arrancarlo. Si faltan los audífonos guardados, usa la salida predeterminada sin olvidar la elección y los recupera en la siguiente lectura al reconectarlos; comprobado por la persona responsable (`RH-W-0017`).
+- Pi: navegación circular en las cuatro listas y retorno al foco de origen al volver; la navegación fue comprobada por la persona responsable y el último ajuste de foco solo por pruebas automatizadas (ventana 39/39; extensión 217/217).
+
 - Pi, token de Hugging Face: si Hugging Face rechaza el token, la ventana lo dice («Hugging Face rechazó el token: revisa que esté completo y que aceptaste los términos…») y vuelve a pedirlo, sin reiniciar Pi; Regina e Iker siguen en «Con cuenta gratis». Los errores largos se parten dentro de la ventana.
 - Audio por SSH: si falla una lectura, Pi dice la causa: no contestó ningún cliente, el cliente no tiene el código de este servidor, o se cortó el audio. En `/tts menu`, a la derecha de **Audio: SSH**, **[ Copiar ]** copia el código de vinculación sin mostrarlo (Enter) y **[ Ver ]** lo muestra en su ventana (Tab y Enter). El cliente de la PC vuelve a pedir el código si el servidor no reconoce el guardado (por ejemplo, un servidor reinstalado en la misma dirección). Comprobado por la persona responsable en un contenedor Ubuntu limpio con Windows.
 - Instalación: si falta uv, `install.sh` también muestra `source $HOME/.local/bin/env` para usarlo en la misma terminal.

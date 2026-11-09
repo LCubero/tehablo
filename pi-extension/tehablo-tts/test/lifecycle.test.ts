@@ -25,6 +25,32 @@ test('scoped controls S3: shutdown stops only owned current and queued readings 
   await client.shutdown(); assert.equal(stops.length, 2);
 });
 
+test('device discovery uses existing Python without starting TTS or making HTTP requests', async () => {
+  const commands: any[] = [];
+  const client = new ServerClient({root: '/tehablo', platform: 'win32', exists: p => p.includes('.venv-pocket-windows'),
+    fetch: (async () => assert.fail('device discovery must not use HTTP')) as any,
+    spawn: (() => assert.fail('device discovery must not start the server')) as any,
+    execFile: (async (...args: any[]) => { commands.push(args); return {stdout: JSON.stringify({devices: ['Speakers'], allDevices: ['Speakers', 'Other API DAC']})}; }) as any});
+  assert.deepEqual(await client.outputDevices(), {devices: ['Speakers'], allDevices: ['Speakers', 'Other API DAC']});
+  assert.equal(client.spawned, false); assert.equal(commands.length, 1);
+  assert.match(commands[0][0], /\.venv-pocket-windows[/\\]Scripts[/\\]python\.exe$/);
+  assert.equal(commands[0][1][0], '-c'); assert.match(commands[0][1][1], /output_devices/);
+  assert.doesNotMatch(commands[0][1][1], /ensure|create_server|audio_sink|OutputStream/);
+  assert.match(commands[0][1][2], /[/\\]src$/);
+  assert.equal(commands[0][2].timeout, 5000); assert.equal(commands[0][2].maxBuffer, 65536);
+  assert.equal(commands[0][2].shell, undefined);
+});
+
+test('device discovery reports missing environments and invalid output without starting TTS', async () => {
+  const missing = new ServerClient({exists: () => false});
+  await assert.rejects(missing.outputDevices(), /entorno Python/);
+  for (const stdout of ['invalid JSON', JSON.stringify({devices: [4], allDevices: []})]) {
+    const client = new ServerClient({exists: () => true, execFile: (async () => ({stdout})) as any});
+    await assert.rejects(client.outputDevices(), /dispositivos/);
+    assert.equal(client.spawned, false);
+  }
+});
+
 test('default root is two levels above extension, POSIX python, stop only after use',async()=>{
   const defaultClient=new ServerClient();
   assert.equal(defaultClient.root,process.env.TEHABLO_ROOT ?? resolve(fileURLToPath(new URL('../../..',import.meta.url))));

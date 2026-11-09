@@ -242,10 +242,10 @@ class AuthenticationTests(unittest.TestCase):
             while not server.service.ready and time.monotonic() < deadline:
                 time.sleep(.01)
             for code in ('', 'wrong'):
-                for path in ('/speak', '/config', '/stop', '/shutdown', '/status'):
+                for path in ('/speak', '/config', '/stop', '/shutdown', '/status', '/devices/all'):
                     before = server.service.health(), server.service.status(), server.last_request
                     conn = http.client.HTTPConnection(*server.server_address, timeout=2)
-                    conn.request('GET' if path == '/status' else 'POST', path, '{}',
+                    conn.request('GET' if path in ('/status', '/devices/all') else 'POST', path, '{}',
                                  {'Content-Type': 'application/json', 'X-Tehablo-Codigo': code})
                     response = conn.getresponse()
                     self.assertEqual(response.status, 403)
@@ -347,6 +347,7 @@ class SSHAudioTests(unittest.TestCase):
                 result = service.devices()
                 self.assertEqual(result['devices'], [])
                 self.assertIn('note', result)
+                self.assertEqual(service.devices(True), result)
                 before = service.health(), service.status()
                 with self.assertRaises(ValueError):
                     service.configure({'device': 'Speaker'})
@@ -655,12 +656,14 @@ class ServerTests(unittest.TestCase):
         self.ready()
         devices = [{'index': 2, 'name': 'Speakers', 'default': True},
                    {'index': 5, 'name': 'Headphones', 'default': False}]
-        self.server.service.device_provider = lambda: devices
+        all_devices = devices + [{'index': 9, 'name': 'Other API DAC', 'default': False}]
+        self.server.service.device_provider = lambda include_hidden=False: all_devices if include_hidden else devices
         self.assertEqual(self.request('/devices'), (200, {'devices': devices}))
+        self.assertEqual(self.request('/devices/all'), (200, {'devices': all_devices}))
         self.assertEqual(self.request('/health')[1]['device'], '')
         self.assertEqual(self.request('/config', {'device': 'Headphones'})[0], 200)
         before = self.request('/health')[1]
-        for bad in ['missing', None, 2, True]:
+        for bad in [None, 2, True]:
             self.assertEqual(self.request('/config', {'device': bad, 'volume': .5})[0], 400)
             self.assertEqual(self.request('/health')[1], before)
         received = []
@@ -672,6 +675,53 @@ class ServerTests(unittest.TestCase):
         self.wait(lambda: bool(received))
         self.assertEqual(received, ['Headphones'])
         self.assertEqual(self.request('/config', {'device': ''})[1]['device'], '')
+
+    def test_disconnected_device_plays_on_default_and_comes_back(self):
+        self.ready()
+        # Keep this routing test independent of Windows' coarse timer resolution.
+        self.synth.stream = lambda *args: iter([np.zeros(240, dtype=np.float32)])
+        received, connected = [], [False]
+        def output(rate, callback, device=None):
+            received.append(device)
+            if device and not connected[0]:
+                raise tehablo_server.DeviceMissing(device)
+            return Sink(rate, callback)
+        self.server.service.local_audio_factory = output
+        # A saved headset that is off when Pi starts is still accepted and kept.
+        self.assertEqual(self.request('/config', {'device': 'Audífonos BT'})[0], 200)
+        note = 'Audífonos BT no está conectada: suena por la predeterminada.'
+        self.request('/speak', {'id': 'off', 'text': 'hola'})
+        self.wait(lambda: len(received) == 2 and self.request('/status')[1]['state'] == 'idle')
+        self.assertEqual(self.request('/status')[1], {'state': 'idle', 'id': None, 'audio': 'local', 'error': None, 'note': note})
+        self.assertEqual(received, ['Audífonos BT', None])
+        self.assertEqual(self.request('/health')[1]['device'], 'Audífonos BT')
+        connected[0] = True
+        self.request('/speak', {'id': 'back', 'text': 'hola'})
+        self.wait(lambda: len(received) == 3 and self.request('/status')[1]['state'] == 'idle')
+        self.assertEqual(received[2], 'Audífonos BT')
+        self.assertNotIn('note', self.request('/status')[1])
+
+    def test_audio_sink_resolves_device_across_host_apis(self):
+        fake = mock.Mock()
+        devices = [{'name': 'Speakers', 'max_output_channels': 2, 'hostapi': 0},
+                   {'name': 'BT', 'max_output_channels': 2, 'hostapi': 1},
+                   {'name': 'BT', 'max_output_channels': 2, 'hostapi': 0},
+                   {'name': 'Other API DAC', 'max_output_channels': 2, 'hostapi': 1}]
+        fake.query_devices.side_effect = lambda *a, **k: {'hostapi': 0} if k.get('kind') else devices[a[0]] if a else devices
+        fake.query_hostapis.return_value = {'devices': [0, 2]}
+        fake.default.device = (0, 0)
+        with mock.patch.dict(sys.modules, {'sounddevice': fake}):
+            # Discovery matches the client; saved-name playback must still search all APIs.
+            self.assertEqual([d['index'] for d in tehablo_server.output_devices()], [0, 2])
+            tehablo_server.audio_sink(24000, None, device='Other API DAC')
+            self.assertEqual(fake.OutputStream.call_args.kwargs['device'], 3)
+            tehablo_server.audio_sink(24000, None, device='BT')
+            self.assertEqual(fake.OutputStream.call_args.kwargs['device'], 1)
+            with self.assertRaises(tehablo_server.DeviceMissing):
+                tehablo_server.audio_sink(24000, None, device='Gone')
+            tehablo_server.audio_sink(24000, None)
+            self.assertIsNone(fake.OutputStream.call_args.kwargs['device'])
+            self.assertEqual(fake.OutputStream.call_count, 3)
 
     def test_devices_unavailable_is_json_not_a_crash(self):
         with mock.patch.dict(sys.modules, {'sounddevice': None}):
@@ -686,13 +736,18 @@ class ServerTests(unittest.TestCase):
 
     def test_device_query_filters_inputs_and_marks_default(self):
         fake = mock.Mock()
-        fake.query_devices.return_value = [
-            {'name': 'Mic', 'max_output_channels': 0},
-            {'name': 'Speakers', 'max_output_channels': 2}]
+        devices = [{'name': 'Mic', 'max_output_channels': 0},
+                   {'name': 'Speakers', 'max_output_channels': 2},
+                   {'name': 'Headphones', 'max_output_channels': 2}]  # Distinct output in another host API.
+        fake.query_devices.side_effect = lambda *a, **k: {'hostapi': 0} if k.get('kind') else devices
+        fake.query_hostapis.return_value = {'devices': [0, 1]}
         fake.default.device = (0, 1)
         with mock.patch.dict(sys.modules, {'sounddevice': fake}):
             self.assertEqual(tehablo_server.output_devices(),
                              [{'index': 1, 'name': 'Speakers', 'default': True}])
+            self.assertEqual(tehablo_server.output_devices(True),
+                             [{'index': 1, 'name': 'Speakers', 'default': True},
+                              {'index': 2, 'name': 'Headphones', 'default': False}])
 
     def test_http_audio_configuration_and_validation(self):
         self.ready()

@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {SettingsWindow, type Controller} from '../src/window.ts';
-import {DEFAULTS, type VoiceRow} from '../src/settings.ts';
+import {ACTIONS, DEFAULTS, type VoiceRow} from '../src/settings.ts';
 
 const ROWS: VoiceRow[] = [
   {name: 'Regina', voice: 'Regina', model: 'phonon', kind: 'account', note: 'México', downloaded: false},
@@ -44,6 +44,49 @@ function setup(over: Partial<Record<string, any>> = {}) {
       w.handleMouse({type: 'click', button: 'left', x, y});
     }};
 }
+
+test('returning from submenus keeps the originating main row selected', async () => {
+  for (const label of ['Voz', 'Atajos de teclado', 'Salida', 'Audio']) {
+    for (const back of ['escape', 'click']) {
+      const s = setup();
+      if (label === 'Audio') s.state.settings.audio = 'ssh';
+      const row = s.w.mainRows().findIndex(r => r.label === label);
+      for (let i = 0; i < row; i++) s.key('\x1b[B');
+      if (label === 'Audio') s.key('\t');
+      s.key('\r');
+      await new Promise(resolve => setImmediate(resolve));
+      assert.notEqual(s.w.page, 'main');
+      // Submenu navigation must not replace the origin row.
+      s.key('\x1b[B');
+      if (back === 'escape') s.key('\x1b'); else s.click('[ Volver ]');
+      assert.equal(s.w.page, 'main');
+      assert.equal(s.w.row, row, `${label}: ${back}`);
+      assert.match(s.w.render(100).find(l => l.includes(label))!, /│ ▶ /);
+      assert.equal(s.closed(), false);
+      assert.deepEqual(s.calls, label === 'Audio' ? [['sshCode', false]] : []);
+    }
+  }
+});
+
+test('voice selection and download returns keep Voz selected', async () => {
+  for (const back of ['choose', 'escape', 'click', 'keyboard']) {
+    const s = setup();
+    s.click('[ Cambiar ]');
+    if (back === 'choose') s.key('\r');
+    else {
+      s.key('\x1b[B'); s.key('\r'); s.key('\r');
+      await new Promise(resolve => setImmediate(resolve));
+      if (back === 'escape') s.key('\x1b');
+      else if (back === 'click') s.click('[ Volver al menú ]');
+      else { s.key('\x1b[C'); s.key('\r'); }
+    }
+    assert.equal(s.w.page, 'main');
+    assert.match(s.w.render(100).find(l => l.includes('Voz'))!, /│ ▶ Voz/);
+    assert.equal(s.w.col, 0);
+    assert.equal(s.closed(), false);
+    assert.deepEqual(s.calls, [['choose', back === 'choose' ? 'lola' : 'rafael', 'spanish']]);
+  }
+});
 
 test('S37 Copiar then Ver sit right of SSH on the Audio row; Enter copies; Copiar only says Copiado; Ver opens a window', async () => {
   const CODE = /0123-4567-89AB-CDEF-0123-4567-89AB-CDEF/;
@@ -228,6 +271,194 @@ test('keyboard changes volume, speed and auto within their limits', () => {
   assert.equal(s.closed(), true);
 });
 
+test('long output name stays inside the window without changing the saved device', () => {
+  const s = setup();
+  const name = 'Headset Earphone (@System32\\drivers\\bthhfenum.sys,#2;%1 Hands-Free%0;Bluetooth Headset)';
+  s.state.settings.device = name;
+  s.w.c.devices = () => ['Speakers', name];
+  s.w.row = s.w.mainRows().findIndex(r => r.label === 'Salida');
+  for (const cols of [80, 140, 180]) {
+    const lines = s.w.render(cols);
+    for (const line of lines) assert.ok(Array.from(line).length <= 72, line);
+    const y = lines.findIndex(l => l.includes('Salida'));
+    const row = lines[y];
+    assert.match(row, /Headset Earphone.*…/);
+    assert.equal(row.at(-1), '│');
+    assert.equal(s.state.settings.device, name);
+    const right = Array.from(row).lastIndexOf('▶');
+    const left = Array.from(row).indexOf('◀');
+    assert.ok(left > 0 && right > left && right < 71);
+    s.w.handleMouse({type: 'click', button: 'left', x: right, y});
+    assert.equal(s.state.settings.device, '');
+    s.w.render(cols);
+    s.w.handleMouse({type: 'click', button: 'left', x: left, y});
+    assert.equal(s.state.settings.device, name);
+    assert.deepEqual(s.calls.at(-1), ['change', 'device', name]);
+  }
+});
+
+test('output cycling deduplicates discovered devices and keeps the absent saved choice', () => {
+  const s = setup();
+  s.w.c.devices = () => ['Speakers', 'Speakers'];
+  s.state.settings.device = 'Headphones';
+  s.w.row = s.w.mainRows().findIndex(r => r.label === 'Salida');
+  assert.equal(s.w.mainRows()[s.w.row].value, 'Headphones');
+  assert.equal(s.state.settings.device, 'Headphones');
+  s.key('\x1b[D'); assert.equal(s.state.settings.device, 'Speakers');
+  s.state.settings.device = 'Headphones';
+  s.key('\x1b[C'); assert.equal(s.state.settings.device, '');
+  // Deliberately selecting another output replaces the old saved choice, just like the client.
+  s.key('\x1b[C'); assert.equal(s.state.settings.device, 'Speakers');
+  s.key('\x1b[C'); assert.equal(s.state.settings.device, '');
+});
+
+test('Enter on output opens a filtered submenu; navigation only applies on confirmation', () => {
+  const s = setup();
+  s.w.c.devices = () => ['Speakers', 'Headphones', 'Headphones'];
+  s.state.settings.device = 'Headphones';
+  s.w.row = s.w.mainRows().findIndex(r => r.label === 'Salida');
+  assert.match(s.text(), /Enter lista/);
+  const before = structuredClone(s.state.settings);
+  s.key('\r');
+  assert.equal(s.w.page, 'devices');
+  assert.deepEqual(s.state.settings, before);
+  assert.deepEqual(s.calls, []);
+  assert.match(s.text(), /Salida de audio/);
+  assert.match(s.text(), /Predeterminada/);
+  assert.equal(s.text().split('Headphones').length - 1, 1);
+  assert.match(s.text(), /▶.*● Headphones/);
+  s.key('\x1b[A');
+  assert.deepEqual(s.state.settings, before);
+  assert.match(s.text(), /▶.*Speakers/);
+  s.key('\r');
+  assert.equal(s.w.page, 'main');
+  assert.equal(s.w.mainRows()[s.w.row].label, 'Salida');
+  assert.deepEqual(s.state.settings, {...before, device: 'Speakers'});
+  assert.deepEqual(s.calls, [['change', 'device', 'Speakers']]);
+});
+
+test('device refresh updates filtered and hidden choices without selecting or overlapping queries', async () => {
+  const s = setup();
+  let data = {devices: ['Speakers'], allDevices: ['Speakers']}, queries = 0, finish!: () => void;
+  s.w.c.devices = (all = false) => all ? data.allDevices : data.devices;
+  s.w.c.refreshDevices = () => new Promise(resolve => { queries++; finish = () => {
+    data = {devices: ['Speakers', 'Headphones'], allDevices: ['Speakers', 'Headphones', 'Other API DAC']}; resolve(true);
+  }; });
+  s.state.settings.device = 'Speakers';
+  s.w.row = s.w.mainRows().findIndex(r => r.label === 'Salida'); s.key('\r');
+  s.key('\t'); s.key('\r');
+  assert.doesNotMatch(s.text(), /Other API DAC/);
+  s.click('[ Refrescar (R) ]'); s.key('r');
+  assert.equal(queries, 1); assert.match(s.text(), /Actualizando/);
+  assert.equal(s.state.settings.device, 'Speakers'); assert.deepEqual(s.calls, []);
+  finish(); await new Promise(r => setImmediate(r));
+  assert.match(s.text(), /Other API DAC/); assert.match(s.text(), /Refrescar/);
+  s.click('[ Mostrar ocultos: sí ]');
+  assert.match(s.text(), /Headphones/); assert.doesNotMatch(s.text(), /Other API DAC/);
+  assert.equal(s.state.settings.device, 'Speakers'); assert.deepEqual(s.calls, []);
+});
+
+test('hidden outputs toggle preserves filtering by default and only changes the visible choices', () => {
+  const s = setup();
+  s.w.c.devices = (all = false) => all ? ['Speakers', 'Other API DAC'] : ['Speakers'];
+  s.state.settings.device = 'Speakers';
+  s.w.row = s.w.mainRows().findIndex(r => r.label === 'Salida');
+  const before = structuredClone(s.state.settings);
+  s.key('\r');
+  assert.match(s.text(), /Mostrar ocultos: no/);
+  assert.doesNotMatch(s.text(), /Other API DAC/);
+  s.key('\t'); s.key('\r');
+  assert.equal(s.w.page, 'devices');
+  assert.match(s.text(), /Mostrar ocultos: sí/);
+  assert.match(s.text(), /Other API DAC/);
+  assert.deepEqual(s.state.settings, before); assert.deepEqual(s.calls, []);
+  s.click('[ Mostrar ocultos: sí ]');
+  assert.doesNotMatch(s.text(), /Other API DAC/);
+  assert.deepEqual(s.state.settings, before); assert.deepEqual(s.calls, []);
+  s.click('[ Mostrar ocultos: no ]');
+  s.key('\t'); s.key('\x1b[B'); s.key('\r');
+  assert.equal(s.w.page, 'main');
+  assert.equal(s.state.settings.device, 'Other API DAC');
+  assert.deepEqual(s.calls, [['change', 'device', 'Other API DAC']]);
+});
+
+test('output submenu Escape and Volver cancel; clicking an output applies and returns', () => {
+  const s = setup();
+  s.w.c.devices = () => ['Speakers'];
+  s.state.settings.device = 'Disconnected headset';
+  s.w.row = s.w.mainRows().findIndex(r => r.label === 'Salida');
+  s.key('\r');
+  assert.equal(s.w.page, 'devices');
+  assert.match(s.text(), /Disconnected headset/);
+  s.key('\x1b[A'); s.key('\x1b');
+  assert.equal(s.w.page, 'main');
+  assert.equal(s.state.settings.device, 'Disconnected headset');
+  assert.deepEqual(s.calls, []);
+  assert.equal(s.closed(), false);
+  s.key('\r'); s.click('[ Volver ]');
+  assert.equal(s.w.page, 'main');
+  assert.deepEqual(s.calls, []);
+  s.key('\r'); s.click('Speakers');
+  assert.equal(s.w.page, 'main');
+  assert.equal(s.state.settings.device, 'Speakers');
+  assert.deepEqual(s.calls, [['change', 'device', 'Speakers']]);
+});
+
+test('all settings lists wrap up/down at both ends without applying a selection', () => {
+  for (const page of ['main', 'voices', 'shortcuts', 'devices'] as const) {
+    const s = setup();
+    s.w.c.devices = () => ['Speakers', 'Headphones'];
+    if (page === 'devices') s.w.openDevices(); else s.w.page = page;
+    const field = page === 'main' ? 'row' : page === 'voices' ? 'pick' : page === 'shortcuts' ? 'scRow' : 'devicePick';
+    const count = page === 'main' ? s.w.mainRows().length : page === 'voices' ? s.w.order().length : page === 'shortcuts' ? ACTIONS.length : 3;
+    const before = structuredClone(s.state.settings);
+    s.w[field] = 0;
+    s.key('\x1b[A'); assert.equal(s.w[field], count - 1, page);
+    s.key('\x1b[B'); assert.equal(s.w[field], 0, page);
+    s.key('\x1b[B'); assert.equal(s.w[field], 1, page);
+    s.key('\x1b[A'); assert.equal(s.w[field], 0, page);
+    s.w[field] = count - 1;
+    s.key('\x1b[B'); assert.equal(s.w[field], 0, page);
+    s.key('\x1b[A'); assert.equal(s.w[field], count - 1, page);
+    assert.deepEqual(s.state.settings, before, page);
+    assert.deepEqual(s.calls, [], page);
+    assert.equal(s.closed(), false);
+  }
+  const empty = setup(); empty.w.c.voices = () => []; empty.w.page = 'voices';
+  empty.key('\x1b[A'); empty.key('\x1b[B'); assert.equal(empty.w.pick, 0);
+  const single = setup(); single.w.openDevices();
+  single.key('\x1b[A'); single.key('\x1b[B'); assert.equal(single.w.devicePick, 0);
+});
+
+test('output submenu bounds large lists and long names while saving the complete name', () => {
+  const s = setup();
+  const name = 'Headset Earphone ' + 'long device name '.repeat(8);
+  s.w.c.devices = () => [...Array.from({length: 20}, (_, i) => `Device ${i}`), name];
+  s.w.row = s.w.mainRows().findIndex(r => r.label === 'Salida');
+  s.key('\r');
+  assert.equal(s.w.page, 'devices');
+  s.key('\x1b[A'); // First-to-last wrapping also scrolls the visible slice.
+  assert.equal(s.w.devicePick, 21);
+  for (const cols of [80, 140, 180]) {
+    const lines = s.w.render(cols);
+    assert.ok(lines.length <= 24);
+    for (const line of lines) assert.ok(Array.from(line).length <= 72, line);
+    assert.match(lines.join('\n'), /Headset Earphone.*…/);
+    assert.doesNotMatch(lines.join('\n'), /Device 0\b/);
+    assert.match(lines.join('\n'), /Enter elegir.*Esc cancelar/);
+  }
+  assert.equal(s.state.settings.device, '');
+  assert.deepEqual(s.calls, []);
+  s.key('\r');
+  assert.equal(s.w.page, 'main');
+  assert.equal(s.state.settings.device, name);
+  assert.deepEqual(s.calls, [['change', 'device', name]]);
+  // With no discovered outputs, Predeterminada is still selectable.
+  s.w.c.devices = () => [];
+  s.key('\r'); s.key('\x1b[A'); s.key('\r');
+  assert.equal(s.state.settings.device, '');
+});
+
 test('S11 output row cycles devices with keyboard and click, disabled in SSH', () => {
   const s = setup();
   (s.w.c as any).devices = () => ['Speakers', 'Headphones'];
@@ -237,6 +468,11 @@ test('S11 output row cycles devices with keyboard and click, disabled in SSH', (
   s.key('\x1b[C');
   assert.equal(s.state.settings.device, 'Speakers');
   s.click('Speakers');
+  assert.equal(s.w.page, 'devices');
+  assert.equal(s.state.settings.device, 'Speakers');
+  s.key('\x1b');
+  const lines = s.w.render(100), y = lines.findIndex(l => l.includes('Salida'));
+  s.w.handleMouse({type: 'click', button: 'left', x: Array.from(lines[y]).lastIndexOf('▶'), y});
   assert.equal(s.state.settings.device, 'Headphones');
   s.key('\x1b[C');
   assert.equal(s.state.settings.device, '');
@@ -244,6 +480,10 @@ test('S11 output row cycles devices with keyboard and click, disabled in SSH', (
   assert.equal(s.state.settings.device, 'Headphones');
   s.state.settings.audio = 'ssh';
   assert.ok(s.text().includes('(SSH: la elige el cliente)'));
+  const before = s.calls.length;
+  s.key('\r');
+  assert.equal(s.w.page, 'main');
+  assert.equal(s.calls.length, before);
   s.key('\x1b[C');
   assert.equal(s.state.settings.device, 'Headphones');
   assert.equal(s.state.settings.volume, 1);

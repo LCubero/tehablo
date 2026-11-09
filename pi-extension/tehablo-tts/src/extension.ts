@@ -338,6 +338,8 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
         if (status.state === 'idle' && !queued.size && !inFlight.size) {
           if (typeof status.error === 'string' && status.error.length > 0)
             say(context, `No se pudo reproducir -> ${status.error}`, 'warning');
+          else if (typeof status.note === 'string' && status.note.length > 0)
+            say(context, status.note, 'warning');
           resetPlayback();
           return;
         }
@@ -462,7 +464,9 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
   };
   const refreshVoices = async () => {
     if (server !== 'ready') return;
+    const generation = lifecycleEpoch;
     const data = await client.request('/voices');
+    if (generation !== lifecycleEpoch) return;
     if (Array.isArray(data?.catalog)) { settings = {...settings, voices: data.catalog as VoiceRow[]}; persist(); }
   };
   const openSettings = async (ctx: ExtensionContext) => {
@@ -470,19 +474,34 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
     // Clicks outside the overlay still reach the bar, so [ ≡ ] closes an open window instead of opening another.
     if (windowOpen) { closeWindow?.(); return; }
     windowOpen = true;
-    try { await refreshVoices(); } catch { /* Keep the last known voices. */ }
-    const warn = (error: unknown) => say(ctx, `${error instanceof Error ? error.message : String(error)}`, 'warning');
-    const run = (operation: () => Promise<unknown>) => { void operation().catch(warn); };
-    let devices: string[] = [];
-    const refreshDevices = async () => {
-      if (server !== 'ready' || settings.audio !== 'local') return;
-      try {
-        const data = await client.request('/devices');
-        if (Array.isArray(data?.devices)) devices = data.devices.map((d: any) => d.name).filter((n: unknown) => typeof n === 'string');
-      } catch { /* The default remains available if PortAudio is unavailable. */ }
-      redrawWindow?.();
+    const generation = lifecycleEpoch;
+    let active = true, closeThis: (() => void) | undefined;
+    const valid = () => active && generation === lifecycleEpoch;
+    const release = () => {
+      active = false;
+      if (closeWindow === closeThis) { windowOpen = false; closeWindow = undefined; redrawWindow = undefined; }
     };
-    await refreshDevices();
+    const warn = (error: unknown) => {
+      if (generation === lifecycleEpoch) say(ctx, `${error instanceof Error ? error.message : String(error)}`, 'warning');
+    };
+    const run = (operation: () => Promise<unknown>) => { void operation().catch(warn); };
+    let devices: string[] = [], allDevices: string[] = [], deviceError = '';
+    let querying: Promise<boolean> | undefined;
+    const refreshDevices = (): Promise<boolean> => {
+      if (!valid()) return Promise.resolve(false);
+      if (settings.audio !== 'local') return Promise.resolve(true);
+      if (!querying) querying = (async () => {
+        try {
+          const data = await client.outputDevices();
+          if (!valid()) return false;
+          devices = data.devices; allDevices = data.allDevices; deviceError = '';
+        } catch (error) {
+          if (valid()) deviceError = error instanceof Error ? error.message : String(error);
+        }
+        return valid();
+      })().finally(() => { querying = undefined; });
+      return querying;
+    };
     const controller: Controller = {
       sshCode: async (copy = false) => {
         const code = store.sshCode?.();
@@ -490,9 +509,10 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
         if (copy) await copier(code);
         return code;
       },
-      devices: () => devices,
+      devices: (includeHidden = false) => includeHidden ? allDevices : devices,
+      refreshDevices,
       // A token Hugging Face refused counts as none, so the window asks for it again.
-      state: () => ({settings, server, token: !tokenRefused && (!!client.token || store.hasToken())}),
+      state: () => ({settings, server, deviceError: deviceError || undefined, token: !tokenRefused && (!!client.token || store.hasToken())}),
       // Shared table order and notes; a voice on disk is downloaded, otherwise the running server's state.
       voices: () => {
         const known = new Map(settings.voices.map(v => [v.name, v]));
@@ -581,10 +601,18 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
     };
     try {
       await ctx.ui.custom<void>((tui: any, theme: any, keybindings: any, done: () => void) => {
-        closeWindow = done; redrawWindow = () => tui.requestRender();
-        return new SettingsWindow(controller, theme, keybindings, () => done(), () => tui.requestRender()) as any;
+        closeThis = () => { release(); done(); };
+        const redraw = () => { if (valid()) tui.requestRender(); };
+        closeWindow = closeThis; redrawWindow = redraw;
+        const window = new SettingsWindow(controller, theme, keybindings, closeThis, redraw);
+        queueMicrotask(() => {
+          if (!valid()) return;
+          void window.refreshDeviceList();
+          void refreshVoices().then(redraw).catch(() => { /* Keep the last known voices. */ });
+        });
+        return window as any;
       }, {overlay: true, overlayOptions: {anchor: 'center', width: 72}} as any);
-    } finally { windowOpen = false; closeWindow = undefined; redrawWindow = undefined; }
+    } finally { release(); }
   };
   const shortcut = async (ctx: ExtensionContext, name: Action) => {
     switch (name) {
@@ -713,6 +741,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
   }
   pi.on('session_start', (_event, ctx) => {
     if (ctx.mode !== 'tui') return;
+    closeWindow?.();
     lifecycleEpoch++; resetPlayback();
     settings = store.load(); applied = false;
     // The server starts off, and an off server has no auto reading (turning auto on starts it).
@@ -732,6 +761,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
   });
   pi.on('session_shutdown', async (_event, ctx) => {
     if (ctx.mode !== 'tui') return;
+    closeWindow?.();
     lifecycleEpoch++; epoch++; resetPlayback(); cancelReady(); stopWatch(); clearNote(); server = 'off'; context = undefined;
     stopKeys?.(); stopKeys = undefined;
     await safe(ctx, () => client.shutdown());

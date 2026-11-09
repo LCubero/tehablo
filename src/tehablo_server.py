@@ -167,11 +167,17 @@ class PocketSynthesizer:
             yield chunk.detach().cpu().numpy().astype(np.float32).reshape(-1)
 
 
-def output_devices():
+def output_devices(include_hidden=False):
     """Query only on demand: SSH playback must not depend on PortAudio."""
     import sounddevice as sd
+    # Filter by default; an explicit request exposes outputs from every API.
+    indices = None if include_hidden else sd.query_hostapis(sd.query_devices(kind='output')['hostapi'])['devices']
     return [{'index': i, 'name': d['name'], 'default': i == sd.default.device[1]}
-            for i, d in enumerate(sd.query_devices()) if d['max_output_channels'] > 0]
+            for i, d in enumerate(sd.query_devices()) if d['max_output_channels'] > 0 and (indices is None or i in indices)]
+
+
+class DeviceMissing(ValueError):
+    """The saved output is absent; keep the choice and use the system default."""
 
 
 def audio_sink(rate, callback, device=None):
@@ -179,6 +185,13 @@ def audio_sink(rate, callback, device=None):
     # PortAudio caches the device list; refresh it so a new default output is used.
     sd._terminate()
     sd._initialize()
+    if device:
+        # Like the client, resolve saved names across all APIs, even if absent from the menu.
+        matching = [i for i, d in enumerate(sd.query_devices())
+                    if d['max_output_channels'] > 0 and d['name'] == device]
+        if not matching:
+            raise DeviceMissing(device)
+        device = matching[0]
     stream = sd.OutputStream(samplerate=rate, channels=1, dtype='float32', callback=callback, device=device)
     stream.start()
     return stream
@@ -343,11 +356,11 @@ class SpeechService:
             raise ValueError('audio must be local or ssh')
         self.audio = audio
         self.device = ''
+        self.device_note = None
         self.device_provider = device_provider
         self.local_audio_factory = audio_factory
         self.audio_factory = lambda rate, callback: (self.ssh_audio.attach(rate, callback)
-                                                    if self.audio == 'ssh' else self.local_audio_factory(rate, callback, device=self.device)
-                                                    if self.device else self.local_audio_factory(rate, callback))
+                                                    if self.audio == 'ssh' else self.local_sink(rate, callback))
         self.catalog = list(catalog)
         self.model_name, self.voice, self.speed = model, voice if voice is not None else default_voice(model), speed
         self.volume = 1.0
@@ -429,19 +442,28 @@ class SpeechService:
             raise ValueError('voice must be a catalog name or a file in voices/')
         return str(path)
 
-    def devices(self):
+    def local_sink(self, rate, callback):
+        self.device_note = None
+        if self.device:
+            try:
+                return self.local_audio_factory(rate, callback, device=self.device)
+            except DeviceMissing:
+                self.device_note = f'{self.device} no está conectada: suena por la predeterminada.'
+        return self.local_audio_factory(rate, callback)
+
+    def devices(self, include_hidden=False):
         if self.audio == 'ssh':
             return {'devices': [], 'note': 'En SSH, la salida se elige en el cliente.'}
         try:
-            return {'devices': self.device_provider()}
+            return {'devices': self.device_provider(include_hidden=True) if include_hidden else self.device_provider()}
         except Exception as exc:
             return {'devices': [], 'error': str(exc)}
 
     def validate(self, body):
         if 'device' in body:
             device = body['device']
-            if not isinstance(device, str) or (device and (body.get('audio', self.audio) == 'ssh'
-                    or device not in [d['name'] for d in self.device_provider()])):
+            # A saved local output may be disconnected when Pi starts.
+            if not isinstance(device, str) or (device and body.get('audio', self.audio) == 'ssh'):
                 raise ValueError('unknown output device')
         if set(body) - {'model', 'voice', 'speed', 'volume', 'audio', 'device'}:
             raise ValueError('unknown config field')
@@ -472,12 +494,14 @@ class SpeechService:
     def status(self):
         with self.condition:
             return {'state': self.state, 'id': self.id, 'audio': self.audio, 'error': self.error or self.speech_error,
+                    **({'note': self.device_note} if self.device_note else {}),
                     **({'queue': [item[0] for item in self.queue]} if self.queue else {}),
                     **({'promoted': list(self.promoted)} if self.promoted else {})}
 
     def clear(self):
         self.ssh_audio.close()
         self.speech_error = None
+        self.device_note = None
         self.cancel.set()
         self.pending = None
         self.buffer.clear()
@@ -889,6 +913,7 @@ class Handler(BaseHTTPRequestHandler):
             return
         service = self.server.service
         routes = {'/health': service.health, '/status': service.status, '/devices': service.devices,
+                  '/devices/all': lambda: service.devices(True),
                   '/voices': lambda: {'voices': service.voices(), 'catalog': service.voice_table()}}
         if self.path not in routes:
             self.reply(404, {'error': 'unknown path'})

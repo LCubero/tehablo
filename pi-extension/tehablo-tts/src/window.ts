@@ -8,13 +8,15 @@ export const ACTION_NAMES: Record<Action, string> = {
 
 // Floating settings window opened from [ ≡ ] (approved prototype: .repo-harness/tmp/menu-proto/proto.ts).
 // Keys come through Pi's injected keybindings, so no direct pi-tui import is needed.
-export interface WindowState { settings: Settings; server: 'off' | 'loading' | 'ready'; token: boolean }
+export interface WindowState { settings: Settings; server: 'off' | 'loading' | 'ready'; token: boolean; deviceError?: string }
 export interface Controller {
   state(): WindowState;
   /** The voice in use: the chosen one, else the server's, else the start voice. */
   active(): {model: string; voice: string};
   voices(): VoiceRow[];
-  devices?(): string[];
+  devices?(includeHidden?: boolean): string[];
+  /** Resolves false when this settings opening is no longer active. */
+  refreshDevices?(): Promise<boolean>;
   sshCode(copy?: boolean): Promise<string>;
   choose(row: VoiceRow): void;
   download?(row: VoiceRow): Promise<void>;
@@ -42,7 +44,9 @@ const fit = (t: string, n: number) => { const a = Array.from(t); return a.length
 const nearest = (list: number[], value: number) => list.reduce((best, v, i) => Math.abs(v - value) < Math.abs(list[best] - value) ? i : best, 0);
 
 export class SettingsWindow {
-  page: 'main' | 'voices' | 'download' | 'token' | 'shortcuts' | 'code' = 'main';
+  page: 'main' | 'voices' | 'download' | 'token' | 'shortcuts' | 'code' | 'devices' = 'main';
+  deviceOptions: string[] = []; devicePick = 0;
+  showHiddenDevices = false; deviceToggleFocused = false; refreshingDevices = false;
   capturing = false; scRow = 0; scError = '';
   row = 0; col = 0; pick = 0; token = ''; error = '';
   target?: VoiceRow;
@@ -61,6 +65,38 @@ export class SettingsWindow {
     this.page = 'code'; this.col = 0; this.redraw();
   }
   closeCode() { this.page = 'main'; this.code = ''; this.col = 0; }
+  openDevices() {
+    const s = this.c.state().settings;
+    this.deviceOptions = [...new Set(['', ...(this.c.devices?.(this.showHiddenDevices) ?? []), s.device])];
+    this.devicePick = this.deviceOptions.indexOf(s.device);
+    this.deviceToggleFocused = false;
+    this.page = 'devices';
+  }
+  toggleHiddenDevices() {
+    this.showHiddenDevices = !this.showHiddenDevices;
+    this.openDevices();
+    this.deviceToggleFocused = true;
+  }
+  async refreshDeviceList() {
+    if (this.refreshingDevices || !this.c.refreshDevices) return;
+    this.refreshingDevices = true; this.redraw();
+    let active = false;
+    try { active = await this.c.refreshDevices(); }
+    finally { this.refreshingDevices = false; }
+    if (!active) return;
+    if (this.page === 'devices') {
+      const picked = this.deviceOptions[this.devicePick], focused = this.deviceToggleFocused;
+      this.openDevices();
+      const index = this.deviceOptions.indexOf(picked);
+      if (index >= 0) this.devicePick = index;
+      this.deviceToggleFocused = focused;
+    }
+    this.redraw();
+  }
+  chooseDevice(index: number) {
+    this.c.change('device', this.deviceOptions[index]);
+    this.page = 'main';
+  }
   /** Download dialog result: '' to confirm, 'done' when downloaded, 'error' to show notice and try again. */
   result: '' | 'done' | 'error' = '';
   hits: {y: number; x0: number; x1: number; fn: () => void}[] = [];
@@ -79,7 +115,7 @@ export class SettingsWindow {
     return this.c.state().token ? 'Para descargar' : 'Con cuenta gratis';
   }
   isActive(v: VoiceRow) { const a = this.c.active(); return a.voice === v.voice && a.model === v.model; }
-  home() { this.page = 'main'; this.row = 0; this.col = 0; }
+  home() { this.page = 'main'; this.col = 0; }
   choose(v: VoiceRow) {
     this.target = v;
     const token = this.c.state().token;
@@ -150,7 +186,7 @@ export class SettingsWindow {
       s.audio === 'ssh'
         ? {label: 'Salida', text: '(SSH: la elige el cliente)'}
         : {label: 'Salida', value: s.device || 'Predeterminada', step: (d: number) => {
-          const devices = ['', ...new Set(this.c.devices?.() ?? [])];
+          const devices = [...new Set(['', ...(this.c.devices?.(this.showHiddenDevices) ?? []), s.device])];
           const i = Math.max(0, devices.indexOf(s.device));
           this.c.change('device', devices[(i + d + devices.length) % devices.length]);
         }},
@@ -186,8 +222,8 @@ export class SettingsWindow {
     if (this.page === 'shortcuts') {
       if (this.capturing) this.capture(data);
       else if (k === 'esc') this.home();
-      else if (k === 'up') { this.scRow = Math.max(0, this.scRow - 1); this.col = 0; }
-      else if (k === 'down') { this.scRow = Math.min(ACTIONS.length - 1, this.scRow + 1); this.col = 0; }
+      else if (k === 'up') { this.scRow = (this.scRow - 1 + ACTIONS.length) % ACTIONS.length; this.col = 0; }
+      else if (k === 'down') { this.scRow = (this.scRow + 1) % ACTIONS.length; this.col = 0; }
       else if (k === 'left' || k === 'right') this.col = k === 'right' && this.c.state().settings.shortcuts[ACTIONS[this.scRow]] ? 1 : 0;
       else if (k === 'back' || (k === 'enter' && this.col === 1 && this.c.state().settings.shortcuts[ACTIONS[this.scRow]])) {
         this.c.setShortcut(ACTIONS[this.scRow], undefined); this.col = 0;
@@ -203,11 +239,25 @@ export class SettingsWindow {
       this.redraw();
       return;
     }
+    if (this.page === 'devices') {
+      if (k === 'esc') this.page = 'main';
+      else if (data.toLowerCase() === 'r') { void this.refreshDeviceList(); }
+      else if (data === '\t') this.deviceToggleFocused = !this.deviceToggleFocused;
+      else if (k === 'up' || k === 'down') {
+        if (this.deviceToggleFocused) this.deviceToggleFocused = false;
+        else this.devicePick = (this.devicePick + (k === 'down' ? 1 : -1) + this.deviceOptions.length) % this.deviceOptions.length;
+      } else if (k === 'enter') {
+        if (this.deviceToggleFocused) this.toggleHiddenDevices();
+        else this.chooseDevice(this.devicePick);
+      }
+      this.redraw();
+      return;
+    }
     if (this.page === 'main') {
       const rows = this.mainRows(), r = rows[this.row];
       if (k === 'esc') { this.done(); return; }
-      if (k === 'up') { this.row = Math.max(0, this.row - 1); this.col = 0; }
-      else if (k === 'down') { this.row = Math.min(rows.length - 1, this.row + 1); this.col = 0; }
+      if (k === 'up') { this.row = (this.row - 1 + rows.length) % rows.length; this.col = 0; }
+      else if (k === 'down') { this.row = (this.row + 1) % rows.length; this.col = 0; }
       else if ((k === 'left' || k === 'right') && r.step) r.step(k === 'right' ? 1 : -1);
       // Tab moves between the buttons of a row whose ←→ already change its value (Audio SSH: Copiar, Ver).
       else if (data === '	' && r.buttons) {
@@ -218,14 +268,15 @@ export class SettingsWindow {
         const usable = r.buttons.map((b: any, i: number) => b[1] ? i : -1).filter((i: number) => i >= 0);
         this.col = usable[Math.max(0, Math.min(usable.length - 1, usable.indexOf(this.col) + (k === 'right' ? 1 : -1)))] ?? 0;
       } else if (k === 'enter') {
-        if (r.buttons && (!r.step || r.label !== 'Lectura automática')) r.buttons[this.col]?.[1]?.();
+        if (r.label === 'Salida' && r.step) this.openDevices();
+        else if (r.buttons && (!r.step || r.label !== 'Lectura automática')) r.buttons[this.col]?.[1]?.();
         else r.step?.(1);
       }
     } else if (this.page === 'voices') {
       const list = this.order();
       if (k === 'esc') this.home();
-      else if (k === 'up') this.pick = Math.max(0, this.pick - 1);
-      else if (k === 'down') this.pick = Math.min(list.length - 1, this.pick + 1);
+      else if (k === 'up') this.pick = list.length ? (this.pick - 1 + list.length) % list.length : 0;
+      else if (k === 'down') this.pick = list.length ? (this.pick + 1) % list.length : 0;
       else if (k === 'enter' && list[this.pick]) this.choose(list[this.pick]);
       else if ((k === 'left' || k === 'right') && list[this.pick]) this.c.toggleDict(list[this.pick]);
     } else if (this.page === 'download') {
@@ -278,7 +329,7 @@ export class SettingsWindow {
       }
       line([{text: ' ' + current, style: 'error'}]);
     };
-    const titles = {shortcuts: ' Atajos de teclado ', main: ' teHablo · Ajustes ', code: ' Código SSH ', voices: ' Elegir voz ', download: ' Descargar voz ', token: ' Activar voces con cuenta gratis '};
+    const titles = {shortcuts: ' Atajos de teclado ', main: ' teHablo · Ajustes ', code: ' Código SSH ', devices: ' Salida de audio ', voices: ' Elegir voz ', download: ' Descargar voz ', token: ' Activar voces con cuenta gratis '};
     const title = titles[this.page], left = Math.floor((IN - width(title)) / 2);
     out.push(th.fg('border', '╭' + '─'.repeat(left)) + th.fg('accent', title) + th.fg('border', '─'.repeat(IN - left - width(title)) + '╮'));
     line();
@@ -315,8 +366,10 @@ export class SettingsWindow {
         const sel = i === this.row;
         const segs: Seg[] = [{text: sel ? ' ▶ ' : '   ', style: 'accent'}, {text: fit(r.label, 21), style: sel ? 'accent' : undefined}];
         if (r.text) segs.push({text: fit(r.text, 30) + ' ', style: sel ? 'accent' : 'dim'});
+        // Keep the output's full saved name; only its display must fit between the arrows.
+        const value = r.step && r.label === 'Salida' ? fit(r.value, Math.min(width(r.value), IN - 30)) : r.value;
         if (r.step) segs.push({text: '◀', style: 'accent', fn: () => { this.row = i; r.step(-1); }},
-          {text: ` ${r.value} `, style: sel ? 'accent' : 'dim', fn: () => { this.row = i; r.step(1); }},
+          {text: ` ${value} `, style: sel ? 'accent' : 'dim', fn: () => { this.row = i; if (r.label === 'Salida') this.openDevices(); else r.step(1); }},
           {text: '▶', style: 'accent', fn: () => { this.row = i; r.step(1); }}, {text: '  '});
         (r.buttons ?? []).forEach((b: any, j: number) => {
           const enabled = !!b[1];
@@ -327,7 +380,27 @@ export class SettingsWindow {
         line(segs);
       });
       line(this.downloading && this.notice ? [{text: ' ' + this.notice}] : []);
-      line([{text: ' '}, {text: '[ Cerrar ]', style: 'accent', fn: () => this.done()}, {text: '   ↑↓ elegir · ←→ cambiar · Tab botón · Enter · Esc', style: 'dim'}]);
+      const enter = this.mainRows()[this.row]?.label === 'Salida' && this.c.state().settings.audio === 'local' ? 'Enter lista' : 'Enter';
+      line([{text: ' '}, {text: '[ Cerrar ]', style: 'accent', fn: () => this.done()}, {text: `   ↑↓ elegir · ←→ cambiar · Tab botón · ${enter} · Esc`, style: 'dim'}]);
+    } else if (this.page === 'devices') {
+      line([{text: this.deviceToggleFocused ? ' ▶ ' : '   ', style: 'accent'},
+        {text: `[ Mostrar ocultos: ${this.showHiddenDevices ? 'sí' : 'no'} ]`, style: this.deviceToggleFocused ? 'accent' : undefined, fn: () => this.toggleHiddenDevices()},
+        {text: ' '}, {text: this.refreshingDevices ? '[ Actualizando… ]' : '[ Refrescar (R) ]', style: this.refreshingDevices ? 'dim' : 'accent',
+          fn: !this.refreshingDevices && this.c.refreshDevices ? () => { void this.refreshDeviceList(); } : undefined}]);
+      // Keep a long list inside the existing window; keyboard navigation scrolls the slice.
+      const start = Math.max(0, this.devicePick - 9);
+      this.deviceOptions.slice(start, start + 10).forEach((device, j) => {
+        const i = start + j, sel = i === this.devicePick && !this.deviceToggleFocused;
+        const current = device === this.c.state().settings.device;
+        const choose = () => this.chooseDevice(i);
+        line([{text: sel ? ' ▶ ' : '   ', style: 'accent', fn: choose},
+          {text: fit(`${current ? '●' : ' '} ${device || 'Predeterminada'}`, IN - 4), style: sel ? 'accent' : undefined, fn: choose}]);
+      });
+      line();
+      line([{text: ` ${this.devicePick + 1}/${this.deviceOptions.length} · ● actual`, style: 'dim'}]);
+      if (this.c.state().deviceError) errorLines(this.c.state().deviceError!);
+      line([{text: ' '}, {text: '[ Volver ]', style: 'accent', fn: () => { this.page = 'main'; }},
+        {text: '   ↑↓ mover · Tab filtro · Enter elegir · Esc cancelar', style: 'dim'}]);
     } else if (this.page === 'voices') {
       line([{text: '   ' + fit('Voz', 31) + fit('Estado', 19) + fit('RAM aprox.', 11) + 'Dict', style: 'dim'}]);
       line([{text: '   ' + '─'.repeat(IN - 4), style: 'dim'}]);
