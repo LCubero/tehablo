@@ -4,6 +4,10 @@
 
 Este archivo registra los cambios completados en orden cronológico.
 
+## 2026-11-09
+
+- Pruebas: el caso de sustitución de lecturas mantiene activo el sintetizador falso hasta recibir la cancelación, sin depender de pausas temporizadas ni cambiar el servidor (suite del servidor: 84/84 en Windows local).
+
 ## 2026-11-08
 
 - Documentación: README abreviado; uso detallado e instalación manual reunidos en [Desarrollo](docs/desarrollo.md), con enlaces actualizados y una sola tabla de voces.

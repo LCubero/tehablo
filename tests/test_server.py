@@ -1605,6 +1605,15 @@ class ServerTests(unittest.TestCase):
         self.assertEqual(self.synth.calls[0][0], 'páiton quince mil')
 
     def test_loading_queue_pipeline_and_latest(self):
+        class CancellableSynth(Synth):
+            def stream(self, text, voice, stop):
+                self.calls.append((text, voice))
+                # Keep generation active until replacement or test teardown cancels it.
+                stop.wait()
+                self.cancelled.set()
+                yield from ()
+
+        self.synth = CancellableSynth()
         self.assertFalse(self.request('/health')[1]['ready'])
         self.assertEqual(self.request('/status')[1]['state'], 'loading')
         self.assertEqual(self.request('/speak', {'id': 'old', 'text': 'old'})[0], 202)
