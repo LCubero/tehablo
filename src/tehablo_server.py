@@ -475,8 +475,8 @@ class SpeechService:
             self.resolve_voice(body['voice'], body.get('model', self.model_name))
         if 'speed' in body:
             value = body['speed']
-            if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or not .75 <= value <= 1.5:
-                raise ValueError('speed must be between 0.75 and 1.5')
+            if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or not .5 <= value <= 1.5:
+                raise ValueError('speed must be between 0.5 and 1.5')
 
         if 'volume' in body:
             value = body['volume']

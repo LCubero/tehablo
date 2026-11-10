@@ -35,7 +35,8 @@ interface Keys { matches(data: string, id: string): boolean; getResolvedBindings
 interface Theme { fg(style: string, text: string): string }
 type Seg = {text: string; style?: string; fn?: () => void};
 
-export const VOLUMES = [0.1, 0.25, 0.5, 0.75, 1, 1.25, 1.5];
+/** 10 % to 150 % in 10 % steps, the same as the toolbar. */
+export const VOLUMES = Array.from({length: 15}, (_, i) => (i + 1) / 10);
 const W = 72, IN = W - 2;
 // RAM while the model is loaded, measured in Fedora (docs/pruebas-de-voces.md); every Pocket voice shares one model.
 const RAM: Record<string, string> = {phonon: '~0,3 GB', spanish: '~1 GB', spanish_24l: '~1,8 GB'};
@@ -169,7 +170,7 @@ export class SettingsWindow {
     return [
       {label: 'Voz', text: active ? `${active.name} · ${active.note}` : this.c.active().voice, buttons: [['[ Cambiar ]', () => { this.page = 'voices'; this.pick = 0; }]]},
       {label: 'Volumen', value: `${Math.round(s.volume * 100)} %`, step: (d: number) => this.c.change('volume', move(VOLUMES, vol, d))},
-      {label: 'Velocidad', value: `${SPEEDS[spd].toFixed(2)}x`, step: (d: number) => this.c.change('speed', move(SPEEDS, spd, d))},
+      {label: 'Velocidad', value: `${s.speed.toFixed(2)}x`, step: (d: number) => this.c.change('speed', move(SPEEDS, spd, d))},
       {label: 'Lectura automática', value: s.auto ? 'sí' : 'no', step: () => this.c.change('auto', !s.auto)},
       {label: 'Atajos de teclado', value: s.shortcutsOn ? 'activados' : 'desactivados', step: () => this.c.change('shortcutsOn', !s.shortcutsOn),
         buttons: [['[ Editar ]', () => { this.page = 'shortcuts'; this.scRow = 0; this.col = 0; this.capturing = false; this.scError = ''; }]]},

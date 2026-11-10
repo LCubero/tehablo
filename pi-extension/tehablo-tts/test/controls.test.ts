@@ -997,16 +997,16 @@ test('volume and speed buttons, limits and command synchronization',async()=>{
     await start(s);await clickAt(s,'[ ⋯ ]',2);
     await volDown();assert.deepEqual(s.configs.at(-1),{volume:.9});assert.match(s.line(),/Vol \[- 90% \+\]/);
     await volUp();assert.deepEqual(s.configs.at(-1),{volume:1});
-    await velUp();assert.deepEqual(s.configs.at(-1),{speed:1.1});assert.match(s.line(),/Vel \[- 1\.10x \+\]/);assert.deepEqual(s.notices,[],'the bar already shows volume and speed');
-    await velUp();assert.deepEqual(s.configs.at(-1),{speed:1.15});
+    await velUp();assert.deepEqual(s.configs.at(-1),{speed:1.05});assert.match(s.line(),/Vel \[- 1\.05x \+\]/);assert.deepEqual(s.notices,[],'the bar already shows volume and speed');
+    await velUp();assert.deepEqual(s.configs.at(-1),{speed:1.1});
     await velDown();await velDown();assert.deepEqual(s.configs.at(-1),{speed:1});
     const n=s.configs.length;
     for(const [text,offset] of [['Vol [-',0],['100%',0],['100%',3],['Vel [-',0],['1.00x',0]] as const)await clickAt(s,text,offset);
     assert.equal(s.configs.length,n);
     for(let i=0;i<20;i++)await volDown();assert.equal(s.configs.at(-1).volume,.1);
     for(let i=0;i<20;i++)await volUp();assert.equal(s.configs.at(-1).volume,1.5);
-    for(let i=0;i<8;i++)await velDown();assert.equal(s.configs.at(-1).speed,1);
-    for(let i=0;i<8;i++)await velUp();assert.equal(s.configs.at(-1).speed,1.5);
+    for(let i=0;i<25;i++)await velDown();assert.equal(s.configs.at(-1).speed,.5);assert.match(s.line(),/Vel \[- 0\.50x \+\]/);
+    for(let i=0;i<25;i++)await velUp();assert.equal(s.configs.at(-1).speed,1.5);
     await clickAt(s,'[ ▶ ]');assert.ok(s.calls.includes('/speak'));
   } finally {await s.close();}
 });

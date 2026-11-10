@@ -50,7 +50,7 @@ Este archivo proyecta solo hechos verificados del proyecto: registros activos, b
 - Barra de Pi con `[ ⏻ TTS ]`, `[ Cargando… ]`, reproducción con iconos y Vol/Vel tras `[ ⋯ ]`; comprobada en Pi por la persona responsable (`RH-W-0024`, `completed`).
 - 17 pronunciaciones nuevas en inglés (`speed`, `close`, `CRLF` deletreado y otras; `dual` se lee en español) y registro de los trabajos `RH-W-0010` a `RH-W-0015` (`RH-W-0002`).
 - Mediciones offline de síntesis CPU en Fedora con `spanish` y `spanish_24l`, tres repeticiones por modelo y evidencia JSON ([resultados y límites](../como-funciona.md#fedora)); parte de `RH-W-0003`.
-- Botones de volumen (10 % a 150 %) y velocidad (1.00x a 1.50x) junto a Escuchar en Pi, solo con clic (`RH-W-0004`).
+- Botones de volumen (10 % a 150 %, de 10 en 10) y velocidad (0.50x a 1.50x, de 0.05 en 0.05) junto a Escuchar en Pi, solo con clic, con los mismos pasos en `/tts menu` (`RH-W-0004`).
 - Lectura más natural: siglas en inglés, 291 términos de desarrollo, separadores y hashes omitidos, pausas en flechas y paréntesis, tablas leídas por filas y puntajes «N de M» (`RH-W-0002`).
 - Guía para escribir pronunciaciones en inglés ([docs/pronunciacion.md](../pronunciacion.md)).
 - `RH-W-0006` (`completed`): entorno CPU nativo de Fedora restaurado y verificado, conservando el entorno de Windows; sin trabajo restante dentro de ese alcance.

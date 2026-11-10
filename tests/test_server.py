@@ -1784,7 +1784,7 @@ class ServerTests(unittest.TestCase):
         self.ready()
         before = self.request('/health')[1]
         for body in ({'speed': 2, 'voice': 'other'}, {'model': 'bad'},
-                     {'voice': '../bad.wav'}, {'speed': True}, {'speed': float('nan')},
+                     {'voice': '../bad.wav'}, {'speed': True}, {'speed': float('nan')}, {'speed': 0.45},
                      {'unexpected': 1}, {'voice': []}):
             self.assertEqual(self.request('/config', body)[0], 400)
             self.assertEqual(self.request('/health')[1], before)
@@ -1792,6 +1792,9 @@ class ServerTests(unittest.TestCase):
         self.assertEqual(result[0], 200)
         self.assertEqual(result[1]['voice'], 'other')
         self.assertEqual(result[1]['speed'], 1.25)
+        slow = self.request('/config', {'speed': 0.5})
+        self.assertEqual(slow[0], 200)
+        self.assertEqual(slow[1]['speed'], 0.5)
         self.assertEqual(self.request('/config', {'model': 'spanish_24l'})[0], 200)
         self.wait(lambda: self.request('/health')[1]['ready'])
         self.assertEqual(self.request('/health')[1]['model'], 'spanish_24l')

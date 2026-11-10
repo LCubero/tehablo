@@ -82,6 +82,10 @@ test('icon mode defaults, normalizes and merges across sessions', () => withDirs
   saveSettings(dir, {...before, speed: 1.25}, before);
   assert.equal(loadSettings(dir, project).icons, 'text');
   assert.equal(loadSettings(dir, project).speed, 1.25);
+  for (const speed of [0.5, 0.55, 1.45]) { // 0.05x steps from 0.50x to 1.50x survive a reload
+    saveSettings(dir, {...before, speed}, before);
+    assert.equal(loadSettings(dir, project).speed, speed);
+  }
 }));
 
 test('audio defaults to local, rejects invalid values and merges with icons', () => withDirs((dir, project) => {

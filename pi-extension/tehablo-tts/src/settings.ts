@@ -8,7 +8,8 @@ import { join } from 'node:path';
 export const ACTIONS = ['power', 'auto', 'play', 'pause', 'stop', 'settings', 'copied'] as const;
 export type Action = typeof ACTIONS[number];
 export const MODELS = ['phonon', 'spanish', 'spanish_24l'];
-export const SPEEDS = [1, 1.1, 1.15, 1.25, 1.5];
+/** 0.50x to 1.50x in 0.05x steps (written as hundredths so 1.1 and 1.15 stay exact). */
+export const SPEEDS = Array.from({length: 21}, (_, i) => (50 + 5 * i) / 100);
 /** downloaded is null when unknown (server off and never seen). */
 export interface VoiceRow { name: string; voice: string; model: string; kind: string; note: string; downloaded: boolean | null }
 export interface Settings {

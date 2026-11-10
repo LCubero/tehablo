@@ -49,7 +49,7 @@ def main() -> int:
     same = stretch(1.0)
     check("speed 1 leaves audio untouched", np.array_equal(same, TONE))
 
-    for speed in (0.75, 1.25, 1.5):
+    for speed in (0.5, 0.75, 1.25, 1.5):
         out = stretch(speed)
         expected = len(TONE) / speed
         check(f"speed {speed} length", abs(len(out) - expected) / expected < 0.03,

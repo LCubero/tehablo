@@ -6,7 +6,7 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSy
 import { randomBytes } from 'node:crypto';
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
-import { ACTIONS, DEFAULTS, loadSettings, saveSettings, settingsDir, type Action, type Settings, type VoiceRow } from './settings.ts';
+import { ACTIONS, DEFAULTS, SPEEDS, loadSettings, saveSettings, settingsDir, type Action, type Settings, type VoiceRow } from './settings.ts';
 import { keyOf } from './shortcuts.ts';
 import { checkToken, hasToken } from './token.ts';
 import { openUrl } from './browser.ts';
@@ -111,7 +111,6 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
   // Scoped stop batches survive unrelated actions, but never a power/session boundary.
   let lifecycleEpoch = 0;
   let volume = 1, speed = 1;
-  const speeds = [1, 1.1, 1.15, 1.25, 1.5];
   const speedLabel = (value: number) => `${value.toFixed(2)}x`;
   let context: ExtensionContext | undefined;
   let playback = {state: 'idle', id: null as string | null};
@@ -297,8 +296,8 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
     const direction = kind.endsWith('+') ? 1 : -1;
     const field = kind.startsWith('volume') ? 'volume' : 'speed';
     const value = field === 'volume' ? Math.max(1, Math.min(15, Math.round(volume * 10) + direction)) / 10
-      : direction > 0 ? (speeds.find(v => v > speed) ?? speed)
-        : (speeds.findLast(v => v < speed) ?? speed);
+      : direction > 0 ? (SPEEDS.find(v => v > speed) ?? speed)
+        : (SPEEDS.findLast(v => v < speed) ?? speed);
     const configured = await client.action('/config', {[field]: value});
     if (generation !== epoch) return;
     if (typeof configured?.[field] === 'number') { settings = {...settings, [field]: configured[field]}; persist(); }

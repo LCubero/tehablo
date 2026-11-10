@@ -260,11 +260,11 @@ test('main window shows active voice, sound, auto, shortcuts and server buttons'
 test('keyboard changes volume, speed and auto within their limits', () => {
   const s = setup();
   s.key('\x1b[B'); s.key('\x1b[C');
-  assert.deepEqual(s.calls.at(-1), ['change', 'volume', 1.25]);
-  for (let i = 0; i < 9; i++) s.key('\x1b[D');
+  assert.deepEqual(s.calls.at(-1), ['change', 'volume', 1.1]); // 10 % steps, like the toolbar
+  for (let i = 0; i < 20; i++) s.key('\x1b[D');
   assert.deepEqual(s.calls.at(-1), ['change', 'volume', 0.1]);
   s.key('\x1b[B'); s.key('\x1b[C');
-  assert.deepEqual(s.calls.at(-1), ['change', 'speed', 1.1]);
+  assert.deepEqual(s.calls.at(-1), ['change', 'speed', 1.05]); // 0.05x steps
   s.key('\x1b[B'); s.key('\r');
   assert.deepEqual(s.calls.at(-1), ['change', 'auto', true]);
   s.key('\x1b');
