@@ -85,7 +85,7 @@ Son referencias, no mínimos; varían según sistema y cuantización. Apagar el 
 
 ## Voces y licencias
 
-Pocket: pesos y Lola/Rafael **CC BY 4.0**; las seis voces latinoamericanas incluidas, **CC BY-SA 4.0**. Phonon es opcional: requiere cuenta gratis de Hugging Face para descargar y sus pesos son **CC BY-NC 4.0 (no comercial)**. Clona solo voces que tengas permiso para usar. [Voces, acceso y atribución](docs/desarrollo.md#voces).
+Pocket: pesos y Lola/Rafael **CC BY 4.0** (Kyutai; el origen de sus grabaciones no está verificado); las seis voces latinoamericanas incluidas, **CC BY-SA 4.0**. Phonon es opcional: requiere cuenta gratis de Hugging Face para descargar y sus pesos son **CC BY-NC 4.0 (no comercial)**. Clona solo voces que tengas permiso para usar. [Voces, acceso y atribución](docs/desarrollo.md#voces).
 
 Código del proyecto: [MIT](LICENSE).
 
