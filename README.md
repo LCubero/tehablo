@@ -4,7 +4,8 @@
 
 > **En desarrollo.** Consulta la [hoja de ruta](docs/repo-harness/roadmap.md).
 
-https://github.com/user-attachments/assets/ddaaee48-467e-4d6e-a643-2af885896b61
+https://github.com/user-attachments/assets/4527a564-a6a9-40f7-b7d9-340f3d686f34
+
 
 - Voces de España y Latinoamérica, con Pocket TTS y Phonon opcional.
 - Lectura manual o automática, texto copiado y velocidad sin cambiar el tono.
