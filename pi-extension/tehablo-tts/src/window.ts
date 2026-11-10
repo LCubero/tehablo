@@ -168,7 +168,7 @@ export class SettingsWindow {
     const move = (list: number[], i: number, d: number) => list[Math.min(list.length - 1, Math.max(0, i + d))];
     return [
       {label: 'Voz', text: active ? `${active.name} · ${active.note}` : this.c.active().voice, buttons: [['[ Cambiar ]', () => { this.page = 'voices'; this.pick = 0; }]]},
-      {label: 'Volumen', value: `${Math.round(VOLUMES[vol] * 100)} %`, step: (d: number) => this.c.change('volume', move(VOLUMES, vol, d))},
+      {label: 'Volumen', value: `${Math.round(s.volume * 100)} %`, step: (d: number) => this.c.change('volume', move(VOLUMES, vol, d))},
       {label: 'Velocidad', value: `${SPEEDS[spd].toFixed(2)}x`, step: (d: number) => this.c.change('speed', move(SPEEDS, spd, d))},
       {label: 'Lectura automática', value: s.auto ? 'sí' : 'no', step: () => this.c.change('auto', !s.auto)},
       {label: 'Atajos de teclado', value: s.shortcutsOn ? 'activados' : 'desactivados', step: () => this.c.change('shortcutsOn', !s.shortcutsOn),

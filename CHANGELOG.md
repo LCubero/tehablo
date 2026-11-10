@@ -4,6 +4,10 @@
 
 Este archivo registra los cambios completados en orden cronológico.
 
+## 2026-11-10
+
+- Pi, ajustes: la fila **Volumen** muestra el volumen guardado; antes redondeaba a sus pasos y, tras subir a 110 % con la barra, mostraba 100 %.
+
 ## 2026-11-09
 
 - Pruebas: el caso de sustitución de lecturas mantiene activo el sintetizador falso hasta recibir la cancelación, sin depender de pausas temporizadas ni cambiar el servidor (suite del servidor: 84/84 en Windows local).

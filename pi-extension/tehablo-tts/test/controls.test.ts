@@ -490,7 +490,7 @@ test('S1/S4: shared settings refresh the bar and open window on the existing tic
     assert.equal(s.statuses.at(-1), undefined);
     const after = s.windows[0].w.render(100).join('\n');
     assert.notEqual(after, before);
-    assert.match(after, /75 %/); // The window rounds to its existing volume steps.
+    assert.match(after, /70 %/); // The window shows the saved volume, even between its steps.
     assert.match(after, /1.25x/);
     assert.match(after, /Iker/);
     assert.match(after, /Esperar/);
@@ -1286,6 +1286,8 @@ test('inline volume buttons and /tts commands keep the saved settings in sync',a
   const s=setup();try {
     await start(s);await clickAt(s,'[ ⋯ ]',2);await clickAt(s,'% +]',2);
     assert.equal(s.store.load().volume,1.1);
+    await s.command('menu');
+    assert.match(s.windows.at(-1).w.render(100).join('\n'),/Volumen\s+◀ 110 % ▶/,'the menu shows the volume the toolbar saved');
     await s.command('auto on');assert.equal(s.store.load().auto,false);assert.equal(s.statuses.at(-1),'TTS auto');
   }finally{await s.close();}
 });
