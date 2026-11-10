@@ -216,7 +216,7 @@ HF_HUB_OFFLINE=1 .venv-pocket/bin/python scripts/measure_tts.py \
 | GPU | Se instala PyTorch solo CPU (~200 MB frente a ~3 GB con CUDA); funciona en equipos sin tarjeta gráfica |
 | Internet | Solo en la primera ejecución, para descargar los modelos; después funciona sin conexión |
 
-Además del acceso inicial a Phonon (opcional) en Pi, otra excepción es la **clonación de voces** desde audio en `voices/`. Requiere un token gratuito de Hugging Face para la primera descarga de los pesos con clonación; las 6 voces incluidas como `.safetensors` no lo necesitan. Ver [README](desarrollo.md#activar-la-clonación-de-voces-token-de-hugging-face).
+Además del acceso inicial a Phonon (opcional) en Pi, otra excepción es la **clonación de voces** desde audio en `voices/`. Requiere un token gratuito de Hugging Face para la primera descarga de los pesos con clonación; las 6 voces incluidas como `.safetensors` no lo necesitan. Ver [Activar la clonación](desarrollo.md#activar-la-clonación-de-voces-token-de-hugging-face).
 
 ---
 
@@ -231,32 +231,4 @@ Además del acceso inicial a Phonon (opcional) en Pi, otra excepción es la **cl
 
 ## Resumen de mediciones Windows y Fedora
 
-Mismo equipo: Ryzen 5 5600X (12 hilos) con 32 GB de RAM, voz `lola` y un texto de unos 36 s de audio.
-
-**Windows:**
-
-| | `spanish` (rápido) | `spanish_24l` (más calidad) |
-|---|---|---|
-| RAM | ~870 MB (pico ~1 GB) | ~1,8 GB (pico ~2,3 GB) |
-| CPU | ~1,8 núcleos (~15 %) | ~1,2 núcleos (~10 %) |
-| Velocidad | 3,7 veces más rápido que tiempo real | 1,2 veces |
-| Primer fragmento generado (sin reproducir) | ~0,16 s | ~0,55 s |
-| GPU | No la usa | No la usa |
-
-En disco: unos 813 MB el entorno de Python y 1,2 GB los modelos descargados.
-
-**Linux (Fedora 44):**
-
-| | `spanish` (rápido) | `spanish_24l` (más calidad) |
-|---|---|---|
-| RAM | ~970 MB (pico ~1,1 GB) | ~1,9 GB (pico ~2,4 GB) |
-| CPU | ~1,7 núcleos (~14 %) | ~1,2 núcleos (~10 %) |
-| Velocidad | 4,3 veces más rápido que tiempo real | 1,3 veces |
-| Primer fragmento generado (modelo cargado, sin reproducir) | ~0,12 s | ~0,44 s |
-| GPU | No la usa | No la usa |
-
-En disco: unos 1087 MB el entorno de Python y 0,9 GB los modelos descargados.
-
-Esa tabla es sin cuantizar. En Linux el modelo se carga **cuantizado** por defecto: genera ~1,7 veces más rápido con `spanish` y ~1,9 con `spanish_24l`, sin diferencia audible en una prueba a ciegas, y tarda ~0,5–1,5 s más en cargar. En Windows sigue sin cuantizar, porque allí era más lento. `TEHABLO_QUANTIZE=0` lo desactiva y `TEHABLO_QUANTIZE=1` lo fuerza; cualquier otro valor se ignora.
-
-Método, valores exactos y cómo repetir la medición: [docs/como-funciona.md](como-funciona.md#consumo-medido).
+Las mediciones de Windows y Fedora corresponden al mismo Ryzen 5 5600X con 32 GB de RAM, voz `lola` y texto fijo. Consulta [Consumo medido](#consumo-medido) para RAM, CPU, disco, diferencias de cuantización, método y límites; no son requisitos mínimos ni latencia audible garantizada.

@@ -36,7 +36,7 @@ Las licencias y los estados cambian: vuelve a comprobarlos antes de publicar nad
 | Una voz masculina mexicana | **Ald** (`rmcpantoja/Ald_Mexican_Spanish_speech_dataset`) | Unlicense (dominio público) |
 | Muchas voces argentinas | `Kukedlc/arg-spanish-tts` (65 hablantes) | CC BY 4.0, según la ficha |
 | Miles de voces de cualquier país | Mozilla Common Voice (es) | CC0, calidad variable |
-| Uso comercial **sin atribución** | Solo las CC0 o dominio público: Dave, Ald, Common Voice, LibriVox | — |
+| Uso comercial **sin atribución** | Fuentes CC0 o dominio público: Dave, Ald, Common Voice; LibriVox solo según jurisdicción y derechos de voz | — |
 
 ---
 
@@ -64,7 +64,7 @@ Para usarlas como referencia hacen falta los pesos con clonación (token de Hugg
 | [Kukedlc/arg-spanish-tts](https://huggingface.co/datasets/Kukedlc/arg-spanish-tts) | Argentina | 65 | 10.747 frases, 12,2 h, 24 kHz | CC BY 4.0 en la ficha | **SEGÚN LA FICHA**. Junta tres datasets públicos: hay que comprobar que la licencia de los originales sea compatible, porque si incluye OpenSLR 61 su licencia real sería CC BY-SA | Hugging Face / API de filas |
 | Google LATAM en OpenSLR: [61](https://www.openslr.org/61/) ar, [71](https://www.openslr.org/71/) cl, [72](https://www.openslr.org/72/) co, [73](https://www.openslr.org/73/) pe, [74](https://www.openslr.org/74/) pr, [75](https://www.openslr.org/75/) ve | 6 países | Decenas | ZIP por país y género: pe 914 MB y 1,03 GB, pr (solo mujer) 214 MB, ve 517 y 526 MB, ar mujer 1,26 GB | CC BY-SA 4.0 | **VERIFICADO** (tamaños con `HEAD`) | Mejor a través de la copia de GianDiego (sin ZIP) |
 | [Mozilla Common Voice (es)](https://mozilladatacollective.com/datasets/cmu5kitx700pemi073feoiqqu), versión 27.0 | Muchos países | Miles | **48 GB** | **CC0** | **VERIFICADO** en Mozilla Data Collective | Registro en Mozilla Data Collective. Alternativa: copias en Hugging Face como [bookbot/common_voice_23_0_es](https://huggingface.co/datasets/bookbot/common_voice_23_0_es) (CC0, v23) |
-| LibriVox en español | Muchos (narradores) | Decenas | Variable | **Dominio público** | **VERIFICADO** como norma general de LibriVox | Elegir un narrador en [librivox.org](https://librivox.org) y recortar 10 a 30 s. Hay un ejemplo de este método en [gabriele-mastrapasqua/qwen3-tts](https://github.com/gabriele-mastrapasqua/qwen3-tts/blob/main/samples/voice_clone_refs/ATTRIBUTION.md) (clips de 30 s a partir del segundo 30) |
+| LibriVox en español | Muchos (narradores) | Decenas | Variable | **Dominio público en EE. UU.** | **VERIFICADO** como norma general de LibriVox; comprobar la jurisdicción local y los derechos y consentimiento de voz antes de clonar | Elegir un narrador en [librivox.org](https://librivox.org) y recortar 10 a 30 s. Hay un ejemplo de este método en [gabriele-mastrapasqua/qwen3-tts](https://github.com/gabriele-mastrapasqua/qwen3-tts/blob/main/samples/voice_clone_refs/ATTRIBUTION.md) (clips de 30 s a partir del segundo 30) |
 
 ---
 
@@ -125,7 +125,7 @@ Sirven para tener timbres distintos (hablarán español con acento extranjero) o
 
 Basado en el *issue* [#115](https://github.com/kyutai-labs/pocket-tts/issues/115) y en la documentación oficial:
 
-1. **Duración:** de 10 a 30 s. Pocket TTS recorta a 30 s y corta en la última pausa.
+1. **Duración:** de 10 a 30 s como pauta práctica; el recorte depende de cómo se carga la referencia. Ver [longitud y preparación en Pocket TTS](pocket-tts.md).
 2. **Limpieza:** sin música, eco ni ruido. El modelo copia las condiciones acústicas de la muestra.
 3. **Variedad:** que incluya una afirmación, una pregunta y una exclamación, para que el modelo aprenda la entonación.
 4. **Mejorar el audio** con herramientas gratuitas: [resemble-enhance](https://github.com/resemble-ai/resemble-enhance) (MIT), [DeepFilterNet](https://github.com/Rikorose/DeepFilterNet) (necesita WAV a 48 kHz), RNNoise o Audacity.

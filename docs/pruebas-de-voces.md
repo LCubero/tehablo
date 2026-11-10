@@ -4,7 +4,7 @@ Resultados propios de `RH-W-0005`: qué voces y modelos gratuitos probamos en te
 
 ## Resumen (2026-10-30)
 
-Opciones de voz que quedaron bien en las escuchas a ciegas con los ajustes de tehablo. Consumo medido en Windows con `samples/benchmark.txt` ([detalle](#consumo-2026-10-30-windows)). Todavía no hay decisión sobre cuáles se incorporan.
+Opciones de voz que quedaron bien en las escuchas a ciegas con los ajustes de tehablo. Consumo medido en Windows con `samples/benchmark.txt` ([detalle](#consumo-2026-10-30-windows)). Sigue pendiente decidir sobre las alternativas no incorporadas; Phonon y las seis clonadas indicadas abajo ya están disponibles en Pi.
 
 | Uso | Voz | Motor | RAM tras hablar | CPU del texto | ¿Token? | Escucha |
 |---|---|---|---|---|---|---|
@@ -32,7 +32,7 @@ Pendiente de probar: NeuTTS Nano Spanish y el ajuste castellano de `inferencekey
   > Hola, soy tu asistente de voz. Hoy revisé el código y encontré 3 errores en el servidor. ¿Quieres que haga el commit ahora, o prefieres revisarlo primero? El 29/10/2026 terminamos la instalación, y todo funcionó en menos de 45 segundos.
 - **Valoración:** cada escucha se anota con un nivel y, si hace falta, los rasgos que se notaron (ver [cómo se anotan](#cómo-se-anotan-las-escuchas)).
 - **Velocidad:** segundos de audio por segundo de generación, en Windows, CPU de 12 hilos, con el modelo ya cargado salvo donde se indica. Más de 1× es más rápido que el tiempo real.
-- **Dónde:** entornos aparte en `.repo-harness/tmp/voces/` (ignorado por Git); nada se instala en el entorno del proyecto.
+- **Entorno de la prueba:** entornos temporales separados, sin instalar nada en el entorno del proyecto. No se conservan como evidencia recuperable; los resultados y límites están en esta guía.
 
 ### Cómo se anotan las escuchas
 
@@ -369,7 +369,6 @@ Cada opción tiene tres capas: el programa, el modelo y la voz con la que se ent
 | Kokoro-82M | `kokoro-onnx` MIT; usa `espeak-ng` (GPL-3.0) a través de `espeakng-loader` (MIT) | Apache-2.0 | voces propias del modelo | Uso comercial libre del modelo; `espeak-ng` es GPL-3.0, así que distribuir un programa que lo incluya tiene la misma condición que Piper. |
 | MeloTTS | MIT | MIT | voz propia del modelo | Depende de torch, MeCab/`unidic` y NLTK. |
 | Chatterbox | MIT | MIT | clona `voices/` (CC BY-SA 4.0) | Cada audio lleva una marca de agua inaudible (Perth). Publicar audio clonado de `voices/` exige atribución y misma licencia. |
-
 | Phonon 40M es (Gradium) | `ptts` MIT o Apache-2.0 | CC BY-NC 4.0, acceso restringido en Hugging Face (aceptar términos y token) | ~100 voces propias (`gradium/phonon-voices`, CC BY-NC 4.0); sin clonación en el modelo abierto | Solo uso no comercial; el uso comercial requiere hablar con Gradium. |
 
 Licencias leídas de los archivos `LICENSE`, las fichas de Hugging Face y las `MODEL_CARD` de Piper; no es asesoría legal.

@@ -79,7 +79,7 @@ Si Pi corre en un servidor, el cliente teHablo puede reproducir la voz en tu com
 
 ## Consumo aproximado
 
-Solo CPU. Entorno Python: **0,8–1,1 GB** en disco; los dos modelos Pocket juntos: **0,9–1,2 GB**. RAM del modelo activo: Pocket `spanish` **~1 GB**, `spanish_24l` **~1,8 GB**; Phonon **~0,3 GB** de RAM y **~0,15 GB** en disco.
+Solo CPU. RAM aproximada del modelo activo: Pocket `spanish` **~1 GB**, `spanish_24l` **~1,8 GB**; Phonon **~0,3 GB**. El [detalle de RAM, CPU y disco](docs/como-funciona.md#consumo-medido) está en las mediciones.
 
 Son referencias, no mínimos; varían según sistema y cuantización. Apagar el servidor libera el modelo. [Mediciones Windows/Fedora](docs/como-funciona.md#consumo-medido) · [Comparación con Phonon](docs/pruebas-de-voces.md#phonon-40m-es-frente-a-lola-spanish_24l-y-kokoro-2026-11-03-fedora).
 
