@@ -115,8 +115,8 @@ test('before the first response the bar shows above the editor, and a hidden bar
   const startBar=()=>widgets['tehablo-tts']?.({},theme).render(100);
   await s.emit('session_start');
   assert.deepEqual(startBar(),[' [ ⏻ TTS ] [ ≡ ]','']);
-  // Nothing to read yet, so the start bar offers only the copied text.
-  await s.command(''); assert.deepEqual(startBar(),[' [ ▶ copiado ] [ ≡ ] [ ⋯ ]','']);
+  // Nothing to read yet: a TTS label holds the place of [ ▶ ] and the bar offers the copied text.
+  await s.command(''); assert.deepEqual(startBar(),[' TTS   [ ▶ copiado ] [ ≡ ] [ ⋯ ]','']);
   await s.finish(); assert.equal(widgets['tehablo-tts'],undefined); assert.equal(s.cards().length,1);
   await s.command('toolbar'); await s.emit('session_start');
   const component=s.renderers['tehablo-tts'](s.cards()[0],{},theme);

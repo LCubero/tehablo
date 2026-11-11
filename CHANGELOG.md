@@ -6,6 +6,7 @@ Este archivo registra los cambios completados en orden cronológico.
 
 ## 2026-11-10
 
+- Pi: al iniciar, antes de la primera respuesta, la barra muestra `TTS` en el lugar de `[ ▶ ]`, con el mismo ancho, para que no se vea vacía ni se muevan los botones.
 - Pi, ajustes: la fila **Volumen** muestra el volumen guardado; antes redondeaba a sus pasos y, tras subir a 110 % con la barra, mostraba 100 %.
 - Pi, volumen y velocidad: las flechas de `/tts menu` cambian el volumen de 10 en 10 %, como la barra; la velocidad va de 0.50x a 1.50x en pasos de 0.05x, en la barra y en el menú (el servidor acepta desde 0.5).
 

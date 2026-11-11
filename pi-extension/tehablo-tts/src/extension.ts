@@ -663,7 +663,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
         : waiting ? [{text: '[ ■ ]', action: 'cancelQueued', gap: ' '}, {text: 'En espera', action: '', gap: ' '}]
         : active
         ? [{text: paused ? '[ ▶ ]' : '[ ‖ ]', action: paused ? 'resume' : 'pause', gap: ' '}, {text: '[ ■ ]', action: 'stop', gap: ' '}]
-        : [...(card === START ? (settings.audio === 'ssh' ? [{text: 'TTS SSH', action: '', gap: ' '}] : []) : [{text: '[ ▶ ]', action: 'play', gap: ' '}]), ...(clipboardAvailable ? [{text: '[ ▶ copiado ]', action: 'copied', gap: ' '}] : [])];
+        : [...(card === START ? [{text: settings.audio === 'ssh' ? 'TTS SSH' : 'TTS  ', action: '', gap: ' '}] : [{text: '[ ▶ ]', action: 'play', gap: ' '}]), ...(clipboardAvailable ? [{text: '[ ▶ copiado ]', action: 'copied', gap: ' '}] : [])];
       const controls = [
         ...lead,
         {...menu, gap: ' '},
@@ -693,7 +693,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
         '[ ▶ ]': '[ |> ]', '[ ▶ copiado ]': '[ |> copiado ]', '[ ‖ ]': '[ || ]',
         '[ ■ ]': '[ [] ]', '[ ⋯ ]': '[ ... ]', '[ → ]': '[ <- ]', '[ ⏻ ]': '[ off ]',
         '[ ≡ ]': '[ = ]', '[ ✓ auto ]': '[ v auto ]', '[ ✗ auto ]': '[ x auto ]',
-        'Preparando…': 'Preparando...',
+        'Preparando…': 'Preparando...', 'TTS  ': 'TTS   ',
       };
       const controls = layout().map(c => settings.icons === 'text' ? {...c, text: textLabels[c.text] ?? c.text} : c);
       return barNote ? [...controls.slice(0, -1), {...controls.at(-1)!, gap: '  '}, {text: `// ${barNote}`, action: '', gap: ''}] : controls;

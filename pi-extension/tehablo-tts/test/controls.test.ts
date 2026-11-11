@@ -12,13 +12,14 @@ function setup(store=memoryStore(),clipboard?:()=>Promise<string>,watchMs=0,note
   const windows:any[]=[], keyHandlers:any[]=[];
   const configs:any[]=[], notices:string[]=[], statuses:(string|undefined)[]=[], settings={volume:1,speed:1,audio:'local',error:null as string|null,note:null as string|null,fallback:null as string|null};
   const hooks:any={}, calls:string[]=[], entries:any[]=[{type:'message',id:'a',message:{role:'assistant',content:'Hola'}} ,{type:'custom',customType:'tehablo-tts',data:{messageId:'a',number:1}}];
+  let widget:any;
   let renderer:any, command:any, state='playing', id:string|null='a', renders=0, fail=false, ready=true, ensures=0;
   const client:any={outputDevices:async()=>({devices:[],allDevices:[]}),beginSession(){},ensure:async()=>{ensures++;},stop:async()=>{},shutdown:async()=>{},powerOff:async()=>{calls.push('/shutdown');},request:async(path:string)=>{calls.push(path);if(fail)throw Error('offline');if(path==='/health')return {...settings,ready};return {state,id,error:settings.error,...(settings.note?{note:settings.note}:{})};},action:async(path:string,body:any)=>{calls.push(path);if(path==='/config'){configs.push(body);Object.assign(settings,body);return {...settings,ready};}if(path==='/health')return {...settings,ready};if(path==='/pause')state='paused';if(path==='/resume')state='playing';return {state};}};
-  const ctx:any={mode:'tui',sessionManager:{getBranch:()=>entries},ui:{onTerminalInput:(h:any)=>{keyHandlers.push(h);return()=>{keyHandlers.splice(keyHandlers.indexOf(h),1);};},custom:(factory:any,options:any)=>new Promise<void>(resolve=>{const entry:any={options,closed:false};entry.renders=0;entry.w=factory({requestRender(){entry.renders++;}},{fg:(_:any,t:string)=>t},{matches:()=>false},()=>{entry.closed=true;resolve();});windows.push(entry);}),notify(text:string){notices.push(text);},setStatus(_:string,text:string|undefined){renders++;statuses.push(text);},setWidget(){}}};
+  const ctx:any={mode:'tui',sessionManager:{getBranch:()=>entries},ui:{onTerminalInput:(h:any)=>{keyHandlers.push(h);return()=>{keyHandlers.splice(keyHandlers.indexOf(h),1);};},custom:(factory:any,options:any)=>new Promise<void>(resolve=>{const entry:any={options,closed:false};entry.renders=0;entry.w=factory({requestRender(){entry.renders++;}},{fg:(_:any,t:string)=>t},{matches:()=>false},()=>{entry.closed=true;resolve();});windows.push(entry);}),notify(text:string){notices.push(text);},setStatus(_:string,text:string|undefined){renders++;statuses.push(text);},setWidget(_:string,factory:any){widget=factory?.({}, {fg:(_:any,t:string)=>t});}}};
   createExtension({appendEntry:(customType:string,data:any)=>entries.push({type:'custom',customType,data}),on:(n:string,h:any)=>hooks[n]=h,registerCommand:(_:any,c:any)=>command=c.handler,registerEntryRenderer:(_:any,r:any)=>renderer=r} as any,client,store,clipboard,watchMs,noteMs,clipboardAvailable,copier);
   hooks.session_start({},ctx);
   const card=renderer(entries[1],{}, {fg:(_:any,t:string)=>t});
-  return {entries,hooks,ctx,store,windows,keyHandlers,press:(d:string)=>keyHandlers.map(h=>h(d)),client,calls,card,configs,notices,statuses,line:()=>{const l=card.render(200)[0];if(l!==undefined)assert.equal(l[0],' ');return l?.slice(1);}, command:(s:string)=>command(s,ctx),set:(s:string,i:string|null='a')=>{state=s;id=i;},setReady:(value:boolean)=>{ready=value;},setError:(value:string)=>{settings.error=value;},setNote:(value:string)=>{settings.note=value;},setFallback:(value:string|null)=>{settings.fallback=value;},ensures:()=>ensures,close:()=>hooks.session_shutdown({},ctx),agentStart:()=>hooks.agent_start({},ctx),fail:(value=true)=>{fail=value;},renders:()=>renders};
+  return {startCard:()=>widget,entries,hooks,ctx,store,windows,keyHandlers,press:(d:string)=>keyHandlers.map(h=>h(d)),client,calls,card,configs,notices,statuses,line:()=>{const l=card.render(200)[0];if(l!==undefined)assert.equal(l[0],' ');return l?.slice(1);}, command:(s:string)=>command(s,ctx),set:(s:string,i:string|null='a')=>{state=s;id=i;},setReady:(value:boolean)=>{ready=value;},setError:(value:string)=>{settings.error=value;},setNote:(value:string)=>{settings.note=value;},setFallback:(value:string|null)=>{settings.fallback=value;},ensures:()=>ensures,close:()=>hooks.session_shutdown({},ctx),agentStart:()=>hooks.agent_start({},ctx),fail:(value=true)=>{fail=value;},renders:()=>renders};
 }
 test('S37 menu copies exactly the private store code without persisting settings', async () => {
   const store = memoryStore(), copied: string[] = [];
@@ -898,6 +899,44 @@ const tick=()=>new Promise(r=>setTimeout(r,550));
 const click=async(card:any,x:number)=>{card.handleMouse({type:'click',button:'left',x:x+1,y:0});await new Promise(r=>setImmediate(r));};
 const clickAt=async(s:any,text:string,offset=0)=>{const line=s.line();assert.ok(line.includes(text),`${text} in ${line}`);await click(s.card,Array.from(line.slice(0,line.indexOf(text))).length+offset);};
 const start=async(s:any)=>{await clickAt(s,'⏻ TTS');await tick();};
+
+for (const icons of ['symbols', 'text'] as const) {
+  test(`start label preserves button columns and is inert (${icons})`, async () => {
+    const store = memoryStore(); store.save({...store.load(), icons});
+    const s = setup(store);
+    const answer = s.entries.splice(0);
+    s.hooks.session_start({}, s.ctx);
+    try {
+      const card = s.startCard();
+      await clickAt({line: () => card.render(200)[0].slice(1), card}, 'TTS'); await tick();
+      const line = card.render(200)[0].slice(1);
+      const copied = icons === 'text' ? '[ |> copiado ]' : '[ ▶ copiado ]';
+      assert.equal(line, icons === 'text' ? 'TTS    [ |> copiado ] [ = ] [ ... ]' : 'TTS   [ ▶ copiado ] [ ≡ ] [ ⋯ ]');
+      const calls = [...s.calls], configs = [...s.configs];
+      for (let x = 0; x < 3; x++) await click(card, x);
+      assert.deepEqual(s.calls, calls);
+      assert.deepEqual(s.configs, configs);
+      assert.equal(s.windows.length, 0);
+      s.entries.push(...answer);
+      assert.equal(s.line().indexOf(copied), line.indexOf(copied));
+      await clickAt(s, icons === 'text' ? '[ ... ]' : '[ ⋯ ]');
+      assert.match(s.line(), /Vol/);
+    } finally { await s.close(); }
+  });
+}
+
+test('start label remains visible without clipboard and SSH stays unchanged', async () => {
+  for (const audio of ['local', 'ssh'] as const) {
+    const store = memoryStore(); store.save({...store.load(), audio});
+    const s = setup(store, undefined, 0, 4000, false);
+    s.entries.length = 0; s.hooks.session_start({}, s.ctx);
+    try {
+      const card = s.startCard();
+      await start({line: () => card.render(200)[0].slice(1), card});
+      assert.equal(card.render(200)[0].slice(1), audio === 'ssh' ? 'TTS SSH [ ≡ ] [ ⋯ ]' : 'TTS   [ ≡ ] [ ⋯ ]');
+    } finally { await s.close(); }
+  }
+});
 
 test('disconnected output device warns once after the reading',async()=>{
   const s=setup();try {

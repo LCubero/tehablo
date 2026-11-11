@@ -422,7 +422,7 @@ Significado de los iconos (aunque se vean como cuadros):
 - `[ ▶ ]` lee esa respuesta; en pausa, continúa. `[ ‖ ]` y el botón de continuar solo actúan sobre tu lectura actual, nunca la de otra sesión. `[ ■ ]` detiene solo las lecturas de esa respuesta (la que suena y las que esperan); si hay otra en espera, empieza. `/tts stop` y el atajo de detener cancelan solo tus lecturas, actuales y en espera.
 - `[ ⋯ ]` abre volumen y velocidad; `[ → ]` los oculta. `[ ≡ ]` abre ajustes antes de `[ ⋯ ]` en la barra cerrada y antes de `[ ⏻ ]` en la abierta, también en modo Texto.
 - Con varias sesiones de Pi abiertas, todas usan el mismo servidor: encenderlo o apagarlo en una lo hace en todas, y la barra de las demás lo muestra en unos segundos. Cada lectura nueva decide si interrumpe o espera, según sus ajustes. Empezar otro turno o cerrar la sesión cancela solo sus lecturas, sin vaciar la cola de otras sesiones. El [ciclo del servidor](#servidor-y-ajustes-guardados) detalla el apagado por inactividad.
-- Antes de la primera respuesta, la barra aparece sobre el editor sin el botón de leer respuesta. En Audio: SSH muestra `TTS SSH [ ≡ ] [ ⋯ ]`; apagada, `[ ⏻ TTS SSH ] [ ≡ ]` (mismas posiciones en modo Texto).
+- Antes de la primera respuesta, la barra aparece sobre el editor: con el servidor encendido y audio local, muestra `TTS` sin acción en el lugar del botón de leer respuesta, con el mismo ancho para que los botones no se muevan al llegar la respuesta. En Audio: SSH muestra `TTS SSH [ ≡ ] [ ⋯ ]`; apagada, `[ ⏻ TTS SSH ] [ ≡ ]` (mismas posiciones en modo Texto).
 
 
   Los avisos cortos (barra visible, indicador, lectura automática, Dict, «Suena la lectura en espera.») aparecen unos 4 s al final de la barra, abierta o cerrada, en gris tenue y como `// Barra visible.`, sin ocupar otra línea. Con la barra oculta salen como aviso normal con «TTS teHablo: ». Los errores, los usos incorrectos y `/tts status` siempre salen como aviso normal.
@@ -481,7 +481,7 @@ El registro incluye líneas `Startup:` con segundos por etapa: importaciones del
 
 ### Iconos en modo texto
 
-Solo cambia las etiquetas de la barra, no los controles ni los avisos `// texto`. La ventana de ajustes conserva su presentación habitual. Antes de la primera respuesta se omite `[ |> ]`, igual que en el modo Símbolos.
+Solo cambia las etiquetas de la barra, no los controles ni los avisos `// texto`. La ventana de ajustes conserva su presentación habitual. Antes de la primera respuesta, con audio local, `TTS` ocupa el mismo ancho que `[ |> ]`, igual que en el modo Símbolos con `[ ▶ ]`.
 
 | Estado | Barra en Texto |
 |---|---|
