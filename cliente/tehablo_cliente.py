@@ -620,12 +620,12 @@ def menu_app(settings, receiver, voice=None):
     from textual.app import App
     from textual.containers import Horizontal, Vertical
     from textual.screen import ModalScreen
-    from textual.widgets import Input, OptionList, Static
+    from textual.widgets import Button, Input, OptionList, Static
     from textual.widgets.option_list import Option
     from rich.text import Text
 
     class Choices(ModalScreen):
-        BINDINGS = [('escape', 'cancel', 'Volver')]
+        BINDINGS = [('escape', 'cancel', 'Volver'), ('r', 'refresh', 'Refrescar')]
 
         def __init__(self, text, options):
             super().__init__()
@@ -636,6 +636,18 @@ def menu_app(settings, receiver, voice=None):
                 yield Static(self.text, id='pregunta', markup=False)
                 yield OptionList(*(Option(label, id=value) for value, label in self.options),
                                  id='opciones', compact=True)
+
+                if self.text == 'Tu conexión SSH':
+                    yield Button('Refrescar', id='refrescar', compact=True)
+                    yield Static('r refrescar   Esc volver', id='ayuda')
+
+        def action_refresh(self):
+            if self.text == 'Tu conexión SSH':
+                self.app.search_sessions(self)
+
+        def on_button_pressed(self, event):
+            if event.button.id == 'refrescar':
+                self.action_refresh()
 
         def on_option_list_option_selected(self, event):
             self.dismiss(event.option.id)
@@ -861,26 +873,46 @@ def menu_app(settings, receiver, voice=None):
                 if not shutil.which('ssh'):
                     self.other_program()
                     return
-                if getattr(self, 'searching', False):
-                    return
-                # Listing processes can take ~1.5 s on Windows: show it and keep the menu responsive.
-                self.searching = True
-                self.refresh_status()
-                threading.Thread(target=lambda: self.call_from_thread(
-                    self.show_sessions, open_ssh_sessions(commands=True)), daemon=True).start()
+                self.search_sessions()
             elif name == 'desinstalar':
                 self.confirm_uninstall()
             elif name == 'salir':
                 self.exit()
 
-        def show_sessions(self, sessions):
+        def search_sessions(self, chooser=None):
+            if getattr(self, 'searching', False):
+                return
+            self.searching = True
+            self.refresh_status()
+            if chooser is not None:
+                chooser.query_one('#pregunta').update('Buscando sesiones…')
+            # Process discovery always runs off the UI thread.
+            threading.Thread(target=lambda: self.call_from_thread(
+                self.show_sessions, open_ssh_sessions(commands=True), chooser), daemon=True).start()
+
+        def show_sessions(self, sessions, chooser=None):
                 self.searching = False
                 self.refresh_status()
+                if chooser is not None and chooser not in self.screen_stack:
+                    return
                 options = [(str(i), host + '   abierta ahora'
                             + ('  ✓ voz activa en esta sesión' if active else ''))
                            for i, (host, active, command) in enumerate(sessions)]
                 options += [('otra', 'Otra… — pega tu comando ssh'),
                             ('programa', 'Lo hago a mano — ssh -R, PuTTY, Termius, MobaXterm…')]
+                if chooser is not None:
+                    listing = chooser.query_one(OptionList)
+                    index = listing.highlighted
+                    host = chooser.sessions[index][0] if index is not None and index < len(chooser.sessions) else None
+                    chooser.sessions = sessions
+                    listing.clear_options()
+                    listing.add_options(Option(label, id=value) for value, label in options)
+                    listing.highlighted = next((i for i, session in enumerate(sessions)
+                                                if session[0] == host), 0)
+                    chooser.query_one('#pregunta').update('Tu conexión SSH')
+                    return
+                chooser = Choices('Tu conexión SSH', options)
+                chooser.sessions = sessions
                 def selected(value):
                     if value == 'otra':
                         self.entry('Pega tu comando ssh (por ejemplo ssh pepe@192.168.7.88)',
@@ -888,9 +920,10 @@ def menu_app(settings, receiver, voice=None):
                     elif value == 'programa':
                         self.other_program()
                     else:
-                        host, active, command = sessions[int(value)]
+                        host, active, command = chooser.sessions[int(value)]
                         self.ssh(command, active=active)
-                self.choose('Tu conexión SSH', options, selected)
+                self.push_screen(chooser, lambda value: self.guarded(selected, value)
+                                 if value is not None else None)
 
         def confirm_uninstall(self):
                 def done(value):

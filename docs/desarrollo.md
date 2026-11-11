@@ -525,6 +525,8 @@ Si falta uv, muestra el comando oficial para instalarlo y se detiene sin cambios
 
 **Conexión SSH** lista tus sesiones abiertas, sin leer `~/.ssh/config`; **Otra…** permite pegar tu comando. Primero intenta abrir un canal oculto con los mismos datos de conexión, sin editar archivos ni reconectar Pi. Si SSH pide contraseña o la frase de tu clave, el cliente la pide en un campo oculto y abre el canal con el mecanismo estándar de OpenSSH (`SSH_ASKPASS`, OpenSSH 8.4 o más; en Windows, 8.6 o más): no se guarda ni se escribe en ningún archivo, y se prueba una sola vez por intento. **Esc** muestra el comando para otra terminal. Si hay que confirmar la huella del servidor, o tu OpenSSH es más antiguo, muestra directamente ese comando; teHablo nunca acepta claves de servidor automáticamente.
 
+En la ventana para elegir la sesión, **Refrescar** (tecla **r**) vuelve a buscar las sesiones SSH abiertas sin cerrar la ventana ni abrir un canal.
+
 Deja esa terminal abierta mientras quieras oír la voz; **Ctrl+C** cierra el canal. El menú sigue disponible y la sesión original de Pi permanece abierta. **Canal SSH en ejecución** solo indica un proceso abierto, no autenticación ni reenvío confirmados; **Recibiendo voz** indica recepción real. El canal oculto permite **Detener voz** desde el menú. Salir o desinstalar cierra el canal propio. Las sesiones que ya llevan la voz no abren otro.
 
 Si tienes Python de [python.org](https://www.python.org/downloads/) (3.10 o más), el cliente lo usa; si no, `uv` descarga uno. En Windows, el lanzador del Python de `uv` no lleva firma digital y algunos antivirus (por ejemplo Norton CyberCapture) lo analizan cada vez que abres el cliente; con el Python oficial (`winget install Python.Python.3.13`) el lanzador va firmado.

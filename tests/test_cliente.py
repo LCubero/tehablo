@@ -799,6 +799,48 @@ class MenuTest(unittest.IsolatedAsyncioTestCase):
                 self.assertNotIn('Buscando', self.text(app, '#ssh'))
                 self.assertEqual(len(app.screen_stack), 2)
 
+    async def test_refresh_sessions_button_and_key(self):
+        from textual.widgets import OptionList
+        release = c.threading.Event()
+        app = c.menu_app(self.settings, self.receiver)
+        connect = self.enterContext(patch.object(app, 'ssh'))
+        async with app.run_test(size=(100, 45)) as pilot:
+            app.show_sessions([('old', False, 'ssh old'), ('keep', False, 'ssh keep')])
+            await pilot.pause()
+            app.screen.query_one(OptionList).highlighted = 1
+            with patch.object(c, 'open_ssh_sessions', return_value=[
+                    ('new', False, 'ssh new'), ('keep', False, 'ssh keep')]) as discovery:
+                await pilot.click('#refrescar')
+                await pilot.pause()
+                options = app.screen.query_one(OptionList)
+                self.assertIn('new', str(options.get_option_at_index(0).prompt))
+                self.assertEqual(options.highlighted, 1)
+                self.assertEqual(discovery.call_count, 1)
+            def slow_listing(**kwargs):
+                release.wait(5)
+                return [('late', False, 'ssh late')]
+            with patch.object(c, 'open_ssh_sessions', side_effect=slow_listing) as discovery:
+                await pilot.press('r')
+                await pilot.pause()
+                await pilot.press('r')
+                await pilot.click('#refrescar')
+                self.assertEqual(discovery.call_count, 1)
+                await pilot.press('escape')
+                release.set()
+                await pilot.pause(0.2)
+                self.assertEqual(len(app.screen_stack), 1)
+            app.show_sessions([('old', False, 'ssh old')])
+            await pilot.pause()
+            with patch.object(c, 'open_ssh_sessions', return_value=[('fresh', False, 'ssh fresh')]):
+                await pilot.press('r')
+                await pilot.pause()
+                options = app.screen.query_one(OptionList)
+                self.assertIn('fresh', str(options.get_option_at_index(0).prompt))
+                self.assertEqual(options.highlighted, 0)
+                self.assertIn('PuTTY', str(options.get_option_at_index(2).prompt))
+            self.factory.assert_not_called()
+            connect.assert_not_called()
+
     async def test_menu_is_clickable_and_saves_every_option(self):
         app = c.menu_app(self.settings, self.receiver)
         async with app.run_test(size=(100, 45)) as pilot:
