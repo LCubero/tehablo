@@ -25,7 +25,7 @@ Este archivo proyecta solo hechos verificados del proyecto: registros activos, b
 
 ## Trabajo reciente completado
 
-- Pi (2026-11-10): el menú muestra el volumen guardado (`555abed`); volumen en pasos de 10 % y velocidad de 0.50x a 1.50x en pasos de 0.05x, con servidor que acepta desde 0.5 (`f65e2c7`). Después: barra con `TTS` antes de la primera respuesta, ayuda de `/tts` legible con `/tts ayuda` y autocompletado, **Refrescar** en el cliente SSH y la guía para actualizar. Versión **0.1.0-rc.1** (archivo `VERSION`, tag `v0.1.0-rc.1`), sobre `60051b9` con la CI en verde en Ubuntu y Windows.
+- Pi (2026-11-10): el menú muestra el volumen guardado (`555abed`); volumen en pasos de 10 % y velocidad de 0.50x a 1.50x en pasos de 0.05x, con servidor que acepta desde 0.5 (`f65e2c7`). Después: barra con `TTS` antes de la primera respuesta, ayuda de `/tts` legible con `/tts ayuda` y autocompletado, **Refrescar** en el cliente SSH y la guía para actualizar. Versión **0.1.0-rc.1** (archivo `VERSION`, tag `v0.1.0-rc.1`), sobre `60051b9` con la CI en verde en Ubuntu y Windows. Luego: `/tts status` muestra la versión y avisa si el servidor en marcha es de otra; con el servidor apagado no lo enciende (`2d8d429`). `/tts menu` agrupa sus filas en cuatro secciones (`0200f29`). Medición: limitar hilos de PyTorch no cambia nada; ~0,5 núcleos por lectura y nada en reposo (`80de740`). Pendiente: el reporte de una VM Proxmox con audio por SSH (8–17 % de CPU, 2,5–4 GB) para saber si es en reposo o al leer.
 
 <!-- doc-role:recent-work -->
 
