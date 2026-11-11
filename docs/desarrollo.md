@@ -490,6 +490,8 @@ Los argumentos de `/tts` se autocompletan con sus explicaciones, incluida `ayuda
 
 ### Ajustes `[ ≡ ]` (menú)
 
+El menú mantiene una sola lista agrupada en cuatro secciones: **Voz y sonido**, **Lectura**, **Interfaz** y **Audio y servidor**.
+
 La navegación con **↑↓** es circular en el menú principal y las listas de voces, atajos y dispositivos: desde el primero, **↑** lleva al último; desde el último, **↓** vuelve al primero. Moverse no aplica ninguna selección. Al volver de un submenú, queda seleccionada la opción del menú principal desde la que entraste.
 
 Elige **Audio: Local / SSH**, **Salida: nombre / Predeterminada** (en Local; en SSH se elige en el cliente), **voz**, **volumen**, **velocidad**, **lectura automática**, **atajos de teclado** e **indicador de estado**, o enciende, apaga y reinicia el servidor. Usa clics o ↑↓, ←→, Enter y Esc.

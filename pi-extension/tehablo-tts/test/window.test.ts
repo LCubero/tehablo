@@ -45,6 +45,39 @@ function setup(over: Partial<Record<string, any>> = {}) {
     }};
 }
 
+test('main sections are rendering-only, ordered, spaced and mouse-safe', () => {
+  const s = setup({server: 'ready'});
+  const lines = s.w.render();
+  const labels = ['Voz y sonido', 'Voz', 'Volumen', 'Velocidad', 'Lectura', 'Lectura automática', 'Si llega otra lectura', 'Interfaz', 'Atajos de teclado', 'Barra de controles', 'Indicador de estado', 'Iconos', 'Audio y servidor', 'Audio', 'Salida', 'Servidor ● activo'];
+  let previous = 1;
+  for (const label of labels) {
+    const y = lines.findIndex((line, i) => i > previous && line.includes(label));
+    assert.ok(y > previous, label);
+    previous = y;
+  }
+  assert.equal(lines.length, 21);
+  assert.ok(lines.every(line => Array.from(line).length === 72));
+  assert.match(s.text(), /Si llega otra lectura +◀/);
+  for (const title of ['Voz y sonido', 'Lectura', 'Interfaz', 'Audio y servidor']) {
+    s.click(title);
+    assert.equal(s.w.row, 0);
+    assert.deepEqual(s.calls, []);
+  }
+  const selected = [];
+  for (let i = 0; i < 12; i++) {
+    selected.push(s.w.render().find(line => line.startsWith('│ ▶ '))!.trim());
+    s.key('\x1b[B');
+  }
+  assert.equal(s.w.row, 0);
+  assert.ok(selected[4].includes('Si llega otra lectura'));
+  assert.ok(selected[5].includes('Atajos de teclado'));
+  s.key('\x1b[A');
+  assert.equal(s.w.row, 11);
+  s.click('◀ Detener');
+  assert.equal(s.w.row, 4);
+  assert.deepEqual(s.calls, [['change', 'policy', 'wait']]);
+});
+
 test('returning from submenus keeps the originating main row selected', async () => {
   for (const label of ['Voz', 'Atajos de teclado', 'Salida', 'Audio']) {
     for (const back of ['escape', 'click']) {
@@ -61,7 +94,7 @@ test('returning from submenus keeps the originating main row selected', async ()
       if (back === 'escape') s.key('\x1b'); else s.click('[ Volver ]');
       assert.equal(s.w.page, 'main');
       assert.equal(s.w.row, row, `${label}: ${back}`);
-      assert.match(s.w.render(100).find(l => l.includes(label))!, /│ ▶ /);
+      assert.match(s.w.render(100).find(l => l.includes(label + '  '))!, /│ ▶ /);
       assert.equal(s.closed(), false);
       assert.deepEqual(s.calls, label === 'Audio' ? [['sshCode', false]] : []);
     }
@@ -81,7 +114,7 @@ test('voice selection and download returns keep Voz selected', async () => {
       else { s.key('\x1b[C'); s.key('\r'); }
     }
     assert.equal(s.w.page, 'main');
-    assert.match(s.w.render(100).find(l => l.includes('Voz'))!, /│ ▶ Voz/);
+    assert.match(s.w.render(100).find(l => l.includes('Voz  '))!, /│ ▶ Voz/);
     assert.equal(s.w.col, 0);
     assert.equal(s.closed(), false);
     assert.deepEqual(s.calls, [['choose', back === 'choose' ? 'lola' : 'rafael', 'spanish']]);
@@ -95,13 +128,13 @@ test('S37 Copiar then Ver sit right of SSH on the Audio row; Enter copies; Copia
   s.state.settings.audio = 'ssh';
   const rows = s.w.mainRows();
   assert.equal(rows.filter(r => r.label === 'Código SSH').length, 0);
-  assert.match(s.w.render(100).find(l => l.includes('Audio'))!, /◀ SSH ▶ +\[ Copiar \] \[ Ver \]/);
+  assert.match(s.w.render(100).find(l => l.includes('Audio  '))!, /◀ SSH ▶ +\[ Copiar \] \[ Ver \]/);
   // Enter on the Audio row copies at once; ←→ still switch Local/SSH there.
   s.w.row = rows.findIndex(r => r.label === 'Audio'); s.w.col = 0;
   s.key('\r');
   await new Promise(r => setImmediate(r));
   assert.deepEqual(s.calls, [['sshCode', true]]);
-  assert.match(s.w.render(100).find(l => l.includes('Audio'))!, /Copiado/);
+  assert.match(s.w.render(100).find(l => l.includes('Audio  '))!, /Copiado/);
   assert.doesNotMatch(s.text(), CODE);
   s.click('[ Ver ]');
   await new Promise(r => setImmediate(r));
@@ -675,7 +708,7 @@ test('Editar opens the shortcuts table; keys are captured, validated and removab
 
 test('keyboard reaches Quitar and removes a bound shortcut without entering capture', () => {
   const s = setup({settings: {...DEFAULTS, shortcuts: {power: 'ctrl+alt+p'}}});
-  for (let i = 0; i < 4; i++) s.key('\x1b[B');
+  for (let i = 0; i < 5; i++) s.key('\x1b[B');
   s.key('\r');
   s.key('\x1b[C'); s.key('\r');
   assert.deepEqual(s.calls, [['shortcut', 'power', undefined]]);
@@ -691,7 +724,7 @@ test('keyboard reaches Quitar and removes a bound shortcut without entering capt
 test('shortcut buttons show horizontal focus and left returns to keyboard assignment', () => {
   const s = setup({settings: {...DEFAULTS, shortcuts: {power: 'ctrl+alt+p'}},
     theme: {fg: (st: string, t: string) => `<${st}>${t}</${st}>`}});
-  for (let i = 0; i < 4; i++) s.key('\x1b[B');
+  for (let i = 0; i < 5; i++) s.key('\x1b[B');
   s.key('\r');
   s.key('\x1b[C');
   assert.ok(s.text().includes('<accent>[ Quitar ]</accent>'));

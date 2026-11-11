@@ -172,9 +172,9 @@ export class SettingsWindow {
       {label: 'Volumen', value: `${Math.round(s.volume * 100)} %`, step: (d: number) => this.c.change('volume', move(VOLUMES, vol, d))},
       {label: 'Velocidad', value: `${s.speed.toFixed(2)}x`, step: (d: number) => this.c.change('speed', move(SPEEDS, spd, d))},
       {label: 'Lectura automática', value: s.auto ? 'sí' : 'no', step: () => this.c.change('auto', !s.auto)},
+      {label: 'Si llega otra lectura', value: s.policy === 'wait' ? 'Esperar' : 'Detener', step: () => this.c.change('policy', s.policy === 'wait' ? 'stop' : 'wait')},
       {label: 'Atajos de teclado', value: s.shortcutsOn ? 'activados' : 'desactivados', step: () => this.c.change('shortcutsOn', !s.shortcutsOn),
         buttons: [['[ Editar ]', () => { this.page = 'shortcuts'; this.scRow = 0; this.col = 0; this.capturing = false; this.scError = ''; }]]},
-      {label: 'Si llega otra lectura', value: s.policy === 'wait' ? 'Esperar' : 'Detener', step: () => this.c.change('policy', s.policy === 'wait' ? 'stop' : 'wait')},
       {label: 'Barra de controles', value: s.toolbar ? 'visible' : 'oculta', step: () => this.c.change('toolbar', !s.toolbar)},
       {label: 'Indicador de estado', value: s.indicator ? 'visible' : 'oculto', step: () => this.c.change('indicator', !s.indicator)},
       {label: 'Iconos', value: s.icons === 'text' ? 'Texto' : 'Símbolos', step: () => this.c.change('icons', s.icons === 'text' ? 'symbols' : 'text')},
@@ -364,11 +364,13 @@ export class SettingsWindow {
         {text: '  ←→ elegir · Enter · Esc', style: 'dim'}]);
     } else if (this.page === 'main') {
       this.mainRows().forEach((r: any, i: number) => {
+        const section = ({0: 'Voz y sonido', 3: 'Lectura', 5: 'Interfaz', 9: 'Audio y servidor'} as Record<number, string>)[i];
+        if (section) line([{text: '   ' + section, style: 'dim'}]);
         const sel = i === this.row;
-        const segs: Seg[] = [{text: sel ? ' ▶ ' : '   ', style: 'accent'}, {text: fit(r.label, 21), style: sel ? 'accent' : undefined}];
+        const segs: Seg[] = [{text: sel ? ' ▶ ' : '   ', style: 'accent'}, {text: fit(r.label, 22), style: sel ? 'accent' : undefined}];
         if (r.text) segs.push({text: fit(r.text, 30) + ' ', style: sel ? 'accent' : 'dim'});
         // Keep the output's full saved name; only its display must fit between the arrows.
-        const value = r.step && r.label === 'Salida' ? fit(r.value, Math.min(width(r.value), IN - 30)) : r.value;
+        const value = r.step && r.label === 'Salida' ? fit(r.value, Math.min(width(r.value), IN - 31)) : r.value;
         if (r.step) segs.push({text: '◀', style: 'accent', fn: () => { this.row = i; r.step(-1); }},
           {text: ` ${value} `, style: sel ? 'accent' : 'dim', fn: () => { this.row = i; if (r.label === 'Salida') this.openDevices(); else r.step(1); }},
           {text: '▶', style: 'accent', fn: () => { this.row = i; r.step(1); }}, {text: '  '});

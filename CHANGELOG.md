@@ -6,6 +6,7 @@ Este archivo registra los cambios completados en orden cronológico. Las version
 
 ## 2026-11-10
 
+- Pi, ajustes: `/tts menu` agrupa sus filas en cuatro secciones (Voz y sonido, Lectura, Interfaz, Audio y servidor); las teclas no cambian.
 - Pi: `/tts status` muestra la versión de teHablo y avisa si el servidor en marcha es de otra versión; con el servidor apagado ya no lo enciende: indica «Servidor: apagado».
 
 ## Versión 0.1.0-rc.1 · 2026-11-10
