@@ -25,7 +25,7 @@ Este archivo proyecta solo hechos verificados del proyecto: registros activos, b
 
 ## Trabajo reciente completado
 
-- Pi (2026-11-10): el menú muestra el volumen guardado (`555abed`); volumen en pasos de 10 % y velocidad de 0.50x a 1.50x en pasos de 0.05x, con servidor que acepta desde 0.5 (`f65e2c7`). `HEAD` = `origin/master` = `15fce1c`, tras `c6c471d` y la actualización del video del README (`15fce1c`); CI desconocida.
+- Pi (2026-11-10): el menú muestra el volumen guardado (`555abed`); volumen en pasos de 10 % y velocidad de 0.50x a 1.50x en pasos de 0.05x, con servidor que acepta desde 0.5 (`f65e2c7`). Después: barra con `TTS` antes de la primera respuesta, ayuda de `/tts` legible con `/tts ayuda` y autocompletado, **Refrescar** en el cliente SSH y la guía para actualizar. Versión **0.1.0-rc.1** (archivo `VERSION`, tag `v0.1.0-rc.1`), sobre `60051b9` con la CI en verde en Ubuntu y Windows.
 
 <!-- doc-role:recent-work -->
 
