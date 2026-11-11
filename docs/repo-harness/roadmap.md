@@ -72,31 +72,6 @@ Antecedente aprobado el 2026-10-30: base confiable, medición (`RH-W-0003`), ser
 - **Trabajo completado (2026-11-05, `8298b0c`):** a pedido de la persona responsable («quiero que el botón sea el indicador cuando está abierta el toolbar, no quiero otro indicador»; eligió «[ ✓ auto ] , [ ✗ auto ]» y el orden «[ → ] :  [ ⏻ ] [ ≡ ]  Vol [- 100% +]  Vel [- 1.10x +]  [ ✗ auto ]»), los controles abiertos tienen el botón de lectura automática, que es también su indicador; con la barra cerrada, la marca `auto` apaga la lectura al pulsarla. Los avisos cortos van unos 4 s al final de la barra en gris tenue como `// texto` («para no ensucien una linea mas»; «cuando la barra no está visible se necesita el teHablo»): con la barra oculta, los errores, los usos incorrectos y `/tts status` siguen como aviso normal. Se eligió `✓`/`✗` en lugar de tachado porque algunas terminales no lo muestran. Pruebas de la extensión 151/151. La persona responsable lo comprobó en Pi: diseño, aviso y los clics en `[ ✗ auto ]` y en la marca `auto` («si funciona»). No hubo revisión externa: se rechazó para ese commit.
 - **Condición del siguiente avance:** autorización para revisar la interfaz y concretar el alcance con la persona responsable.
 
-- **Adiciones (2026-11-10, Costa Rica; estado de estas ideas: `proposed`):** requieren revisión y conversación antes de cualquier avance; no modifican las decisiones históricas ni autorizan implementación.
-  - **Barra inicial sin respuesta. Clasificación: Listo para decidir.** Origen literal:
-    ```text
-    en el modo normal, cuando inicia pi y no hay respuesta queda muy pelado asi:
-     [ ▶ copiado ] [ ≡ ] [ ⋯ ]
-     mejor dejalño asi:
-      TTS   [ ▶ copiado ] [ ≡ ] [ ⋯ ]
-     [ ▶ ] [ ▶ copiado ] [ ≡ ] [ ⋯ ]
-    ```
-    **Preguntas abiertas:** ¿cuál de las dos formas se quiere? ¿Qué haría `[ ▶ ]` sin una respuesta? **Relacionados:** `RH-W-0031`, `RH-W-0024` y [barra de controles](../desarrollo.md#barra-de-controles).
-  - **Controles en el sidebar de Gentle Shell. Clasificación: Por investigar.** Origen: «quiza agregar opciones par aponer cosas en el sidebar a la derecha del indicador de TTS, como el auto, icono de menu, el encendido y apagado, ver si se puede o no, ver las notas de gentle-shell, hay guias para eso, hubo cambios en gentle-shell en la interfaz. revisar antes y sugerir, cosas clicleabes utililes.» **Preguntas abiertas:** ¿qué permiten las guías y los cambios actuales de Gentle Shell? ¿Qué controles serían útiles? **Relacionados:** `RH-W-0028` y [uso en Pi](../desarrollo.md#uso-en-pi); notas y guías de Gentle Shell pendientes de revisar.
-  - **Revisión del menú y sus categorías. Clasificación: Por investigar.** Origen: «me gustan los submenus para selecionar cosas como en el dispositivos, para volumen velocidad etc (revisar) pero tmb quiero un rework del menu, quizá con tabs (revisar categorias o tabs)» **Preguntas abiertas:** ¿qué selecciones conviene revisar? ¿Se quieren submenús, categorías o pestañas, y con qué alcance? **Relacionados:** `RH-W-0017` y [uso en Pi](../desarrollo.md#uso-en-pi).
-  - **Claridad de la ayuda de comandos. Clasificación: Listo para decidir.** Origen literal:
-    ```text
-    cuando puse un comando de /tss mal sale esto:
-     Warning: TTS teHablo: Uso: /tts · auto · play [n] · copy · pause · stop · toolbar · indicator · menu · dict · status · codigo
-     /tts enciende o apaga el servidor para todos; pause pausa o reanuda solo tu lectura actual; stop detiene tus lecturas actuales y en
-     espera; play sin número lee la última respuesta y play 3 la tercera de la sesión; toolbar muestra u oculta la barra; indicator
-     muestra u oculta el indicador de estado; menu abre los ajustes; dict activa o desactiva el diccionario de pronunciación
-     (pronunciaciones.json) para la voz actual.
-
-     deberia ser algo que se entienda que es /tts auto, /tts play, etc. a como se lee no se entiende eso.
-    ```
-    **Preguntas abiertas:** ¿qué redacción permite entender cómo se invoca cada comando? **Relacionados:** `RH-W-0041` y [uso en Pi](../desarrollo.md#uso-en-pi).
-
 ### RH-W-0005: Probar voces existentes y ampliar fuentes gratuitas compatibles
 
 - **Origen:** solicitud de añadir a los pendientes las pruebas de otras voces, incluidas las de Hugging Face y otras fuentes gratuitas que funcionen con el proyecto.
@@ -402,10 +377,6 @@ Antecedente aprobado el 2026-10-30: base confiable, medición (`RH-W-0003`), ser
 - **Decisión:** registrar; primero el análisis y una propuesta para la persona responsable.
 - **Condición del siguiente avance:** autorización para el análisis.
 
-- **Adiciones (2026-11-10, Costa Rica; estado: `proposed`):** solo para revisar y conversar, sin diseño elegido ni autorización para implementar.
-  - **Presentación de los instaladores. Clasificación: Idea a futuro.** Origen: «el install.sh o bueno los scripts de install linux mac windows, quiero hacer que no se haga tan larga la lista, no sé si se puede hacer como seccion o cuadro con scroll donde se muentra el pñroceso. como más ordenado tipo menu quiza. bueno ya tenemos pendiendo crear los isntaladores bonitos.» **Preguntas abiertas:** ¿qué parte de la salida resulta demasiado larga? ¿Qué presentación se quiere discutir para cada sistema? **Relacionados:** este registro ya posee el instalador con menú; `RH-W-0008` y [Desarrollo](../desarrollo.md).
-  - **Actualización de una instalación reciente. Clasificación: Por investigar.** Origen: «como estamos con el tema de update, si alguien instaló tehablo hace 4 días, que deberia de hacer ? solo pregunto» **Preguntas abiertas:** ¿qué camino de actualización está documentado y comprobado para quien instaló hace cuatro días? ¿Hace falta aclarar la documentación? **Relacionados:** `RH-W-0045`, `RH-W-0038` y [Desarrollo](../desarrollo.md). Es una pregunta, no una decisión de cambiar el mecanismo.
-
 ### RH-W-0038: Primer release o release candidate
 
 - **Origen:** pregunta de la persona responsable del 2026-11-05: «release o rc (lo que sea mejor segun practicas y tipo de proyecto y estado) cuando ?».
@@ -490,13 +461,6 @@ Antecedente aprobado el 2026-10-30: base confiable, medición (`RH-W-0003`), ser
 - **Huecos 1 y 2 cerrados (2026-11-07, `f3e0ba6`, `990a2e4`, `cc2b5e1`):** con el canal del cliente abierto, el receptor solo acepta el código de esa conexión; el cliente recuerda qué códigos son generales y, al cambiar el de una conexión, borra el viejo si nadie más lo usa (los guardados antes cuentan como generales); `/health` sin código responde igual pero ya no mantiene vivo el servidor. Revisión independiente con un fallo corregido (un campo dañado borraba los códigos). Límite conocido aceptado: una lectura que empieza justo antes de **Iniciar voz** termina con el código con que empezó.
 - **Condición del siguiente avance:** probar Linux con Linux y macOS; la integración ya está verificada en el `master` local `9d9a349` (2026-11-08, con `bcaa731` como ancestro), sin comprobar el remoto ni CI. Fijar la versión de los instaladores corresponde a `RH-W-0045` / `RH-W-0038`; detalle y registro en `odd/tasks/ssh-audio.md` (local, fuera de Git).
 
-- **Adiciones (2026-11-10, Costa Rica; estado de estas ideas: `proposed`):** no amplían el alcance activo; requieren revisión y conversación antes de actuar.
-  - **Cliente para Herdr y sus aplicaciones. Clasificación: Por investigar / Idea a futuro.** Origen: «otro cliente pero en herder app y herdr normal ? que funque como el de cli, es decir un plugin o mod.» y «ya salio herdr app de android e ios.» **Preguntas abiertas:** ¿qué integración permiten Herdr y sus aplicaciones actuales? ¿Qué significaría funcionar como el cliente CLI? La disponibilidad indicada por la persona responsable no se verificó en esta anotación. **Relacionados:** investigación histórica de Herdr en este registro, `RH-W-0040` y [cómo funciona](../como-funciona.md).
-  - **Instalación del cliente y uso de uv. Clasificación: Por investigar.** Origen: «instalador del cliente, Xq usamos uv?» **Preguntas abiertas:** ¿por qué se usa `uv` en el cliente? ¿Qué necesita comprender quien lo instala? **Relacionados:** `RH-W-0037`, `RH-W-0008`, `RH-W-0046` y [Desarrollo](../desarrollo.md).
-  - **API de audio por SSH y Android. Clasificación: Por investigar.** Origen: «api para el Audio por ssh? Android? o nada que ver.» **Preguntas abiertas:** ¿qué uso se busca con esa API? ¿Tiene relación con escuchar desde Android o es otro alcance? **Relacionados:** `RH-W-0014`, `RH-W-0040` y [cómo funciona](../como-funciona.md).
-  - **Refresco de sesiones SSH en el cliente. Clasificación: Listo para decidir.** Origen: «botón de refrescar sessiones ssh en el cliente» **Preguntas abiertas:** ¿qué debería refrescar y en qué momento se necesitaría? **Relacionados:** ideas de varias conexiones de este registro y [Desarrollo](../desarrollo.md).
-  - **Cambio de dispositivo con otras sesiones. Clasificación: Por investigar.** Origen: «que pasa con las otras sessiones cuando se cambia el dispositivo ?» **Preguntas abiertas:** ¿se refiere al dispositivo del cliente o al de Pi? ¿Qué ocurre con las otras sesiones y sus lecturas al cambiarlo? **Relacionados:** `RH-W-0017`, `RH-W-0033`, `RH-W-0041` y [cómo funciona](../como-funciona.md). El comportamiento queda sin verificar en esta anotación.
-
 ### RH-W-0045: Versión visible del cliente, la extensión y el servidor
 
 - **Origen:** la persona responsable, 2026-11-07, al actualizar la VM de Proxmox a mano: «hay que empezar a ponerle la version, control de versiones etc a la extencion y ciente.»
@@ -505,21 +469,6 @@ Antecedente aprobado el 2026-10-30: base confiable, medición (`RH-W-0003`), ser
 - **Estado:** `proposed`.
 - **Diseño mínimo propuesto (sin empezar):** un solo número de versión del proyecto, en un único sitio; el cliente lo muestra en su menú, Pi en `/tts status` y el servidor en `/health`; si cliente y servidor no coinciden, el cliente lo avisa sin bloquear. Cada versión nueva se anota en `CHANGELOG.md`. Sin herramientas nuevas ni dependencias.
 - **Trabajo restante:** decidir el esquema (por ejemplo `0.x.y`) y dónde vive el número; implementarlo con pruebas.
-
-### RH-W-0046: Revisar la elección de lenguaje y distribución en binarios
-
-- **Origen (2026-11-10, Costa Rica):** pregunta de la persona responsable: «es la mejor decición usar phyton, o mejor go y binarios, o nel?»
-- **Clasificación:** Por investigar; arquitectura, de consecuencias amplias.
-- **Prioridad:** P3; pregunta sin compromiso de cambio, no impide el uso actual.
-- **Dependencias:** coordinar con `RH-W-0037` (instaladores), `RH-W-0044` (cliente), `RH-W-0011` (portabilidad) y `RH-W-0025` (consumo).
-- **Estado:** `proposed`.
-- **Trabajo completado:** registro documental de la pregunta; ninguna evaluación técnica realizada.
-- **Trabajo restante:** conversar sobre qué parte del proyecto abarca la pregunta y qué criterios permitirían evaluar la elección actual frente a Go y binarios.
-- **Preguntas abiertas:** ¿se consulta por el cliente, el servidor o todo el proyecto? ¿Qué necesidades motivan revisar el lenguaje y la distribución? ¿Qué consecuencias habría que investigar antes de decidir?
-- **Relacionados:** `RH-W-0008`, `RH-W-0037`, `RH-W-0044` y [cómo funciona](../como-funciona.md).
-- **Exclusiones:** esta anotación no elige lenguaje, migración ni forma de distribución.
-- **Decisión:** ninguna sobre la implementación. Instrucción común para las ideas anotadas el 2026-11-10: «todoas hay que revisar y hablar que hacemos, antes de hacerlo y anotarlas, documentar».
-- **Condición del siguiente avance:** revisión del alcance y conversación con la persona responsable antes de autorizar una investigación o un cambio.
 
 ## Registros resueltos
 <!-- doc-role:resolved-records -->
