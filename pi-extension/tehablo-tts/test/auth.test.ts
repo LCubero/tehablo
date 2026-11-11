@@ -1,14 +1,17 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {createServer} from 'node:http';
-import {mkdirSync, readFileSync} from 'node:fs';
+import {mkdirSync, readFileSync, rmSync} from 'node:fs';
 import {resolve} from 'node:path';
+import {fileURLToPath} from 'node:url';
 import {ServerClient, pairingCode} from '../src/server.ts';
 
-test('ServerClient authenticates every request and reuses the private code', async () => {
-  const dir = resolve('.repo-harness/tmp/t11-check');
+test('ServerClient authenticates every request and reuses the private code', async t => {
+  // The repository's ignored scratch folder, whatever the working directory of the test run.
+  const dir = resolve(fileURLToPath(new URL('../../../.repo-harness/tmp/t11-check', import.meta.url)));
   mkdirSync(dir, {recursive: true});
   const codePath = resolve(dir, `node-code-${process.pid}`);
+  t.after(() => rmSync(codePath, {force: true}));
   const code = pairingCode(codePath);
   assert.equal(pairingCode(codePath), code);
   assert.equal(readFileSync(codePath, 'ascii').trim(), code);

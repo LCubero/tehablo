@@ -4,6 +4,7 @@ import {createExtension, fileStore, hfHub, memoryStore, readTable, sshCode} from
 import {mkdtempSync, writeFileSync, rmSync, mkdirSync, readFileSync, statSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
+import {fileURLToPath} from 'node:url';
 import {DEFAULTS} from '../src/settings.ts';
 import {ServerClient} from '../src/server.ts';
 
@@ -166,7 +167,7 @@ test('scoped controls S1: a replaced paused card returns to play while the forei
 });
 
 test('S16 pairing code is private, stable and available before starting the server', () => {
-  const base = join(process.cwd(), '.repo-harness/tmp/t9-check');
+  const base = fileURLToPath(new URL('../../../.repo-harness/tmp/t9-check', import.meta.url)); // repository scratch, any cwd
   mkdirSync(base, {recursive: true});
   const dir = mkdtempSync(join(base, 'code-'));
   try {
