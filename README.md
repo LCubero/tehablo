@@ -60,6 +60,8 @@ Usa la primera en Windows o la segunda en Linux/macOS. Abre Pi o ejecuta `/reloa
 
 Audio probado en Windows y Fedora; macOS aún no verificado. [Instalación manual](docs/desarrollo.md#instalación-manual).
 
+¿Ya está instalado? [Actualizar teHablo](docs/desarrollo.md#actualizar).
+
 ## Uso en Pi
 
 Empieza apagado y en modo manual, con `lola` o la voz que hayas guardado.

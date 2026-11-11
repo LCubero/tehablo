@@ -8,7 +8,7 @@ Guía de uso detallado, instalación y referencia para quien trabaja en teHablo.
 4. [Pruebas](#pruebas)
 5. [Arranque en Windows: mediciones y límites](#arranque-en-windows-mediciones-y-límites)
 6. [Problemas conocidos](#problemas-conocidos)
-7. [Instalación manual](#instalación-manual)
+7. [Instalación manual](#instalación-manual) y [actualización](#actualizar)
 8. [Uso en Pi](#uso-en-pi)
 9. [Audio por SSH](#audio-por-ssh)
 10. [TUI](#uso-tui), [consola](#uso-consola-simple) y [voces](#voces)
@@ -374,6 +374,25 @@ Comprobación básica en Linux (importaciones y Torch sin CUDA; no prueba el aud
 
 La combinación comprobada en Fedora y los límites de la prueba están en [Desarrollo](desarrollo.md#verificación-en-fedora).
 
+### Actualizar
+
+1. Ejecuta `git pull` en la carpeta de teHablo. Si Git informa de cambios locales o divergencia, resuélvelos antes de continuar; nunca fuerces la actualización.
+2. Ejecuta `/reload` en cada Pi abierto. No hace falta reinstalar la extensión si su carpeta no se movió.
+3. Reinicia el servidor compartido una sola vez: `/tts menu` → **Servidor** → **Reiniciar**. Interrumpe las lecturas en curso de todas las sesiones.
+4. No hace falta volver a ejecutar el instalador salvo que las notas de actualización indiquen cambios de dependencias. Hacerlo es seguro y reutiliza los archivos descargados.
+5. Si usas el cliente de audio SSH instalado sin clon, ciérralo y vuelve a descargarlo en tu computadora: su instalador no reemplaza una copia existente. Después ábrelo como siempre. Desde un clon, `git pull` ya actualiza el cliente.
+
+   **Windows (PowerShell):**
+   ```powershell
+   $base = if ($env:HOME) { $env:HOME } else { $env:USERPROFILE }
+   Invoke-WebRequest -UseBasicParsing 'https://raw.githubusercontent.com/LCubero/tehablo/master/cliente/tehablo_cliente.py' -OutFile (Join-Path $base '.local\share\tehablo-cliente\tehablo_cliente.py')
+   ```
+
+   **Linux / macOS:**
+   ```sh
+   curl -fsSL https://raw.githubusercontent.com/LCubero/tehablo/master/cliente/tehablo_cliente.py -o "$HOME/.local/share/tehablo-cliente/tehablo_cliente.py"
+   ```
+
 ## Uso en Pi
 
 Pi empieza con la voz marcada `"default": true` en [`src/voice_table.json`](../src/voice_table.json): hoy `lola` (Pocket `spanish`), la mejor que funciona gratis y sin cuenta. Si aparece una mejor que se pueda distribuir, se cambia esa marca. La voz que elijas en la ventana de ajustes se guarda, y el servidor arranca directamente con ella en las sesiones siguientes.
@@ -467,7 +486,7 @@ La navegación con **↑↓** es circular en el menú principal y las listas de 
 
 Elige **Audio: Local / SSH**, **Salida: nombre / Predeterminada** (en Local; en SSH se elige en el cliente), **voz**, **volumen**, **velocidad**, **lectura automática**, **atajos de teclado** e **indicador de estado**, o enciende, apaga y reinicia el servidor. Usa clics o ↑↓, ←→, Enter y Esc.
 
-En **Salida**, pulsa **Enter** o haz clic en el nombre para abrir la lista: **↑↓** mueve la selección, **Enter** la aplica y vuelve, y **Esc** cancela sin cambiarla. **←→** en la fila principal sigue cambiando la salida como antes.
+En **Salida**, pulsa **Enter** o haz clic en el nombre para abrir la lista: **↑↓** mueve la selección, **Enter** la aplica y vuelve, y **Esc** cancela sin cambiarla. **←→** en la fila principal sigue cambiando la salida como antes. La salida elegida se comparte entre todas las sesiones de Pi que usan el mismo servidor; una lectura en curso de otra sesión termina en el dispositivo anterior y la siguiente usa el nuevo.
 
 Los dispositivos se consultan al abrir los ajustes, incluso con el TTS apagado, sin arrancar la síntesis. En el submenú, **Refrescar (R)** vuelve a consultar las listas filtrada y completa; úsalo después de conectar o desconectar una salida. La consulta no interrumpe una lectura ni cambia la salida elegida.
 
@@ -509,7 +528,12 @@ Pausa, continuar, detener, `/tts stop`, los atajos y cerrar la sesión actúan s
 
 ## Audio por SSH
 
-Pi y teHablo corren en el servidor; el **cliente teHablo** reproduce la voz en tu computadora. Usa **uv** para ejecutar Python con sounddevice; no necesita FFmpeg. En esa computadora, ejecuta:
+Pi y teHablo corren en el servidor; el **cliente teHablo** reproduce la voz en tu computadora. Usa **uv** para ejecutar Python con sounddevice; no necesita FFmpeg.
+
+uv prefiere un Python de python.org instalado; si no hay uno adecuado, lo descarga, instala las dependencias en un entorno aislado sin tocar el sistema y arranca el cliente de un solo archivo con un comando.
+La alternativa venv + pip requiere el Python adecuado y más pasos según el sistema; un binario independiente exigiría compilaciones por plataforma.
+
+En esa computadora, ejecuta:
 
 **Windows (PowerShell):**
 ```powershell
