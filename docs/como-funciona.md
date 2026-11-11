@@ -106,6 +106,7 @@ Mismo equipo, `spanish`, `pocket-tts` 4.0.1 y Torch 2.15.0+cpu ([datos](measurem
 - Casi toda la espera inicial es importar librerías, no cargar el modelo.
 - En reposo el servidor casi no usa CPU, pero conserva la RAM del modelo hasta cerrarse.
 - En este equipo la cuantización no ahorra memoria de forma clara y genera más lento.
+- Hilos y CPU por lectura (2026-11-10, `spanish`, voz `lola`, texto de 36,8 s de audio, sin reproducir): limitar los hilos de PyTorch a 1, 2 o 4 no cambia nada, porque Pocket ya usa un hilo para el cálculo principal. Genera a ~0,27 del tiempo real (~3,6×), con ~1,7 núcleos mientras genera, es decir **~0,5 núcleos en promedio durante la lectura**; primer trozo en ~0,13–0,16 s; pico de RAM ~978 MiB. Con `quantize=True`: ~0,35 del tiempo real y más CPU total. En reposo, antes y después de leer y con audio local o por SSH, el servidor no usa CPU medible.
 - La extensión espera a que el servidor responda mientras su proceso siga vivo, sin límite fijo de tiempo; si el proceso se cierra, avisa al momento y remite a `logs/tehablo-server.log`. Antes esperaba solo ~7,5 s, y en Fedora un arranque tardó ~8,5 s.
 
 ---

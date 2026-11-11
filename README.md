@@ -85,7 +85,7 @@ Si Pi corre en un servidor, el cliente teHablo puede reproducir la voz en tu com
 | Qué | Aproximado |
 |---|---|
 | GPU | No la usa: funciona solo con CPU |
-| CPU al leer | ~1–2 núcleos mientras genera la voz |
+| CPU | Al leer, **~0,5 núcleos** en promedio (picos de ~1,7 mientras genera, unas 3,6 veces más rápido de lo que habla); en reposo, prácticamente nada |
 | RAM con el servidor encendido | Pocket `spanish` (Lola, Rafael y las voces latinoamericanas) **~1 GB**; `spanish_24l` **~1,8 GB**; Phonon (Regina, Iker) **~0,3 GB** |
 | Disco | Entorno Python **0,8–1,1 GB**; modelos Pocket **0,9–1,2 GB**; Phonon **~0,15 GB** |
 | Internet | Solo para instalar y descargar voces; después funciona sin conexión |
