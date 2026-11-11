@@ -70,6 +70,7 @@ Empieza apagado y en modo manual, con `lola` o la voz que hayas guardado.
 | `/tts auto` | Activa o desactiva la lectura automática |
 | `/tts stop` | Detiene tus lecturas |
 | `/tts menu` | Elige voz, salida, volumen y velocidad |
+| `/tts ayuda` | Muestra todos los comandos |
 
 [Controles, comandos y ajustes completos](docs/desarrollo.md#uso-en-pi).
 

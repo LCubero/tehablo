@@ -879,7 +879,7 @@ test('/tts toggles the server like the bar; status, menu, copy, pause, toolbar; 
     await s.command('');assert.ok(s.calls.includes('/shutdown'));assert.equal(s.line(),'[ ⏻ TTS ] [ ≡ ]  // Lectura automática: sí');assert.equal(s.statuses.at(-1),'TTS off');assert.equal(s.store.load().auto,false);
     await s.command('');assert.equal(s.ensures(),2);
     await s.command('status');assert.match(s.notices.at(-1)!,/^TTS teHablo: Barra visible · indicador visible · automático: no\nServidor: idle · listo: sí\n/);
-    assert.match(s.notices.at(-1)!,/\/tts · auto · play \[n\] · copy · pause · stop · toolbar · indicator · menu · dict · status/);
+    assert.match(s.notices.at(-1)!,/Uso de \/tts:\n\/tts +enciende o apaga el servidor/);
     await s.command('copy');assert.ok(s.calls.includes('/speak'));
     s.set('playing','a');await s.command('pause');assert.equal(s.calls.at(-1),'/pause');
     s.set('paused','a');await tick();await s.command('pause');assert.equal(s.calls.at(-1),'/resume');
@@ -890,7 +890,7 @@ test('/tts toggles the server like the bar; status, menu, copy, pause, toolbar; 
     await s.command('toolbar');assert.match(s.line(),/^\[ ‖ \] \[ ■ \].*  \/\/ Barra visible\.$/);
     for(const removed of ['on','off','voice','voice lola','model spanish','speed 1.25','resume']) {
       const n=s.calls.length;await s.command(removed);
-      assert.match(s.notices.at(-1)!,/^TTS teHablo: Uso: \/tts · auto · play \[n\]/,removed);assert.equal(s.calls.length,n,removed);
+      assert.ok(s.notices.at(-1)!.startsWith(`TTS teHablo: Comando no reconocido: /tts ${removed}\nUso de /tts:\n`),removed);assert.equal(s.calls.length,n,removed);
     }
   }finally{await s.close();}
 });
@@ -1621,7 +1621,7 @@ test('short notices show at the end of the bar as // text for a while; a hidden 
     await s.command('toolbar');assert.equal(s.line(),undefined);assert.equal(s.notices.at(-1),'TTS teHablo: Barra oculta.');
     await s.command('toolbar');assert.equal(s.line(),'[ ▶ ] [ ▶ copiado ] [ ≡ ] [ ⋯ ] auto  // Barra visible.');
     assert.equal(s.notices.length,before+1);
-    await s.command('bogus');assert.match(s.notices.at(-1)!,/^TTS teHablo: Uso: /);assert.equal(s.notices.length,before+2);
+    await s.command('bogus');assert.match(s.notices.at(-1)!,/^TTS teHablo: Comando no reconocido: \/tts bogus\nUso de \/tts:/);assert.equal(s.notices.length,before+2);
     assert.equal(s.line(),'[ ▶ ] [ ▶ copiado ] [ ≡ ] [ ⋯ ] auto  // Barra visible.');
   }finally{await s.close();}
 });

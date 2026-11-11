@@ -76,7 +76,23 @@ const ENTRY = 'tehablo-tts';
 /** Every message from this extension starts with this prefix. */
 const say = (c: ExtensionContext | undefined, text: string, level: 'info' | 'warning') => c?.ui.notify(`TTS teHablo: ${text}`, level);
 interface Card { messageId: string; number: number }
-const help = '/tts · auto · play [n] · copy · pause · stop · toolbar · indicator · menu · dict · status · codigo\n/tts enciende o apaga el servidor para todos; pause pausa o reanuda solo tu lectura actual; stop detiene tus lecturas actuales y en espera; play sin número lee la última respuesta y play 3 la tercera de la sesión; toolbar muestra u oculta la barra; indicator muestra u oculta el indicador de estado; menu abre los ajustes; dict activa o desactiva el diccionario de pronunciación (pronunciaciones.json) para la voz actual.';
+const commandHelp = [
+  ['', 'enciende o apaga el servidor (para todos)'],
+  ['auto', 'lectura automática: sí o no'],
+  ['play [n]', 'lee la última respuesta, o la número n'],
+  ['copy', 'lee el texto copiado'],
+  ['pause', 'pausa o reanuda solo tu lectura actual'],
+  ['stop', 'detiene tus lecturas actuales y en espera'],
+  ['toolbar', 'muestra u oculta la barra'],
+  ['indicator', 'muestra u oculta el indicador'],
+  ['menu', 'abre los ajustes'],
+  ['dict', 'diccionario de pronunciación para la voz actual: sí o no'],
+  ['status', 'muestra el estado y esta ayuda'],
+  ['codigo', 'muestra el código para vincular el cliente SSH'],
+  ['ayuda', 'muestra esta ayuda'],
+];
+const help = 'Uso de /tts:\n' + commandHelp.map(([command, description]) =>
+  (command ? `/tts ${command}` : '/tts').padEnd(18) + description).join('\n');
 
 export function createExtension(pi: ExtensionAPI, client = new ServerClient(), store: Store = client.root ? fileStore(client.root) : memoryStore(),
   clipboard: () => Promise<string> = () => readClipboard(), watchMs = 0, noteMs = 4000,
@@ -779,6 +795,13 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
   });
   pi.registerCommand('tts', {
     description: 'Leer respuestas con teHablo local',
+    getArgumentCompletions: prefix => {
+      const items = commandHelp.slice(1).map(([command, description]) => {
+        const value = command.split(' ')[0];
+        return {value, label: value, description};
+      }).filter(item => item.value.startsWith(prefix));
+      return items.length ? items : null;
+    },
     handler: async (args, ctx) => {
       if (ctx.mode !== 'tui') return;
       context = ctx;
@@ -819,8 +842,9 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
           case 'codigo':
             say(ctx, `Código de vinculación: ${store.sshCode?.()}\nSirve para vincular el cliente de la PC (menú «Vincular servidor»). No lo compartas.`);
             return;
+          case 'ayuda': say(ctx, help, 'info'); return;
           case 'status': break;
-          default: say(ctx, `Uso: ${help}`, 'warning'); return;
+          default: say(ctx, `Comando no reconocido: /tts ${args.trim()}\n${help}`, 'warning'); return;
         }
         const health = await client.action('/health');
         if (generation !== epoch) return;

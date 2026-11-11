@@ -445,7 +445,7 @@ Significado de los iconos (aunque se vean como cuadros):
 
 | Comando | Acción |
 |---|---|
-| `/tts` | Enciende o apaga el servidor; apagar desactiva la lectura automática |
+| `/tts` | Enciende o apaga el servidor para todas las sesiones; apagar desactiva la lectura automática |
 | `/tts auto` | Activa o desactiva la lectura de cada respuesta al terminar; al activarla enciende el servidor. En los controles abiertos, el botón `[ ✗ auto ]` / `[ ✓ auto ]` hace lo mismo y muestra el estado; con la barra cerrada, `auto` aparece al final mientras está activa y un clic lo desactiva |
 | `/tts play [n]` | Lee la última respuesta o la número `n` de la sesión, contando desde la primera |
 | `/tts copy` | Lee el texto copiado |
@@ -456,7 +456,10 @@ Significado de los iconos (aunque se vean como cuadros):
 | `/tts menu` | Abre los ajustes |
 | `/tts dict` | Activa o desactiva el diccionario de pronunciación para la voz actual y lo recuerda |
 | `/tts status` | Muestra el estado y la ayuda (código oculto) |
-| `/tts codigo` | Muestra el código para vincular el cliente de la PC; no lo compartas |
+| `/tts codigo` | Muestra el código para vincular el cliente de la PC por SSH; no lo compartas |
+| `/tts ayuda` | Muestra la ayuda, un comando por línea con su explicación |
+
+Los argumentos de `/tts` se autocompletan con sus explicaciones, incluida `ayuda`. Un comando no reconocido muestra un aviso «Comando no reconocido: /tts …» seguido de la misma ayuda que `/tts ayuda` y `/tts status`.
 
 ### Ajustes `[ ≡ ]` (menú)
 

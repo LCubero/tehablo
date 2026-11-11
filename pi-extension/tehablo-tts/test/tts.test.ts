@@ -28,8 +28,57 @@ function setup(mode = 'tui', clipboard?: () => Promise<string>, health = {model:
     await emit('agent_settled',{aborted:false});
   };
   const cards = ()=>entries.filter(e=>e.type==='custom');
-  return {calls,notices,emit,command,finish,cards,renderers,ctx,store};
+  return {calls,notices,emit,command,finish,cards,renderers,ctx,store, completions: (prefix:string) => commands.tts.getArgumentCompletions(prefix)};
 }
+const commandHelp = `Uso de /tts:
+/tts              enciende o apaga el servidor (para todos)
+/tts auto         lectura automática: sí o no
+/tts play [n]     lee la última respuesta, o la número n
+/tts copy         lee el texto copiado
+/tts pause        pausa o reanuda solo tu lectura actual
+/tts stop         detiene tus lecturas actuales y en espera
+/tts toolbar      muestra u oculta la barra
+/tts indicator    muestra u oculta el indicador
+/tts menu         abre los ajustes
+/tts dict         diccionario de pronunciación para la voz actual: sí o no
+/tts status       muestra el estado y esta ayuda
+/tts codigo       muestra el código para vincular el cliente SSH
+/tts ayuda        muestra esta ayuda`;
+
+test('/tts argument completions match help order and descriptions', () => {
+  const s = setup();
+  const expected = commandHelp.split('\n').slice(2).map(line => {
+    const [label, description] = line.slice(5).split(/ {2,}/);
+    return {value: label.split(' ')[0], label: label.split(' ')[0], description};
+  });
+  assert.deepEqual(s.completions(''), expected);
+  assert.equal(expected.length, 12);
+  assert.deepEqual(s.completions('ay'), [expected.at(-1)]);
+  assert.equal(s.completions('unknown'), null);
+});
+
+for (const input of ['ayuda', 'xyz', 'speed 1.25']) {
+  test(`/tts ${input} emits exact help and notice level`, async () => {
+    const s = setup();
+    try {
+      await s.command(input);
+      assert.deepEqual(s.notices, [[`TTS teHablo: ${input === 'ayuda' ? '' : `Comando no reconocido: /tts ${input}\n`}${commandHelp}`, input === 'ayuda' ? 'info' : 'warning']]);
+      assert.equal(s.calls.length, 0);
+    } finally { await s.emit('session_shutdown'); }
+  });
+}
+test('/tts toolbar still toggles and status reuses the exact help', async () => {
+  const s = setup();
+  try {
+    await s.command('toolbar');
+    assert.equal(s.store.load().toolbar, false);
+    assert.deepEqual(s.notices, [['TTS teHablo: Barra oculta.', 'info']]);
+    await s.command('status');
+    assert.ok(s.notices.at(-1)[0].endsWith(`\n${commandHelp}`));
+    assert.equal(s.notices.at(-1)[1], 'info');
+  } finally { await s.emit('session_shutdown'); }
+});
+
 test('dict defaults, per-voice toggle persistence, request payload and status',async()=>{
   for (const [model,voice] of [['spanish','lola'],['spanish_24l','other'],['phonon','Regina'],['phonon','Iker']]) {
     const s=setup('tui',undefined,{model,voice});
