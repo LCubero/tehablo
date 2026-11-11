@@ -1,20 +1,24 @@
 import { test } from 'node:test';
+import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 import assert from 'node:assert/strict';
 import { createExtension, memoryStore } from '../src/extension.ts';
 import { ServerClient } from '../src/server.ts';
 import { cleanText } from '../src/text.ts';
 
-function setup(mode = 'tui', clipboard?: () => Promise<string>, health = {model:'spanish', voice:'voz'}) {
+function setup(mode = 'tui', clipboard?: () => Promise<string>, health: any = {model:'spanish', voice:'voz'}, root?: string) {
   const hooks: any = {}, commands: any = {}, renderers: any = {};
   const entries: any[] = [], calls: any[] = [], notices: any[] = [];
   const fetcher = async (url: any, init: any) => {
     const path = new URL(url).pathname;
     const body = init?.body && JSON.parse(init.body);
     calls.push([path, body]);
+    if (health === null) throw new Error('Server off');
     if (path === '/config' && body.speed > 1.5) return new Response(JSON.stringify({error:'Velocidad fuera de rango'}), {status:400});
     return Response.json({ok:true, ready:true, state:'idle', audio:'local', ...health, speed:1, voices:['voz']});
   };
-  const client = new ServerClient({fetch:fetcher as any});
+  const client = new ServerClient({root, fetch:fetcher as any});
   const ctx: any = {mode, sessionManager:{getBranch:()=>entries}, ui:{notify:(...args:any[])=>notices.push(args), setStatus(){}, setWidget(){}}};
   const pi: any = {on:(n:any,h:any)=>hooks[n]=h, registerCommand:(n:any,c:any)=>commands[n]=c,
     registerEntryRenderer:(n:any,r:any)=>renderers[n]=r,
@@ -30,6 +34,39 @@ function setup(mode = 'tui', clipboard?: () => Promise<string>, health = {model:
   const cards = ()=>entries.filter(e=>e.type==='custom');
   return {calls,notices,emit,command,finish,cards,renderers,ctx,store, completions: (prefix:string) => commands.tts.getArgumentCompletions(prefix)};
 }
+test('/tts status reports local version and only warns for known mismatches', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'tehablo-version-'));
+  try {
+    const localVersion = '0.1.0-rc.1';
+    writeFileSync(join(root, 'VERSION'), localVersion + '\n');
+    const off = setup('tui', undefined, null, root);
+    try {
+      await off.command('status');
+      assert.equal(off.notices.length, 1);
+      const [text, level] = off.notices[0];
+      assert.equal(level, 'info');
+      // Server off: version, local settings, the server state and the help, without starting the server.
+      assert.match(text, new RegExp(`^teHablo ${localVersion.replace(/\./g, '\\.')}\nBarra (visible|oculta) · indicador (visible|oculto) · automático: (sí|no)\nServidor: apagado\n`));
+      assert.ok(text.endsWith(commandHelp), 'status also shows the help');
+      assert.deepEqual(off.calls, [['/health', undefined]]);
+    } finally { await off.emit('session_shutdown'); }
+    for (const local of [localVersion, undefined]) {
+      if (local) writeFileSync(join(root, 'VERSION'), local + '\n');
+      for (const remote of ['0.1.0-rc.1', 'older', null]) {
+        const s = setup('tui', undefined, {version: remote}, local ? root : join(root, 'absent'));
+        try {
+          await s.command('status');
+          const notice = s.notices.at(-1)[0];
+          assert.equal(notice.split('\n')[0], `teHablo ${local ?? 'versión desconocida'}`);
+          assert.equal(notice.includes('reinícialo'), !!local && !!remote && local !== remote);
+          if (local && remote === 'older') assert.ok(notice.includes(`El servidor corre older; reinícialo para usar ${local} (/tts menu → Servidor → Reiniciar).`));
+          if (remote === null && local) assert.ok(notice.includes('versión desconocida'));
+        } finally { await s.emit('session_shutdown'); }
+      }
+    }
+  } finally { rmSync(root, {recursive:true, force:true}); }
+});
+
 const commandHelp = `Uso de /tts:
 /tts              enciende o apaga el servidor (para todos)
 /tts auto         lectura automática: sí o no

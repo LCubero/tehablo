@@ -846,13 +846,26 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
           case 'status': break;
           default: say(ctx, `Comando no reconocido: /tts ${args.trim()}\n${help}`, 'warning'); return;
         }
-        const health = await client.action('/health');
+        let version: string | undefined;
+        try { version = readFileSync(join(client.root, 'VERSION'), 'utf8').trim() || undefined; } catch { /* Version is optional. */ }
+        const heading = `teHablo ${version ?? 'versión desconocida'}`;
+        const local = () => `Barra ${barVisible ? 'visible' : 'oculta'} · indicador ${settings.indicator ? 'visible' : 'oculto'} · automático: ${auto ? 'sí' : 'no'}`;
+        let health;
+        try { health = await client.request('/health'); }
+        catch {
+          // Status never starts the server.
+          if (generation === epoch) ctx.ui.notify(`${heading}\n${local()}\nServidor: apagado\n${help}`, 'info');
+          return;
+        }
         if (generation !== epoch) return;
         sync(health);
-        const status = await client.action('/status');
+        const serverVersion = typeof health.version === 'string' && health.version.trim() ? health.version.trim() : undefined;
+        const warning = version && serverVersion && version !== serverVersion
+          ? `\nEl servidor corre ${serverVersion}; reinícialo para usar ${version} (/tts menu → Servidor → Reiniciar).` : '';
+        const status = await client.request('/status');
         if (generation !== epoch) return;
         // The multi-line status report is too long for the bar, so it stays an ordinary notice.
-        say(ctx, `Barra ${barVisible ? 'visible' : 'oculta'} · indicador ${settings.indicator ? 'visible' : 'oculto'} · automático: ${auto ? 'sí' : 'no'}\nServidor: ${status.state} · listo: ${health.ready ? 'sí' : 'no'}\nAudio: ${settings.audio === 'ssh' ? 'SSH' : 'Local'}${settings.audio === 'ssh' ? '\nCódigo de vinculación: oculto (/tts codigo para verlo)' : ''}\nSalida: ${settings.audio === 'ssh' ? '(SSH: la elige el cliente)' : settings.device || 'Predeterminada'}\nModelo: ${health.model} · voz: ${health.voice} · velocidad: ${health.speed} · volumen: ${Math.round(volume * 100)} %\nDict (diccionario de pronunciación): ${dictEnabled() ? 'sí' : 'no'}\n${help}`, 'info');
+        ctx.ui.notify(`${heading}${warning}\n${local()}\nServidor: ${status.state} · versión: ${serverVersion ?? 'versión desconocida'} · listo: ${health.ready ? 'sí' : 'no'}\nAudio: ${settings.audio === 'ssh' ? 'SSH' : 'Local'}${settings.audio === 'ssh' ? '\nCódigo de vinculación: oculto (/tts codigo para verlo)' : ''}\nSalida: ${settings.audio === 'ssh' ? '(SSH: la elige el cliente)' : settings.device || 'Predeterminada'}\nModelo: ${health.model} · voz: ${health.voice} · velocidad: ${health.speed} · volumen: ${Math.round(volume * 100)} %\nDict (diccionario de pronunciación): ${dictEnabled() ? 'sí' : 'no'}\n${help}`, 'info');
       });
     },
   });

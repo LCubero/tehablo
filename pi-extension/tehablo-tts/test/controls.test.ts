@@ -859,8 +859,8 @@ for(const [command,path] of [['status','/health'],['status','/status']] as const
     const s=setup();let resolve!:(value:any)=>void;
     try {
       await clickAt(s,'⏻ TTS');await clickAt(s,'[ ⋯ ]');
-      const action=s.client.action;
-      s.client.action=async(p:string,body:any)=>p===path?new Promise(r=>{resolve=r;}):action(p,body);
+      const request=s.client.request;
+      s.client.request=async(p:string)=>p===path?new Promise(r=>{resolve=r;}):request(p);
       const pending=s.command(command);
       await new Promise(r=>setImmediate(r));assert.equal(typeof resolve,'function');
       await clickAt(s,'[ ⏻ ]');const count=s.calls.length;
@@ -878,7 +878,7 @@ test('/tts toggles the server like the bar; status, menu, copy, pause, toolbar; 
     await s.command('auto');assert.equal(s.statuses.at(-1),'TTS auto');assert.equal(s.store.load().auto,false);
     await s.command('');assert.ok(s.calls.includes('/shutdown'));assert.equal(s.line(),'[ ⏻ TTS ] [ ≡ ]  // Lectura automática: sí');assert.equal(s.statuses.at(-1),'TTS off');assert.equal(s.store.load().auto,false);
     await s.command('');assert.equal(s.ensures(),2);
-    await s.command('status');assert.match(s.notices.at(-1)!,/^TTS teHablo: Barra visible · indicador visible · automático: no\nServidor: idle · listo: sí\n/);
+    await s.command('status');assert.match(s.notices.at(-1)!,/^teHablo versión desconocida\nBarra visible · indicador visible · automático: no\nServidor: idle · versión: versión desconocida · listo: sí\n/);
     assert.match(s.notices.at(-1)!,/Uso de \/tts:\n\/tts +enciende o apaga el servidor/);
     await s.command('copy');assert.ok(s.calls.includes('/speak'));
     s.set('playing','a');await s.command('pause');assert.equal(s.calls.at(-1),'/pause');

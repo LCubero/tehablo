@@ -66,6 +66,27 @@ class Sink:
         self.thread.join()
 
 
+class VersionTests(unittest.TestCase):
+    def test_health_version(self):
+        root_version = Path(__file__).resolve().parents[1] / 'VERSION'
+        for path, expected in [(root_version, root_version.read_text().strip()),
+                               (root_version / 'missing', None)]:
+            with self.subTest(path=path):
+                server = create_server(port=0, model='spanish', catalog=['lola'], idle_exit=0, version_path=path,
+                                       synthesizer_factory=lambda _: Synth(), audio_factory=Sink)
+                thread = threading.Thread(target=server.serve_forever, daemon=True)
+                thread.start()
+                try:
+                    conn = http.client.HTTPConnection(*server.server_address, timeout=2)
+                    conn.request('GET', '/health', headers={'X-Tehablo-Codigo': CODE})
+                    response = conn.getresponse()
+                    self.assertEqual(response.status, 200)
+                    self.assertEqual(json.loads(response.read())['version'], expected)
+                    conn.close()
+                finally:
+                    server.shutdown(); server.server_close(); thread.join()
+
+
 class VoicePreparationTests(unittest.TestCase):
     def test_pocket_preparation_reuses_the_speech_voice_state(self):
         synth = object.__new__(tehablo_server.PocketSynthesizer)

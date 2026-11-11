@@ -4,6 +4,10 @@
 
 Este archivo registra los cambios completados en orden cronológico. Las versiones (`VERSION` y tags `vX.Y.Z`) marcan hasta qué fecha llega cada una.
 
+## 2026-11-10
+
+- Pi: `/tts status` muestra la versión de teHablo y avisa si el servidor en marcha es de otra versión; con el servidor apagado ya no lo enciende: indica «Servidor: apagado».
+
 ## Versión 0.1.0-rc.1 · 2026-11-10
 
 Primera versión candidata: incluye todos los cambios de este historial hasta el 2026-11-10.

@@ -485,7 +485,7 @@ class SpeechService:
 
     def health(self):
         with self.condition:
-            return {'ok': True, 'ready': self.ready, 'model': self.model_name,
+            return {'ok': True, 'version': getattr(self, 'version', None), 'ready': self.ready, 'model': self.model_name,
                     'voice': self.voice, 'speed': float(self.speed), 'volume': self.volume, 'audio': self.audio, 'device': self.device,
                     'error': self.error, 'fallback': self.fallback,
                     'preparation': dict(self.preparation) if self.preparation else None,
@@ -956,7 +956,7 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def create_server(port=8765, model=START_MODEL, voice=None, speed=1.0,
-                  synthesizer_factory=synthesizer, audio_factory=audio_sink, catalog=None, idle_exit=30, audio='local', device_provider=output_devices):
+                  synthesizer_factory=synthesizer, audio_factory=audio_sink, catalog=None, idle_exit=30, audio='local', device_provider=output_devices, version_path=ROOT / 'VERSION'):
     if not math.isfinite(idle_exit) or idle_exit < 0:
         raise ValueError('idle-exit must be a finite nonnegative number')
     if catalog is None:
@@ -965,6 +965,10 @@ def create_server(port=8765, model=START_MODEL, voice=None, speed=1.0,
         print(f'Startup: TTS imports completed in {time.perf_counter() - started:.3f} s', flush=True)
         catalog = VOICES
     service = SpeechService(model, voice, speed, synthesizer_factory, audio_factory, catalog, audio, device_provider)
+    try:
+        service.version = Path(version_path).read_text(encoding='utf-8').strip() or None
+    except (OSError, UnicodeError):
+        service.version = None
     try:
         server = SpeechHTTPServer(('127.0.0.1', port), Handler)
     except Exception:

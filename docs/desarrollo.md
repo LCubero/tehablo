@@ -395,6 +395,8 @@ La combinación comprobada en Fedora y los límites de la prueba están en [Desa
 
 ### Versiones
 
+`/tts status` muestra la versión de teHablo y avisa si el servidor en marcha es de otra versión.
+
 La versión está en el archivo `VERSION` (por ejemplo `0.1.0-rc.1`) y cada una tiene su tag `vX.Y.Z` y su página en [Releases](https://github.com/LCubero/tehablo/releases), con el código en zip. `-rc.N` es una versión candidata, para probar antes de la estable. `master` puede llevar cambios posteriores a la última versión.
 
 Para usar una versión concreta en un clon: `git fetch --tags` y `git checkout v0.1.0-rc.1`; para volver a lo último, `git checkout master` y `git pull`. Después sigue los pasos 2 y 3 de [Actualizar](#actualizar).
