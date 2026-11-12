@@ -52,6 +52,33 @@ class InstallerTest(unittest.TestCase):
         self.assertEqual((self.home / 'uv-args').read_text().splitlines()[-1:], ['--uninstall'])
         self.assertFalse((self.home / '.ssh').exists())
 
+    def test_interrupted_download_does_not_leave_a_broken_client(self):
+        def stub(name, content):
+            path = self.bin / name
+            path.write_text(content, encoding='utf-8', newline='\n')
+            path.chmod(0o755)
+
+        def run():
+            return subprocess.run([self.sh, '-s'],
+                                  input='PATH="$HOME/bin:/usr/bin:/bin"; export PATH\n' + (ROOT / 'receptor/install.sh').read_text(),
+                                  env=self.env, capture_output=True, text=True, timeout=15)
+
+        client = self.home / '.local/share/tehablo-cliente/tehablo_cliente.py'
+        stub('uv', '#!/bin/sh\nprintf "%s\\n" "$@" > "$HOME/uv-args"\n')
+        # A cut connection: curl writes part of the file, then fails.
+        stub('curl', '#!/bin/sh\nwhile [ "$#" -gt 0 ]; do if [ "$1" = -o ]; then shift; printf "# half" > "$1"; fi; shift; done\nexit 18\n')
+        result = run()
+        self.assertEqual(result.returncode, 18, result.stdout + result.stderr)
+        self.assertFalse(client.exists())
+        self.assertFalse((self.home / 'uv-args').exists())
+
+        stub('curl', '#!/bin/sh\nwhile [ "$#" -gt 0 ]; do if [ "$1" = -o ]; then shift; printf "# fake client\\n" > "$1"; fi; shift; done\n')
+        result = run()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(client.read_text(), '# fake client\n')
+        self.assertFalse(client.with_name(client.name + '.part').exists())
+        self.assertTrue((self.home / 'uv-args').exists())
+
     def test_menu_and_uninstall_delegate_to_uv(self):
         # A shell stub logs only; it never runs the real client.
         stub = self.bin / 'uv'

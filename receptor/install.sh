@@ -21,6 +21,8 @@ case "$0" in
 esac
 if [ ! -f "$client" ]; then
     mkdir -p "$base"
-    curl -fsSL https://raw.githubusercontent.com/LCubero/tehablo/master/cliente/tehablo_cliente.py -o "$client"
+    # Download to .part first so a cut connection never leaves a broken client.
+    curl -fsSL https://raw.githubusercontent.com/LCubero/tehablo/master/cliente/tehablo_cliente.py -o "$client.part"
+    mv "$client.part" "$client"
 fi
 exec uv run --script "$client" "$@"

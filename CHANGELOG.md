@@ -4,6 +4,10 @@
 
 Este archivo registra los cambios completados en orden cronológico. Las versiones (`VERSION` y tags `vX.Y.Z`) marcan hasta qué fecha llega cada una.
 
+## 2026-11-11
+
+- Cliente SSH, instalador de Linux y macOS: el cliente se descarga primero a un archivo `.part`; si la conexión se corta ya no queda un cliente roto y la siguiente ejecución lo vuelve a bajar.
+
 ## 2026-11-10
 
 - Pi, ajustes: `/tts menu` agrupa sus filas en cuatro secciones (Voz y sonido, Lectura, Interfaz, Audio y servidor); las teclas no cambian.
