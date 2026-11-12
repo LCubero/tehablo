@@ -35,7 +35,7 @@ Este archivo proyecta solo hechos verificados del proyecto: registros activos, b
 - `RH-W-0010` (`completed`): diccionario configurable por voz con `/tts dict` y *Dict*; comprobado por escucha en Windows.
 - `RH-W-0031` (`completed`): barra visible al iniciar salvo que se dejara oculta; comprobada físicamente en Windows.
 - `RH-W-0033` (`completed`): las barras reflejan el servidor compartido y apagar afecta a todas; comprobado en Windows.
-- `RH-W-0041` (`completed`): Detener/Esperar, avisos de cola y controles por sesión salvo apagar; comprobado en Windows y en Linux el 2026-11-05 (en Linux falta probar apagar desde otra sesión a mitad de una lectura).
+- `RH-W-0041` (`completed`): Detener/Esperar, avisos de cola y controles por sesión salvo apagar; comprobado en Windows y en Linux el 2026-11-05; apagar desde otra sesión a mitad de una lectura, comprobado en Linux el 2026-11-11.
 
 - `RH-W-0030` (`completed`, 2026-11-05): README con video de demostración con voz debajo del título (subido por la persona responsable; GitHub lo muestra como reproductor), muestras de voces y nombre visible **teHablo** en el README y en Pi (`TTS teHablo: `, `teHablo · Ajustes`).
 - Pi (2026-11-06, `febea98`): en la pantalla de atajos, ←→ elige **Cambiar** o **Quitar** y Enter activa el botón elegido; antes no se podía quitar un atajo con el teclado.
