@@ -42,6 +42,40 @@ class StartupTests(unittest.TestCase):
                 instance.server_close()
         self.assertEqual(output.getvalue(), 'Startup: TTS imports completed in 1.250 s\n')
 
+    def test_phonon_start_skips_pocket_import(self):
+        output = io.StringIO()
+        model = SimpleNamespace(sample_rate=24000)
+        with patch.dict(sys.modules, tehablo_tts=None), \
+                patch('tehablo_server.time.perf_counter') as clock, \
+                contextlib.redirect_stdout(output):
+            instance = server.create_server(port=0, model='phonon',
+                                            synthesizer_factory=lambda name: model)
+            try:
+                self.assertEqual(instance.service.health()['voice'], 'Regina')
+                self.assertEqual(instance.service.voices(), sorted(server.PHONON_VOICES))
+            finally:
+                instance.server_close()
+        clock.assert_not_called()
+        self.assertEqual(output.getvalue(), '')
+
+    def test_phonon_loads_pocket_catalog_when_spanish_voice_is_needed(self):
+        output = io.StringIO()
+        tts = SimpleNamespace(VOICES=['lola'])
+        model = SimpleNamespace(sample_rate=24000)
+        with patch.dict(sys.modules, tehablo_tts=tts), \
+                patch('tehablo_server.time.perf_counter', side_effect=[10, 11.25], create=True), \
+                contextlib.redirect_stdout(output):
+            instance = server.create_server(port=0, model='phonon',
+                                            synthesizer_factory=lambda name: model)
+            try:
+                self.assertEqual(output.getvalue(), '')
+                self.assertEqual(instance.service.resolve_voice('lola', model='spanish'), 'lola')
+                with self.assertRaisesRegex(ValueError, 'catalog name'):
+                    instance.service.resolve_voice('nadie', model='spanish')
+            finally:
+                instance.server_close()
+        self.assertEqual(output.getvalue(), 'Startup: TTS imports completed in 1.250 s\n')
+
     def test_explicit_catalog_skips_tts_import_and_timing(self):
         output = io.StringIO()
         model = SimpleNamespace(sample_rate=24000)

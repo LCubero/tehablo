@@ -361,7 +361,8 @@ class SpeechService:
         self.local_audio_factory = audio_factory
         self.audio_factory = lambda rate, callback: (self.ssh_audio.attach(rate, callback)
                                                     if self.audio == 'ssh' else self.local_sink(rate, callback))
-        self.catalog = list(catalog)
+        # A callable catalog loads on first use: Phonon never needs the Pocket voice list.
+        self._catalog = catalog if callable(catalog) else list(catalog)
         self.model_name, self.voice, self.speed = model, voice if voice is not None else default_voice(model), speed
         self.volume = 1.0
         self.validate({'model': model, 'voice': self.voice, 'speed': speed})
@@ -417,6 +418,12 @@ class SpeechService:
             table.append({'name': name, 'voice': voice, 'model': model, 'kind': kind, 'note': note,
                           'downloaded': downloaded})
         return table
+
+    @property
+    def catalog(self):
+        if callable(self._catalog):
+            self._catalog = list(self._catalog())
+        return self._catalog
 
     def voices(self):
         if self.model_name == 'phonon':
@@ -960,10 +967,14 @@ def create_server(port=8765, model=START_MODEL, voice=None, speed=1.0,
     if not math.isfinite(idle_exit) or idle_exit < 0:
         raise ValueError('idle-exit must be a finite nonnegative number')
     if catalog is None:
-        started = time.perf_counter()
-        from tehablo_tts import VOICES
-        print(f'Startup: TTS imports completed in {time.perf_counter() - started:.3f} s', flush=True)
-        catalog = VOICES
+        def catalog():
+            # Importing tehablo_tts loads Pocket and torch (~400 MB, ~4 s), so Phonon defers it.
+            started = time.perf_counter()
+            from tehablo_tts import VOICES
+            print(f'Startup: TTS imports completed in {time.perf_counter() - started:.3f} s', flush=True)
+            return VOICES
+        if model != 'phonon':
+            catalog = catalog()
     service = SpeechService(model, voice, speed, synthesizer_factory, audio_factory, catalog, audio, device_provider)
     try:
         service.version = Path(version_path).read_text(encoding='utf-8').strip() or None

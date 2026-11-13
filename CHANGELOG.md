@@ -4,6 +4,10 @@
 
 Este archivo registra los cambios completados en orden cronológico. Las versiones (`VERSION` y tags `vX.Y.Z`) marcan hasta qué fecha llega cada una.
 
+## 2026-11-12
+
+- Servidor con Phonon (Regina, Iker): ya no carga Pocket ni PyTorch al arrancar si no hace falta una voz Pocket; arranca unos 3,7 s antes y usa unos 400 MB menos de RAM.
+
 ## 2026-11-11
 
 - Cliente SSH, instalador de Linux y macOS: el cliente se descarga primero a un archivo `.part`; si la conexión se corta ya no queda un cliente roto y la siguiente ejecución lo vuelve a bajar.
