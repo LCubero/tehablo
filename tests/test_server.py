@@ -155,6 +155,36 @@ class VoicePreparationTests(unittest.TestCase):
         finally:
             service.close()
 
+    def test_download_keeps_active_voice_until_success(self):
+        for failure in (False, True):
+            with self.subTest(failure=failure):
+                entered, release = threading.Event(), threading.Event()
+                def factory(name):
+                    if name == 'phonon':
+                        entered.set()
+                        release.wait(2)
+                        if failure:
+                            raise RuntimeError('download failed')
+                    return Synth()
+                service = tehablo_server.SpeechService('spanish', 'lola', 1, factory, Sink, ['lola'])
+                try:
+                    service.prepare({'model': 'phonon', 'voice': 'Regina'})
+                    self.assertTrue(entered.wait(2))
+                    health = service.health()
+                    self.assertEqual(health['preparation']['state'], 'downloading')
+                    self.assertEqual((health['model'], health['voice']), ('spanish', 'lola'))
+                    release.set()
+                    deadline = time.monotonic() + 2
+                    while service.health()['preparation']['state'] == 'downloading' and time.monotonic() < deadline:
+                        time.sleep(.01)
+                    health = service.health()
+                    self.assertEqual(health['preparation']['state'], 'error' if failure else 'ready')
+                    self.assertEqual((health['model'], health['voice']),
+                                     ('spanish', 'lola') if failure else ('phonon', 'Regina'))
+                finally:
+                    release.set()
+                    service.close()
+
     def test_account_download_loads_model_without_audio(self):
         loaded = threading.Event()
         def factory(name):

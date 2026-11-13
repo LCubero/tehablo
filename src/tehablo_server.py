@@ -614,8 +614,8 @@ class SpeechService:
         with self.condition:
             if self.preparation and self.preparation['state'] == 'downloading':
                 raise RuntimeError('Ya se está descargando una voz.')
-            self.configure(body)
-            self.preparation = {'id': secrets.token_hex(8), 'voice': body['voice'],
+            self.validate(body)
+            self.preparation = {'id': secrets.token_hex(8), 'voice': body['voice'], 'model': body['model'],
                                 'revision': self.revision, 'state': 'downloading', 'error': None}
             self.condition.notify_all()
             return dict(self.preparation)
@@ -767,14 +767,30 @@ class SpeechService:
                         job = None
                 if job:
                     try:
-                        # Phonon downloads all its bundled voices when the model loads.
-                        if name != 'phonon':
-                            synth.prepare(self.resolve_voice(job['voice'], name))
+                        # Prepare separately: health and speech retain the active voice until success.
+                        target = job['model']
+                        candidate = synth if target == name else self.factory(target)
+                        if target != 'phonon':
+                            candidate.prepare(self.resolve_voice(job['voice'], target))
                         with self.condition:
+                            if self.closed or revision != self.revision:
+                                job.update(state='error', error='La voz cambió durante la descarga.')
+                                continue
+                            self.configure({'model': target, 'voice': job['voice']})
+                            synth = candidate
+                            revision, name = self.revision, target
+                            loaded_revision = revision
+                            self.ready = True
+                            if not self.pending:
+                                self.state = 'idle'
                             job.update(state='ready')
                     except Exception as exc:
+                        reason = hide_token(exc)
                         with self.condition:
-                            job.update(state='error', error=hide_token(exc))
+                            if job['model'] == 'phonon' and token_refused(reason):
+                                job.update(state='error', error=TOKEN_REFUSED, code='token')
+                            else:
+                                job.update(state='error', error=reason)
                 with self.condition:
                     if not self.pending or revision != self.revision:
                         continue
