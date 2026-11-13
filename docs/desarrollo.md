@@ -557,7 +557,7 @@ irm https://raw.githubusercontent.com/LCubero/tehablo/master/receptor/install.ps
 curl -fsSL https://raw.githubusercontent.com/LCubero/tehablo/master/receptor/install.sh | sh
 ```
 
-Si falta uv, muestra el comando oficial para instalarlo y se detiene sin cambios. Al terminar muestra **Cliente instalado**, el comando exacto `uv run --script 'ruta del cliente'` para abrirlo después y tres pasos breves. No crea un lanzador adicional. Solo en una terminal (también con `curl … | sh`) pide **Presiona Enter para abrir el cliente (Ctrl+C para salir)**; con la salida capturada o sin terminal no espera ni abre el menú. En PowerShell, `-Yes` y `-ConfigOnly` también evitan la espera. Desde el clon, `./install.sh --cliente` y `.\install.ps1 -Cliente` delegan en estos instaladores.
+Si falta uv, muestra el comando oficial para instalarlo y se detiene sin cambios. Al terminar muestra dos bloques separados por líneas vacías: **[Cliente instalado]** con el comando exacto `uv run --script 'ruta del cliente'` para abrirlo después, y **[Cómo usar]** con tres pasos breves. No crea un lanzador adicional. Solo en una terminal (también con `curl … | sh`) pide **Presiona Enter para abrir el cliente (Ctrl+C para salir)**; con la salida capturada o sin terminal no espera ni abre el menú. En PowerShell, `-Yes` y `-ConfigOnly` también evitan la espera. Desde el clon, `./install.sh --cliente` y `.\install.ps1 -Cliente` delegan en estos instaladores.
 
 El menú incluye **Ayuda**: explica para qué sirve, muestra el comando para iniciarlo, **Conexión SSH** → elegir servidor, **Vincular servidor** → código de `/tts codigo`, elegir **Audio: SSH** en Pi y dejar el cliente abierto. **Esc** vuelve de la ayuda; **Salir** o **Esc** en el menú principal cierra el cliente.
 

@@ -33,12 +33,17 @@ if ($Uninstall) {
     return
 }
 $client = [IO.Path]::GetFullPath($client)
-Write-Host 'Cliente instalado'
+Write-Host ''
+Write-Host '[Cliente instalado]'
+Write-Host ''
 Write-Host ("Para iniciar: uv run --script '" + $client.Replace("'", "''") + "'")
+Write-Host ''
+Write-Host "[C$([char]0x00F3)mo usar]"
+Write-Host ''
 Write-Host "1. Conexi$([char]0x00F3)n SSH $([char]0x2192) elegir servidor."
 Write-Host "2. Vincular servidor $([char]0x2192) pegar el c$([char]0x00F3)digo de /tts codigo."
 Write-Host "3. Deja el cliente abierto para o$([char]0x00ED)r la voz."
-Write-Host 'Para salir: Salir o Esc.'
+Write-Host ''
 if (-not $Yes -and -not $ConfigOnly -and [Environment]::UserInteractive -and -not [Console]::IsInputRedirected) {
     Write-Host 'Presiona Enter para abrir el cliente (Ctrl+C para salir)'
     $null = Read-Host

@@ -9,7 +9,7 @@ import unittest
 ROOT = Path(__file__).resolve().parents[1]
 SCRATCH = ROOT / '.repo-harness/tmp/t9-check'
 SCRATCH.mkdir(parents=True, exist_ok=True)
-END_LINES = ('Cliente instalado', 'Para iniciar:',
+END_LINES = ('\n[Cliente instalado]\n\nPara iniciar:', '\n\n[Cómo usar]\n\n1.',
              '1. Conexión SSH → elegir servidor.',
              '2. Vincular servidor → pegar el código de /tts codigo.',
              '3. Deja el cliente abierto para oír la voz.')
@@ -172,6 +172,8 @@ class WindowsPowerShellOutputTest(unittest.TestCase):
         for line in END_LINES:
             self.assertIn(line, out)
         self.assertNotIn('Write-Host', out)
+        self.assertTrue(out.startswith('\n[Cliente instalado]\n'), out)
+        self.assertIn('oír la voz.\n\n', out)
 
 
 @unittest.skipUnless(POWERSHELL, 'needs PowerShell')
