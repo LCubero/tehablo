@@ -1381,6 +1381,15 @@ class ServerTests(unittest.TestCase):
                     finally:
                         server.server_close()
 
+    def test_phonon_uses_one_thread(self):
+        # Measured 2026-11-12 on a 2-core VM: 1 thread kept pace with ~15 % less CPU than 2.
+        threads = []
+        fake = type(sys)('ptts')
+        fake.TTS, fake.set_num_threads = (lambda *a, **k: None), threads.append
+        with mock.patch.dict(sys.modules, {'ptts': fake}), contextlib.redirect_stdout(io.StringIO()):
+            tehablo_server.PhononSynthesizer()
+        self.assertEqual(threads, [1])
+
     def test_cached_phonon_loads_offline_without_token(self):
         # The repository is gated: online, Hugging Face refuses even a cached model without a token.
         seen = []

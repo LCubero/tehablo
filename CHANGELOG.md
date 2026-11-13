@@ -6,6 +6,8 @@ Este archivo registra los cambios completados en orden cronológico. Las version
 
 ## 2026-11-12
 
+- Phonon (Regina, Iker) usa 1 hilo en lugar de 2: lee al mismo ritmo con ~15 % menos de CPU, picos más bajos y unos 40 MB menos de RAM (medido en una VM de 2 núcleos).
+
 - Instalador del cliente SSH: confirma «Cliente instalado», muestra cómo abrirlo y usarlo, y ofrece Enter para abrir solo con entrada de terminal; sin terminal no espera.
 - Cliente SSH: nueva opción **Ayuda** con guía breve, comando de inicio, conexión, vinculación y salida.
 

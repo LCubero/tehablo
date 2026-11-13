@@ -321,6 +321,8 @@ Objetivo de la persona responsable: «que suene muy real, natural y que no consu
 | **Phonon 40M es `Regina`** (2 hilos) | **303 MiB** | **8,0 s** | **0,04 s** | **~11×** | **Mucho mejor que `lola`: muy natural; acento latino.** |
 | **Phonon 40M es `Iker`** (2 hilos) | **~300 MiB** | **7,7 s** | **0,04 s** | **~11×** | **Mucho mejor que `lola`: natural; algo castellano.** |
 
+Desde el 2026-11-12 teHablo usa Phonon con **1 hilo**: en una VM de 2 núcleos (i5-4300M) leyó tres frases al mismo ritmo que con 2 hilos (34–35 s), con unos 14 s de CPU frente a 17–18 s, picos de ~1,5 núcleos frente a ~1,9 y unos 40 MB menos de RAM.
+
 - Phonon con todos los hilos (12) gasta ~40 s de CPU para el mismo texto; con 2 hilos, 8 s y genera más rápido. Hay que fijar los hilos. Con 4 hilos: 10,3 s y ~15×.
 - Phonon no usa torch: importa en 0,1 s y carga en 0,1 s con el modelo en caché (75 MB, `q8`).
 - Kokoro con ONNX int8 baja la RAM pero no la CPU (~36–39 s); en esta escucha quedó por debajo de su resultado de octubre (fp32 en Windows).

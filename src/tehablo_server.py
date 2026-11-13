@@ -119,7 +119,7 @@ class PhononSynthesizer:
     def __init__(self):
         import ptts
         started = time.perf_counter()
-        ptts.set_num_threads(2)
+        ptts.set_num_threads(1)  # 2-core VM: same pace, ~15 % less CPU than 2 (2026-11-12)
         # The repository is gated: without a token Hugging Face refuses even a cached model,
         # so a cached model loads offline, from the cache only.
         offline = (not os.environ.get('HF_TOKEN') and 'HF_HUB_OFFLINE' not in os.environ
