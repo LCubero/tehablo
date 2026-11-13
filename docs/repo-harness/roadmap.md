@@ -20,7 +20,7 @@ El 2026-11-05 la persona responsable aprobó este orden («me parece dale»); ca
 
 1. Revisar y corregir: varias sesiones (`RH-W-0033`), Phonon sin conexión (`RH-W-0035`) y textos del README (`RH-W-0036`), completados.
 2. Más voces (`RH-W-0005`), después pronunciación (`RH-W-0002`).
-3. Interfaz e iconos (`RH-W-0004`, `RH-W-0032`), añadir palabras (`RH-W-0015`), sugerencias (`RH-W-0016`) y opciones de lectura (`RH-W-0022`).
+3. Interfaz e iconos (`RH-W-0004`; `RH-W-0032` completado), añadir palabras (`RH-W-0015`), sugerencias (`RH-W-0016`) y opciones de lectura (`RH-W-0022`).
 4. Roles de voz (`RH-W-0018`).
 5. Video, aviso de sonido y miniatura (`RH-W-0036`).
 6. Instalador (`RH-W-0037`, con `RH-W-0028`), seguridad mínima (`RH-W-0023`) y primer release (`RH-W-0038`).
@@ -291,6 +291,7 @@ Antecedente aprobado el 2026-10-30: base confiable, medición (`RH-W-0003`), ser
 - **Decisión:** registrar para después; no se eligieron herramientas. El 2026-10-30, por decisión delegada de la persona responsable («decidelo tu ... sin sobreingenieria»): límites superiores en lugar de versiones exactas o archivo de bloqueo, para no romper la instalación en Python 3.10–3.14 ni en otros sistemas.
 - **Adición (2026-11-05):** en la revisión de prioridades se recomienda hacer la parte mínima de seguridad (`SECURITY.md` y la revisión de vulnerabilidades de dependencias) antes del primer release (`RH-W-0038`); el resto sigue sin fecha.
 - **Adición (2026-11-05, revisión del repositorio):** puntos menores conocidos, sin arreglar todavía: tiempo límite por petición o conexión para clientes que se quedan colgados (el servidor solo escucha en `127.0.0.1`); números de miles de dígitos superan el límite de conversión de Python (`src/tehablo_numbers.py`); `/guardar` de la consola acepta rutas fuera de su carpeta (`src/tehablo_tts.py`); lector de `.env` duplicado en `src/tehablo_tts.py` y `src/tehablo_tui.py`; la carga del modelo no se puede cancelar (cerrar espera 5 s); `.gitignore` cubre `.env` pero no `.env.*`.
+- **Trabajo completado (2026-11-12):** tres de esos puntos están arreglados y comprobados en el código el 2026-11-13: los números de miles de cifras se leen dígito por dígito (`src/tehablo_numbers.py`), el servidor cierra una conexión HTTP tras 10 s sin datos (`src/tehablo_server.py`) y `.gitignore` incluye `.env.*`. Siguen abiertos `/guardar` fuera de su carpeta, el lector de `.env` duplicado y la carga del modelo que no se puede cancelar. Siguen sin existir `SECURITY.md`, configuración de linter o tipos y revisión de vulnerabilidades en la CI; los límites de 1 MiB y 3000 caracteres no cambiaron y no hay límite de tiempo de generación.
 - **Condición del siguiente avance:** autorización para una revisión acotada que proponga prioridades.
 
 ### RH-W-0025: Versión lite de mínimo consumo
@@ -333,19 +334,6 @@ Antecedente aprobado el 2026-10-30: base confiable, medición (`RH-W-0003`), ser
 - **Decisión:** 2026-11-04, aceptado como extra apagado por la persona responsable.
 - **Condición del siguiente avance:** la condición anterior (terminar `RH-W-0031`, `RH-W-0010` y `RH-W-0030`) se cumplió el 2026-11-05; en la revisión de prioridades de ese día queda después del release (`RH-W-0038`), salvo que la persona responsable lo adelante.
 
-### RH-W-0032: Iconos de pausa y encendido que se vean bien
-
-- **Origen:** solicitud de la persona responsable del 2026-11-05, al ver el video del README: «el icono de pausa se me muy mal en el showreel» y «quiza usa esto [ || ], pal show reel, o buscar un icono o algo que sirva se vea centrado y del mismo tamañao o parecido que el de play. para que no se vea raro al cambiar (regla del bar)».
-- **Prioridad:** P2 (revisión de prioridades del 2026-11-05); lo ve quien abre el README y quien usa la barra.
-- **Dependencias:** se hace dentro de la fase de interfaz, junto con `RH-W-0004`, y antes de volver a grabar el video (`RH-W-0036`); volver a subirlo lo hace la persona responsable.
-- **Estado:** `active` (solo falta el video).
-- **Trabajo restante:** ver por qué `‖` se ve como una raya fina en la grabación (supuesta causa sin comprobar: la fuente de la grabación no tiene ese carácter); elegir un icono que se vea centrado y de tamaño parecido a `▶`. La regla de la barra pide símbolos de una sola columna para que los clics coincidan; `[ || ]` ocupa una columna más y movería los botones al cambiar entre pausa y play. Decidir si el cambio es solo para el video o también para Pi; luego volver a grabar.
-- **Adición (2026-11-05):** la persona responsable: «El icono de encendido en el readme no se ve. Sale un cuadro. Y el icono de pause se ve pegado feo, como en el showreel, resolver con lo otro». En el README, `⏻` (U+23FB) aparece como un cuadro; supuesta causa sin comprobar: la fuente del navegador o de la app no tiene ese carácter. Se resuelven juntos.
-- **Trabajo completado (2026-11-06):** investigación: `⏻` (U+23FB) falta en fuentes comunes como Segoe UI Symbol, de ahí el cuadro en GitHub; `‖` es puntuación y se ve fina. Una extensión no puede elegir la fuente de la terminal. La persona responsable descartó los candidatos Unicode (`⏸`, `▮`, `▌`, `⏼`, `⭘`, `○`: «horribles») y eligió una opción **Iconos: Símbolos / Texto** en `[ ≡ ]`, con símbolos por defecto y etiquetas ASCII ajustadas por ella (`[ TTS ]`, `[ |> ]`, `[ || ]`, `[ [] ]`, `[ ... ]`, `[ <- ]`, `[ off ]`, `[ = ]`, `[ v auto ]` / `[ x auto ]`; «quité el on a TTS»). El README explica en texto cada icono. Pruebas de la extensión 160/160; la persona responsable vio el modo Texto en Pi («no se ve mal»).
-- **Pendiente:** regrabar el video con una fuente que tenga los símbolos, o en modo Texto (`RH-W-0036`, lo hace la persona responsable).
-- **Condición del siguiente avance:** cerrar cuando se regrabe el video.
-
-
 ### RH-W-0036: Pulir el README y el video de demostración
 
 - **Origen:** solicitud de la persona responsable del 2026-11-05: «el cuadro de voces del readme dice como encabezado "¿Cuenta?" y no entiendo que es, si yo no sé del proyecto y leo eso, no se entiende»; «En el readme en el cuadro de Consumo aproximado, phonon no es que deba decir opción, quizá algo que de atender lo de huggingface para descargarlo. O poner una nota o algo.»; «El video en app github en android solo se ve el link y se ve feo eso»; «Al showreel agregar al inicio, lo de poner sonido para escuchar, algo bonito serio profesional. Y hay que hacer lo de tumbail. 1 frame al puro inicio de quizá la parte donde se enseña tts ayuda. O del Menu de las voces».
@@ -359,7 +347,8 @@ Antecedente aprobado el 2026-10-30: base confiable, medición (`RH-W-0003`), ser
   - Que el video se vea bien en la app de GitHub para Android, donde hoy solo aparece el enlace. Supuesta solución sin comprobar: la miniatura como imagen con enlace al video; se comprueba en el celular de la persona responsable.
 - **Exclusiones:** las herramientas de grabación siguen fuera del repositorio; subir el video lo hace la persona responsable.
 - **Decisión:** orden aprobado el 2026-11-05 en dos partes: los textos del README (encabezado y nota de Phonon) en la fase 1; el video, el aviso de sonido, la miniatura y la app de Android en la fase 5, grabando una sola vez.
-- **Condición del siguiente avance:** el video, después de `RH-W-0004` y `RH-W-0032`.
+- **Avance (2026-11-10):** el video se volvió a grabar sin saludo hablado, porque la persona responsable prefiere que solo suene al pulsar Play, y quedó aprobado (`RH-W-0032`). Sin comprobar en el repositorio: si el video publicado tiene el aviso de sonido, la miniatura y cómo se ve en la app de GitHub para Android.
+- **Condición del siguiente avance:** que la persona responsable diga qué falta de esos tres puntos después del video nuevo.
 
 ### RH-W-0037: Instalador con elección de lo que se instala
 
@@ -383,8 +372,9 @@ Antecedente aprobado el 2026-10-30: base confiable, medición (`RH-W-0003`), ser
 - **Origen:** pregunta de la persona responsable del 2026-11-05: «release o rc (lo que sea mejor segun practicas y tipo de proyecto y estado) cuando ?».
 - **Prioridad:** P2; da una versión estable a quien instala, pero depende del instalador.
 - **Dependencias:** `RH-W-0037` (instalador y actualizaciones) y la parte mínima de seguridad de `RH-W-0023`.
-- **Estado:** `proposed`.
-- **Trabajo restante:** elegir versión y forma (propuesta sin decidir: `v0.1.0-rc1` cuando el instalador funcione en los tres sistemas y `v0.1.0` tras la prueba de la persona responsable), notas de la versión desde `CHANGELOG.md` y etiqueta en GitHub.
+- **Estado:** `active`.
+- **Trabajo completado (2026-11-10):** primera versión candidata `0.1.0-rc.1`: archivo `VERSION`, sección en `CHANGELOG.md` y etiqueta anotada `v0.1.0-rc.1` sobre `545b7a9` («chore: start versioning at 0.1.0-rc.1»), contenida en `origin/master` según las referencias locales. Sin comprobar: si existe además una publicación (release) en GitHub con notas.
+- **Trabajo restante:** la versión `v0.1.0` tras el instalador (`RH-W-0037`), la parte mínima de seguridad (`RH-W-0023`) y la prueba de la persona responsable; sus notas desde `CHANGELOG.md`.
 - **Exclusiones:** publicar sin autorización explícita de la persona responsable.
 - **Decisión:** registrar; la propuesta de versión es del agente y la decide la persona responsable.
 - **Condición del siguiente avance:** `RH-W-0037` completado.
@@ -467,12 +457,24 @@ Antecedente aprobado el 2026-10-30: base confiable, medición (`RH-W-0003`), ser
 - **Origen:** la persona responsable, 2026-11-07, al actualizar la VM de Proxmox a mano: «hay que empezar a ponerle la version, control de versiones etc a la extencion y ciente.»
 - **Prioridad:** P2; hoy no hay forma fácil de saber qué versión corre en cada lado (PC, VM, contenedor), y eso complica probar y dar soporte.
 - **Dependencias:** ninguna; conviene antes de las ideas de varias conexiones de `RH-W-0044` y del instalador (`RH-W-0037`).
-- **Estado:** `proposed`.
-- **Diseño mínimo propuesto (sin empezar):** un solo número de versión del proyecto, en un único sitio; el cliente lo muestra en su menú, Pi en `/tts status` y el servidor en `/health`; si cliente y servidor no coinciden, el cliente lo avisa sin bloquear. Cada versión nueva se anota en `CHANGELOG.md`. Sin herramientas nuevas ni dependencias.
-- **Trabajo restante:** decidir el esquema (por ejemplo `0.x.y`) y dónde vive el número; implementarlo con pruebas.
+- **Estado:** `active`.
+- **Trabajo completado (2026-11-10):** un solo número en `VERSION` (`0.1.0-rc.1`); el servidor lo devuelve en `/health` (`src/tehablo_server.py`) y Pi lo muestra en `/tts status`, con aviso si el servidor en marcha es de otra versión. Comprobado en el código el 2026-11-13.
+- **Trabajo restante (comprobado el 2026-11-13):** el cliente SSH (`cliente/tehablo_cliente.py`) no muestra la versión ni avisa si no coincide con el servidor, y los instaladores del cliente (`receptor/install.sh`, `receptor/install.ps1`) descargan siempre la rama `master` en lugar de una versión fija.
+- **Diseño mínimo propuesto (original):** un solo número de versión del proyecto, en un único sitio; el cliente lo muestra en su menú, Pi en `/tts status` y el servidor en `/health`; si cliente y servidor no coinciden, el cliente lo avisa sin bloquear. Cada versión nueva se anota en `CHANGELOG.md`. Sin herramientas nuevas ni dependencias.
 
 ## Registros resueltos
 <!-- doc-role:resolved-records -->
+
+### RH-W-0032: Iconos de pausa y encendido que se vean bien
+
+- **Origen:** solicitud de la persona responsable del 2026-11-05, al ver el video del README: «el icono de pausa se me muy mal en el showreel» y «quiza usa esto [ || ], pal show reel, o buscar un icono o algo que sirva se vea centrado y del mismo tamañao o parecido que el de play. para que no se vea raro al cambiar (regla del bar)».
+- **Prioridad:** P2 (revisión de prioridades del 2026-11-05); lo ve quien abre el README y quien usa la barra.
+- **Dependencias:** se hace dentro de la fase de interfaz, junto con `RH-W-0004`, y antes de volver a grabar el video (`RH-W-0036`); volver a subirlo lo hace la persona responsable.
+- **Estado:** `completed` (2026-11-10).
+- **Trabajo restante:** ver por qué `‖` se ve como una raya fina en la grabación (supuesta causa sin comprobar: la fuente de la grabación no tiene ese carácter); elegir un icono que se vea centrado y de tamaño parecido a `▶`. La regla de la barra pide símbolos de una sola columna para que los clics coincidan; `[ || ]` ocupa una columna más y movería los botones al cambiar entre pausa y play. Decidir si el cambio es solo para el video o también para Pi; luego volver a grabar.
+- **Adición (2026-11-05):** la persona responsable: «El icono de encendido en el readme no se ve. Sale un cuadro. Y el icono de pause se ve pegado feo, como en el showreel, resolver con lo otro». En el README, `⏻` (U+23FB) aparece como un cuadro; supuesta causa sin comprobar: la fuente del navegador o de la app no tiene ese carácter. Se resuelven juntos.
+- **Trabajo completado (2026-11-06):** investigación: `⏻` (U+23FB) falta en fuentes comunes como Segoe UI Symbol, de ahí el cuadro en GitHub; `‖` es puntuación y se ve fina. Una extensión no puede elegir la fuente de la terminal. La persona responsable descartó los candidatos Unicode (`⏸`, `▮`, `▌`, `⏼`, `⭘`, `○`: «horribles») y eligió una opción **Iconos: Símbolos / Texto** en `[ ≡ ]`, con símbolos por defecto y etiquetas ASCII ajustadas por ella (`[ TTS ]`, `[ |> ]`, `[ || ]`, `[ [] ]`, `[ ... ]`, `[ <- ]`, `[ off ]`, `[ = ]`, `[ v auto ]` / `[ x auto ]`; «quité el on a TTS»). El README explica en texto cada icono. Pruebas de la extensión 160/160; la persona responsable vio el modo Texto en Pi («no se ve mal»).
+- **Trabajo completado (2026-11-10, video):** el video se volvió a grabar con la fuente JetBrainsMonoNL NF, que sí tiene los símbolos (Cascadia Mono no tiene U+2016); la pausa sale como doble barra. La persona responsable aprobó los videos y el enlace del README se actualizó (`15fce1c`). Evidencia: `odd/tasks/tehablo-showreel-current.md` (L71–L73). El agente no revisó el video final publicado.
 
 ### RH-W-0043: Que cerrar o recargar una sesión de Pi no apague el TTS de las demás
 
