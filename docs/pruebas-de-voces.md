@@ -353,11 +353,11 @@ Búsqueda web, sin descargar ni probar nada. Datos tomados de las páginas de ca
 
 | Modelo | Tamaño | CPU | Clonación | Licencia | Nota |
 |---|---|---|---|---|---|
-| NeuTTS Nano Spanish (Neuphonic, feb. 2026) | ~117 M parámetros activos; versiones GGUF Q8 y Q4 | Sí, «tiempo real o mejor» en portátil, sin cifra publicada | Sí, con 3 a 15 s de audio | No figura en la página | Candidato principal. Necesita `espeak-ng`; el audio lleva marca de agua; solo trae la voz de ejemplo `mateo`. Antes se anotó que pide token de Hugging Face (ver [Descartados sin probar](#descartados-sin-probar)). |
+| NeuTTS Nano Spanish (Neuphonic, feb. 2026) | ~117 M parámetros activos; versiones GGUF Q8 y Q4 | Sí, «tiempo real o mejor» en portátil, sin cifra publicada | Sí, con 3 a 15 s de audio | NeuTTS Open License v1.0 (comprobada el 2026-11-13): uso gratis y redistribución con copia de la licencia; el uso comercial solo hasta 5 M USD de ingresos al año | Candidato principal. Necesita `espeak-ng`; el audio lleva marca de agua inaudible (no lo descarta); solo trae la voz de ejemplo `mateo`. Antes se anotó que pide token de Hugging Face (ver [Descartados sin probar](#descartados-sin-probar)). |
 | CuteTTS (OPPO) | ~230 M parámetros | Dice que sí, pero solo da cifras de GPU | Sí | No figura en la página | Español entre 5 idiomas; dudoso que sea liviano en CPU. |
 | Arm `pocket-tts-es-mix-precision` | 383 MB, 26 perfiles de voz | Optimizado para CPU Arm | No | CC BY 4.0 | No sirve: su motor solo se ofrece en un programa de acceso anticipado de Arm. |
 
-El ajuste castellano de `inferencekey` (1,34 GB, `spanish_24l`) sigue pendiente como antes. Ming-3.0-tts (0,5 B) aparece en clasificaciones, pero es más pesado. Siguiente paso propuesto: confirmar la licencia de NeuTTS Nano Spanish y, si permite usarlo, escucharlo a ciegas frente a `lola` y Phonon.
+El ajuste castellano de `inferencekey` (1,34 GB, `spanish_24l`) sigue pendiente como antes. Ming-3.0-tts (0,5 B) aparece en clasificaciones, pero es más pesado. Licencia de NeuTTS Nano Spanish confirmada el 2026-11-13 en [su texto](https://github.com/neuphonic/neutts/blob/main/LICENSE) (NeuTTS Open License v1.0, 11 de diciembre de 2025): permite usarlo, modificarlo y redistribuirlo gratis entregando una copia de la licencia; el uso comercial, incluido el audio generado, solo vale por debajo de 5 M USD de ingresos al año. Para tehablo, gratis y sin venta, la licencia lo permite. La descarga sigue con acceso restringido: cuenta de Hugging Face y aceptar condiciones, como Phonon. Siguiente paso propuesto: escucharlo a ciegas frente a `lola` y Phonon.
 
 ## Licencias
 
