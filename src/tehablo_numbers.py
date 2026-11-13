@@ -190,7 +190,7 @@ def _digits(s: str) -> str:
 
 def _integer(s: str) -> str:
     """Digits (no separators) to words; leading zeros or huge values digit by digit."""
-    if (len(s) > 1 and s[0] == "0") or int(s) >= _DIGITS_LIMIT:
+    if (len(s) > 1 and s[0] == "0") or len(s) > len(str(_DIGITS_LIMIT - 1)):
         return _digits(s)
     return number_to_words(int(s))
 

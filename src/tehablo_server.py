@@ -902,6 +902,9 @@ class SpeechHTTPServer(ThreadingHTTPServer):
 
 
 class Handler(BaseHTTPRequestHandler):
+    # Tiny HTTP requests (Pi gives up after 2 s); audio uses a separate socket.
+    timeout = 10
+
     def parse_request(self):
         parsed = super().parse_request()
         if parsed:

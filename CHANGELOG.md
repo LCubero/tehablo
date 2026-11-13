@@ -6,6 +6,10 @@ Este archivo registra los cambios completados en orden cronológico. Las version
 
 ## 2026-11-12
 
+- Números: incluso secuencias de miles de cifras se leen dígito por dígito sin interrumpir la lectura; se conserva el umbral de 13 cifras.
+- Servidor: cierra conexiones HTTP tras 10 s sin datos para no retener hilos con solicitudes incompletas; el audio usa otra conexión.
+- Seguridad: Git ignora todos los archivos `.env.*`.
+
 - Phonon (Regina, Iker) usa 1 hilo en lugar de 2: lee al mismo ritmo con ~15 % menos de CPU, picos más bajos y unos 40 MB menos de RAM (medido en una VM de 2 núcleos).
 
 - Instalador del cliente SSH: confirma «Cliente instalado», muestra cómo abrirlo y usarlo, y ofrece Enter para abrir solo con entrada de terminal; sin terminal no espera.

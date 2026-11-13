@@ -63,6 +63,10 @@ TEXTS = [
     ("Llama al 8888-1234.", "Llama al ocho mil ochocientos ochenta y ocho, mil doscientos treinta y cuatro."),
     ("Hace -5 grados.", "Hace menos cinco grados."),
     ("Código 1234567890123.", "Código uno dos tres cuatro cinco seis siete ocho nueve cero uno dos tres."),
+    ("id " + "7" * 5000, "id " + " ".join(["siete"] * 5000)),
+    ("999999999999", "novecientos noventa y nueve mil novecientos noventa y nueve millones novecientos noventa y nueve mil novecientos noventa y nueve"),
+    ("1000000000000", "uno " + " ".join(["cero"] * 12)),
+    ("0007", "cero cero cero siete"),
     # Units after a number are read in full, with Spanish gender and number.
     ("listen 4.03s ready 5.86s error=None",
      "listen cuatro punto cero tres segundos ready cinco punto ochenta y seis segundos error=None"),

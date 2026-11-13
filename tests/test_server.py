@@ -703,6 +703,17 @@ class ServerTests(unittest.TestCase):
         self.loaded.set()
         self.wait(lambda: self.request('/health')[1]['ready'])
 
+    def test_incomplete_headers_time_out_without_blocking_other_requests(self):
+        self.assertEqual(tehablo_server.Handler.timeout, 10)
+        with mock.patch.object(tehablo_server.Handler, 'timeout', .15):
+            with socket.create_connection(self.server.server_address, timeout=1) as conn:
+                conn.sendall(b'GET /health HTTP/1.0\r\nX-Incomplete: ')
+                self.assertEqual(self.request('/health')[0], 200)
+                started = time.monotonic()
+                self.assertEqual(conn.recv(1), b'')
+                self.assertLess(time.monotonic() - started, .8)
+            self.assertEqual(self.request('/health')[0], 200)
+
     def test_output_device_contract(self):
         self.ready()
         devices = [{'index': 2, 'name': 'Speakers', 'default': True},
