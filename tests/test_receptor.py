@@ -147,5 +147,41 @@ class InstallerTest(unittest.TestCase):
             self.assertFalse((self.home / 'uv-args').exists())
 
 
+POWERSHELL = shutil.which('pwsh') or shutil.which('powershell')
+
+
+@unittest.skipUnless(POWERSHELL, 'needs PowerShell')
+class WindowsInstallerTest(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory(dir=SCRATCH)
+        self.addCleanup(self.tmp.cleanup)
+        self.home = Path(self.tmp.name)
+        self.env = dict(os.environ, HOME=str(self.home))
+
+    def run_piped(self, download):
+        # Stub functions shadow uv and Invoke-WebRequest; nothing is downloaded or run.
+        script = (
+            'function uv { $args | Set-Content (Join-Path $env:HOME "uv-args"); $global:LASTEXITCODE = 0 }\n'
+            'function Invoke-WebRequest { param([switch]$UseBasicParsing, $Uri, $OutFile) ' + download + ' }\n'
+            '& ([scriptblock]::Create((Get-Content -Raw $env:TEHABLO_PS1))) -Yes\n')
+        env = dict(self.env, TEHABLO_PS1=str(ROOT / 'receptor/install.ps1'))
+        return subprocess.run([POWERSHELL, '-NoProfile', '-NonInteractive', '-Command', script], env=env,
+                              stdin=subprocess.DEVNULL, capture_output=True, text=True, timeout=60)
+
+    def test_interrupted_download_does_not_leave_a_broken_client(self):
+        client = self.home / '.local/share/tehablo-cliente/tehablo_cliente.py'
+        # A cut connection: part of the file is written, then the request fails.
+        result = self.run_piped("Set-Content $OutFile '# half'; throw 'cut'")
+        self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertFalse(client.exists())
+        self.assertFalse((self.home / 'uv-args').exists())
+
+        result = self.run_piped("Set-Content $OutFile '# fake client'")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(client.read_text().strip(), '# fake client')
+        self.assertFalse(client.with_name(client.name + '.part').exists())
+        self.assertIn('Cliente instalado', result.stdout)
+
+
 if __name__ == '__main__':
     unittest.main()

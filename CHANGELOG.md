@@ -4,6 +4,10 @@
 
 Este archivo registra los cambios completados en orden cronológico. Las versiones (`VERSION` y tags `vX.Y.Z`) marcan hasta qué fecha llega cada una.
 
+## 2026-11-13
+
+- Cliente SSH, instalador de Windows: el cliente también se descarga primero a un archivo `.part`; si la conexión se corta no queda un cliente roto y la siguiente ejecución lo vuelve a bajar.
+
 ## 2026-11-12
 
 - Números: incluso secuencias de miles de cifras se leen dígito por dígito sin interrumpir la lectura; se conserva el umbral de 13 cifras.

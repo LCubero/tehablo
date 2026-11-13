@@ -21,7 +21,9 @@ if ($PSScriptRoot) {
 }
 if (-not (Test-Path -LiteralPath $client -PathType Leaf)) {
     [void][IO.Directory]::CreateDirectory($base)
-    Invoke-WebRequest -UseBasicParsing 'https://raw.githubusercontent.com/LCubero/tehablo/master/cliente/tehablo_cliente.py' -OutFile $client
+    # Download to .part first so a cut connection never leaves a broken client.
+    Invoke-WebRequest -UseBasicParsing 'https://raw.githubusercontent.com/LCubero/tehablo/master/cliente/tehablo_cliente.py' -OutFile "$client.part"
+    Move-Item -LiteralPath "$client.part" -Destination $client -Force
 }
 $clientArgs = @('run', '--script', $client)
 if ($Uninstall) {
