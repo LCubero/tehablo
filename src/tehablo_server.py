@@ -106,6 +106,9 @@ def cached(name, model, kind):
             'languages' / model / 'embeddings' / f'{name}.safetensors').is_file()
 
 
+POCKET_TABLE_VOICES = {name for name, model, _, _ in VOICE_TABLE if model != 'phonon' and name not in INCLUDED}
+
+
 def default_voice(model):
     if model == START_MODEL:
         return START_VOICE
@@ -442,7 +445,8 @@ class SpeechService:
             return value
         if not isinstance(value, str):
             raise ValueError('voice must be a catalog name or a file in voices/')
-        if value in self.catalog:
+        # Table voices are known Pocket names: accepting them never loads Pocket inside a request.
+        if value in POCKET_TABLE_VOICES or value in self.catalog:
             return value
         path = Path(value)
         if not path.is_absolute():
