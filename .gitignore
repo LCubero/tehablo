@@ -24,6 +24,9 @@ voices/*.wav
 # Local copy of the repo-harness-builder skill (not versioned)
 .pi/skills/repo-harness-builder/
 
+# Local skill for the owner's test VM (private host details)
+.pi/skills/tehablo-prueba-vm/
+
 # Local server log (pi-extension/tehablo-tts)
 logs/
 
