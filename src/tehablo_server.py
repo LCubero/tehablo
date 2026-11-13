@@ -449,7 +449,8 @@ class SpeechService:
         if not isinstance(value, str):
             raise ValueError('voice must be a catalog name or a file in voices/')
         # Table voices are known Pocket names: accepting them never loads Pocket inside a request.
-        if value in POCKET_TABLE_VOICES or value in self.catalog:
+        # Voice files (Facundo.safetensors…) are never catalog names, so they skip the catalog too.
+        if value in POCKET_TABLE_VOICES or (Path(value).suffix.lower() not in AUDIO_EXT and value in self.catalog):
             return value
         path = Path(value)
         if not path.is_absolute():

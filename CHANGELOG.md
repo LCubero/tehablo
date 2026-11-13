@@ -6,7 +6,7 @@ Este archivo registra los cambios completados en orden cronológico. Las version
 
 ## 2026-11-12
 
-- Servidor con Phonon (Regina, Iker): ya no carga Pocket ni PyTorch si no hace falta una voz Pocket, ni al arrancar ni al abrir los ajustes de Pi; arranca unos 3,7 s antes y usa unos 400 MB menos de RAM. Pasar de Regina a Lola o Rafael ya no muestra el aviso «The operation was aborted due to timeout».
+- Servidor con Phonon (Regina, Iker): ya no carga Pocket ni PyTorch si no hace falta una voz Pocket, ni al arrancar ni al abrir los ajustes de Pi; arranca unos 3,7 s antes y usa unos 400 MB menos de RAM. Pasar de Regina a una voz Pocket (Lola, Rafael, Facundo…) ya no muestra el aviso «The operation was aborted due to timeout».
 
 ## 2026-11-11
 

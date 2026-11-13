@@ -3,6 +3,7 @@ import contextlib
 import io
 from pathlib import Path
 import sys
+import tempfile
 from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
@@ -112,6 +113,20 @@ class StartupTests(unittest.TestCase):
             try:
                 instance.service.model_name = 'spanish'
                 self.assertIn('alba', instance.service.voices())
+            finally:
+                instance.server_close()
+
+    def test_phonon_switch_to_voice_file_skips_pocket_import(self):
+        model = SimpleNamespace(sample_rate=24000)
+        with tempfile.TemporaryDirectory() as tmp, patch.object(server, 'VOICES_DIR', Path(tmp)), \
+                patch.dict(sys.modules, tehablo_tts=None), contextlib.redirect_stdout(io.StringIO()):
+            voice = Path(tmp) / 'Facundo.safetensors'
+            voice.write_bytes(b'voice')
+            instance = server.create_server(port=0, model='phonon',
+                                            synthesizer_factory=lambda name: model)
+            try:
+                self.assertEqual(instance.service.resolve_voice('Facundo.safetensors', model='spanish'),
+                                 str(voice.resolve()))
             finally:
                 instance.server_close()
 
