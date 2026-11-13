@@ -436,7 +436,10 @@ class SpeechService:
             return sorted(PHONON_VOICES)
         local = sorted(p for p in VOICES_DIR.iterdir()
                        if p.is_file() and p.suffix.lower() in AUDIO_EXT) if VOICES_DIR.is_dir() else []
-        return [str(p) for p in local] + sorted(self.catalog)
+        # Until Pocket is loaded, list the table voices instead of waiting for it inside a request.
+        loaded = not callable(self._catalog) or hasattr(sys.modules.get('tehablo_tts'), 'VOICES')
+        names = self.catalog if loaded else POCKET_TABLE_VOICES
+        return [str(p) for p in local] + sorted(names)
 
     def resolve_voice(self, value, model=None):
         if (model or self.model_name) == 'phonon':

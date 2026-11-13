@@ -90,6 +90,31 @@ class StartupTests(unittest.TestCase):
                 instance.server_close()
         self.assertEqual(output.getvalue(), '')
 
+    def test_voice_list_after_phonon_switch_skips_pocket_import(self):
+        # Pi refreshes /voices right after a switch; waiting for Pocket there passed its 2 s timeout.
+        model = SimpleNamespace(sample_rate=24000)
+        with patch.dict(sys.modules, tehablo_tts=None), contextlib.redirect_stdout(io.StringIO()):
+            instance = server.create_server(port=0, model='phonon',
+                                            synthesizer_factory=lambda name: model)
+            try:
+                instance.service.model_name = 'spanish'
+                names = instance.service.voices()
+            finally:
+                instance.server_close()
+        self.assertTrue({'lola', 'rafael'} <= set(names))
+
+    def test_voice_list_uses_full_catalog_once_pocket_is_loaded(self):
+        model = SimpleNamespace(sample_rate=24000)
+        tts = SimpleNamespace(VOICES=['alba', 'lola'])
+        with patch.dict(sys.modules, tehablo_tts=tts), contextlib.redirect_stdout(io.StringIO()):
+            instance = server.create_server(port=0, model='phonon',
+                                            synthesizer_factory=lambda name: model)
+            try:
+                instance.service.model_name = 'spanish'
+                self.assertIn('alba', instance.service.voices())
+            finally:
+                instance.server_close()
+
     def test_explicit_catalog_skips_tts_import_and_timing(self):
         output = io.StringIO()
         model = SimpleNamespace(sample_rate=24000)
