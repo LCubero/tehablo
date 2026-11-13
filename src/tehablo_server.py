@@ -85,6 +85,10 @@ def voice_gain(voice):
 START_MODEL, START_VOICE = next((v['model'], v['name']) for v in _TABLE if v.get('default'))
 
 
+# Must match pocket_tts get_predefined_voice(); a test pins it to the installed version.
+POCKET_VOICES_REVISION = 'a7056f505a4a8ca72d8b5fb1440071d6f1a35739'
+
+
 def cached(name, model, kind):
     """Whether a voice can be used offline, checking the local cache only (no network)."""
     from huggingface_hub import constants, try_to_load_from_cache
@@ -96,11 +100,10 @@ def cached(name, model, kind):
         weights = [p for repo in ('pocket-tts', 'pocket-tts-without-voice-cloning')
                    for p in (hub / f'models--kyutai--{repo}' / 'snapshots').glob('*/languages/spanish/model.safetensors')]
         return (VOICES_DIR / f'{name}.safetensors').is_file() and bool(weights)
-    from pocket_tts.utils.utils import get_predefined_voice
-    repo, _, rest = get_predefined_voice(model, name).removeprefix('hf://').partition('/')
-    repo = f'{repo}/{rest.split("/", 1)[0]}'
-    path, _, revision = rest.split('/', 1)[1].partition('@')
-    return isinstance(try_to_load_from_cache(repo, path, revision=revision or None), str)
+    # Pocket's predefined embedding at its pinned revision, checked without loading Pocket/torch.
+    return (Path(constants.HF_HUB_CACHE) / 'models--kyutai--pocket-tts-without-voice-cloning' /
+            'snapshots' / POCKET_VOICES_REVISION /
+            'languages' / model / 'embeddings' / f'{name}.safetensors').is_file()
 
 
 def default_voice(model):

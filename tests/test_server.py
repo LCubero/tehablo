@@ -1424,6 +1424,54 @@ class ServerTests(unittest.TestCase):
         for entry in data['catalog']:
             self.assertEqual(set(entry), {'name', 'voice', 'model', 'kind', 'note', 'downloaded'})
 
+    def test_phonon_voice_table_checks_pocket_cache_without_importing_pocket(self):
+        from huggingface_hub import constants
+        with tempfile.TemporaryDirectory() as tmp:
+            embedding = (Path(tmp) / 'models--kyutai--pocket-tts-without-voice-cloning' /
+                         'snapshots' / tehablo_server.POCKET_VOICES_REVISION /
+                         'languages/spanish/embeddings/lola.safetensors')
+            embedding.parent.mkdir(parents=True)
+            embedding.write_bytes(b'voice')
+            with mock.patch.object(constants, 'HF_HUB_CACHE', tmp), mock.patch.dict(sys.modules, {
+                    'pocket_tts': None, 'pocket_tts.utils': None, 'pocket_tts.utils.utils': None}):
+                server = create_server(port=0, model='phonon', idle_exit=0,
+                                       synthesizer_factory=lambda _: Synth(), audio_factory=Sink)
+                try:
+                    table = {v['name']: v['downloaded'] for v in server.service.voice_table()}
+                    self.assertEqual(table, {name: name == 'lola'
+                                            for name, _, _, _ in tehablo_server.VOICE_TABLE})
+                finally:
+                    server.server_close()
+
+    def test_predefined_voice_cache_requires_expected_file_and_revision(self):
+        from huggingface_hub import constants
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.object(constants, 'HF_HUB_CACHE', tmp):
+            root = Path(tmp) / 'models--kyutai--pocket-tts-without-voice-cloning' / 'snapshots'
+            for name in ('lola', 'rafael'):
+                with self.subTest(name=name):
+                    self.assertFalse(tehablo_server.cached(name, 'spanish', 'download'))
+                    wrong = root / 'other' / 'languages/spanish/embeddings' / f'{name}.safetensors'
+                    wrong.parent.mkdir(parents=True, exist_ok=True)
+                    wrong.write_bytes(b'voice')
+                    self.assertFalse(tehablo_server.cached(name, 'spanish', 'download'))
+                    expected = root / tehablo_server.POCKET_VOICES_REVISION / 'languages/spanish/embeddings' / f'{name}.safetensors'
+                    expected.parent.mkdir(parents=True, exist_ok=True)
+                    expected.write_bytes(b'voice')
+                    self.assertTrue(tehablo_server.cached(name, 'spanish', 'download'))
+
+    def test_predefined_voice_revision_matches_installed_pocket(self):
+        try:
+            from pocket_tts.utils.utils import get_predefined_voice
+        except ImportError:
+            self.skipTest('pocket_tts not installed')
+        for name, model, _, _ in tehablo_server.VOICE_TABLE:
+            if model == 'phonon' or name in tehablo_server.INCLUDED:
+                continue
+            with self.subTest(name=name):
+                self.assertEqual(get_predefined_voice(model, name),
+                                 'hf://kyutai/pocket-tts-without-voice-cloning/languages/'
+                                 f'{model}/embeddings/{name}.safetensors@{tehablo_server.POCKET_VOICES_REVISION}')
+
     def test_included_voice_is_cached_with_either_spanish_weights(self):
         from unittest import mock
         from huggingface_hub import constants
