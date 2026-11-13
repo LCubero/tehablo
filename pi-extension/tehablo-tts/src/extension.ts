@@ -91,6 +91,18 @@ const commandHelp = [
   ['codigo', 'muestra el código para vincular el cliente SSH'],
   ['ayuda', 'muestra esta ayuda'],
 ];
+const miniGuide = `Para oír teHablo, elige tu caso:
+En esta PC
+1. Enciende con /tts; lee la última respuesta con /tts play.
+2. /tts auto activa o desactiva la lectura automática.
+3. /tts menu abre los ajustes.
+Pi en un servidor por SSH
+1. En /tts menu, elige Audio: SSH.
+2. En tu PC, desde la carpeta de teHablo, instala el cliente:
+   Linux/macOS: ./install.sh --cliente | Windows: .\\install.ps1 -Cliente
+3. Abre el cliente; en Conexión SSH elige tu servidor.
+4. En Vincular servidor, pega el código de /tts codigo.
+5. Mantén el cliente abierto para oír.`;
 const help = 'Uso de /tts:\n' + commandHelp.map(([command, description]) =>
   (command ? `/tts ${command}` : '/tts').padEnd(18) + description).join('\n');
 
@@ -842,7 +854,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
           case 'codigo':
             say(ctx, `Código de vinculación: ${store.sshCode?.()}\nSirve para vincular el cliente de la PC (menú «Vincular servidor»). No lo compartas.`);
             return;
-          case 'ayuda': say(ctx, help, 'info'); return;
+          case 'ayuda': say(ctx, `${miniGuide}\n\n${help}`, 'info'); return;
           case 'status': break;
           default: say(ctx, `Comando no reconocido: /tts ${args.trim()}\n${help}`, 'warning'); return;
         }

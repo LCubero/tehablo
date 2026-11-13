@@ -94,12 +94,37 @@ test('/tts argument completions match help order and descriptions', () => {
   assert.equal(s.completions('unknown'), null);
 });
 
+const miniGuide = `Para oír teHablo, elige tu caso:
+En esta PC
+1. Enciende con /tts; lee la última respuesta con /tts play.
+2. /tts auto activa o desactiva la lectura automática.
+3. /tts menu abre los ajustes.
+Pi en un servidor por SSH
+1. En /tts menu, elige Audio: SSH.
+2. En tu PC, desde la carpeta de teHablo, instala el cliente:
+   Linux/macOS: ./install.sh --cliente | Windows: .\\install.ps1 -Cliente
+3. Abre el cliente; en Conexión SSH elige tu servidor.
+4. En Vincular servidor, pega el código de /tts codigo.
+5. Mantén el cliente abierto para oír.`;
+
+test('/tts ayuda includes the local/SSH mini guide and unchanged command list without side effects', async () => {
+  const s = setup();
+  const before = s.store.load();
+  try {
+    await s.command('ayuda');
+    assert.deepEqual(s.notices, [[`TTS teHablo: ${miniGuide}\n\n${commandHelp}`, 'info']]);
+    assert.deepEqual(s.store.load(), before);
+    assert.deepEqual(s.calls, []);
+    assert.deepEqual(s.cards(), []);
+  } finally { await s.emit('session_shutdown'); }
+});
+
 for (const input of ['ayuda', 'xyz', 'speed 1.25']) {
   test(`/tts ${input} emits exact help and notice level`, async () => {
     const s = setup();
     try {
       await s.command(input);
-      assert.deepEqual(s.notices, [[`TTS teHablo: ${input === 'ayuda' ? '' : `Comando no reconocido: /tts ${input}\n`}${commandHelp}`, input === 'ayuda' ? 'info' : 'warning']]);
+      assert.deepEqual(s.notices, [[`TTS teHablo: ${input === 'ayuda' ? `${miniGuide}\n\n` : `Comando no reconocido: /tts ${input}\n`}${commandHelp}`, input === 'ayuda' ? 'info' : 'warning']]);
       assert.equal(s.calls.length, 0);
     } finally { await s.emit('session_shutdown'); }
   });

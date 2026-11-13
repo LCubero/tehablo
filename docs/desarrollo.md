@@ -484,9 +484,11 @@ Significado de los iconos (aunque se vean como cuadros):
 | `/tts dict` | Activa o desactiva el diccionario de pronunciación para la voz actual y lo recuerda |
 | `/tts status` | Muestra el estado y la ayuda (código oculto) |
 | `/tts codigo` | Muestra el código para vincular el cliente de la PC por SSH; no lo compartas |
-| `/tts ayuda` | Muestra la ayuda, un comando por línea con su explicación |
+| `/tts ayuda` | Muestra una mini guía local/SSH y los comandos, uno por línea con su explicación |
 
-Los argumentos de `/tts` se autocompletan con sus explicaciones, incluida `ayuda`. Un comando no reconocido muestra un aviso «Comando no reconocido: /tts …» seguido de la misma ayuda que `/tts ayuda` y `/tts status`.
+La mini guía empieza por el uso en esta PC (`/tts`, `/tts play`, `/tts auto`, `/tts menu`). Para Pi en un servidor por SSH, indica elegir **Audio: SSH**, instalar el cliente en tu PC desde la carpeta de teHablo (`./install.sh --cliente` en Linux/macOS o `.\install.ps1 -Cliente` en Windows), abrirlo, elegir el servidor en **Conexión SSH** y pegar el código de `/tts codigo` en **Vincular servidor**. El cliente debe permanecer abierto para oír. La lista de comandos se conserva debajo, separada por una línea en blanco.
+
+Los argumentos de `/tts` se autocompletan con sus explicaciones, incluida `ayuda`. Un comando no reconocido muestra un aviso «Comando no reconocido: /tts …» seguido de la lista de comandos, la misma que muestra `/tts status`; solo `/tts ayuda` añade la mini guía.
 
 ### Ajustes `[ ≡ ]` (menú)
 

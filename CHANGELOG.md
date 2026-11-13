@@ -6,6 +6,8 @@ Este archivo registra los cambios completados en orden cronológico. Las version
 
 ## 2026-11-12
 
+- Pi: `/tts ayuda` añade una mini guía breve para esta PC y audio por SSH con el cliente, sin cambiar la lista de comandos.
+
 - Voces: durante «Descargando…» se conserva la voz anterior; la nueva solo queda seleccionada al terminar correctamente y un fallo no cambia la elección.
 
 - Pi y cliente de audio SSH: el volumen inicial es 50 % cuando no hay ajustes previos; se conserva el volumen que el usuario ya guardó.
