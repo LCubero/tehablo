@@ -167,7 +167,7 @@ class WindowsPowerShellOutputTest(unittest.TestCase):
         env = dict(os.environ, TEHABLO_PS1=str(ROOT / 'receptor/install.ps1'))
         result = subprocess.run([shutil.which('powershell'), '-NoProfile', '-NonInteractive', '-Command', script],
                                 env=env, stdin=subprocess.DEVNULL, capture_output=True, timeout=60)
-        out = result.stdout.decode('utf-8')
+        out = result.stdout.decode('utf-8').replace('\r\n', '\n')
         self.assertEqual(result.returncode, 0, out + result.stderr.decode('utf-8', 'replace'))
         for line in END_LINES:
             self.assertIn(line, out)
