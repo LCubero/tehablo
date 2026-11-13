@@ -18,7 +18,7 @@ const theme = {fg: (_: string, t: string) => t};
 function setup(over: Partial<Record<string, any>> = {}) {
   const calls: any[] = [];
   let closed = false;
-  const state = {settings: {...DEFAULTS, voice: 'lola', model: 'spanish'}, server: 'off' as 'off' | 'loading' | 'ready', token: false, ...over};
+  const state = {settings: {...DEFAULTS, volume: 1, voice: 'lola', model: 'spanish'}, server: 'off' as 'off' | 'loading' | 'ready', token: false, ...over};
   const c: Controller = {
     sshCode: async (copy = false) => { calls.push(['sshCode', copy]); return '0123-4567-89AB-CDEF-0123-4567-89AB-CDEF'; },
     state: () => state as any,

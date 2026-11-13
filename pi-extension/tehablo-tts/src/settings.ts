@@ -29,7 +29,7 @@ export interface Settings {
   /** Last voice table seen from the server, shown while it is off. */
   voices: VoiceRow[];
 }
-export const DEFAULTS: Settings = {model: '', voice: '', volume: 1, speed: 1, auto: false, toolbar: true, indicator: true, icons: 'symbols', audio: 'local', sshListo: false, device: '', policy: 'stop', shortcutsOn: false, shortcuts: {}, voices: [], dict: {}};
+export const DEFAULTS: Settings = {model: '', voice: '', volume: 0.5, speed: 1, auto: false, toolbar: true, indicator: true, icons: 'symbols', audio: 'local', sshListo: false, device: '', policy: 'stop', shortcutsOn: false, shortcuts: {}, voices: [], dict: {}};
 
 const FILE = 'settings.json';
 const OLD_FILE = 'tehablo-settings.json';

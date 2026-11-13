@@ -26,7 +26,7 @@ import time
 
 ADDRESS = ('127.0.0.1', 18766)
 FORWARD = 'RemoteForward 18766 127.0.0.1:18766'
-DEFAULTS = dict(device='', volume=1.0, enabled=True, codes=[], general=[])
+DEFAULTS = dict(device='', volume=0.5, enabled=True, codes=[], general=[])
 WAV_HEADER = struct.pack('<4sI4s4sIHHIIHH4sI', b'RIFF', 0xFFFFFFFF, b'WAVE',
                          b'fmt ', 16, 1, 1, 24000, 48000, 2, 16, b'data', 0xFFFFFFFF)
 

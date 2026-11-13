@@ -254,6 +254,18 @@ class ClientTest(unittest.TestCase):
         self.addCleanup(self.tmp.cleanup)
         self.home = Path(self.tmp.name)
 
+    def test_fresh_volume_is_50_percent_without_creating_settings(self):
+        path = self.home / 'cliente.json'
+        self.assertEqual(c.load_settings(path)['volume'], 0.5)
+        self.assertFalse(path.exists())
+
+    def test_saved_volume_stays_at_80_percent(self):
+        path = self.home / 'cliente.json'
+        c.save_settings(dict(c.DEFAULTS, volume=0.8), path)
+        before = path.read_bytes()
+        self.assertEqual(c.load_settings(path)['volume'], 0.8)
+        self.assertEqual(path.read_bytes(), before)
+
     def test_settings(self):
         path = self.home / 'cliente.json'
         self.assertEqual(c.load_settings(path), c.DEFAULTS)
@@ -842,6 +854,7 @@ class MenuTest(unittest.IsolatedAsyncioTestCase):
             connect.assert_not_called()
 
     async def test_menu_is_clickable_and_saves_every_option(self):
+        self.settings['volume'] = 1.0  # Preserve controls from a previously saved volume.
         app = c.menu_app(self.settings, self.receiver)
         async with app.run_test(size=(100, 45)) as pilot:
             self.assertIn('Sin vincular', self.text(app, '#alerta'))
@@ -1075,6 +1088,7 @@ class MenuTest(unittest.IsolatedAsyncioTestCase):
         self.process.terminate.assert_called_once()
 
     async def test_compact_layout_volume_limits_and_keyboard(self):
+        self.settings['volume'] = 1.0  # Exercise the existing upper-bound behavior.
         app = c.menu_app(self.settings, self.receiver)
         async with app.run_test(size=(80, 24)) as pilot:
             from textual.widgets import Button, Select, Switch

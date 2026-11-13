@@ -21,6 +21,18 @@ test('S21 receiver success persists and survives unrelated stale-session saves',
   assert.equal(loadSettings(dir).volume, .5);
 }));
 
+test('fresh settings start at 50 percent without creating a file', () => withDirs((dir, project) => {
+  assert.equal(loadSettings(dir, project).volume, 0.5);
+  assert.equal(existsSync(join(dir, 'settings.json')), false);
+}));
+
+test('saved volume stays at 80 percent on reload', () => withDirs((dir, project) => {
+  saveSettings(dir, {...DEFAULTS, volume: 0.8});
+  const before = readFileSync(join(dir, 'settings.json'), 'utf8');
+  assert.equal(loadSettings(dir, project).volume, 0.8);
+  assert.equal(readFileSync(join(dir, 'settings.json'), 'utf8'), before);
+}));
+
 test('settings live in .tehablo inside the user folder', () => {
   assert.equal(settingsDir(), join(homedir(), '.tehablo'));
 });

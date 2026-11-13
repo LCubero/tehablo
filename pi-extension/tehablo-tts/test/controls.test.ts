@@ -8,7 +8,14 @@ import {fileURLToPath} from 'node:url';
 import {DEFAULTS} from '../src/settings.ts';
 import {ServerClient} from '../src/server.ts';
 
-function setup(store=memoryStore(),clipboard?:()=>Promise<string>,watchMs=0,noteMs=4000, clipboardAvailable=true, copier?: (text: string) => Promise<void>) {
+// Existing control/layout contracts use a user who saved 100 %, not fresh defaults.
+function savedVolumeStore() {
+  const store = memoryStore();
+  store.save({...store.load(), volume: 1});
+  return store;
+}
+
+function setup(store=savedVolumeStore(),clipboard?:()=>Promise<string>,watchMs=0,noteMs=4000, clipboardAvailable=true, copier?: (text: string) => Promise<void>) {
   const windows:any[]=[], keyHandlers:any[]=[];
   const configs:any[]=[], notices:string[]=[], statuses:(string|undefined)[]=[], settings={volume:1,speed:1,audio:'local',error:null as string|null,note:null as string|null,fallback:null as string|null};
   const hooks:any={}, calls:string[]=[], entries:any[]=[{type:'message',id:'a',message:{role:'assistant',content:'Hola'}} ,{type:'custom',customType:'tehablo-tts',data:{messageId:'a',number:1}}];
@@ -21,6 +28,15 @@ function setup(store=memoryStore(),clipboard?:()=>Promise<string>,watchMs=0,note
   const card=renderer(entries[1],{}, {fg:(_:any,t:string)=>t});
   return {startCard:()=>widget,entries,hooks,ctx,store,windows,keyHandlers,press:(d:string)=>keyHandlers.map(h=>h(d)),client,calls,card,configs,notices,statuses,line:()=>{const l=card.render(200)[0];if(l!==undefined)assert.equal(l[0],' ');return l?.slice(1);}, command:(s:string)=>command(s,ctx),set:(s:string,i:string|null='a')=>{state=s;id=i;},setReady:(value:boolean)=>{ready=value;},setError:(value:string)=>{settings.error=value;},setNote:(value:string)=>{settings.note=value;},setFallback:(value:string|null)=>{settings.fallback=value;},ensures:()=>ensures,close:()=>hooks.session_shutdown({},ctx),agentStart:()=>hooks.agent_start({},ctx),fail:(value=true)=>{fail=value;},renders:()=>renders};
 }
+test('fresh volume is applied to the server before playback', async () => {
+  const s = setup(memoryStore());
+  try {
+    await s.command('play');
+    assert.equal(s.configs[0].volume, 0.5);
+    assert.ok(s.calls.indexOf('/config') < s.calls.indexOf('/speak'));
+  } finally { await s.close(); }
+});
+
 test('S37 menu copies exactly the private store code without persisting settings', async () => {
   const store = memoryStore(), copied: string[] = [];
   const code = 'ABCD-0123-4567-89AB-CDEF-0123-4567-89AB';
@@ -241,7 +257,7 @@ test('/tts codigo reveals the pairing code only on request, without starting the
 });
 
 test('text icons render all states and changing the window saves and redraws immediately', async () => {
-  const clip = deferred<string>(), store = memoryStore();
+  const clip = deferred<string>(), store = savedVolumeStore();
   const s = setup(store, () => clip.promise);
   const ready = '[ |> ] [ |> copiado ]';
   const tail = '[ = ] [ <- ] :  [ off ]  Vol [- 100% +]  Vel [- 1.00x +]  ';
@@ -1254,7 +1270,7 @@ test('turning auto reading on starts a stopped server, also with the bar hidden;
 });
 
 for (const icons of ['symbols', 'text'] as const) test(`S17 exact layout and menu clicks (${icons})`,async()=>{
-  const store=memoryStore();store.save({...store.load(),icons,speed:1.1});
+  const store=memoryStore();store.save({...store.load(),icons,speed:1.1,volume:1});
   const s=setup(store);try {
     const text=icons==='text', menu=text?'[ = ]':'[ ≡ ]', more=text?'[ ... ]':'[ ⋯ ]', close=text?'[ <- ]':'[ → ]';
     const lead=text?'[ |> ] [ |> copiado ]':'[ ▶ ] [ ▶ copiado ]';
