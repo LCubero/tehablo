@@ -9,6 +9,10 @@ import unittest
 ROOT = Path(__file__).resolve().parents[1]
 SCRATCH = ROOT / '.repo-harness/tmp/t9-check'
 SCRATCH.mkdir(parents=True, exist_ok=True)
+END_LINES = ('Cliente instalado', 'Para iniciar:',
+             '1. Conexión SSH → elegir servidor.',
+             '2. Vincular servidor → pegar el código de /tts codigo.',
+             '3. Deja el cliente abierto para oír la voz.')
 
 
 @unittest.skipUnless(shutil.which('sh'), 'needs POSIX sh')
@@ -34,12 +38,8 @@ class InstallerTest(unittest.TestCase):
         result = self.run_installer()
         self.assertEqual(result.returncode, 0)
         self.assertEqual(result.stderr, '')
-        for line in ('Cliente instalado', 'Para iniciar:',
-                     '1. Conexión SSH → elegir servidor.',
-                     '2. Vincular servidor → pegar el código de /tts codigo.',
-                     '3. Deja el cliente abierto para oír la voz.'):
+        for line in END_LINES:
             self.assertIn(line, result.stdout)
-            self.assertIn(line, (ROOT / 'receptor/install.ps1').read_text())
         self.assertIn('uv run --script', result.stdout)
 
     def test_prompt_only_on_terminal(self):
@@ -148,6 +148,30 @@ class InstallerTest(unittest.TestCase):
 
 
 POWERSHELL = shutil.which('pwsh') or shutil.which('powershell')
+
+
+class PowerShellSourceTest(unittest.TestCase):
+    def test_scripts_are_ascii(self):
+        # Windows PowerShell 5.1 reads BOM-less scripts as ANSI; a BOM breaks irm | iex.
+        for name in ('install.ps1', 'receptor/install.ps1'):
+            data = (ROOT / name).read_bytes()
+            self.assertTrue(data.isascii(), name)
+
+
+@unittest.skipUnless(shutil.which('powershell'), 'needs Windows PowerShell 5.1')
+class WindowsPowerShellOutputTest(unittest.TestCase):
+    def test_end_block_reads_correctly_from_a_file(self):
+        script = ('[Console]::OutputEncoding = [Text.Encoding]::UTF8\n'
+                  'function uv { $global:LASTEXITCODE = 0 }\n'
+                  '& $env:TEHABLO_PS1 -Yes\n')
+        env = dict(os.environ, TEHABLO_PS1=str(ROOT / 'receptor/install.ps1'))
+        result = subprocess.run([shutil.which('powershell'), '-NoProfile', '-NonInteractive', '-Command', script],
+                                env=env, stdin=subprocess.DEVNULL, capture_output=True, timeout=60)
+        out = result.stdout.decode('utf-8')
+        self.assertEqual(result.returncode, 0, out + result.stderr.decode('utf-8', 'replace'))
+        for line in END_LINES:
+            self.assertIn(line, out)
+        self.assertNotIn('Write-Host', out)
 
 
 @unittest.skipUnless(POWERSHELL, 'needs PowerShell')

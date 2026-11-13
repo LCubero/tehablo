@@ -7,6 +7,7 @@ Este archivo registra los cambios completados en orden cronológico. Las version
 ## 2026-11-13
 
 - Cliente SSH, instalador de Windows: el cliente también se descarga primero a un archivo `.part`; si la conexión se corta no queda un cliente roto y la siguiente ejecución lo vuelve a bajar.
+- Instaladores de Windows: Windows PowerShell 5.1 ya muestra bien los acentos y las flechas al ejecutar `.\install.ps1`; antes salían caracteres rotos y una línea con «Write-Host».
 
 ## 2026-11-12
 

@@ -1,4 +1,5 @@
 param([switch]$Cliente, [switch]$Receptor, [string]$HostAlias, [switch]$Uninstall, [switch]$ConfigOnly, [switch]$Yes)
+# Keep this file ASCII: Windows PowerShell 5.1 misreads UTF-8 without BOM, and a BOM breaks irm | iex. Write accents as $([char]0x00F3).
 $ErrorActionPreference = 'Stop'
 Set-Location $PSScriptRoot
 
@@ -42,8 +43,8 @@ except Exception as error:
     sys.exit(1)"
 if ($LASTEXITCODE -ne 0) {
     if ("$audioCheck" -match 'PortAudio') {
-        $notes += 'Aviso: falta PortAudio, así que la voz no puede sonar en este equipo.'
-        $notes += 'Con Audio: SSH no hace falta PortAudio: elígelo en los ajustes de Pi (README, Audio por SSH).'
+        $notes += "Aviso: falta PortAudio, as$([char]0x00ED) que la voz no puede sonar en este equipo."
+        $notes += "Con Audio: SSH no hace falta PortAudio: el$([char]0x00ED)gelo en los ajustes de Pi (README, Audio por SSH)."
         $notes += "Para que suene en este equipo, reinstala sounddevice y vuelve a ejecutar este script: uv pip install --python $python --reinstall sounddevice"
     } else {
         Write-Host $audioCheck
@@ -58,7 +59,7 @@ foreach ($line in $preparation) {
 }
 
 Write-Host "`nListo. Lee esto:"
-Write-Host '1. Avisos de instalación:'
+Write-Host "1. Avisos de instalaci$([char]0x00F3)n:"
 if ($notes.Count) { $notes | ForEach-Object { Write-Host "  $_" } }
 else { Write-Host '  Sin avisos.' }
 Write-Host "2. Listo: $envDir"
@@ -67,7 +68,7 @@ Write-Host 'Pocket spanish, Lola y Rafael: descarga durante la instalacion (revi
 Write-Host '3. Para usarlo en Pi (una vez, para todos tus proyectos):'
 Write-Host "  pi install `"$PSScriptRoot\pi-extension\tehablo-tts`""
 Write-Host "  (o con gentle-shell: gentle-shell install `"$PSScriptRoot\pi-extension\tehablo-tts`")"
-Write-Host '4. Audio por SSH (en tu PC): .\install.ps1 -Cliente (-Receptor también funciona)'
+Write-Host "4. Audio por SSH (en tu PC): .\install.ps1 -Cliente (-Receptor tambi$([char]0x00E9)n funciona)"
 Write-Host '5. Voz opcional mas natural en Pi: Phonon 40M es (Regina, Iker; acceso restringido, uso no comercial).'
 Write-Host '  Acepta los terminos en https://huggingface.co/gradium/phonon-40m-es y eligela en los ajustes de Pi (/tts menu):'
 Write-Host '  pide el token solo para descargarla y no lo guarda.'

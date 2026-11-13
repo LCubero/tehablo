@@ -33,7 +33,9 @@ class InstallVoicesTests(unittest.TestCase):
             self.assertNotIn('uv pip', block)
             self.assertIn('notes', block.lower())
             self.assertTrue(block.rstrip().endswith("'  pide el token solo para descargarla y no lo guarda.'"))
-            self.assertIn('1. Avisos de instalación:', block)
+            # PowerShell sources stay ASCII and spell accents as $([char]0x...).
+            accent = 'ó' if name.endswith('.sh') else '$([char]0x00F3)'
+            self.assertIn('1. Avisos de instalaci' + accent + 'n:', block)
             self.assertIn('Con Audio: SSH no hace falta PortAudio', before)
             self.assertIn('falta PortAudio', before)
 

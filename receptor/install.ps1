@@ -5,6 +5,7 @@ param(
     [switch]$Yes
 )
 $ErrorActionPreference = 'Stop'
+# Keep this file ASCII: Windows PowerShell 5.1 misreads UTF-8 without BOM, and a BOM breaks irm | iex. Write accents as $([char]0x00F3).
 # Works through irm | iex too. No writes before the dependency check.
 if (-not (Get-Command uv -ErrorAction SilentlyContinue)) {
     Write-Host 'Falta uv. Instalalo y vuelve a ejecutar:'
@@ -34,9 +35,9 @@ if ($Uninstall) {
 $client = [IO.Path]::GetFullPath($client)
 Write-Host 'Cliente instalado'
 Write-Host ("Para iniciar: uv run --script '" + $client.Replace("'", "''") + "'")
-Write-Host '1. Conexión SSH → elegir servidor.'
-Write-Host '2. Vincular servidor → pegar el código de /tts codigo.'
-Write-Host '3. Deja el cliente abierto para oír la voz.'
+Write-Host "1. Conexi$([char]0x00F3)n SSH $([char]0x2192) elegir servidor."
+Write-Host "2. Vincular servidor $([char]0x2192) pegar el c$([char]0x00F3)digo de /tts codigo."
+Write-Host "3. Deja el cliente abierto para o$([char]0x00ED)r la voz."
 Write-Host 'Para salir: Salir o Esc.'
 if (-not $Yes -and -not $ConfigOnly -and [Environment]::UserInteractive -and -not [Console]::IsInputRedirected) {
     Write-Host 'Presiona Enter para abrir el cliente (Ctrl+C para salir)'
