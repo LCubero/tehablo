@@ -85,12 +85,14 @@ Si Pi corre en un servidor, el cliente teHablo puede reproducir la voz en tu com
 | Qué | Aproximado |
 |---|---|
 | GPU | No la usa: funciona solo con CPU |
-| CPU | Al leer, **~0,5 núcleos** en promedio (picos de ~1,7 mientras genera, unas 3,6 veces más rápido de lo que habla); en reposo, prácticamente nada |
-| RAM con el servidor encendido | Pocket `spanish` (Lola, Rafael y las voces latinoamericanas) **~1 GB**; `spanish_24l` **~1,8 GB**; Phonon (Regina, Iker) **~0,2 GB** (hasta ~0,35 GB leyendo) |
+| CPU al leer | Phonon **~0,4 núcleos**; Pocket **~0,75** (picos de ~1,5–1,7) |
+| CPU en reposo | **~0,5 %** de un núcleo |
+| Arranque | Phonon **~0,5 s**; Pocket **~7 s** |
+| RAM | Phonon (Regina, Iker) **~0,2–0,35 GB**; Pocket `spanish` (Lola y demás) **~1 GB**; `spanish_24l` **~1,8 GB** |
 | Disco | Entorno Python **0,8–1,1 GB**; modelos Pocket **0,9–1,2 GB**; Phonon **~0,15 GB** |
 | Internet | Solo para instalar y descargar voces; después funciona sin conexión |
 
-Son referencias, no mínimos; varían según sistema y cuantización. Apagar el servidor libera el modelo. [Mediciones Windows/Fedora](docs/como-funciona.md#consumo-medido) · [Comparación con Phonon](docs/pruebas-de-voces.md#phonon-40m-es-frente-a-lola-spanish_24l-y-kokoro-2026-11-03-fedora).
+CPU y arranque medidos en una laptop de 2 núcleos de 2014; son referencias, no mínimos. Apagar el servidor libera la RAM. [Mediciones Windows, Fedora y VM](docs/como-funciona.md#consumo-medido) · [Comparación con Phonon](docs/pruebas-de-voces.md#phonon-40m-es-frente-a-lola-spanish_24l-y-kokoro-2026-11-03-fedora).
 
 ## Voces y licencias
 

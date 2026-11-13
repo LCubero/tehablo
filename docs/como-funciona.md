@@ -177,6 +177,21 @@ Mismo equipo, `spanish`, `pocket-tts` 4.0.1 y Torch 2.15.0+cpu ([datos](measurem
 - En una prueba a ciegas con texto técnico (rutas, números, términos en inglés y una pregunta), la persona responsable no distinguió el audio cuantizado del normal.
 - Por eso, desde el 2026-10-30 el modelo se carga cuantizado en Linux y sin cuantizar en Windows; `TEHABLO_QUANTIZE=0` o `1` cambia ese valor (`quantize_default` en `src/tehablo_tts.py`). Las tablas de arriba son sin cuantizar.
 
+### VM Proxmox de 2 núcleos
+
+Medido por el agente el 2026-11-12 en una VM Proxmox con Ubuntu Desktop: Intel i5-4300M (laptop de 2014), 2 núcleos con `cpu: host` (AVX2), 8 GB de RAM, servidor con Audio: SSH y muestras de `/proc` cada 5 s. CPU en % de un núcleo.
+
+| Qué | Pocket `spanish` · `lola` | Phonon 40M es · `Regina` (1 hilo) |
+|---|---|---|
+| Listo para hablar | ~7–8 s | ~0,5 s |
+| RAM en reposo | ~800–880 MB | ~195 MB |
+| RAM leyendo | ~850–920 MB | ~240–340 MB |
+| CPU en reposo | 0,4–0,6 % | 0,4–0,6 % |
+| Picos al generar | ~170 % | ~150 % |
+| Texto largo (`samples/prueba-larga.txt`, ~100 s de audio, sin reproducir) | 42 s, **0,75 s de CPU por segundo de audio** (×2,4 tiempo real) | 26 s, **0,42 s de CPU por segundo de audio** (×3,8) |
+
+Preparar el texto (técnico, diccionario y números) costó ~4 ms por lectura y la velocidad 1,25x ~5 % de la CPU de síntesis: casi todo el consumo es el modelo. Tras seis lecturas la RAM quedó estable (sin fuga). Phonon con 1 hilo leyó al mismo ritmo que con 2 y gastó ~15 % menos CPU; bajar la prioridad del servidor (`nice`) con la VM ocupada alargó la lectura de 36 s a 61 s y se descartó.
+
 ### Método reproducible en Fedora
 
 El [script de medición](../scripts/measure_tts.py) y el
