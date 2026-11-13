@@ -4,7 +4,7 @@ Set-Location $PSScriptRoot
 
 if ($Cliente -or $Receptor) {
     $global:LASTEXITCODE = 0
-    & "$PSScriptRoot\receptor\install.ps1" -HostAlias $HostAlias -Uninstall:$Uninstall -ConfigOnly:$ConfigOnly -Yes:$Yes
+    & "$PSScriptRoot\receptor\install.ps1" -Uninstall:$Uninstall -ConfigOnly:$ConfigOnly -Yes:$Yes
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
     return
 }

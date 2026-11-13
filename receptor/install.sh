@@ -25,4 +25,24 @@ if [ ! -f "$client" ]; then
     curl -fsSL https://raw.githubusercontent.com/LCubero/tehablo/master/cliente/tehablo_cliente.py -o "$client.part"
     mv "$client.part" "$client"
 fi
-exec uv run --script "$client" "$@"
+if [ "${1:-}" = --uninstall ]; then
+    exec uv run --script "$client" "$@"
+fi
+# Absolute path: the printed command works from another directory too.
+client="$(CDPATH= cd -- "${client%/*}" && pwd)/${client##*/}"
+printf '%s\n' 'Cliente instalado'
+printf "Para iniciar: uv run --script '%s'\n" "$client"
+printf '%s\n' '1. Conexión SSH → elegir servidor.' \
+    '2. Vincular servidor → pegar el código de /tts codigo.' \
+    '3. Deja el cliente abierto para oír la voz.' \
+    'Para salir: Salir o Esc.'
+# curl | sh leaves stdin on the pipe: then ask through the terminal; never in captured or headless runs.
+tty=
+if [ -t 0 ]; then tty=/dev/stdin
+elif [ -t 1 ] && { : < /dev/tty; } 2>/dev/null; then tty=/dev/tty
+fi
+if [ -n "$tty" ]; then
+    printf '%s\n' 'Presiona Enter para abrir el cliente (Ctrl+C para salir)'
+    IFS= read -r answer < "$tty" || exit 0
+    exec uv run --script "$client" "$@" < "$tty"
+fi

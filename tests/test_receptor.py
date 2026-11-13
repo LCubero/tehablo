@@ -27,6 +27,47 @@ class InstallerTest(unittest.TestCase):
                                (ROOT / 'receptor/install.sh').as_posix(), *args], env=self.env,
                               stdin=subprocess.DEVNULL, capture_output=True, text=True, timeout=15)
 
+    def test_install_end_block(self):
+        uv = self.bin / 'uv'
+        uv.write_text('#!/bin/sh\nexit 0\n')
+        uv.chmod(0o755)
+        result = self.run_installer()
+        self.assertEqual(result.returncode, 0)
+        self.assertEqual(result.stderr, '')
+        for line in ('Cliente instalado', 'Para iniciar:',
+                     '1. Conexión SSH → elegir servidor.',
+                     '2. Vincular servidor → pegar el código de /tts codigo.',
+                     '3. Deja el cliente abierto para oír la voz.'):
+            self.assertIn(line, result.stdout)
+            self.assertIn(line, (ROOT / 'receptor/install.ps1').read_text())
+        self.assertIn('uv run --script', result.stdout)
+
+    def test_prompt_only_on_terminal(self):
+        uv = self.bin / 'uv'
+        uv.write_text('#!/bin/sh\nprintf opened > "$HOME/opened"\n')
+        uv.chmod(0o755)
+        result = self.run_installer()
+        self.assertEqual(result.returncode, 0)
+        self.assertNotIn('Presiona Enter', result.stdout)
+        self.assertFalse((self.home / 'opened').exists())
+        import pty
+        master, slave = pty.openpty()
+        self.addCleanup(os.close, master)
+        self.addCleanup(os.close, slave)
+        process = subprocess.Popen([self.sh, str(ROOT / 'receptor/install.sh')],
+                                   env=dict(self.env, PATH=str(self.bin)), stdin=slave,
+                                   stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        try:
+            os.write(master, b'\n')
+            out, err = process.communicate(timeout=15)
+        finally:
+            if process.poll() is None:
+                process.kill()
+                process.wait()
+        self.assertEqual((process.returncode, err), (0, ''))
+        self.assertIn('Presiona Enter para abrir el cliente (Ctrl+C para salir)', out)
+        self.assertTrue((self.home / 'opened').exists())
+
     def test_missing_uv_leaves_home_unchanged(self):
         before = sorted(p.relative_to(self.home) for p in self.home.rglob('*'))
         result = self.run_installer()
@@ -77,7 +118,7 @@ class InstallerTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual(client.read_text(), '# fake client\n')
         self.assertFalse(client.with_name(client.name + '.part').exists())
-        self.assertTrue((self.home / 'uv-args').exists())
+        self.assertFalse((self.home / 'uv-args').exists())
 
     def test_menu_and_uninstall_delegate_to_uv(self):
         # A shell stub logs only; it never runs the real client.
@@ -87,6 +128,10 @@ class InstallerTest(unittest.TestCase):
         for args in ((), ('--uninstall',)):
             result = self.run_installer(*args)
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            if not args:
+                self.assertFalse((self.home / 'uv-args').exists())
+                self.assertIn('Para iniciar:', result.stdout)
+                continue
             actual = (self.home / 'uv-args').read_text().splitlines()
             self.assertEqual(actual[:2], ['run', '--script'])
             self.assertTrue(actual[2].replace('\\', '/').endswith('/cliente/tehablo_cliente.py'))

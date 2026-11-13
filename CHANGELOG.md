@@ -6,6 +6,9 @@ Este archivo registra los cambios completados en orden cronológico. Las version
 
 ## 2026-11-12
 
+- Instalador del cliente SSH: confirma «Cliente instalado», muestra cómo abrirlo y usarlo, y ofrece Enter para abrir solo con entrada de terminal; sin terminal no espera.
+- Cliente SSH: nueva opción **Ayuda** con guía breve, comando de inicio, conexión, vinculación y salida.
+
 - Pi: `/tts ayuda` añade una mini guía breve para esta PC y audio por SSH con el cliente, sin cambiar la lista de comandos.
 
 - Voces: durante «Descargando…» se conserva la voz anterior; la nueva solo queda seleccionada al terminar correctamente y un fallo no cambia la elección.

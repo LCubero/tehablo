@@ -561,6 +561,22 @@ class MenuTest(unittest.IsolatedAsyncioTestCase):
     def text(self, app, selector):
         return str(app.query_one(selector).render())
 
+    async def test_help_guide(self):
+        app = c.menu_app(self.settings, self.receiver)
+        async with app.run_test(size=(100, 45)) as pilot:
+            await pilot.click('#ayuda-cliente')
+            await pilot.pause()
+            text = str(app.screen.query_one('#pregunta').render())
+            for line in ('Oye en esta computadora la voz de Pi del servidor.',
+                         'uv run --script', 'Conexión SSH → elegir servidor.',
+                         'Vincular servidor → pegar el código de /tts codigo.',
+                         'Deja el cliente abierto para oír la voz.', 'Salir o Esc'):
+                self.assertIn(line, text)
+            await pilot.press('escape')
+            self.assertEqual(len(app.screen_stack), 1)
+            self.assertFalse(c.settings_path().exists())
+            self.factory.assert_not_called()
+
     async def test_selected_channel_restricts_receiver_but_manual_keeps_list(self):
         command = 'ssh alice@host'
         other = 'f' * 32

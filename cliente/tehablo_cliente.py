@@ -746,6 +746,7 @@ def menu_app(settings, receiver, voice=None):
                     yield Row(label, id=name)
                 yield Static('─' * 68, classes='separador')
                 for label, name in [('Vincular servidor', 'vincular'), ('Conexión SSH', 'ssh'),
+                                    ('Ayuda', 'ayuda-cliente'),
                                     ('Desinstalar', 'desinstalar'), ('Salir', 'salir')]:
                     yield Row(label, id=name)
                 yield Static(id='aviso', markup=False)
@@ -788,7 +789,7 @@ def menu_app(settings, receiver, voice=None):
                           ssh=f'Canal SSH en ejecución: {voice.host}' if voice.running else
                           'Buscando sesiones…' if getattr(self, 'searching', False) else
                           getattr(self, 'voice_reason', '') or 'Elegir conexión ▾',
-                          desinstalar='›', salir='›')
+                          **{'ayuda-cliente': '›'}, desinstalar='›', salir='›')
             for name, value in values.items():
                 self.query_one('#' + name, Row).show_value(value)
 
@@ -874,6 +875,17 @@ def menu_app(settings, receiver, voice=None):
                     self.other_program()
                     return
                 self.search_sessions()
+            elif name == 'ayuda-cliente':
+                command = manual_command(['uv', 'run', '--script', str(Path(__file__).resolve())],
+                                         os.name == 'nt')
+                self.choose('Oye en esta computadora la voz de Pi del servidor.\n\n'
+                            'Para iniciar: ' + command + '\n\n'
+                            '1. Conexión SSH → elegir servidor.\n'
+                            '2. Vincular servidor → pegar el código de /tts codigo.\n'
+                            '3. En Pi, elige Audio: SSH y reproduce una respuesta.\n'
+                            '4. Deja el cliente abierto para oír la voz.\n\n'
+                            'Para salir: Salir o Esc (desde el menú principal).\n'
+                            'Esc aquí vuelve al menú.', [('volver', 'Volver')], lambda value: None)
             elif name == 'desinstalar':
                 self.confirm_uninstall()
             elif name == 'salir':
