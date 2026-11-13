@@ -6,7 +6,7 @@ Este archivo registra los cambios completados en orden cronológico. Las version
 
 ## 2026-11-12
 
-- Servidor con Phonon (Regina, Iker): ya no carga Pocket ni PyTorch al arrancar si no hace falta una voz Pocket; arranca unos 3,7 s antes y usa unos 400 MB menos de RAM.
+- Servidor con Phonon (Regina, Iker): ya no carga Pocket ni PyTorch si no hace falta una voz Pocket, ni al arrancar ni al abrir los ajustes de Pi; arranca unos 3,7 s antes y usa unos 400 MB menos de RAM.
 
 ## 2026-11-11
 
