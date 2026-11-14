@@ -614,6 +614,23 @@ Versiones: `piper-tts` 1.8.0, `supertonic` 1.3.1, ONNX Runtime 1.32.0; referenci
 
 **Licencias comprobadas en esta ronda:** `piper-tts` GPL-3.0-or-later, no el antiguo motor MIT. Sus fichas declaran licencias del conjunto de entrenamiento, no una licencia independiente verificada de cada modelo: carlfm dominio público; davefx CC0; sharvard CC BY 3.0; claude Apache-2.0; ald Unlicense; daniela CC BY-SA 4.0. Miro declara modelo CC BY-NC-ND 4.0; Supertonic 3, modelo OpenRAIL-M y código de ejemplo MIT; MOSS ONNX, Apache-2.0 según ficha. No es asesoría legal.
 
+## Tercera ronda en VM: voces de Piper de la comunidad (2026-11-14)
+
+Misma VM, texto y método de la segunda ronda: `piper-tts` 1.8.0, generación frase por frase, proceso nuevo por voz, un calentamiento y dos ejecuciones medidas. Tiempos medios de las dos últimas; pico de RAM de las tres. Evidencia local ignorada por Git: `.repo-harness/tmp/modelos/piper2/REPORT.md` y `.repo-harness/tmp/modelos/res/piper2/*.json`; no es evidencia durable versionada. Se midieron voces adicionales de la comunidad y las dos MLS oficiales, antes escuchadas pero sin medición de consumo. Cada modelo ocupa aproximadamente 63 MB; las MLS son `low`, a 16 kHz, y las demás generan a 22,05 kHz. Los acentos indicados proceden de las fuentes o los nombres de archivo, no de una verificación independiente.
+
+| Voz / acento declarado | Pico MiB | CPU s | Generación s | Primer fragmento s | Audio s | Licencia declarada |
+|---|---:|---:|---:|---:|---:|---|
+| Julia / no identificado | 421 | 4,66 | 2,34 | 0,44 | 30,48 | Apache-2.0 |
+| Laura / `es_MX` | 367 | 4,91 | 2,46 | 0,52 | 32,32 | CC-BY-NC-4.0 y texto adicional que prohíbe servicios de pago |
+| Esther / no identificado | 411 | 6,38 | 3,21 | 0,58 | 43,83 | Apache-2.0 |
+| Adolfo / `es_MX` | 431 | 7,43 | 3,72 | 0,72 | 51,68 | Apache-2.0 |
+| MLS 10246 / `es_ES` | 380 | 5,52 | 2,77 | 0,37 | 50,84 | dataset CC-BY-4.0 |
+| MLS 9972 / `es_ES` | 328 | 5,61 | 2,81 | 0,49 | 51,89 | dataset CC-BY-4.0 |
+
+Esther, Adolfo y ambas MLS produjeron unos 44–52 s de audio para un texto de referencia de ~33 s: causa desconocida; no se verificó si hablan despacio o repiten contenido. La búsqueda omitió duplicados de voces medidas, voces de personajes como GLaDOS, opciones sin licencia declarada, idiomas distintos del español y checkpoints no ejecutables como voces Piper; no es un inventario global exhaustivo.
+
+**Escucha directa de la persona responsable, no a ciegas:** Julia aceptable, pero con ruido; Laura, Esther, Adolfo y ambas MLS aceptables, aunque algo poco naturales. Las dos MLS fueron las menos deficientes de esta ronda, pero se consideraron de muy baja calidad y no gustaron. **Resultado:** ninguna se incorpora; entre las voces de Piper solo las oficiales `carlfm`, `davefx` y `sharvard` permanecen aceptables para la propuesta pendiente. La decisión sobre su incorporación (Plan 3) no cambia.
+
 ## Licencias
 
 Cada opción tiene tres capas: el programa, el modelo y la voz con la que se entrenó o se clona.
@@ -622,7 +639,7 @@ Cada opción tiene tres capas: el programa, el modelo y la voz con la que se ent
 |---|---|---|---|---|
 | Pocket TTS | MIT | CC BY 4.0 y términos de Kyutai | `lola`: Common Voice, licencia del archivo sin verificar | Prohíbe clonar o suplantar sin consentimiento. |
 | Supertonic 3 | MIT | OpenRAIL-M | 10 voces propias | Permite uso comercial con usos prohibidos: suplantar sin consentimiento y presentar el audio como real sin avisar que es generado. Proyecto archivado: sin actualizaciones. |
-| Piper | GPL-3.0-or-later (`piper-tts` 1.8.0) | por voz; `miro` CC BY-NC-ND 4.0 | `davefx` CC0; `carlfm` dominio público; `mls_*` CC BY 4.0; `ald` Unlicense; `claude` Apache-2.0; `sharvard` CC BY 3.0; `daniela` CC BY-SA 4.0 | Las licencias de voces de esta fila son declaraciones sobre los datasets en las fichas, no licencias independientes verificadas de los modelos. Revisar las obligaciones GPL al distribuir una integración. |
+| Piper | GPL-3.0-or-later (`piper-tts` 1.8.0) | por voz; `miro` CC BY-NC-ND 4.0; Laura CC-BY-NC-4.0 con texto adicional que prohíbe servicios de pago | `davefx` CC0; `carlfm` dominio público; `mls_*` CC BY 4.0; `ald` Unlicense; `claude` Apache-2.0; `sharvard` CC BY 3.0; `daniela` CC BY-SA 4.0 | Las licencias de voces de esta fila son declaraciones sobre los datasets en las fichas, no licencias independientes verificadas de los modelos. Revisar las obligaciones GPL al distribuir una integración. |
 | MOSS-TTS-Nano ONNX | sin licencia independiente verificada del ejecutor | Apache-2.0 según ficha ONNX | integrada; clonación no completada | Descartado por RAM/CPU en la segunda ronda en VM. |
 | Kokoro-82M | `kokoro-onnx` MIT; usa `espeak-ng` (GPL-3.0) a través de `espeakng-loader` (MIT) | Apache-2.0 | voces propias del modelo | Uso comercial libre del modelo; `espeak-ng` es GPL-3.0, así que distribuir un programa que lo incluya tiene la misma condición que Piper. |
 | MeloTTS | MIT | MIT | voz propia del modelo | Depende de torch, MeCab/`unidic` y NLTK. |
