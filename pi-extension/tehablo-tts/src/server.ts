@@ -1,6 +1,6 @@
 import { spawn as nodeSpawn, execFile as nodeExecFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { closeSync, existsSync, mkdirSync, openSync, readFileSync, writeFileSync, linkSync, unlinkSync } from 'node:fs';
+import { closeSync, existsSync, mkdirSync, openSync, readFileSync, writeFileSync, linkSync, unlinkSync, copyFileSync } from 'node:fs';
 import { randomBytes } from 'node:crypto';
 import { homedir } from 'node:os';
 import { resolve, join } from 'node:path';
@@ -16,8 +16,12 @@ type Options = {
   codePath?: string;
 };
 
-/** Truncates the log on every server start, so it holds only the latest run. */
-const openLogFile = (path: string) => { mkdirSync(join(path, '..'), {recursive: true}); return openSync(path, 'w'); };
+/** Keep the previous run's crash evidence before truncating; backup failure never blocks startup. */
+const openLogFile = (path: string) => {
+  mkdirSync(join(path, '..'), {recursive: true});
+  try { copyFileSync(path, join(path, '..', 'tehablo-server.prev.log')); } catch { /* Best effort, including the first start. */ }
+  return openSync(path, 'w');
+};
 
 export function pairingCode(path = join(homedir(), '.tehablo', 'ssh-codigo')): string {
   mkdirSync(join(path, '..'), {recursive: true});
@@ -132,7 +136,7 @@ export class ServerClient {
       try { log = (this.options.openLog ?? openLogFile)(this.logPath); } catch { /* Logging is best effort. */ }
       let child: ReturnType<typeof nodeSpawn>;
       try {
-        child = (this.options.spawn ?? nodeSpawn)(python, [join(this.root, 'src/tehablo_server.py'), '--port', new URL(this.base).port, ...this.startArgs], {
+        child = (this.options.spawn ?? nodeSpawn)(python, ['-X', 'faulthandler', join(this.root, 'src/tehablo_server.py'), '--port', new URL(this.base).port, ...this.startArgs], {
           cwd: this.root, env: this.token ? {...process.env, HF_TOKEN: this.token} : undefined, stdio: log === undefined ? 'ignore' : ['ignore', log, log], windowsHide: true, detached: true,
         });
       } finally {

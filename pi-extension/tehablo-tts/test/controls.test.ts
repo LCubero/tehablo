@@ -8,6 +8,41 @@ import {fileURLToPath} from 'node:url';
 import {DEFAULTS} from '../src/settings.ts';
 import {ServerClient} from '../src/server.ts';
 
+for (const token of [undefined, 'test-token']) test(`T4 spawn enables faulthandler and preserves token environment (token=${!!token})`, async () => {
+  let health = 0, args: string[] = [], options: any;
+  const client = new ServerClient({root: 'test-root', openLog: () => 42, closeLog: () => {},
+    fetch: async () => { if (health++ === 0) throw Error('offline'); return {ok: true, json: async () => ({})} as any; },
+    spawn: ((_python: string, a: string[], o: any) => { args = a; options = o; return {once() {}, unref() {}}; }) as any,
+  });
+  client.token = token;
+  await client.ensure();
+  assert.deepEqual(args.slice(0, 3), ['-X', 'faulthandler', join('test-root', 'src/tehablo_server.py')]);
+  assert.equal(args.includes('test-token'), false);
+  assert.deepEqual(options.env, token ? {...process.env, HF_TOKEN: token} : undefined);
+  assert.deepEqual(options.stdio, ['ignore', 42, 42]);
+});
+
+for (const prior of ['missing', 'file', 'blocked']) test(`T4 log rotation preserves previous crash evidence, best effort (${prior})`, async () => {
+  const root = mkdtempSync(join(tmpdir(), 'tehablo-crash-'));
+  const log = join(root, 'logs', 'tehablo-server.log'), prev = join(root, 'logs', 'tehablo-server.prev.log');
+  try {
+    mkdirSync(join(root, 'logs'));
+    if (prior !== 'missing') writeFileSync(log, 'Fatal Python error: old run\n');
+    if (prior === 'file') writeFileSync(prev, 'older run');
+    if (prior === 'blocked') mkdirSync(prev);
+    let health = 0;
+    const client = new ServerClient({root,
+      fetch: async () => { if (health++ === 0) throw Error('offline'); return {ok: true, json: async () => ({})} as any; },
+      spawn: (() => {
+        assert.equal(readFileSync(log, 'utf8'), '');
+        if (prior === 'file') assert.equal(readFileSync(prev, 'utf8'), 'Fatal Python error: old run\n');
+        return {once() {}, unref() {}};
+      }) as any,
+    });
+    await client.ensure();
+  } finally { rmSync(root, {recursive: true, force: true}); }
+});
+
 // Existing control/layout contracts use a user who saved 100 %, not fresh defaults.
 function savedVolumeStore() {
   const store = memoryStore();

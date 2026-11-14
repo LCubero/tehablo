@@ -269,7 +269,7 @@ test('health failure spawns once with computed Windows root/python; session shut
   const options:any={root:'E:/tehablo', platform:'win32', fetch:async(url:string)=>{calls.push(new URL(url).pathname); if(!healthy) throw Error('offline'); return Response.json({ok:true});}, spawn:(...args:any[])=>{spawned.push(args); healthy=true; return {once(){},unref(){},kill(){killed++;}};}, delay:async()=>{}};
   const c=new ServerClient(options); await Promise.all([c.ensure(),c.ensure()]);
   assert.equal(spawned.length,1); assert.match(spawned[0][0],/E:[/\\]tehablo[/\\]\.venv-pocket[/\\]Scripts[/\\]python.exe$/);
-  assert.match(spawned[0][1][0],/src[/\\]tehablo_server.py$/);
+  assert.deepEqual(spawned[0][1].slice(0,2),['-X','faulthandler']); assert.match(spawned[0][1][2],/src[/\\]tehablo_server.py$/);
   await c.shutdown(); assert.ok(!calls.includes('/shutdown')); assert.equal(killed,0);
   calls.length=0; const external=new ServerClient(options); await external.ensure(); await external.shutdown(); assert.ok(!calls.includes('/shutdown'));
 });
