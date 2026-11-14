@@ -354,7 +354,7 @@ Búsqueda web, sin descargar ni probar nada. Datos tomados de las páginas de ca
 | Modelo | Tamaño | CPU | Clonación | Licencia | Nota |
 |---|---|---|---|---|---|
 | NeuTTS Nano Spanish (Neuphonic, feb. 2026) | ~117 M parámetros activos; versiones GGUF Q8 y Q4 | Sí, «tiempo real o mejor» en portátil, sin cifra publicada | Sí, con 3 a 15 s de audio | NeuTTS Open License v1.0 (comprobada el 2026-11-13): uso gratis y redistribución con copia de la licencia; el uso comercial solo hasta 5 M USD de ingresos al año | Probado el 2026-11-13: suena bien, no incorporado ([resultados](#neutts-nano-spanish-frente-a-lola-y-regina-2026-11-13-windows)). Necesita `espeak-ng`; el audio lleva marca de agua inaudible (no lo descarta); solo trae la voz de ejemplo `mateo`. Antes se anotó que pide token de Hugging Face (ver [Descartados sin probar](#descartados-sin-probar)). |
-| CuteTTS (OPPO) | ~230 M parámetros | Dice que sí, pero solo da cifras de GPU | Sí | No figura en la página | Español entre 5 idiomas; dudoso que sea liviano en CPU. |
+| CuteTTS (OPPO) | ~230 M parámetros | Dice que sí, pero solo da cifras de GPU | Sí | Apache-2.0 (comprobada el 2026-11-13) | Español entre 5 idiomas. Probado el 2026-11-13: lento en CPU y mucha RAM, no incorporado ([resultados](#cutetts-2026-11-13-windows)). |
 | Arm `pocket-tts-es-mix-precision` | 383 MB, 26 perfiles de voz | Optimizado para CPU Arm | No | CC BY 4.0 | No sirve: su motor solo se ofrece en un programa de acceso anticipado de Arm. |
 
 El ajuste castellano de `inferencekey` (1,34 GB, `spanish_24l`) sigue pendiente como antes. Ming-3.0-tts (0,5 B) aparece en clasificaciones, pero es más pesado. Licencia de NeuTTS Nano Spanish confirmada el 2026-11-13 en [su texto](https://github.com/neuphonic/neutts/blob/main/LICENSE) (NeuTTS Open License v1.0, 11 de diciembre de 2025): permite usarlo, modificarlo y redistribuirlo gratis entregando una copia de la licencia; el uso comercial, incluido el audio generado, solo vale por debajo de 5 M USD de ingresos al año. Para tehablo, gratis y sin venta, la licencia lo permite. La descarga sigue con acceso restringido: cuenta de Hugging Face y aceptar condiciones, como Phonon. Escuchado a ciegas el 2026-11-13 ([resultados](#neutts-nano-spanish-frente-a-lola-y-regina-2026-11-13-windows)).
@@ -369,6 +369,18 @@ Prueba aislada en una carpeta ignorada por Git, sin cambiar el entorno, las voce
 | GGUF Q4 + decodificador ONNX, referencia precodificada | ~1,9 GiB | 10,9 s | 18,5 s | ~1,7× más rápido que el tiempo real |
 
 Escucha a ciegas A/B/C (`lola`, `Regina`, NeuTTS): la persona responsable consideró que las tres suenan bien, y que Q4 suena igual que PyTorch. Como referencia, `lola` gasta ~0,95 GiB y `Regina` ~0,3 GiB (mediciones anteriores, con otro texto). Resultado: suena bien, pero usa más RAM que `lola` y `Regina`; no se incorpora. Los cuatro repositorios de NeuTTS en Hugging Face piden aceptar condiciones por separado.
+
+## CuteTTS (2026-11-13, Windows)
+
+Prueba aislada en una carpeta ignorada por Git, sin cambiar el entorno, las voces ni los ajustes del proyecto. Modelo `OPPOer/CuteTTS` (Apache-2.0, sin acceso restringido, ~1,2 GB), PyTorch 2.5.1 para CPU con 6 hilos, el mismo texto que NeuTTS, semilla 42, 24 kHz. Cargar el modelo tarda ~26 s.
+
+| Voz | RAM máxima | Generación | Audio | Primer sonido |
+|---|---|---|---|---|
+| Propia del modelo, sin referencia | ~2,2 GiB | 76 s | 16 s | 12 s |
+| Clonada de la referencia de `Facundo` | ~3,6 GiB | 130 s | 21 s | 35 s |
+| Clonada de la referencia de `Camila` | ~3,3 GiB | 129 s | 21 s | 33 s |
+
+Va unas 5 a 6 veces más lento que el tiempo real. Escucha directa de los tres audios, no a ciegas: la persona responsable consideró que no suenan lo bastante bien para tanta RAM. Resultado: no se incorpora.
 
 ## Licencias
 
