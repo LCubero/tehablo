@@ -6,6 +6,7 @@ Este archivo registra los cambios completados en orden cronológico. Las version
 
 ## 2026-11-14
 
+- Pruebas de voces en la máquina virtual de pruebas, sin cambios en teHablo ([resultados](docs/pruebas-de-voces.md)): Kokoro `em_santa` queda en pausa por consumo de CPU; Piper (`carlfm`, `davefx`, `sharvard`) y Supertonic 3 (`F2`, `M1`) quedan pendientes de decisión; las demás opciones medidas no se incorporan.
 - Versión candidata `0.1.0-rc.2` (tag `v0.1.0-rc.2`, pre-release en GitHub): incluye todo lo anterior. Quien ya usaba Phonon debe bajar una vez el modelo multilingüe (75 MB, con cuenta de Hugging Face).
 
 ## 2026-11-13

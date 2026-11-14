@@ -22,12 +22,15 @@ Equipo de referencia: Ryzen 5 5600X, 32 GB de RAM, RTX 2080 Super con 8 GB.
 | Motor | Necesita | Voces | Licencia | Nota |
 |---|---|---|---|---|
 | **Pocket TTS** (Kyutai) | **Solo CPU** | Catálogo + clonación | Código MIT, pesos CC BY 4.0 | **Elegido** |
+| **Phonon 40M multilingüe** (Gradium) | **Solo CPU** | 25 voces en español | Pesos CC BY-NC 4.0, voces Apache-2.0 | **Elegido**; el que menos gasta |
 | Piper (`es_AR-daniela`, `es_ES`, `es_MX`) | Solo CPU | 8 voces fijas en español | Varía según la voz | Muy ligero, algo robótico |
 | Kokoro-82M | Solo CPU | 3 voces en español | Apache 2.0 | Sin acentos latinoamericanos |
 | Chatterbox Multilingual | GPU de 4 a 6 GB, o CPU lento | Clonación | MIT | Alta calidad |
 | Qwen3-TTS VoiceDesign | GPU de unos 6 GB | Voces creadas por descripción + clonación | Apache 2.0 | Crea voces a partir de una descripción. Sin probar en una 2080 (no soporta `bf16`) |
 | VoxCPM2 | GPU de 6 a 8 GB | Voces por descripción + clonación | Apache 2.0 | Sin probar |
 | XTTS-v2 / F5-TTS | CPU o GPU | Clonación | ❌ No comercial | Descartados por la licencia |
+
+Mediciones de RAM y CPU, escuchas y decisiones de cada motor: [pruebas de voces](pruebas-de-voces.md).
 
 ---
 
