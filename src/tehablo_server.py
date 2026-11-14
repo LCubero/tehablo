@@ -36,7 +36,7 @@ LIMIT = 0.8
 
 
 TOKEN_REFUSED = ('Hugging Face rechazó el token: revisa que esté completo y que aceptaste los términos '
-                 'en huggingface.co/gradium/phonon-40m-es.')
+                 'en huggingface.co/gradium/phonon-40m-multilingual.')
 
 
 def token_refused(reason):

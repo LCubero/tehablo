@@ -446,9 +446,9 @@ export class SettingsWindow {
       line([{text: ` ${v.name} viene de Hugging Face y pide una cuenta gratis.`}]);
       line([{text: ' El token solo hace falta para descargarla; luego funciona sin él.'}]);
       line();
-      link(' 1. Crea una cuenta:        ', 'join');
-      link(' 2. Acepta los términos:    ', v.model === 'phonon' ? 'gradium/phonon-40m-es' : 'kyutai/pocket-tts');
-      link(' 3. Token «Read-Only»:      ', 'settings/tokens');
+      link(' 1. Crea una cuenta:   ', 'join');
+      link(' 2. Acepta términos:   ', v.model === 'phonon' ? 'gradium/phonon-40m-multilingual' : 'kyutai/pocket-tts');
+      link(' 3. Token «Read-Only»: ', 'settings/tokens');
       line([{text: ' 4. Pégalo aquí (no se guarda; solo se usa en esta sesión):'}]);
       line();
       line([{text: ' Token: '}, {text: '•'.repeat(Math.min(50, width(this.token))) + '▏', style: 'accent'}]);

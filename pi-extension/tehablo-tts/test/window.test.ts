@@ -663,10 +663,10 @@ test('the token guide keeps its short addresses and a click opens each one in th
   const lines = s.w.render(100);
   assert.ok(lines.every(l => Array.from(l).length === 72), 'every line fits the window');
   assert.ok(!lines.some(l => l.includes('https://')));
-  assert.ok(lines.some(l => l.includes(' 3. Token «Read-Only»:      huggingface.co/settings/tokens')), 'names the Hugging Face preset');
+  assert.ok(lines.some(l => l.includes(' 3. Token «Read-Only»: huggingface.co/settings/tokens')), 'names the Hugging Face preset');
   assert.ok(lines.some(l => l.includes('Enter · Esc · clic en un enlace lo abre')));
-  for (const link of ['huggingface.co/join', 'huggingface.co/gradium/phonon-40m-es', 'huggingface.co/settings/tokens']) s.click(link);
-  assert.deepEqual(s.calls, [['open', 'https://huggingface.co/join'], ['open', 'https://huggingface.co/gradium/phonon-40m-es'],
+  for (const link of ['huggingface.co/join', 'huggingface.co/gradium/phonon-40m-multilingual', 'huggingface.co/settings/tokens']) s.click(link);
+  assert.deepEqual(s.calls, [['open', 'https://huggingface.co/join'], ['open', 'https://huggingface.co/gradium/phonon-40m-multilingual'],
     ['open', 'https://huggingface.co/settings/tokens']]);
   s.click('Crea una cuenta:');
   assert.equal(s.calls.length, 3, 'only the address is clickable');

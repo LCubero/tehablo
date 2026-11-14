@@ -264,6 +264,8 @@ class VoicePreparationTests(unittest.TestCase):
                     self.assertEqual(job.get('code'), code)
                     self.assertIn(text, job['error'])
                     self.assertNotIn('catalog name', job['error'])
+                    if code == 'token':
+                        self.assertIn('huggingface.co/gradium/phonon-40m-multilingual', job['error'])
                 finally:
                     service.close()
 
