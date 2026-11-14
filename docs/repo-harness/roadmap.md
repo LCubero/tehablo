@@ -476,6 +476,7 @@ Antecedente aprobado el 2026-10-30: base confiable, medición (`RH-W-0003`), ser
 - **Dependencias:** ninguna; conviene antes de las ideas de varias conexiones de `RH-W-0044` y del instalador (`RH-W-0037`).
 - **Estado:** `active`.
 - **Trabajo completado (2026-11-10):** un solo número en `VERSION` (`0.1.0-rc.1`); el servidor lo devuelve en `/health` (`src/tehablo_server.py`) y Pi lo muestra en `/tts status`, con aviso si el servidor en marcha es de otra versión. Comprobado en el código el 2026-11-13.
+- **Trabajo completado (2026-11-14):** versión candidata `0.1.0-rc.2` (tag `v0.1.0-rc.2`, pre-release en GitHub), con las 25 voces de Phonon multilingüe, el ritmo nativo y el menú de voces nuevo; probada a mano en Windows y con pruebas automáticas en Ubuntu y Windows. Las notas avisan que quien ya usaba Phonon debe bajar el modelo multilingüe una vez. Para la `0.1.0` estable falta la prueba a mano en Linux.
 - **Trabajo restante (comprobado el 2026-11-13):** el cliente SSH (`cliente/tehablo_cliente.py`) no muestra la versión ni avisa si no coincide con el servidor, y los instaladores del cliente (`receptor/install.sh`, `receptor/install.ps1`) descargan siempre la rama `master` en lugar de una versión fija.
 - **Diseño mínimo propuesto (original):** un solo número de versión del proyecto, en un único sitio; el cliente lo muestra en su menú, Pi en `/tts status` y el servidor en `/health`; si cliente y servidor no coinciden, el cliente lo avisa sin bloquear. Cada versión nueva se anota en `CHANGELOG.md`. Sin herramientas nuevas ni dependencias.
 

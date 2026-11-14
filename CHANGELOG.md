@@ -4,6 +4,10 @@
 
 Este archivo registra los cambios completados en orden cronológico. Las versiones (`VERSION` y tags `vX.Y.Z`) marcan hasta qué fecha llega cada una.
 
+## 2026-11-14
+
+- Versión candidata `0.1.0-rc.2` (tag `v0.1.0-rc.2`, pre-release en GitHub): incluye todo lo anterior. Quien ya usaba Phonon debe bajar una vez el modelo multilingüe (75 MB, con cuenta de Hugging Face).
+
 ## 2026-11-13
 
 - Pi, Phonon: 25 voces en español con modelo multilingüe y descarga individual de cada voz; token solo para el modelo. Ritmo nativo guardado, además de la velocidad común.
