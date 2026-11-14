@@ -12,7 +12,7 @@ export const MODELS = ['phonon', 'spanish', 'spanish_24l'];
 export const SPEEDS = Array.from({length: 21}, (_, i) => (50 + 5 * i) / 100);
 export const RHYTHMS = [-1, -0.5, 0, 0.5, 1];
 /** downloaded is null when unknown (server off and never seen). */
-export interface VoiceRow { name: string; voice: string; model: string; kind: string; note: string; downloaded: boolean | null; needsToken?: boolean }
+export interface VoiceRow { name: string; voice: string; model: string; kind: string; note: string; downloaded: boolean | null; needsToken?: boolean; style?: string }
 export interface Settings {
   /** Empty model/voice means "use the server default". */
   model: string; voice: string; volume: number; speed: number; rhythm: number; auto: boolean;

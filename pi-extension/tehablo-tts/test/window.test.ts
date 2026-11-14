@@ -2,6 +2,8 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {SettingsWindow, type Controller} from '../src/window.ts';
 import {ACTIONS, DEFAULTS, type VoiceRow} from '../src/settings.ts';
+import {readTable} from '../src/extension.ts';
+import {fileURLToPath} from 'node:url';
 
 const ROWS: VoiceRow[] = [
   {name: 'Regina', voice: 'Regina', model: 'phonon', kind: 'account', note: 'México', downloaded: false},
@@ -44,6 +46,54 @@ function setup(over: Partial<Record<string, any>> = {}) {
       w.handleMouse({type: 'click', button: 'left', x, y});
     }};
 }
+
+test('T3d local catalog preserves optional styles and renders all Phonon styles', () => {
+  const rows = readTable(fileURLToPath(new URL('../../../src/voice_table.json', import.meta.url)), fileURLToPath(new URL('./absent-cache', import.meta.url)));
+  assert.equal(rows.filter(v => v.model === 'phonon').length, 25);
+  assert.equal(rows.find(v => v.name === 'Regina')!.style, 'segura');
+  assert.equal(rows.find(v => v.name === 'Leonel')!.style, 'aterciopelado');
+  assert.equal(rows.find(v => v.name === 'rafael')!.style, undefined);
+  const s = setup();
+  s.w.c.voices = () => rows;
+  s.click('[ Cambiar ]'); s.key('\t');
+  for (let i = 0; i < 25; i++) {
+    const selected = s.w.order()[s.w.pick];
+    assert.ok(selected.style);
+    assert.ok(s.w.render().find(l => l.startsWith('│ ▶ '))!.includes(selected.style!));
+    s.key('\x1b[B');
+  }
+});
+
+test('T3d equal height, aligned columns, dictionary cells and mixed-state renders', t => {
+  const s = setup();
+  const rows = Array.from({length: 25}, (_, i) => ({...ROWS[1], name: i === 0 ? 'Iker' : `Voz${i}`, voice: `v${i}`, style: i === 0 ? 'amable' : 'clara', downloaded: i > 0 && i < 4}));
+  s.w.c.voices = () => [...rows, ROWS[3]];
+  s.click('[ Cambiar ]');
+  const pocket = s.w.render();
+  s.key('\t');
+  for (let i = 0; i < 3; i++) s.key('\x1b[B');
+  const phonon = s.w.render();
+  t.diagnostic('Phonon mixed states\n' + phonon.join('\n'));
+  t.diagnostic('Pocket\n' + pocket.join('\n'));
+  assert.equal(phonon.length, pocket.length);
+  assert.match(phonon.join('\n'), /Cuenta gratis de Hugging Face/);
+  assert.match(phonon.join('\n'), /✓ lista/);
+  assert.match(phonon.join('\n'), /↓ descargar/);
+  assert.match(phonon.join('\n'), /Iker.*amable.*no/);
+  const header = phonon.find(l => l.includes('Acento'))!;
+  const row = phonon.find(l => l.includes('Iker'))!;
+  for (const [title, value] of [['Voz', 'Iker'], ['Acento', 'España'], ['Estilo', 'amable'], ['Estado', '↓ descargar'], ['Dict', 'no']])
+    assert.equal(header.indexOf(title), row.indexOf(value));
+  s.key('\x1b[C');
+  assert.match(s.text(), /Iker.*sí/);
+  const lines = s.w.render(), y = lines.findIndex(l => l.includes('Iker'));
+  s.w.handleMouse({type: 'click', button: 'left', x: lines[y].indexOf('sí'), y});
+  assert.match(s.text(), /Iker.*no/);
+  for (let i = 0; i < 21; i++) s.key('\x1b[B');
+  assert.equal(s.w.render().length, pocket.length);
+  assert.ok(s.w.render().every(l => Array.from(l).length === 72));
+  assert.doesNotMatch(s.text(), /Diccionario:|por descargar|Tab cambia/);
+});
 
 test('T3c tabs open on active engine, cycle and click without choosing', t => {
   const s = setup();
@@ -124,7 +174,7 @@ test('S4 only offered engines get headers; download priority stays within engine
   assert.match(text, /spanish_24l · 1,8 GB/);
   s.click('Phonon ·');
   assert.ok(s.text().indexOf('Iker') < s.text().indexOf('Regina'));
-  assert.match(s.text(), /Iker\s+España\s+✓/);
+  assert.match(s.text(), /Iker\s+España\s+—\s+✓ lista/);
   assert.ok(s.w.render().every(l => Array.from(l).length === 72));
   s.click('spanish_24l ·');
   assert.match(s.text(), /\[ spanish_24l · 1,8 GB \]/);
@@ -369,7 +419,7 @@ test('S10 Descargada is gray in the voice table and in the download dialog', asy
   const s = setup({theme: {fg: (st: string, t: string) => `<${st}>${t}</${st}>`}});
   s.key('\r');
   const row = s.w.render(100).find(l => l.includes('lola'))!;
-  assert.match(row, /<dim>✓<\/dim>/, row);
+  assert.match(row, /<dim>✓ lista\s*<\/dim>/, row);
   s.w.choose(ROWS[2]); s.w.confirm();
   await new Promise(resolve => setImmediate(resolve));
   assert.match(s.text(), /<dim> rafael \(España\): Descargada\.<\/dim>/);
@@ -702,34 +752,35 @@ test('indicator row supports keyboard and mouse independently of toolbar', () =>
   assert.deepEqual(s.calls.at(-1), ['change', 'indicator', true]);
 });
 
-test('Option B fixed name and accent columns, status symbols and legend', () => {
+test('T3d fixed name and accent columns, status words and titles', () => {
   const s = setup();
   s.click('[ Cambiar ]');
   const lines = s.w.render(100);
   const row = (name: string) => lines.find(l => l.includes(name))!;
-  assert.match(row('lola'), /● lola\s+la de siempre\s+✓/);
+  assert.match(row('lola'), /● lola\s+la de siempre\s+—\s+✓ lista/);
   s.key('\t');
   const regina = s.w.render().find(l => l.includes('Regina'))!;
-  assert.match(regina, /Regina\s+México\s+↓/);
+  assert.match(regina, /Regina\s+México\s+—\s+↓ descargar/);
   assert.equal(regina.indexOf('México'), row('lola').indexOf('la de siempre'));
   assert.equal(regina.indexOf('↓'), row('lola').indexOf('✓'));
   assert.ok(lines.findIndex(l => l.includes('lola')) < lines.findIndex(l => l.includes('rafael')));
-  assert.match(s.text(), /✓ descargada  ↓ por descargar/);
-  assert.doesNotMatch(s.text(), /Con cuenta gratis|\*|Estado|ES ·|CPU/);
+  assert.doesNotMatch(s.text(), /✓ descargada|por descargar|Diccionario:|Tab cambia/);
+  assert.match(s.text(), /Voz\s+Acento\s+Estilo\s+Estado\s+Dict/);
 });
 
-test('Option B selected dictionary footer toggles by ←→ and click without choosing', () => {
+test('T3d row dictionary toggles by ←→ and click without choosing', () => {
   const s = setup();
   s.click('[ Cambiar ]');
   s.key('\t');
-  assert.match(s.text(), /Diccionario: no \(←→\)/);
+  assert.match(s.text(), /Iker.*no\s+│/);
   s.key('\x1b[C');
-  assert.match(s.text(), /Diccionario: sí \(←→\)/);
+  assert.match(s.text(), /Iker.*sí\s+│/);
   s.key('\x1b[D');
   s.key('\t');
-  assert.match(s.text(), /Diccionario: sí \(←→\)/);
-  s.click('Diccionario:');
-  assert.match(s.text(), /Diccionario: no \(←→\)/);
+  assert.match(s.text(), /lola.*sí\s+│/);
+  const lines = s.w.render(), y = lines.findIndex(l => l.includes('lola'));
+  s.w.handleMouse({type: 'click', button: 'left', x: lines[y].indexOf('sí'), y});
+  assert.match(s.text(), /lola.*no\s+│/);
   assert.deepEqual(s.calls, [['dict', 'Iker'], ['dict', 'Iker'], ['dict', 'lola']]);
   assert.equal(s.w.page, 'voices');
   assert.ok(s.w.render(100).every(l => Array.from(l).length === 72));
@@ -740,10 +791,10 @@ test('voice table shows the active voice name in yellow (warning), also under th
   s.key('\r');
   const lines = s.w.render(100);
   const row = (n: string) => lines.find(l => l.includes(n))!;
-  assert.match(row('lola'), /<warning>lola\s*<\/warning>/);
+  assert.match(row('lola'), /<warning>● lola\s*<\/warning>/);
   for (const n of ['rafael', 'ar-hombre-4310']) assert.ok(!row(n).includes(`<warning>${n}`), n);
   s.key('\x1b[B');
-  assert.match(s.w.render(100).find(l => l.includes('lola'))!, /<warning>lola\s*<\/warning>/);
+  assert.match(s.w.render(100).find(l => l.includes('lola'))!, /<warning>● lola\s*<\/warning>/);
   assert.match(s.w.render(100).find(l => l.includes('rafael'))!, /<accent>rafael\s*<\/accent>/);
 });
 
@@ -881,7 +932,7 @@ test('with the server off, unknown download state is shown by kind and asks for 
   const text = s.text();
   assert.equal(text.split('\n').filter(l => /Regina|lola/.test(l) && l.includes('↓')).length, 1);
   s.key('\t');
-  assert.match(s.text(), /Regina\s+México\s+↓/);
+  assert.match(s.text(), /Regina\s+México\s+—\s+↓\s+no/);
   s.key('\t');
   assert.match(text.split('\n').find(l => l.includes('lola'))!, /● lola/);
   s.click('lola');

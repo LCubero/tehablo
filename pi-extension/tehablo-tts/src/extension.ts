@@ -64,7 +64,7 @@ export function readTable(path: string, hub = hfHub()): VoiceRow[] {
     const voices = join(dirname(path), '..', 'voices');
     return (JSON.parse(readFileSync(path, 'utf8')) as any[]).map(v => ({
       name: v.name, voice: v.source ? `${v.name}.safetensors` : v.name, model: v.model,
-      kind: v.kind, note: v.note, downloaded: onDisk(v, hub, voices), ...(v.default ? {default: true} : {}),
+      kind: v.kind, note: v.note, ...(typeof v.style === 'string' ? {style: v.style} : {}), downloaded: onDisk(v, hub, voices), ...(v.default ? {default: true} : {}),
       ...(v.model === 'phonon' ? {needsToken: !cachedFile(hub, 'gradium/phonon-40m-multilingual', 'model.q8.gguf')} : {}),
     }));
   } catch { return []; }

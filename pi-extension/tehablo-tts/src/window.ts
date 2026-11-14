@@ -425,29 +425,28 @@ export class SettingsWindow {
       line([{text: ' '}, ...this.engines().flatMap(model => [{
         text: model === this.engine ? `[ ${ENGINE[model]} ]` : ENGINE[model],
         style: model === this.engine ? 'accent' : 'dim', fn: () => this.switchEngine(model),
-      }, {text: '  '}]), {text: this.engines().length < 3 ? 'Tab cambia' : '', style: 'dim'}]);
-      if (this.engine === 'phonon') line([{text: ' el que menos gasta y suena muy bien', style: 'dim'}]);
+      }, {text: '  '}])]);
+      line([{text: this.engine === 'phonon' ? ' el que menos gasta y suena muy bien' : '', style: 'dim'}]);
+      line([{text: '   ' + fit('Voz', 14) + fit('Acento', 16) + fit('Estilo', 15) + fit('Estado', 14) + 'Dict', style: 'dim'}]);
       list.slice(start, start + 10).forEach((v, j) => {
         const i = start + j;
         const sel = i === this.pick, pickIt = () => { this.pick = i; this.choose(v); };
         const style = v.downloaded ? 'dim' : v.kind === 'account' && !this.c.state().token ? 'warning' : 'dim';
         line([{text: sel ? ' ▶ ' : '   ', style: 'accent', fn: pickIt},
-          {text: this.isActive(v) ? '● ' : '  ', style: 'warning', fn: pickIt},
-          {text: fit(v.name, 18), style: this.isActive(v) ? 'warning' : sel ? 'accent' : undefined, fn: pickIt},
-          {text: fit(v.note, 21), fn: pickIt},
-          {text: v.downloaded ? '✓' : '↓', style, fn: pickIt}]);
+          {text: fit((this.isActive(v) ? '● ' : '') + v.name, 14), style: this.isActive(v) ? 'warning' : sel ? 'accent' : undefined, fn: pickIt},
+          {text: fit(v.note, 16), fn: pickIt},
+          {text: fit(v.style ?? '—', 15), fn: pickIt},
+          {text: fit(v.downloaded ? '✓ lista' : v.downloaded === null ? '↓' : '↓ descargar', 14), style, fn: pickIt},
+          {text: this.c.dict(v) ? 'sí' : 'no', fn: () => this.c.toggleDict(v)}]);
       });
+      for (let j = list.slice(start, start + 10).length; j < 10; j++) line();
       line([{text: ` ${list.length ? this.pick + 1 : 0}/${list.length} `, style: 'dim'},
         {text: '[ Anterior ]', fn: () => { this.pick = Math.max(0, this.pick - 10); }}, {text: ' '},
         {text: '[ Siguiente ]', fn: () => { this.pick = Math.min(Math.max(0, list.length - 1), this.pick + 10); }}]);
-      line([{text: '✓ descargada  ↓ por descargar'.padStart(IN - 1), style: 'dim'}]);
       const selected = list[this.pick];
-      if (selected) {
-        line([{text: ` Diccionario: ${this.c.dict(selected) ? 'sí' : 'no'} (←→)`, style: 'dim', fn: () => this.c.toggleDict(selected)}]);
-        if (!selected.downloaded && selected.kind === 'account' && selected.needsToken !== false && !this.c.state().token)
-          line([{text: ' Cuenta gratis de Hugging Face para descargar (una vez)', style: 'dim'}]);
-      }
-      line([{text: ' '}, {text: '[ Volver ]', style: 'accent', fn: () => this.home()}, {text: '   ↑↓ elegir · Enter usar · Tab motor · Esc', style: 'dim'}]);
+      line([{text: selected && !selected.downloaded && selected.kind === 'account' && selected.needsToken !== false && !this.c.state().token
+        ? ' Cuenta gratis de Hugging Face para descargar (una vez)' : '', style: 'dim'}]);
+      line([{text: ' '}, {text: '[ Volver ]', style: 'accent', fn: () => this.home()}, {text: '  ↑↓ elegir · Enter usar · ←→ dict · Tab motor · Esc', style: 'dim'}]);
     } else if (this.page === 'download') {
       const v = this.target!;
       if (this.downloading || this.result === 'done') {

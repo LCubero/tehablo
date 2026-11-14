@@ -447,6 +447,9 @@ class SpeechService:
             voice = f'{name}.safetensors' if name in INCLUDED else name
             table.append({'name': name, 'voice': voice, 'model': model, 'kind': kind, 'note': note,
                           'downloaded': downloaded,
+                          **next(({'style': row['style']} for row in _TABLE
+                                  if row['name'] == name and row['model'] == model
+                                  and isinstance(row.get('style'), str)), {}),
                           **({'needsToken': needs_token} if model == 'phonon' else {})})
         return table
 

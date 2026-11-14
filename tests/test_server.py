@@ -1610,6 +1610,10 @@ class ServerTests(unittest.TestCase):
         table = {v['name']: v for v in data['catalog']}
         self.assertEqual(table['lola'], {'name': 'lola', 'voice': 'lola', 'model': 'spanish', 'kind': 'download',
                                          'note': 'la de siempre', 'downloaded': True})
+        self.assertEqual(table['Regina']['style'], 'segura')
+        self.assertEqual(table['Iker']['style'], 'amable')
+        self.assertEqual(table['Leonel']['style'], 'aterciopelado')
+        self.assertNotIn('style', table['rafael'])
         self.assertEqual(table['rafael']['downloaded'], False)
         self.assertEqual((table['Regina']['model'], table['Regina']['kind'], table['Regina']['downloaded']),
                          ('phonon', 'account', True))
@@ -1621,7 +1625,7 @@ class ServerTests(unittest.TestCase):
         for entry in data['catalog']:
             expected = {'name', 'voice', 'model', 'kind', 'note', 'downloaded'}
             if entry['model'] == 'phonon':
-                expected.add('needsToken')
+                expected.update({'needsToken', 'style'})
             self.assertEqual(set(entry), expected)
 
     def test_phonon_voice_table_checks_pocket_cache_without_importing_pocket(self):
