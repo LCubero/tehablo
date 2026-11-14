@@ -425,7 +425,7 @@ Prueba aislada en CPU del PC con Windows de la persona responsable, con `kokoro-
 
 Escucha directa, no a ciegas, de la versión comprimida frase por frase: `ef_dora` no terminó de convencer por un sonido algo extraño; `em_santa` volvió a gustar, con buen sonido y adecuada para relatos.
 
-Resultado: Kokoro fue el motor con menos RAM y generación más rápida de los probados el 2026-11-13 (CuteTTS, ajuste castellano, NeuTTS y Pocket TTS ONNX). Generar frase por frase permite el primer sonido en ~0,6–0,7 s. Como referencia, `lola` usó ~0,95 GiB en una medición anterior con otro texto; no es una comparación directa. El 2026-10-30 Kokoro gastó ~2,8 veces más CPU que `lola`, dato que esta prueba no sustituye. No incorporado: la versión comprimida de `em_santa` frase por frase es la candidata más sólida hasta ahora; la persona responsable solicita incorporarla, incluso clonada si mantiene bajo consumo. Falta evaluar la vía directa de Kokoro o una clonación ligera, medir y escuchar antes de integrarla.
+Resultado: Kokoro fue el motor con menos RAM y generación más rápida de los probados el 2026-11-13 (CuteTTS, ajuste castellano, NeuTTS y Pocket TTS ONNX). Generar frase por frase permite el primer sonido en ~0,6–0,7 s. Como referencia, `lola` usó ~0,95 GiB en una medición anterior con otro texto; no es una comparación directa. El 2026-10-30 Kokoro gastó ~2,8 veces más CPU que `lola`, dato que esta prueba no sustituye. No incorporado: al cerrar esta prueba, la versión comprimida de `em_santa` frase por frase era la candidata más sólida y la persona responsable solicitó evaluar su incorporación, incluso clonada si mantenía bajo consumo. Esa evaluación continuó en la VM y quedó [en pausa por decisión del 2026-11-14](#comparación-en-vm-y-decisión-sobre-kokoro-2026-11-14).
 
 ## Klein-TTS (2026-11-13, Windows)
 
@@ -453,7 +453,7 @@ Resultado: descartado por RAM (más de 6 veces la de `lola` solo al cargar); no 
 
 ## em_santa clonada en otros motores (2026-11-13, Windows)
 
-Prueba en CPU del PC con Windows de la persona responsable, con el mismo texto de las secciones anteriores y un WAV sintético de Kokoro `em_santa` como referencia (Apache-2.0). La RAM de las clonaciones incluye la carga y la preparación de la voz.
+Prueba en CPU del PC con Windows de la persona responsable, con el mismo texto de las secciones anteriores y un WAV sintético de Kokoro `em_santa` como referencia (Apache-2.0). **Limitación metodológica:** la RAM de las clonaciones incluye la carga y la preparación de la voz, que se realiza una sola vez; no separa el consumo de lectura con un estado ya exportado. Pocket sin PyTorch es una implementación ONNX distinta del Pocket de teHablo; no se probó entonces Pocket `spanish` del proyecto.
 
 | Motor | RAM (GB) | CPU del texto | Generación | Audio | Primer sonido | Modelo (MB) |
 |---|---|---|---|---|---|---|
@@ -528,7 +528,91 @@ Mediciones con el mismo texto de prueba:
 | Leonel | −1 | 0,31 | 4,4 | 3,2 | 14,6 | 0,27 |
 | Leonel | +1 | 0,31 | 6,0 | 4,4 | 20,8 | 0,27 |
 
-Resultado de la escucha directa, no a ciegas: todas las variantes suenan bien y la persona responsable valoró favorablemente el control nativo de ritmo. Este checkpoint no permite clonar voces (`supports_voice_cloning = False`). Prueba documentada; control aún no incorporado al menú de Pi.
+Resultado de la escucha directa, no a ciegas: todas las variantes suenan bien y la persona responsable valoró favorablemente el control nativo de ritmo. Este checkpoint no permite clonar voces (`supports_voice_cloning = False`). Control aprobado e incorporado al menú de Pi y publicado ese mismo día, según el [registro canónico](repo-harness/roadmap.md#rh-w-0005-probar-voces-existentes-y-ampliar-fuentes-gratuitas-compatibles).
+
+## Comparación en VM y decisión sobre Kokoro (2026-11-14)
+
+Pruebas aisladas en la VM Proxmox de la persona responsable: Ubuntu, i5-4300M, 2 núcleos con AVX2 y 7,4 GB de RAM. Mismo `samples/benchmark.txt` (600 caracteres, 8 frases), proceso nuevo por configuración, un calentamiento y dos ejecuciones medidas. Tiempos: promedio de las dos medidas; RAM: pico del proceso por `ru_maxrss`, incluido el calentamiento, en **MiB**, no MB. «Primer sonido» significa primer fragmento generado, sin reproducción. Evidencia JSON/WAV local, ignorada por Git: `.repo-harness/tmp/modelos/res/` y `res/vm-mx/`; no constituye evidencia durable versionada.
+
+### Referencias y Kokoro frase por frase
+
+`kokoro-onnx` 0.6.1, ONNX Runtime 1.32.0, modelo INT8 de 92 MB; hilos predeterminados equivalentes a 2. Referencias con `bench_linux.py`, texto entero en streaming; Phonon es `phonon-40m-es`, no el modelo multilingüe actual de teHablo.
+
+| Configuración | Pico MiB | CPU s | Generación s | Primer fragmento s | Audio s |
+|---|---:|---:|---:|---:|---:|
+| Pocket `lola` | 1016 | 26,4 | 14,6 | 0,16 | 36,2 |
+| Phonon `Regina` (es) | 363 | 16,8 | 8,6 | 0,08 | 35,4 |
+| Kokoro `em_santa` | 449 | 49,5 | 25,1 | 4,64 | 34,64 |
+| Kokoro `em_alex` | 450 | 52,0 | 26,4 | 4,62 | 34,43 |
+| Kokoro `ef_dora` | 444 | 48,0 | 24,3 | 4,61 | 33,55 |
+| 50 % santa + 50 % alex | 450 | 49,7 | 25,2 | 4,61 | 34,58 |
+| 70 % santa + 30 % alex | 450 | 49,1 | 24,9 | 4,57 | 34,53 |
+| 50 % santa + 50 % dora | 448 | 50,2 | 25,5 | 4,57 | 34,21 |
+
+Los valores de las dos referencias proceden del reporte de la sesión; los JSON anteriores de `res/` corresponden a 12 CPU. La [segunda ronda en VM](#segunda-ronda-en-vm-2026-11-14) ya conserva JSON de ambas referencias con 2 CPU: confirma el orden de magnitud, con pequeñas diferencias entre ejecuciones (Pocket 1017 MiB/26,35 s de CPU; Phonon 371 MiB/16,82 s). No sustituye retrospectivamente los valores de esta primera ronda.
+
+- Mezclar estilos no añade un costo apreciable. La primera frase tiene 118–119 caracteres; dividir el primer fragmento a ≤40 baja la espera de `em_santa` a 1,34 s (443 MiB); a ≤60, 2,11 s (443 MiB).
+- Texto entero de Kokoro: pico ~936 MiB en VM (máximo JSON 936,19; ~935 en la segunda ejecución), frente a ~939 MiB en Docker limitado a 2 CPU (el JSON detecta 12 CPU lógicas, pero usa ~2 núcleos). Docker tarda 56,65 s de promedio medido (54,01 s en la última ejecución), más que los 33,68 s de audio; causa desconocida.
+- Un hilo tarda 38,4 s para 34,6 s de audio: descartado por no alcanzar tiempo real. FP32 usa 696 MiB y tarda 25,1 s, sin ventaja de velocidad: descartado.
+
+### Misma voz en otros motores de ejecución
+
+Todos usan `em_santa`; en sherpa el hablante 53 coincide con `voices/em_santa.bin`. Primer fragmento dividido a ≤40 caracteres.
+
+| Ejecución / modelo | Pico MiB | CPU s | Generación s |
+|---|---:|---:|---:|
+| ONNX uint8 | 675 | 47,4 | 24,0 |
+| ONNX q4 | 801 | 50,5 | 25,6 |
+| onnx-community quantized | 443 | 49,8 | 25,2 |
+| sherpa-onnx 2.0.1 INT8 (1 hilo predeterminado) | 511 | 66,8 | 66,8 |
+
+q8f16 falló en dos intentos: el primero terminó con código 127 sin salida y el segundo con `-11` (fallo de segmentación); no hay dos segfaults demostrados. `kokoro.cpp` se omitió: sin binario precompilado disponible y requiere CMake. Inferencia respaldada por estas pruebas: cambiar de ejecución no elimina el costo de la voz original, ~47–50 s de CPU por ~35 s de audio en ONNX (~3× Phonon); sherpa con un hilo fue aún más lento. Identidad perceptiva y texto hablado completo no verificados por escucha en esta comparación.
+
+### Clonación y destilación
+
+Pocket `spanish` cuantizado, el motor de `lola`, clonó una referencia WAV de Kokoro y exportó una vez el estado `.safetensors` (18,5 MB): preparación de 10,3 s y pico de 1604 MiB, según el reporte de la sesión (sin JSON de preparación en estos resultados). Lectura en proceso nuevo: 1017 MiB, **11,69 s CPU, 6,85 s de generación, 0,184 s al primer fragmento y 14,96 s de audio**, promedio de las ejecuciones 2 y 3 del JSON. La duración es anormalmente corta para el mismo texto; causa desconocida y sin escucha. Descartado por la persona responsable por RAM.
+
+Destilados con `em_alex`, no `em_santa`; generación frase por frase, con y sin subdividir el primer fragmento:
+
+| Modelo INT8 | Pico MiB (sin subdivisión / ≤40) | CPU s | Generación s | Primer fragmento s |
+|---|---:|---:|---:|---:|
+| Paradee-8M v1.3 | 422 / 514 | 2,6 | 1,3 | 0,25 / 0,08 |
+| Delibes-8M-esES | 558 / 556 | 3,1–3,2 | 1,56–1,62 | 0,30 / 0,10 |
+
+Paradee carga con 121 MiB RSS (128 con primer fragmento ≤40), modelo de 8,46 MB y entorno aislado compartido de ~170 MiB. Apache-2.0 según su ficha. Delibes también declara Apache-2.0, pero su ficha advierte que falta aprobación humana: candidato de revisión, no integración aprobada. Escucha directa de la persona responsable, no a ciegas: Paradee aceptable, aunque pierde parte de la esencia de la voz; Delibes suena extraño, algo electrónico; se prefiere Kokoro `em_alex` original.
+
+Kokoro v1.0 tiene 54 voces, solo tres españolas (`ef_dora`, `em_alex`, `em_santa`). Según la investigación de la sesión, no se encontró una destilación pública de `em_santa`; el código de entrenamiento de Paradee es público (Apache-2.0), usa ~24 h de audio del maestro y fue probado en Apple M4 Pro. Destilar `em_santa` sería otro proyecto de varios días y calidad incierta, no trabajo aprobado.
+
+**Decisión de la persona responsable (2026-11-14):** `em_santa` no compensa por ahora. No se integra Kokoro ni se implementa el Plan 2; queda en pausa. Añadir Kokoro puede reconsiderarse más adelante mediante una nueva decisión, no es el siguiente trabajo autorizado.
+
+## Segunda ronda en VM (2026-11-14)
+
+Ubuntu, i5-4300M, 2 núcleos y 7,4 GB de RAM (7424 MiB). Mismo `samples/benchmark.txt`: 600 caracteres, 8 frases; termina con una «E.» suelta que todas las voces leen. Es un artefacto conocido del texto, conservado sin cambios para mantener comparables las mediciones. Proceso nuevo por configuración, un calentamiento y dos ejecuciones medidas: tiempos medios de las dos últimas; RAM máxima por `ru_maxrss`, incluido el calentamiento. Primer fragmento generado, no latencia de reproducción. Pocket y Phonon: texto entero en streaming; Piper y Supertonic: frase por frase; MOSS: generación completa de cada frase, sin streaming. Hilos predeterminados del entorno (no el ajuste actual de 1 hilo de Phonon en teHablo).
+
+Evidencia local ignorada por Git: `.repo-harness/tmp/modelos/res/vm2/` (`*.json`, `table.md`, `NOTES.md`, fichas y versiones); no es evidencia durable versionada. Modelos ya disponibles salvo la carga inicial de Supertonic F2, que incluye descarga. MB de modelo: bytes lógicos decimales, incluidos archivos de configuración; no equivalen al espacio asignado del entorno.
+
+| Motor / voz | Pico MiB | CPU s | Generación s | Primer fragmento s | Audio s | Modelo MB |
+|---|---:|---:|---:|---:|---:|---:|
+| Pocket `lola` | 1017 | 26,35 | 14,59 | 0,17 | 36,80 | sin medir |
+| Phonon `Regina` (`phonon-40m-es`) | 371 | 16,82 | 8,73 | 0,08 | 35,44 | sin medir |
+| Piper `carlfm x_low` | 248 | 3,03 | 1,53 | 0,28 | 32,51 | 28,1 |
+| Piper `miro` | 343 | 4,65 | 2,34 | 0,44 | 30,42 | 63,5 |
+| Piper `davefx medium` | 409 | 5,15 | 2,60 | 0,49 | 32,69 | 63,2 |
+| Piper `sharvard medium` (hablante 0) | 411 | 5,14 | 2,59 | 0,49 | 33,22 | 76,8 |
+| Piper `claude high` | 382 | 5,78 | 2,91 | 0,56 | 38,14 | 63,1 |
+| Piper `ald medium` | 401 | 6,05 | 3,05 | 0,58 | 39,62 | 63,2 |
+| Piper `daniela high` | 352 | 28,06 | 14,15 | 2,61 | 28,41 | 114,2 |
+| Supertonic 3 `F2` | 668 | 32,55 | 16,42 | 2,52 | 41,80 | 403,5 |
+| Supertonic 3 `M1` | 559 | 31,97 | 16,12 | 2,77 | 44,51 | 403,5 |
+| MOSS-TTS-Nano ONNX (voz integrada) | 3008 | 64,87 | 64,87 | 9,89 | 46,88 | 763,2 |
+
+Versiones: `piper-tts` 1.8.0, `supertonic` 1.3.1, ONNX Runtime 1.32.0; referencias `pocket-tts` 4.0.1 y `ptts` 0.6.0. Entorno aislado Piper: `du -sh` = `180M` (aproximado; no es el incremento dentro del entorno de teHablo).
+
+**Escucha directa de la persona responsable, no a ciegas, con Regina como referencia:** `carlfm`, `davefx` y `sharvard` aceptables, pero no mejores que Regina; `miro` con ruido; `claude` muy mal, poco natural; `ald` muy mal. No hay valoración nueva de Daniela. Las tres aceptables gastan 3,3–5,6 veces menos CPU que Phonon en esta prueba (aproximadamente 3–5×); RAM similar: carlfm 123 MiB menos, davefx/sharvard 38/40 MiB más. Su incorporación no está aprobada: decisión pendiente. Supertonic no se escuchó hoy y sigue pendiente, sin decisión de descarte.
+
+**Límites y descartes:** Daniela produjo audio anormalmente corto (28,41 s), causa desconocida. Supertonic y MOSS también se alejan más de 5 s de los ~35 s de referencia; no se verificó si omiten o repiten texto. MOSS tarda más que el tiempo real (64,87 s para 46,88 s de audio); preparar el clon superó 3 GiB (3166 MiB de RSS muestreada del grupo de procesos) y se abortó, sin medición de lectura clonada. Descartado por RAM/CPU. Omitidos sin descargar ni medir por superar ~1,5 GB de pesos, según fichas: OmniVoice 3,256 GB (modelo CC-BY-NC, versión de licencia no especificada); drama-3 41,5 GB (despliegue documentado en GPU; metadatos y texto de licencia contradictorios); BSC-LT StyleTTS2 Spanish 2,15 GB (Apache-2.0).
+
+**Licencias comprobadas en esta ronda:** `piper-tts` GPL-3.0-or-later, no el antiguo motor MIT. Sus fichas declaran licencias del conjunto de entrenamiento, no una licencia independiente verificada de cada modelo: carlfm dominio público; davefx CC0; sharvard CC BY 3.0; claude Apache-2.0; ald Unlicense; daniela CC BY-SA 4.0. Miro declara modelo CC BY-NC-ND 4.0; Supertonic 3, modelo OpenRAIL-M y código de ejemplo MIT; MOSS ONNX, Apache-2.0 según ficha. No es asesoría legal.
 
 ## Licencias
 
@@ -538,7 +622,8 @@ Cada opción tiene tres capas: el programa, el modelo y la voz con la que se ent
 |---|---|---|---|---|
 | Pocket TTS | MIT | CC BY 4.0 y términos de Kyutai | `lola`: Common Voice, licencia del archivo sin verificar | Prohíbe clonar o suplantar sin consentimiento. |
 | Supertonic 3 | MIT | OpenRAIL-M | 10 voces propias | Permite uso comercial con usos prohibidos: suplantar sin consentimiento y presentar el audio como real sin avisar que es generado. Proyecto archivado: sin actualizaciones. |
-| Piper | GPL-3.0 (`piper-tts`) | por voz | `davefx` CC0; `carlfm` dominio público; `mls_*` CC BY 4.0; `ald` Unlicense; `claude` Apache-2.0; `sharvard` CC BY 3.0; `daniela` CC BY-SA 4.0 | Distribuir un programa que lo incluya obliga a GPL. |
+| Piper | GPL-3.0-or-later (`piper-tts` 1.8.0) | por voz; `miro` CC BY-NC-ND 4.0 | `davefx` CC0; `carlfm` dominio público; `mls_*` CC BY 4.0; `ald` Unlicense; `claude` Apache-2.0; `sharvard` CC BY 3.0; `daniela` CC BY-SA 4.0 | Las licencias de voces de esta fila son declaraciones sobre los datasets en las fichas, no licencias independientes verificadas de los modelos. Revisar las obligaciones GPL al distribuir una integración. |
+| MOSS-TTS-Nano ONNX | sin licencia independiente verificada del ejecutor | Apache-2.0 según ficha ONNX | integrada; clonación no completada | Descartado por RAM/CPU en la segunda ronda en VM. |
 | Kokoro-82M | `kokoro-onnx` MIT; usa `espeak-ng` (GPL-3.0) a través de `espeakng-loader` (MIT) | Apache-2.0 | voces propias del modelo | Uso comercial libre del modelo; `espeak-ng` es GPL-3.0, así que distribuir un programa que lo incluya tiene la misma condición que Piper. |
 | MeloTTS | MIT | MIT | voz propia del modelo | Depende de torch, MeCab/`unidic` y NLTK. |
 | Chatterbox | MIT | MIT | clona `voices/` (CC BY-SA 4.0) | Cada audio lleva una marca de agua inaudible (Perth). Publicar audio clonado de `voices/` exige atribución y misma licencia. |
