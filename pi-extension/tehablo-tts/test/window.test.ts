@@ -47,6 +47,33 @@ function setup(over: Partial<Record<string, any>> = {}) {
     }};
 }
 
+test('T3e active voice leads its tab, preserves remaining order and follows Enter selection', t => {
+  const s = setup({settings: {...DEFAULTS, model: 'phonon', voice: 'Regina'}});
+  const rows = [
+    {...ROWS[0], downloaded: true}, {...ROWS[1], downloaded: false},
+    {...ROWS[1], name: 'Alba', voice: 'Alba', downloaded: true},
+    {...ROWS[0], name: 'Ximena', voice: 'Ximena', downloaded: false},
+    ROWS[2], ROWS[3], ROWS[4],
+  ];
+  s.w.c.voices = () => rows;
+  const names = () => s.w.render().filter(l => l.startsWith('│ ')).map(l => rows.find(v => l.includes(v.name))?.voice).filter(Boolean);
+  s.click('[ Cambiar ]');
+  assert.deepEqual(names(), ['Regina', 'Alba', 'Iker', 'Ximena']);
+  assert.match(s.text(), /▶ ● Regina/);
+  t.diagnostic('Phonon active México first\n' + s.text());
+  s.key('\t');
+  const pocket = names();
+  assert.deepEqual(pocket, ['lola', 'rafael', 'ar-hombre-4310.wav']);
+  s.key('\t'); s.key('\x1b[B'); s.key('\r');
+  // Choosing a cached voice keeps the existing return to the main page.
+  s.click('[ Cambiar ]');
+  assert.deepEqual(names(), ['Alba', 'Iker', 'Regina', 'Ximena']);
+  assert.match(s.text(), /▶ ● Alba/);
+  assert.match(s.text(), /1\/4/);
+  s.key('\t');
+  assert.deepEqual(names(), pocket);
+});
+
 test('T3d local catalog preserves optional styles and renders all Phonon styles', () => {
   const rows = readTable(fileURLToPath(new URL('../../../src/voice_table.json', import.meta.url)), fileURLToPath(new URL('./absent-cache', import.meta.url)));
   assert.equal(rows.filter(v => v.model === 'phonon').length, 25);
@@ -147,12 +174,12 @@ test('T3c accent precedes download rank, Pocket is stable, arrows stay in tab', 
   s.w.c.voices = () => rows;
   s.state.settings = {...s.state.settings, model: 'phonon', voice: 'Regina'};
   s.click('[ Cambiar ]');
-  const ordered = ['España lista', 'Iker', 'México lista', 'Regina'].map(name => s.text().indexOf(name));
+  const ordered = ['Regina', 'España lista', 'Iker', 'México lista'].map(name => s.text().indexOf(name));
   assert.ok(ordered.every((position, i) => position >= 0 && (i === 0 || position > ordered[i - 1])));
   s.key('\x1b[A');
-  assert.match(s.w.render().find(l => l.startsWith('│ ▶ '))!, /Regina/);
+  assert.match(s.w.render().find(l => l.startsWith('│ ▶ '))!, /México lista/);
   s.key('\x1b[B');
-  assert.match(s.w.render().find(l => l.startsWith('│ ▶ '))!, /España lista/);
+  assert.match(s.w.render().find(l => l.startsWith('│ ▶ '))!, /Regina/);
   s.key('\t');
   const text = s.text();
   assert.ok(text.indexOf('lola') < text.indexOf('rafael'));

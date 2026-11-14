@@ -116,7 +116,7 @@ export class SettingsWindow {
     const selected = this.previousVoices[this.pick];
     const accent = (v: VoiceRow) => v.model === 'phonon' ? (v.note.includes('España') ? 0 : 1) : 0;
     const rank = (v: VoiceRow) => v.downloaded ? 0 : 1;
-    const list = this.c.voices().filter(v => v.model === this.engine).map((v, i) => ({v, i})).sort((a, b) => accent(a.v) - accent(b.v) || rank(a.v) - rank(b.v) || a.i - b.i).map(x => x.v);
+    const list = this.c.voices().filter(v => v.model === this.engine).map((v, i) => ({v, i})).sort((a, b) => Number(this.isActive(b.v)) - Number(this.isActive(a.v)) || accent(a.v) - accent(b.v) || rank(a.v) - rank(b.v) || a.i - b.i).map(x => x.v);
     const index = selected ? list.findIndex(v => v.model === selected.model && v.voice === selected.voice) : -1;
     if (index >= 0) this.pick = index;
     this.previousVoices = list;
