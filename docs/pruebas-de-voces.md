@@ -466,6 +466,20 @@ Pocket `spanish` (motor de `lola`) no estuvo disponible sin conexión: su tokeni
 
 Resultado: clonaciones descartadas sin escucha por decisión de la persona responsable, porque consumen mucha más RAM que la voz original. Criterio: descartar motores o clones que aproximadamente dupliquen la RAM de la voz original. No incorporadas.
 
+## Mezclas de Kokoro (2026-11-13, Windows)
+
+Prueba aislada en una carpeta aparte, en CPU del PC con Windows de la persona responsable, con `kokoro-onnx` 0.6.1 y el modelo comprimido `kokoro-v1.0.int8.onnx` (92 MB en disco). Mismo texto de prueba, generado frase por frase; las voces se mezclaron mediante sumas ponderadas de sus vectores de estilo. Complementa la prueba de [mezclas de Kokoro y ajustes de Supertonic del 2026-10-30](#mezclas-de-kokoro-y-ajustes-de-supertonic-2026-10-30).
+
+| Orden | Voz | RAM (GB) | CPU del texto | Generación | Audio | Primer sonido |
+|---|---|---|---|---|---|---|
+| 1 | `em_santa` original | 0,39 | 25 s | 5,0 s | 16,8 s | 0,66 s |
+| 2 | 70 % `em_santa` + 30 % `em_alex` | 0,39 | 23,4 s | 4,4 s | 16,6 s | 0,62 s |
+| 3 | 50 % `em_santa` + 50 % `em_alex` | 0,39 | 23,3 s | 4,4 s | 16,6 s | 0,58 s |
+| 4 | 70 % `em_santa` + 30 % `ef_dora` | 0,39 | 24,0 s | 4,5 s | 16,5 s | 0,62 s |
+| 5 | 85 % `em_santa` + 15 % `ef_dora` | 0,39 | 23,4 s | 4,3 s | 16,6 s | 0,57 s |
+
+Resultado de la escucha directa, no a ciegas: las cinco opciones suenan bien y son muy similares. La persona responsable señaló la mezcla 50 % `em_santa` + 50 % `em_alex` como probable preferida, sin una diferencia clara frente a las demás. Mezclar no añade consumo de RAM, CPU ni espacio en disco. No incorporadas; la decisión sigue pendiente.
+
 ## Licencias
 
 Cada opción tiene tres capas: el programa, el modelo y la voz con la que se entrenó o se clona.
