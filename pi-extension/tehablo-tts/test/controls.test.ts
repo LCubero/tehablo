@@ -28,6 +28,26 @@ function setup(store=savedVolumeStore(),clipboard?:()=>Promise<string>,watchMs=0
   const card=renderer(entries[1],{}, {fg:(_:any,t:string)=>t});
   return {startCard:()=>widget,entries,hooks,ctx,store,windows,keyHandlers,press:(d:string)=>keyHandlers.map(h=>h(d)),client,calls,card,configs,notices,statuses,line:()=>{const l=card.render(200)[0];if(l!==undefined)assert.equal(l[0],' ');return l?.slice(1);}, command:(s:string)=>command(s,ctx),set:(s:string,i:string|null='a')=>{state=s;id=i;},setReady:(value:boolean)=>{ready=value;},setError:(value:string)=>{settings.error=value;},setNote:(value:string)=>{settings.note=value;},setFallback:(value:string|null)=>{settings.fallback=value;},ensures:()=>ensures,close:()=>hooks.session_shutdown({},ctx),agentStart:()=>hooks.agent_start({},ctx),fail:(value=true)=>{fail=value;},renders:()=>renders};
 }
+for (const spawned of [false, true]) test(`S6 saved rhythm replays before reading and menu changes use config (spawned=${spawned})`, async () => {
+  const store = memoryStore();
+  store.save({...store.load(), rhythm: -0.5, speed: 1.25});
+  const s = setup(store);
+  s.client.spawned = spawned;
+  try {
+    await s.command('play');
+    assert.equal(s.configs[0].rhythm, -0.5);
+    assert.equal(s.configs[0].speed, 1.25);
+    assert.ok(s.calls.indexOf('/config') < s.calls.indexOf('/speak'));
+    const opening = s.command('menu');
+    await new Promise(r => setImmediate(r));
+    s.windows[0].w.c.change('rhythm', 0.5);
+    await new Promise(r => setImmediate(r));
+    assert.equal(store.load().rhythm, 0.5);
+    assert.equal(s.configs.at(-1).rhythm, 0.5);
+    s.windows[0].w.done(); await opening;
+  } finally { await s.close(); }
+});
+
 test('fresh volume is applied to the server before playback', async () => {
   const s = setup(memoryStore());
   try {

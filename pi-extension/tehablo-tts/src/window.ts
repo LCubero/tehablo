@@ -1,4 +1,4 @@
-import { ACTIONS, SPEEDS, type Action, type Settings, type VoiceRow } from './settings.ts';
+import { ACTIONS, SPEEDS, RHYTHMS, type Action, type Settings, type VoiceRow } from './settings.ts';
 import { keyOf, label, usedByPi } from './shortcuts.ts';
 
 export const ACTION_NAMES: Record<Action, string> = {
@@ -20,7 +20,7 @@ export interface Controller {
   sshCode(copy?: boolean): Promise<string>;
   choose(row: VoiceRow): void;
   download?(row: VoiceRow): Promise<void>;
-  change(field: 'volume' | 'speed' | 'auto' | 'shortcutsOn' | 'toolbar' | 'indicator' | 'policy' | 'icons' | 'audio' | 'device', value: string | number | boolean | 'stop' | 'wait' | 'symbols' | 'text' | 'local' | 'ssh'): void;
+  change(field: 'volume' | 'speed' | 'rhythm' | 'auto' | 'shortcutsOn' | 'toolbar' | 'indicator' | 'policy' | 'icons' | 'audio' | 'device', value: string | number | boolean | 'stop' | 'wait' | 'symbols' | 'text' | 'local' | 'ssh'): void;
   power(action: 'on' | 'off' | 'restart'): void;
   /** Throws an Error with a message safe to show (never the token). */
   saveToken(value: string): void;
@@ -168,17 +168,21 @@ export class SettingsWindow {
     const vol = nearest(VOLUMES, s.volume), spd = nearest(SPEEDS, s.speed);
     const move = (list: number[], i: number, d: number) => list[Math.min(list.length - 1, Math.max(0, i + d))];
     return [
-      {label: 'Voz', text: active ? `${active.name} · ${active.note}` : this.c.active().voice, buttons: [['[ Cambiar ]', () => { this.page = 'voices'; this.pick = 0; }]]},
+      {section: 'Voz y sonido', label: 'Voz', text: active ? `${active.name} · ${active.note}` : this.c.active().voice, buttons: [['[ Cambiar ]', () => { this.page = 'voices'; this.pick = 0; }]]},
       {label: 'Volumen', value: `${Math.round(s.volume * 100)} %`, step: (d: number) => this.c.change('volume', move(VOLUMES, vol, d))},
       {label: 'Velocidad', value: `${s.speed.toFixed(2)}x`, step: (d: number) => this.c.change('speed', move(SPEEDS, spd, d))},
-      {label: 'Lectura automática', value: s.auto ? 'sí' : 'no', step: () => this.c.change('auto', !s.auto)},
+      ...(this.c.active().model === 'phonon' ? [{label: 'Ritmo de Phonon',
+        value: (s.rhythm > 0 ? '+' : '') + String(s.rhythm).replace('.', ','),
+        status: '− más rápido · + más pausado',
+        step: (d: number) => this.c.change('rhythm', move(RHYTHMS, nearest(RHYTHMS, s.rhythm), d))}] : []),
+      {section: 'Lectura', label: 'Lectura automática', value: s.auto ? 'sí' : 'no', step: () => this.c.change('auto', !s.auto)},
       {label: 'Si llega otra lectura', value: s.policy === 'wait' ? 'Esperar' : 'Detener', step: () => this.c.change('policy', s.policy === 'wait' ? 'stop' : 'wait')},
-      {label: 'Atajos de teclado', value: s.shortcutsOn ? 'activados' : 'desactivados', step: () => this.c.change('shortcutsOn', !s.shortcutsOn),
+      {section: 'Interfaz', label: 'Atajos de teclado', value: s.shortcutsOn ? 'activados' : 'desactivados', step: () => this.c.change('shortcutsOn', !s.shortcutsOn),
         buttons: [['[ Editar ]', () => { this.page = 'shortcuts'; this.scRow = 0; this.col = 0; this.capturing = false; this.scError = ''; }]]},
       {label: 'Barra de controles', value: s.toolbar ? 'visible' : 'oculta', step: () => this.c.change('toolbar', !s.toolbar)},
       {label: 'Indicador de estado', value: s.indicator ? 'visible' : 'oculto', step: () => this.c.change('indicator', !s.indicator)},
       {label: 'Iconos', value: s.icons === 'text' ? 'Texto' : 'Símbolos', step: () => this.c.change('icons', s.icons === 'text' ? 'symbols' : 'text')},
-      {label: 'Audio', value: s.audio === 'ssh' ? 'SSH' : 'Local', step: () => this.c.change('audio', s.audio === 'ssh' ? 'local' : 'ssh'),
+      {section: 'Audio y servidor', label: 'Audio', value: s.audio === 'ssh' ? 'SSH' : 'Local', step: () => this.c.change('audio', s.audio === 'ssh' ? 'local' : 'ssh'),
         // With SSH the pairing code sits right of the value: Enter copies it at once, a click on Ver shows it.
         ...(s.audio === 'ssh' ? {status: this.codeStatus, buttons: [
           ['[ Copiar ]', () => { void this.copyCode(); }],
@@ -364,8 +368,7 @@ export class SettingsWindow {
         {text: '  ←→ elegir · Enter · Esc', style: 'dim'}]);
     } else if (this.page === 'main') {
       this.mainRows().forEach((r: any, i: number) => {
-        const section = ({0: 'Voz y sonido', 3: 'Lectura', 5: 'Interfaz', 9: 'Audio y servidor'} as Record<number, string>)[i];
-        if (section) line([{text: '   ' + section, style: 'dim'}]);
+        if (r.section) line([{text: '   ' + r.section, style: 'dim'}]);
         const sel = i === this.row;
         const segs: Seg[] = [{text: sel ? ' ▶ ' : '   ', style: 'accent'}, {text: fit(r.label, 22), style: sel ? 'accent' : undefined}];
         if (r.text) segs.push({text: fit(r.text, 30) + ' ', style: sel ? 'accent' : 'dim'});

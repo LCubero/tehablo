@@ -44,7 +44,7 @@ class Synth:
     def prepare(self, voice):
         pass
 
-    def stream(self, text, voice, stop):
+    def stream(self, text, voice, stop, rhythm=0):
         self.calls.append((text, voice))
         for _ in range(200):
             if stop.wait(.005):
@@ -736,6 +736,56 @@ class ServerTests(unittest.TestCase):
                 self.assertEqual(conn.recv(1), b'')
                 self.assertLess(time.monotonic() - started, .8)
             self.assertEqual(self.request('/health')[0], 200)
+
+    def test_phonon_rhythm_snapshot_conditions_change_only_per_reading(self):
+        synth = object.__new__(tehablo_server.PhononSynthesizer)
+        synth.sample_rate = 24000
+        synth.prepare = mock.Mock()
+        synth.model = mock.Mock()
+        audio = mock.MagicMock()
+        audio.sample_rate = 24000
+        audio.__enter__.return_value = audio
+        audio.__iter__.side_effect = lambda: iter([np.zeros(240, dtype=np.float32)])
+        synth.model.stream.return_value = audio
+        self.synth = synth
+        entered, release = threading.Event(), threading.Event()
+        def sink(rate, callback):
+            entered.set()
+            release.wait(2)
+            return Sink(rate, callback)
+        self.audio_factory = sink
+        self.request('/config', {'model': 'phonon', 'voice': 'Regina', 'rhythm': -.5})
+        self.ready()
+        self.request('/speak', {'id': 'one', 'text': 'Primera'})
+        self.assertTrue(entered.wait(2))
+        self.request('/config', {'rhythm': .5})
+        release.set()
+        self.wait(lambda: synth.model.stream.call_count == 1)
+        synth.model.set_conditions.assert_called_once_with({'duration_delta': -.5})
+        self.wait(lambda: self.request('/status')[1]['state'] == 'idle')
+        self.request('/speak', {'id': 'two', 'text': 'Segunda'})
+        self.wait(lambda: synth.model.stream.call_count == 2)
+        self.assertEqual(synth.model.set_conditions.call_args_list,
+                         [mock.call({'duration_delta': -.5}), mock.call({'duration_delta': .5})])
+        self.wait(lambda: self.request('/status')[1]['state'] == 'idle')
+        self.request('/speak', {'id': 'three', 'text': 'Tercera'})
+        self.wait(lambda: synth.model.stream.call_count == 3)
+        self.assertEqual(synth.model.set_conditions.call_count, 2)
+
+    def test_rhythm_config_bounds_default_and_pocket_ignores_it(self):
+        self.assertEqual(self.request('/health')[1]['rhythm'], 0)
+        for value in [-1, -.5, 0, .5, 1]:
+            self.assertEqual(self.request('/config', {'rhythm': value})[0], 200)
+            self.assertEqual(self.request('/health')[1]['rhythm'], value)
+        for value in [True, False, None, '0', [], {}, -1.01, 1.01, float('nan'), float('inf'), -float('inf')]:
+            status, body = self.request('/config', {'rhythm': value})
+            self.assertEqual(status, 400)
+            self.assertIn('rhythm must be between -1 and 1', body['error'])
+            self.assertEqual(self.request('/health')[1]['rhythm'], 1)
+        self.ready()
+        self.request('/speak', {'id': 'rhythm-pocket', 'text': 'Hola'})
+        self.wait(lambda: bool(self.synth.calls))
+        self.assertEqual(self.synth.calls[0], ('Hola', 'lola'))
 
     def test_output_device_contract(self):
         self.ready()

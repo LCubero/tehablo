@@ -45,6 +45,25 @@ function setup(over: Partial<Record<string, any>> = {}) {
     }};
 }
 
+test('S6 rhythm is Phonon-only, below speed, steps and clamps with arrows', () => {
+  const s = setup();
+  assert.doesNotMatch(s.text(), /Ritmo de Phonon/);
+  s.state.settings = {...s.state.settings, model: 'phonon', voice: 'Regina'};
+  assert.match(s.text(), /Ritmo de Phonon/);
+  assert.match(s.text(), /− más rápido · \+ más pausado/);
+  const rows = s.w.mainRows();
+  assert.equal(rows[2].label, 'Velocidad');
+  assert.equal(rows[3].label, 'Ritmo de Phonon');
+  s.w.row = 3;
+  for (let i = 0; i < 3; i++) s.key('\x1b[D');
+  assert.equal(s.state.settings.rhythm, -1);
+  for (let i = 0; i < 5; i++) s.key('\x1b[C');
+  assert.equal(s.state.settings.rhythm, 1);
+  s.w.row = 2; s.key('\x1b[C');
+  assert.equal(s.state.settings.speed, 1.05);
+  assert.ok(s.text().indexOf('Lectura automática') > s.text().indexOf('Lectura'));
+});
+
 test('T1 missing ungated voice skips token when model is cached, including download errors', async () => {
   const s = setup();
   const voice = {...ROWS[0], needsToken: false};

@@ -213,6 +213,7 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
     if (!client.spawned && settings.voice && (body.model || settings.voice !== health.voice)) body.voice = settings.voice;
     if (typeof health.volume === 'number' && settings.volume !== health.volume) body.volume = settings.volume;
     if (typeof health.speed === 'number' && settings.speed !== health.speed) body.speed = settings.speed;
+    if (settings.rhythm !== (health.rhythm ?? 0)) body.rhythm = settings.rhythm;
     if (settings.audio !== health.audio) body.audio = settings.audio;
     if (settings.audio === 'local' && settings.device !== (health.device ?? '')) body.device = settings.device;
     if (!Object.keys(body).length) return;
@@ -603,9 +604,9 @@ export function createExtension(pi: ExtensionAPI, client = new ServerClient(), s
         if (field === 'auto') { const starting = setAuto(value as boolean); if (starting) run(() => starting); }
         if (field === 'volume') volume = value as number;
         if (field === 'speed') speed = value as number;
-        if ((field === 'audio' || field === 'device') && server !== 'ready') applied = false;
+        if ((field === 'audio' || field === 'device' || field === 'rhythm') && server !== 'ready') applied = false;
         if (field === 'audio' && value === 'ssh' && previousAudio !== 'ssh') say(ctx, settings.sshListo ? 'Audio por SSH activado.' : 'Audio por SSH activado.\n\nEn la computadora desde la que te conectas, ejecuta una vez\nEn Windows: irm https://raw.githubusercontent.com/LCubero/tehablo/master/receptor/install.ps1 | iex\nEn Linux/macOS: curl -fsSL https://raw.githubusercontent.com/LCubero/tehablo/master/receptor/install.sh | sh\n\nInstala un cliente pequeño que recibe la voz por tu misma conexión SSH (cifrada), solo mientras habla. Ábrelo y elige tu sesión SSH; si hace falta contraseña, la pide el cliente. No cambia tu configuración SSH. Cliente y servidor se comprueban con un código de vinculación sin enviarlo.\nCódigo de vinculación: oculto (/tts codigo para verlo)\n\nConsulta la documentación para más información o para hacerlo a mano.\nhttps://github.com/LCubero/tehablo#audio-por-ssh', 'info');
-        if (field === 'volume' || field === 'speed' || field === 'audio' || field === 'device') run(async () => {
+        if (field === 'volume' || field === 'speed' || field === 'rhythm' || field === 'audio' || field === 'device') run(async () => {
           await configure({[field]: value, ...(field === 'audio' && value === 'local' && settings.device ? {device: settings.device} : {})});
           if (field === 'audio' && value === 'local') await refreshDevices();
         });

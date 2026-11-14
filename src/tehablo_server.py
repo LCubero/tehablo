@@ -123,6 +123,7 @@ class PhononSynthesizer:
         from huggingface_hub import constants
         import ptts
         self.voices = set()
+        self.rhythm = None
         started = time.perf_counter()
         ptts.set_num_threads(1)  # 2-core VM: same pace, ~15 % less CPU than 2 (2026-11-12)
         # The repository is gated: without a token Hugging Face refuses even a cached model,
@@ -150,10 +151,13 @@ class PhononSynthesizer:
             self.model.add_voice(voice, path)
             self.voices.add(voice)
 
-    def stream(self, text, voice, stop):
+    def stream(self, text, voice, stop, rhythm=0):
         if stop.is_set():
             return
         self.prepare(voice)
+        if rhythm != getattr(self, 'rhythm', None):
+            self.model.set_conditions({'duration_delta': rhythm})
+            self.rhythm = rhythm
         with self.model.stream(text, voice=voice) as audio:
             if audio.sample_rate != self.sample_rate:
                 raise ValueError('unexpected Phonon sample rate')
@@ -386,6 +390,7 @@ class SpeechService:
                                                     if self.audio == 'ssh' else self.local_sink(rate, callback))
         # A callable catalog loads on first use: Phonon never needs the Pocket voice list.
         self._catalog = catalog if callable(catalog) else list(catalog)
+        self.rhythm = 0.0
         self.model_name, self.voice, self.speed = model, voice if voice is not None else default_voice(model), speed
         self.volume = 1.0
         self.validate({'model': model, 'voice': self.voice, 'speed': speed})
@@ -503,7 +508,7 @@ class SpeechService:
             # A saved local output may be disconnected when Pi starts.
             if not isinstance(device, str) or (device and body.get('audio', self.audio) == 'ssh'):
                 raise ValueError('unknown output device')
-        if set(body) - {'model', 'voice', 'speed', 'volume', 'audio', 'device'}:
+        if set(body) - {'model', 'voice', 'speed', 'rhythm', 'volume', 'audio', 'device'}:
             raise ValueError('unknown config field')
         if 'audio' in body and body['audio'] not in ('local', 'ssh'):
             raise ValueError('audio must be local or ssh')
@@ -516,6 +521,11 @@ class SpeechService:
             if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or not .5 <= value <= 1.5:
                 raise ValueError('speed must be between 0.5 and 1.5')
 
+        if 'rhythm' in body:
+            value = body['rhythm']
+            if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or not -1 <= value <= 1:
+                raise ValueError('rhythm must be between -1 and 1')
+
         if 'volume' in body:
             value = body['volume']
             if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or not .1 <= value <= 1.5:
@@ -524,7 +534,7 @@ class SpeechService:
     def health(self):
         with self.condition:
             return {'ok': True, 'version': getattr(self, 'version', None), 'ready': self.ready, 'model': self.model_name,
-                    'voice': self.voice, 'speed': float(self.speed), 'volume': self.volume, 'audio': self.audio, 'device': self.device,
+                    'voice': self.voice, 'speed': float(self.speed), 'rhythm': self.rhythm, 'volume': self.volume, 'audio': self.audio, 'device': self.device,
                     'error': self.error, 'fallback': self.fallback,
                     'preparation': dict(self.preparation) if self.preparation else None,
                     'sshReceiver': self.ssh_audio.receiver_authenticated}
@@ -560,7 +570,7 @@ class SpeechService:
             self.resolve_voice(voice)
         except ValueError:
             voice = self.voice
-        self.pending = (text, self.cancel, voice, speed, lexicon)
+        self.pending = (text, self.cancel, voice, speed, lexicon, self.rhythm)
         self.state = 'generating' if self.ready else 'loading'
         self.condition.notify_all()
 
@@ -658,6 +668,7 @@ class SpeechService:
             self.audio = body.get('audio', self.audio)
             self.device = body.get('device', self.device)
             self.speed = float(body.get('speed', self.speed))
+            self.rhythm = float(body.get('rhythm', self.rhythm))
             self.volume = float(body.get('volume', self.volume))
             self.condition.notify_all()
             return self.health()
@@ -752,8 +763,8 @@ class SpeechService:
                                 self.model_name, self.voice = 'spanish', 'lola'
                                 name = 'spanish'
                                 if self.pending:
-                                    text, cancel, _, speed, lexicon = self.pending
-                                    self.pending = (text, cancel, 'lola', speed, lexicon)
+                                    text, cancel, _, speed, lexicon, rhythm = self.pending
+                                    self.pending = (text, cancel, 'lola', speed, lexicon, rhythm)
                             synth = self.factory(name)
                     except Exception as exc:
                         exc = hide_token(exc)
@@ -813,7 +824,7 @@ class SpeechService:
                 with self.condition:
                     if not self.pending or revision != self.revision:
                         continue
-                    text, cancel, voice, speed, lexicon = self.pending
+                    text, cancel, voice, speed, lexicon, rhythm = self.pending
                     self.pending = None
                     if not self.paused:
                         self.state = 'generating'
@@ -837,7 +848,8 @@ class SpeechService:
                         speed = self.speed
                     stretch = SpeedStream(speed)
                     gain = voice_gain(voice)
-                    for chunk in synth.stream(text, self.resolve_voice(voice, name), cancel):
+                    pacing = {'rhythm': rhythm} if name == 'phonon' else {}
+                    for chunk in synth.stream(text, self.resolve_voice(voice, name), cancel, **pacing):
                         chunk = chunk * gain
                         if cancel.is_set():
                             break

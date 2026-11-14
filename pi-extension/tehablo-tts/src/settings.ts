@@ -10,11 +10,12 @@ export type Action = typeof ACTIONS[number];
 export const MODELS = ['phonon', 'spanish', 'spanish_24l'];
 /** 0.50x to 1.50x in 0.05x steps (written as hundredths so 1.1 and 1.15 stay exact). */
 export const SPEEDS = Array.from({length: 21}, (_, i) => (50 + 5 * i) / 100);
+export const RHYTHMS = [-1, -0.5, 0, 0.5, 1];
 /** downloaded is null when unknown (server off and never seen). */
 export interface VoiceRow { name: string; voice: string; model: string; kind: string; note: string; downloaded: boolean | null; needsToken?: boolean }
 export interface Settings {
   /** Empty model/voice means "use the server default". */
-  model: string; voice: string; volume: number; speed: number; auto: boolean;
+  model: string; voice: string; volume: number; speed: number; rhythm: number; auto: boolean;
   /** The bar stays hidden on the next start when /tts toolbar hid it. */
   toolbar: boolean;
   /** The status indicator stays hidden when /tts indicator hid it. */
@@ -29,7 +30,7 @@ export interface Settings {
   /** Last voice table seen from the server, shown while it is off. */
   voices: VoiceRow[];
 }
-export const DEFAULTS: Settings = {model: '', voice: '', volume: 0.5, speed: 1, auto: false, toolbar: true, indicator: true, icons: 'symbols', audio: 'local', sshListo: false, device: '', policy: 'stop', shortcutsOn: false, shortcuts: {}, voices: [], dict: {}};
+export const DEFAULTS: Settings = {model: '', voice: '', volume: 0.5, speed: 1, rhythm: 0, auto: false, toolbar: true, indicator: true, icons: 'symbols', audio: 'local', sshListo: false, device: '', policy: 'stop', shortcutsOn: false, shortcuts: {}, voices: [], dict: {}};
 
 const FILE = 'settings.json';
 const OLD_FILE = 'tehablo-settings.json';
@@ -48,6 +49,7 @@ export function loadSettings(dir: string, project?: string, fallback: Settings =
   if (typeof raw.voice === 'string') s.voice = raw.voice;
   if (typeof raw.volume === 'number' && raw.volume >= 0.1 && raw.volume <= 1.5) s.volume = raw.volume;
   if (SPEEDS.includes(raw.speed)) s.speed = raw.speed;
+  if (RHYTHMS.includes(raw.rhythm)) s.rhythm = raw.rhythm;
   if (typeof raw.toolbar === 'boolean') s.toolbar = raw.toolbar;
   if (typeof raw.indicator === 'boolean') s.indicator = raw.indicator;
   if (typeof raw.sshListo === 'boolean') s.sshListo = raw.sshListo;
@@ -68,7 +70,7 @@ export function loadSettings(dir: string, project?: string, fallback: Settings =
 export function saveSettings(dir: string, settings: Settings, previous?: Settings): void {
   const merged = previous ? loadSettings(dir, undefined, previous) : structuredClone(settings);
   if (previous) {
-    for (const key of ['volume', 'speed', 'toolbar', 'indicator', 'icons', 'audio', 'sshListo', 'device', 'policy', 'shortcutsOn', 'voices'] as const)
+    for (const key of ['volume', 'speed', 'rhythm', 'toolbar', 'indicator', 'icons', 'audio', 'sshListo', 'device', 'policy', 'shortcutsOn', 'voices'] as const)
       if (JSON.stringify(settings[key]) !== JSON.stringify(previous[key])) (merged as any)[key] = settings[key];
     if (settings.model !== previous.model || settings.voice !== previous.voice) {
       merged.model = settings.model; merged.voice = settings.voice;

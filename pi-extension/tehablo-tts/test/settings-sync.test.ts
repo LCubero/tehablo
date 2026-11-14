@@ -39,6 +39,24 @@ test('S2: stale sessions merge only changed keys, nested entries and the voice/m
   assert.equal(b.load().indicator, true);
 });
 
+test('S6 rhythm defaults, validates presets and merges independently of speed', () => {
+  const {a, b, file} = fixture();
+  const x = a.load(), y = b.load();
+  assert.equal(x.rhythm, 0);
+  a.save({...x, rhythm: -0.5});
+  b.save({...y, speed: 1.25});
+  assert.equal(a.load().rhythm, -0.5);
+  assert.equal(a.load().speed, 1.25);
+  for (const value of [-1, -0.5, 0, 0.5, 1]) {
+    writeFileSync(file, JSON.stringify({...DEFAULTS, rhythm: value}));
+    assert.equal(a.load().rhythm, value);
+  }
+  for (const value of [true, '0', null, -2, 2, 0.25]) {
+    writeFileSync(file, JSON.stringify({...DEFAULTS, rhythm: value}));
+    assert.equal(a.load().rhythm, 0);
+  }
+});
+
 test('S3: malformed and unreadable files retain the last good store snapshot', () => {
   const {a, file, dir} = fixture();
   a.load(); a.save({...DEFAULTS, volume: 0.7}); a.load();
