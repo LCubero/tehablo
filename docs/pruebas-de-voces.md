@@ -427,6 +427,43 @@ Escucha directa, no a ciegas, de la versión comprimida frase por frase: `ef_dor
 
 Resultado: Kokoro fue el motor con menos RAM y generación más rápida de los probados el 2026-11-13 (CuteTTS, ajuste castellano, NeuTTS y Pocket TTS ONNX). Generar frase por frase permite el primer sonido en ~0,6–0,7 s. Como referencia, `lola` usó ~0,95 GiB en una medición anterior con otro texto; no es una comparación directa. El 2026-10-30 Kokoro gastó ~2,8 veces más CPU que `lola`, dato que esta prueba no sustituye. No incorporado: la versión comprimida de `em_santa` frase por frase es la candidata más sólida hasta ahora; su incorporación sigue pendiente de decisión de la persona responsable.
 
+## Klein-TTS (2026-11-13, Windows)
+
+Prueba en CPU del PC con Windows de la persona responsable, con el mismo texto de las secciones anteriores. [Klein-TTS X1.5-Pro](https://huggingface.co/klein-ml/Klein-TTS-X1.5-Pro), de Klein ML, se publicó el 2026-11-03: 13,1 M de parámetros y modelo de 51 MB. Licencia Apache-2.0 verificada en `LICENSE`; sin token. El paquete `kleintts` necesita PyTorch CPU (carpeta de prueba de 986 MB); el `espeak-ng` incluido funcionó en Windows. No genera en streaming. Las variantes Flash no incluyen voces en español.
+
+| Voz | RAM (GB) | CPU del texto | Generación | Audio |
+|---|---|---|---|---|
+| Lucia (mujer) | 0,48 | 9,5 s | 5,3 s | 16,2 s |
+| Mateo (hombre) | 0,47 | 6,0 s | 1,8 s | 16,5 s |
+| Diego (hombre) | 0,47 | 7,1 s | 2,3 s | 16,7 s |
+
+Escucha directa, no a ciegas: las tres voces resultaron aceptables, pero roncas, con quiebres y algo de ruido; Diego suena prácticamente igual que Kokoro `em_santa`. La ficha declara entrenamiento por destilación con habla sintética; que proceda de Kokoro es una hipótesis sin verificar, no una procedencia demostrada.
+
+Resultado: no incorporado; suena peor que Kokoro `em_santa`.
+
+## ZONOS3-Mini (2026-11-13, no probado en Windows)
+
+Revisión de [ZONOS3-Mini de Zyphra](https://huggingface.co/Zyphra/ZONOS3-Mini), publicado el 2026-11-11, sin token. Código de ejecución MIT verificado; pesos Apache-2.0 solo según la ficha. Los pesos cuantizados mínimos ocupan ~1,16 GB. Incluye las voces españolas Rodrigo y Ximena y controles expresivos como `mood.valence`, `mood.arousal` y `delivery.tempo`.
+
+No se pudo probar en Windows: la dependencia `pyicu-wheels==2.14` no tiene rueda `win_amd64` y no hay binarios precompilados del motor. No se descargaron los pesos ni se midieron consumo, velocidad o calidad de voz.
+
+Resultado: pendiente de una posible prueba en Linux (Fedora), incluida la revisión de sus controles expresivos; no incorporado.
+
+## em_santa clonada en otros motores (2026-11-13, Windows)
+
+Prueba en CPU del PC con Windows de la persona responsable, con el mismo texto de las secciones anteriores y un WAV sintético de Kokoro `em_santa` como referencia (Apache-2.0). La RAM de las clonaciones incluye la carga y la preparación de la voz.
+
+| Motor | RAM (GB) | CPU del texto | Generación | Audio | Primer sonido | Modelo (MB) |
+|---|---|---|---|---|---|---|
+| Kokoro original comprimido (referencia) | 0,39 | 25 s | 5,0 s | 16,8 s | 0,7 s | 92 |
+| Ajuste castellano | 3,07 | 18,7 s | 15,1 s | 16,5 s | — | 1345 |
+| Pocket sin PyTorch comprimido | 2,58 | 37,6 s | 5,4 s | 16,4 s | 0,13 s | 146 |
+| Pocket sin PyTorch normal | 2,87 | 49,1 s | 8,0 s | 16,0 s | 0,19 s | 440 |
+
+Pocket `spanish` (motor de `lola`) no estuvo disponible sin conexión: su tokenizador no estaba en el caché local y clonar desde audio requiere pesos con acceso restringido.
+
+Resultado: clonaciones descartadas sin escucha por decisión de la persona responsable, porque consumen mucha más RAM que la voz original. Criterio: descartar motores o clones que aproximadamente dupliquen la RAM de la voz original. No incorporadas.
+
 ## Licencias
 
 Cada opción tiene tres capas: el programa, el modelo y la voz con la que se entrenó o se clona.
