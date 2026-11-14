@@ -650,6 +650,36 @@ Frente a lola, las dos voces divididas usan unos 465 MiB menos de pico, 22–38 
 
 **Escucha directa de la persona responsable, no a ciegas:** F2 y M1 suenan bien; la preocupación señalada fue la RAM. Se escuchó F2 con división, no M1 con división; no atribuirle a esta última una escucha nueva. F2 ya había sonado mejor que lola el 2026-10-30. **Decisión (2026-11-14):** documentar los resultados y conservar una posible implementación fuera de la documentación versionada; no implementar todavía. Incorporación pendiente de decisión; el proyecto Supertonic está archivado, sin actualizaciones.
 
+## Quinta ronda en VM: Mimic 3 y voces extranjeras de Phonon (2026-11-14)
+
+Misma VM, texto de 600 caracteres y método de las rondas anteriores: proceso nuevo por configuración, un calentamiento y dos medidas; tiempos medios de las dos últimas y pico `ru_maxrss` de las tres. Primer fragmento generado, no reproducción. Mimic 3 genera frase por frase, con la primera dividida en el último espacio anterior a 40 caracteres; Phonon usa streaming nativo. Hilos predeterminados: **no** se aplicó el ajuste de un hilo de teHablo. Evidencia local ignorada por Git: `.repo-harness/tmp/modelos/res/vm5/` (`REPORT.md`, `item-e.json` y pares JSON/WAV de la raíz); no es evidencia durable versionada.
+
+Mimic 3 (`mycroft-mimic3-tts`): motor AGPL-3.0, voces M-AILABS con licencia permisiva según la fuente, modelo de 76,34 MB, entorno de 361 MiB asignados en disco (`du -sh`) y audio a 22,05 kHz. `tux` es la voz predeterminada; su ejecución explícita se recoge abajo, no la medición independiente de `default`. Phonon: `gradium/phonon-40m-multilingual` q8, pesos CC-BY-NC-4.0 y voces Apache-2.0 según las fuentes; voces de otros idiomas leyendo el texto español con `lang=es`, y Regina como referencia de la misma ronda.
+
+| Motor / voz / idioma declarado | Pico MiB | CPU s | Generación s | Primer fragmento s | Audio s |
+|---|---:|---:|---:|---:|---:|
+| Mimic 3 `tux` / es-ES | 429 | 5,52 | 2,86 | 0,20 | 33,16 |
+| Mimic 3 `karen_savage` / es-ES | 446 | 6,30 | 3,30 | 0,25 | 38,67 |
+| Mimic 3 `victor_villarraza` / es-ES | 517 | 6,72 | 3,53 | 0,25 | 41,71 |
+| Phonon Lucien / fr-FR | 370 | 15,86 | 8,28 | 0,11 | 33,68 |
+| Phonon Tiphaine / fr-FR | 403 | 16,33 | 8,54 | 0,10 | 34,64 |
+| Phonon Edwin / en-GB | 371 | 17,30 | 9,07 | 0,10 | 36,80 |
+| Phonon Everly / en-US | 402 | 18,72 | 9,80 | 0,10 | 40,48 |
+| Phonon Marcelo / pt-BR | 403 | 19,22 | 10,02 | 0,10 | 41,12 |
+| Phonon Clarice / pt-BR | 416 | 21,50 | 11,25 | 0,10 | 46,16 |
+| Phonon Regina / es-MX (referencia) | 381 | 17,02 | 8,90 | 0,10 | 36,08 |
+
+Las duraciones de 40–46 s no demuestran por sí solas omisiones o repeticiones; no se verificaron mediante transcripción.
+
+**No instalables en esta VM; sin síntesis ni mediciones:**
+
+- **RHVoice Mateo:** la compilación de la rueda agotó el tiempo límite; la compilación desde fuentes requiere `pkg-config`, ausente en la VM. No se usó `sudo`.
+- **KaniTTS 400M es:** conflicto entre NeMo 2.4.0 (Transformers ≤4.52.0) y la versión 4.57.1 requerida por la ficha. Licencia sin resolver: metadatos LFM1.0 frente a Apache-2.0 en el texto de la ficha.
+
+**Procedencia de Piper:** los metadatos de `rhasspy/piper-voices` confirman el reentrenamiento de `davefx` y `sharvard` el 2026-11-09; los pesos actuales de `carlfm` proceden de 2023. Es una **inferencia respaldada**, no una identidad verificada, que la segunda ronda ya utilizara los archivos actuales: descargó desde `main` y los tamaños coinciden. No se guardaron hashes ni revisión de esas descargas, por lo que no puede confirmarse la igualdad de bytes; no se repitió la medición.
+
+**Escucha directa de la persona responsable, no a ciegas, con Regina como referencia:** `tux` aceptable, aunque sin convencer del todo; `karen_savage` mal; `victor_villarraza` bien. Las seis voces extranjeras de Phonon suenan bien, pero con acento francés, inglés o portugués muy marcado: no son adecuadas como voces españolas y se descarta esta alternativa. **Resultado:** ninguna incorporación ni voz nueva que supere a Regina. `victor_villarraza` queda comparable a las voces aceptables de Piper, con algo más de RAM y motor AGPL-3.0. Las decisiones pendientes sobre Piper y Supertonic no cambian.
+
 ## Licencias
 
 Cada opción tiene tres capas: el programa, el modelo y la voz con la que se entrenó o se clona.
