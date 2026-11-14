@@ -480,6 +480,35 @@ Prueba aislada en una carpeta aparte, en CPU del PC con Windows de la persona re
 
 Resultado de la escucha directa, no a ciegas: las cinco opciones suenan bien y son muy similares. La persona responsable señaló la mezcla 50 % `em_santa` + 50 % `em_alex` como probable preferida, sin una diferencia clara frente a las demás. Mezclar no añade consumo de RAM, CPU ni espacio en disco. No incorporadas; la decisión sigue pendiente.
 
+## Las 16 voces de Phonon 40M es (2026-11-13, Windows)
+
+Prueba en CPU del PC con Windows de la persona responsable, con el entorno del proyecto sin conexión y salida directa del motor, sin ajustes de teHablo. Mismo texto de prueba que las secciones anteriores. Modelo `gradium/phonon-40m-es`, ya instalado por teHablo: `model.q8.gguf`, 74,6 MB en disco, licencia CC BY-NC 4.0. Carga en ~0,07 s y usa ~0,17 GB tras cargar.
+
+El modelo tiene 16 voces españolas integradas, enumeradas en `PHONON_VOICES` de `src/tehablo_server.py`; la tabla de teHablo solo ofrece `Regina` e `Iker`. Cada voz usa un archivo pequeño aparte, descargado en el primer uso con la cuenta de Hugging Face de la persona responsable. Los 13 archivos que faltaban ocuparon 3,33 MB en disco; no equivalen a las 14 voces aún no ofrecidas en la tabla.
+
+Escucha directa, no a ciegas. Las descripciones proceden del motor; la última columna resume la valoración de la persona responsable.
+
+| Orden | Voz | Descripción del motor | RAM (GB) | CPU del texto | Generación | Audio | Primer sonido | Escucha |
+|---|---|---|---|---|---|---|---|---|
+| 1 | Regina | mexicana; segura y alegre | 0,30 | 4,0 s | 2,8 s | 17,0 s | 0,22 s | Bien |
+| 2 | Iker | peninsular; amable y relajado | 0,31 | 4,5 s | 3,4 s | 16,9 s | 0,25 s | Bien |
+| 3 | Noa | castellana; joven y animada | 0,31 | 4,3 s | 3,1 s | 15,7 s | 0,25 s | Bien |
+| 4 | Lucía-Sol | castellana; joven y juguetona | 0,30 | 3,4 s | 2,5 s | 14,4 s | 0,22 s | Bien |
+| 5 | Candela | castellana; joven y entusiasta | 0,31 | 4,4 s | 3,3 s | 15,4 s | 0,25 s | Aceptable: temblor muy leve |
+| 6 | Celia | clara, consonantes firmes | 0,32 | 4,4 s | 3,3 s | 15,6 s | 0,25 s | Bien: toque robótico apenas perceptible |
+| 7 | Alba | castellana; dulce y expresiva | 0,32 | 4,4 s | 3,2 s | 15,6 s | 0,25 s | Bien |
+| 8 | Alicia | redonda y suave | 0,33 | 4,6 s | 3,5 s | 15,8 s | 0,24 s | Bien |
+| 9 | Marcos | peninsular; seguro y enérgico | 0,33 | 4,8 s | 3,5 s | 17,6 s | 0,24 s | Bien |
+| 10 | Borja | resonante y rítmico | 0,33 | 4,2 s | 3,0 s | 15,0 s | 0,24 s | Bien |
+| 11 | Nuno | resonante y relajado | 0,34 | 4,4 s | 3,2 s | 15,8 s | 0,24 s | Bien |
+| 12 | Izan | nítido y enérgico | 0,35 | 3,8 s | 2,8 s | 14,0 s | 0,25 s | Bien |
+| 13 | Guillermo | grave y suave | 0,35 | 4,5 s | 3,3 s | 16,3 s | 0,24 s | Bien |
+| 14 | Rebeca | grave y decidida | 0,35 | 4,3 s | 3,1 s | 15,7 s | 0,24 s | Bien |
+| 15 | Danae | clara y ligera | 0,36 | 4,4 s | 3,2 s | 16,2 s | 0,24 s | Bien |
+| 16 | Azucena | grave y tranquila | 0,37 | 5,7 s | 4,3 s | 19,8 s | 0,25 s | Bien |
+
+Resultado: Phonon es el motor más ligero y rápido de los probados en esta ronda: 0,30–0,37 GB de RAM, ~4 s de CPU para ~16 s de audio y primer sonido en ~0,2 s. Las 14 voces adicionales son candidatas a ofrecer en teHablo, pendientes de decisión de la persona responsable; no se incorporaron a la tabla. La persona responsable confirmó que teHablo seguirá siendo gratuito y de código abierto y considera compatible la licencia no comercial con su uso; la restricción de uso comercial de Phonon sigue vigente.
+
 ## Licencias
 
 Cada opción tiene tres capas: el programa, el modelo y la voz con la que se entrenó o se clona.
