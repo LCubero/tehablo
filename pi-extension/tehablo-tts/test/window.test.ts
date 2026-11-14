@@ -47,6 +47,40 @@ function setup(over: Partial<Record<string, any>> = {}) {
     }};
 }
 
+test('T3f favorites toggle without choosing, reorder below active and preserve cursor and dimensions', t => {
+  const s = setup({settings: {...DEFAULTS, model: 'phonon', voice: 'Regina'}});
+  s.w.c.voices = () => [...ROWS, {...ROWS[0], name: 'Ximena', voice: 'Ximena'}];
+  s.click('[ Cambiar ]');
+  const height = s.w.render().length;
+  s.key('\x1b[B'); s.key('\x1b[B'); s.key('f');
+  assert.deepEqual(s.state.settings.favorites, ['Ximena']);
+  assert.deepEqual(s.w.order().map(v => v.name), ['Regina', 'Ximena', 'Iker']);
+  assert.equal(s.w.order()[s.w.pick].name, 'Ximena');
+  s.key('\x1b[B'); s.key('F');
+  assert.deepEqual(s.w.order().map(v => v.name), ['Regina', 'Iker', 'Ximena']);
+  assert.match(s.text(), /Iker ★/); assert.match(s.text(), /Ximena ★/);
+  assert.match(s.text(), /F favorita/);
+  assert.equal(s.w.render().length, height);
+  assert.ok(s.w.render().every(l => Array.from(l).length === 72));
+  assert.equal(s.calls.some(c => c[0] === 'choose'), false);
+  t.diagnostic(s.text());
+  s.key('f');
+  assert.deepEqual(s.state.settings.favorites, ['Ximena']);
+  assert.equal(s.w.order()[s.w.pick].name, 'Iker');
+});
+
+test('T3f Pocket favorites outrank downloads, unknown names are inert and active remains first', () => {
+  const s = setup({settings: {...DEFAULTS, model: 'spanish', voice: 'lola', favorites: ['unknown', 'rafael', 'lola']}});
+  s.click('[ Cambiar ]');
+  assert.deepEqual(s.w.order().map(v => v.name), ['lola', 'rafael', 'ar-hombre-4310']);
+  assert.match(s.text(), /● lola ★/);
+  s.key('F');
+  assert.equal(s.w.order()[s.w.pick].name, 'lola');
+  s.key('\t');
+  assert.deepEqual(s.w.order().map(v => v.name), ['Iker', 'Regina']);
+  assert.doesNotMatch(s.text(), /★/);
+});
+
 test('T3e active voice leads its tab, preserves remaining order and follows Enter selection', t => {
   const s = setup({settings: {...DEFAULTS, model: 'phonon', voice: 'Regina'}});
   const rows = [

@@ -39,6 +39,21 @@ test('S2: stale sessions merge only changed keys, nested entries and the voice/m
   assert.equal(b.load().indicator, true);
 });
 
+test('T3f favorites validate, persist and merge per-name concurrent edits', () => {
+  const {a, b, file} = fixture();
+  const x = a.load(), y = b.load();
+  assert.deepEqual(x.favorites, []);
+  a.save({...x, favorites: ['Iker']});
+  b.save({...y, favorites: ['Ximena']});
+  assert.deepEqual(a.load().favorites, ['Iker', 'Ximena']);
+  const before = a.load(), stale = b.load();
+  a.save({...before, favorites: ['Ximena']});
+  b.save({...stale, favorites: [...stale.favorites, 'Regina']});
+  assert.deepEqual(a.load().favorites, ['Ximena', 'Regina']);
+  writeFileSync(file, JSON.stringify({...DEFAULTS, favorites: ['unknown', 1, 'Iker', 'Iker']}));
+  assert.deepEqual(a.load().favorites, ['unknown', 'Iker']);
+});
+
 test('S6 rhythm defaults, validates presets and merges independently of speed', () => {
   const {a, b, file} = fixture();
   const x = a.load(), y = b.load();

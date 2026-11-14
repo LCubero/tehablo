@@ -20,7 +20,7 @@ export interface Controller {
   sshCode(copy?: boolean): Promise<string>;
   choose(row: VoiceRow): void;
   download?(row: VoiceRow): Promise<void>;
-  change(field: 'volume' | 'speed' | 'rhythm' | 'auto' | 'shortcutsOn' | 'toolbar' | 'indicator' | 'policy' | 'icons' | 'audio' | 'device', value: string | number | boolean | 'stop' | 'wait' | 'symbols' | 'text' | 'local' | 'ssh'): void;
+  change(field: 'favorites' | 'volume' | 'speed' | 'rhythm' | 'auto' | 'shortcutsOn' | 'toolbar' | 'indicator' | 'policy' | 'icons' | 'audio' | 'device', value: string[] | string | number | boolean | 'stop' | 'wait' | 'symbols' | 'text' | 'local' | 'ssh'): void;
   power(action: 'on' | 'off' | 'restart'): void;
   /** Throws an Error with a message safe to show (never the token). */
   saveToken(value: string): void;
@@ -116,7 +116,7 @@ export class SettingsWindow {
     const selected = this.previousVoices[this.pick];
     const accent = (v: VoiceRow) => v.model === 'phonon' ? (v.note.includes('España') ? 0 : 1) : 0;
     const rank = (v: VoiceRow) => v.downloaded ? 0 : 1;
-    const list = this.c.voices().filter(v => v.model === this.engine).map((v, i) => ({v, i})).sort((a, b) => Number(this.isActive(b.v)) - Number(this.isActive(a.v)) || accent(a.v) - accent(b.v) || rank(a.v) - rank(b.v) || a.i - b.i).map(x => x.v);
+    const list = this.c.voices().filter(v => v.model === this.engine).map((v, i) => ({v, i})).sort((a, b) => Number(this.isActive(b.v)) - Number(this.isActive(a.v)) || Number(this.isFavorite(b.v)) - Number(this.isFavorite(a.v)) || accent(a.v) - accent(b.v) || rank(a.v) - rank(b.v) || a.i - b.i).map(x => x.v);
     const index = selected ? list.findIndex(v => v.model === selected.model && v.voice === selected.voice) : -1;
     if (index >= 0) this.pick = index;
     this.previousVoices = list;
@@ -127,6 +127,7 @@ export class SettingsWindow {
     if (v.kind === 'download') return v.downloaded === null ? 'Sin cuenta' : 'Para descargar';
     return this.c.state().token || v.needsToken === false ? 'Para descargar' : 'Con cuenta gratis';
   }
+  isFavorite(v: VoiceRow) { return this.c.state().settings.favorites?.includes(v.name) ?? false; }
   isActive(v: VoiceRow) { const a = this.c.active(); return a.voice === v.voice && a.model === v.model; }
   home() { this.page = 'main'; this.col = 0; }
   choose(v: VoiceRow) {
@@ -295,6 +296,11 @@ export class SettingsWindow {
       else if (data === '\t' || data === '\x1b[9u') { const engines = this.engines(); this.switchEngine(engines[(engines.indexOf(this.engine) + 1) % engines.length] ?? ''); }
       else if (k === 'up') this.pick = list.length ? (this.pick - 1 + list.length) % list.length : 0;
       else if (k === 'down') this.pick = list.length ? (this.pick + 1) % list.length : 0;
+      else if (this.text(data).toLowerCase() === 'f' && list[this.pick]) {
+        const row = list[this.pick], favorites = this.c.state().settings.favorites ?? [];
+        this.c.change('favorites', this.isFavorite(row) ? favorites.filter(name => name !== row.name) : [...favorites, row.name]);
+        this.order();
+      }
       else if (k === 'enter' && list[this.pick]) this.choose(list[this.pick]);
       else if ((k === 'left' || k === 'right') && list[this.pick]) this.c.toggleDict(list[this.pick]);
     } else if (this.page === 'download') {
@@ -433,7 +439,7 @@ export class SettingsWindow {
         const sel = i === this.pick, pickIt = () => { this.pick = i; this.choose(v); };
         const style = v.downloaded ? 'dim' : v.kind === 'account' && !this.c.state().token ? 'warning' : 'dim';
         line([{text: sel ? ' ▶ ' : '   ', style: 'accent', fn: pickIt},
-          {text: fit((this.isActive(v) ? '● ' : '') + v.name, 14), style: this.isActive(v) ? 'warning' : sel ? 'accent' : undefined, fn: pickIt},
+          {text: fit((this.isActive(v) ? '● ' : '') + v.name + (this.isFavorite(v) ? ' ★' : ''), 14), style: this.isActive(v) ? 'warning' : sel ? 'accent' : undefined, fn: pickIt},
           {text: fit(v.note, 16), fn: pickIt},
           {text: fit(v.style ?? '—', 15), fn: pickIt},
           {text: fit(v.downloaded ? '✓ lista' : v.downloaded === null ? '↓' : '↓ descargar', 14), style, fn: pickIt},
@@ -446,7 +452,7 @@ export class SettingsWindow {
       const selected = list[this.pick];
       line([{text: selected && !selected.downloaded && selected.kind === 'account' && selected.needsToken !== false && !this.c.state().token
         ? ' Cuenta gratis de Hugging Face para descargar (una vez)' : '', style: 'dim'}]);
-      line([{text: ' '}, {text: '[ Volver ]', style: 'accent', fn: () => this.home()}, {text: '  ↑↓ elegir · Enter usar · ←→ dict · Tab motor · Esc', style: 'dim'}]);
+      line([{text: ' '}, {text: '[ Volver ]', style: 'accent', fn: () => this.home()}, {text: ' ↑↓ · Enter usar · ←→ dict · Tab motor · F favorita · Esc', style: 'dim'}]);
     } else if (this.page === 'download') {
       const v = this.target!;
       if (this.downloading || this.result === 'done') {

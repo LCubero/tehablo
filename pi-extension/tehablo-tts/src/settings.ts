@@ -26,11 +26,12 @@ export interface Settings {
   device: string;
   policy: 'stop' | 'wait';
   dict: Record<string, boolean>;
+  favorites: string[];
   shortcutsOn: boolean; shortcuts: Partial<Record<Action, string>>;
   /** Last voice table seen from the server, shown while it is off. */
   voices: VoiceRow[];
 }
-export const DEFAULTS: Settings = {model: '', voice: '', volume: 0.5, speed: 1, rhythm: 0, auto: false, toolbar: true, indicator: true, icons: 'symbols', audio: 'local', sshListo: false, device: '', policy: 'stop', shortcutsOn: false, shortcuts: {}, voices: [], dict: {}};
+export const DEFAULTS: Settings = {model: '', voice: '', volume: 0.5, speed: 1, rhythm: 0, auto: false, toolbar: true, indicator: true, icons: 'symbols', audio: 'local', sshListo: false, device: '', policy: 'stop', shortcutsOn: false, shortcuts: {}, voices: [], dict: {}, favorites: []};
 
 const FILE = 'settings.json';
 const OLD_FILE = 'tehablo-settings.json';
@@ -44,7 +45,7 @@ export function loadSettings(dir: string, project?: string, fallback: Settings =
   const file = existsSync(join(dir, FILE)) || !project ? join(dir, FILE) : join(project, OLD_FILE);
   try { raw = JSON.parse(readFileSync(file, 'utf8')); } catch { return structuredClone(fallback); }
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return structuredClone(fallback);
-  const s: Settings = {...DEFAULTS, shortcuts: {}, voices: [], dict: {}};
+  const s: Settings = {...DEFAULTS, shortcuts: {}, voices: [], dict: {}, favorites: []};
   if (typeof raw.model === 'string' && MODELS.includes(raw.model)) s.model = raw.model;
   if (typeof raw.voice === 'string') s.voice = raw.voice;
   if (typeof raw.volume === 'number' && raw.volume >= 0.1 && raw.volume <= 1.5) s.volume = raw.volume;
@@ -62,6 +63,7 @@ export function loadSettings(dir: string, project?: string, fallback: Settings =
     for (const action of ACTIONS) if (typeof raw.shortcuts[action] === 'string') s.shortcuts[action] = raw.shortcuts[action];
   if (raw.dict && typeof raw.dict === 'object' && !Array.isArray(raw.dict))
     s.dict = Object.fromEntries(Object.entries(raw.dict).filter(([, value]) => typeof value === 'boolean')) as Record<string, boolean>;
+  if (Array.isArray(raw.favorites)) s.favorites = [...new Set<string>(raw.favorites.filter((v: unknown) => typeof v === 'string'))];
   if (Array.isArray(raw.voices)) s.voices = raw.voices.filter(isRow);
   return s;
 }
@@ -74,6 +76,13 @@ export function saveSettings(dir: string, settings: Settings, previous?: Setting
       if (JSON.stringify(settings[key]) !== JSON.stringify(previous[key])) (merged as any)[key] = settings[key];
     if (settings.model !== previous.model || settings.voice !== previous.voice) {
       merged.model = settings.model; merged.voice = settings.voice;
+    }
+    // Merge membership changes rather than replacing another session's favorites.
+    const beforeFavorites = previous.favorites ?? [], afterFavorites = settings.favorites ?? [];
+    for (const name of new Set([...beforeFavorites, ...afterFavorites])) {
+      if (beforeFavorites.includes(name) === afterFavorites.includes(name)) continue;
+      merged.favorites = merged.favorites.filter(v => v !== name);
+      if (afterFavorites.includes(name)) merged.favorites.push(name);
     }
     for (const key of ['dict', 'shortcuts'] as const) {
       const before = previous[key], after = settings[key];
