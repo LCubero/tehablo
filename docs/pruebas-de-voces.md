@@ -608,7 +608,7 @@ Evidencia local ignorada por Git: `.repo-harness/tmp/modelos/res/vm2/` (`*.json`
 
 Versiones: `piper-tts` 1.8.0, `supertonic` 1.3.1, ONNX Runtime 1.32.0; referencias `pocket-tts` 4.0.1 y `ptts` 0.6.0. Entorno aislado Piper: `du -sh` = `180M` (aproximado; no es el incremento dentro del entorno de teHablo).
 
-**Escucha directa de la persona responsable, no a ciegas, con Regina como referencia:** `carlfm`, `davefx` y `sharvard` aceptables, pero no mejores que Regina; `miro` con ruido; `claude` muy mal, poco natural; `ald` muy mal. No hay valoración nueva de Daniela. Las tres aceptables gastan 3,3–5,6 veces menos CPU que Phonon en esta prueba (aproximadamente 3–5×); RAM similar: carlfm 123 MiB menos, davefx/sharvard 38/40 MiB más. Su incorporación no está aprobada: decisión pendiente. Supertonic no se escuchó hoy y sigue pendiente, sin decisión de descarte.
+**Escucha directa de la persona responsable, no a ciegas, con Regina como referencia:** `carlfm`, `davefx` y `sharvard` aceptables, pero no mejores que Regina; `miro` con ruido; `claude` muy mal, poco natural; `ald` muy mal. No hay valoración nueva de Daniela. Las tres aceptables gastan 3,3–5,6 veces menos CPU que Phonon en esta prueba (aproximadamente 3–5×); RAM similar: carlfm 123 MiB menos, davefx/sharvard 38/40 MiB más. Su incorporación no está aprobada: decisión pendiente. La escucha posterior de Supertonic y la prueba con el primer fragmento dividido se registran en la cuarta ronda; su incorporación sigue pendiente, sin decisión de descarte.
 
 **Límites y descartes:** Daniela produjo audio anormalmente corto (28,41 s), causa desconocida. Supertonic y MOSS también se alejan más de 5 s de los ~35 s de referencia; no se verificó si omiten o repiten texto. MOSS tarda más que el tiempo real (64,87 s para 46,88 s de audio); preparar el clon superó 3 GiB (3166 MiB de RSS muestreada del grupo de procesos) y se abortó, sin medición de lectura clonada. Descartado por RAM/CPU. Omitidos sin descargar ni medir por superar ~1,5 GB de pesos, según fichas: OmniVoice 3,256 GB (modelo CC-BY-NC, versión de licencia no especificada); drama-3 41,5 GB (despliegue documentado en GPU; metadatos y texto de licencia contradictorios); BSC-LT StyleTTS2 Spanish 2,15 GB (Apache-2.0).
 
@@ -630,6 +630,25 @@ Misma VM, texto y método de la segunda ronda: `piper-tts` 1.8.0, generación fr
 Esther, Adolfo y ambas MLS produjeron unos 44–52 s de audio para un texto de referencia de ~33 s: causa desconocida; no se verificó si hablan despacio o repiten contenido. La búsqueda omitió duplicados de voces medidas, voces de personajes como GLaDOS, opciones sin licencia declarada, idiomas distintos del español y checkpoints no ejecutables como voces Piper; no es un inventario global exhaustivo.
 
 **Escucha directa de la persona responsable, no a ciegas:** Julia aceptable, pero con ruido; Laura, Esther, Adolfo y ambas MLS aceptables, aunque algo poco naturales. Las dos MLS fueron las menos deficientes de esta ronda, pero se consideraron de muy baja calidad y no gustaron. **Resultado:** ninguna se incorpora; entre las voces de Piper solo las oficiales `carlfm`, `davefx` y `sharvard` permanecen aceptables para la propuesta pendiente. La decisión sobre su incorporación (Plan 3) no cambia.
+
+## Cuarta ronda en VM: Supertonic con primer fragmento dividido (2026-11-14)
+
+Misma VM y texto de la segunda ronda; `supertonic` 1.3.1, ONNX Runtime 1.32.0, modelo de 403,5 MB (OpenRAIL-M). Generación frase por frase, dividiendo solo la primera frase en el último espacio anterior a 40 caracteres: primer fragmento «Esta es una prueba de lectura en». Modelo y estilos preparados antes de medir, sin conexión; proceso nuevo por voz, un calentamiento y dos medidas. Tiempos medios de las dos últimas y pico `ru_maxrss` de las tres; primer fragmento generado, no reproducción. Evidencia local ignorada por Git: `.repo-harness/tmp/modelos/res/vm3/` (`*.json`, `NOTES.md`, `versions.json`); referencias sin división en `res/vm2/`. No es evidencia durable versionada.
+
+| Configuración | Pico MiB | RSS al cargar MiB | CPU s | Generación s | Primer fragmento s | Audio s | Carga s |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| Supertonic F2 sin dividir (VM2) | 668 | 619 | 32,55 | 16,42 | 2,52 | 41,80 | 14,87* |
+| Supertonic F2 primer fragmento ≤40 | 549 | 486 | 32,13 | 16,10 | 1,16 | 42,42 | 0,73 |
+| Supertonic M1 sin dividir (VM2) | 559 | 484 | 31,97 | 16,12 | 2,77 | 44,51 | 0,86 |
+| Supertonic M1 primer fragmento ≤40 | 553 | 488 | 36,46 | 18,28 | 1,15 | 45,14 | 0,71 |
+| Pocket lola (VM2, streaming) | 1017 | — | 26,35 | 14,59 | 0,17 | 36,80 | — |
+| Phonon Regina (VM2, es, streaming) | 371 | — | 16,82 | 8,73 | 0,08 | 35,44 | — |
+
+* La carga de F2 sin dividir incluyó la descarga inicial. Su pico de 668 MiB podría estar inflado por ella, pero no está demostrado; no atribuir la diferencia de RAM solo a dividir el fragmento. La ejecución accidental `invalid-F2-nosplit` se conserva y queda excluida. M1 dividido varió entre 16,55 y 20,02 s de generación; el promedio conserva ambas medidas.
+
+Frente a lola, las dos voces divididas usan unos 465 MiB menos de pico, 22–38 % más CPU y ~1 s más de espera inicial; frente a Regina, unos 180 MiB más, aproximadamente el doble de CPU y ~1,1 s más de espera. El audio dura ~6–9 s más que las referencias para el mismo texto; la causa sigue sin conocerse, sin verificación de omisiones o repeticiones.
+
+**Escucha directa de la persona responsable, no a ciegas:** F2 y M1 suenan bien; la preocupación señalada fue la RAM. Se escuchó F2 con división, no M1 con división; no atribuirle a esta última una escucha nueva. F2 ya había sonado mejor que lola el 2026-10-30. **Decisión (2026-11-14):** documentar los resultados y conservar una posible implementación fuera de la documentación versionada; no implementar todavía. Incorporación pendiente de decisión; el proyecto Supertonic está archivado, sin actualizaciones.
 
 ## Licencias
 

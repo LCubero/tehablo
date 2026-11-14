@@ -80,7 +80,7 @@ Antecedente aprobado el 2026-10-30: base confiable, medición (`RH-W-0003`), ser
 - **Estado:** `active`.
 - **Trabajo restante:**
   - Incorporación de `em_santa`/Kokoro en pausa por decisión de la persona responsable del 2026-11-14; Plan 2 sin implementar. Reconsiderar añadir Kokoro más adelante requiere una nueva decisión explícita, no autoriza más pruebas ni integración ahora.
-  - Decisión pendiente sobre incorporar Piper con `carlfm`, `davefx` y `sharvard`, con descarga al seleccionar; propuesta sin aprobar conservada fuera de la documentación versionada en `.repo-harness/tmp/planes-voces-2026-11-13.md` (Plan 3, ignorado por Git). Supertonic sigue pendiente; el ajuste castellano permanece evaluado, no incorporado.
+  - Decisión pendiente sobre incorporar Piper con `carlfm`, `davefx` y `sharvard`, con descarga al seleccionar; propuesta sin aprobar conservada fuera de la documentación versionada en `.repo-harness/tmp/planes-voces-2026-11-13.md` (Plan 3, ignorado por Git). Decisión pendiente sobre incorporar Supertonic; propuesta sin aprobar conservada en el mismo archivo local (Plan 4), fuera de la documentación versionada, sin implementar. El ajuste castellano permanece evaluado, no incorporado.
   - Probar las demás voces disponibles en el proyecto, no solo Lola.
   - Probar referencias de voz de Hugging Face y evaluar otras fuentes gratuitas.
   - Verificar compatibilidad real con Pocket TTS y el flujo local del proyecto antes de añadirlas como opciones utilizables.
@@ -117,7 +117,8 @@ Antecedente aprobado el 2026-10-30: base confiable, medición (`RH-W-0003`), ser
 - **Decisión (2026-11-14):** la persona responsable considera que `em_santa` no compensa por ahora. Kokoro y el Plan 2 quedan en pausa, sin integración; se podrá reconsiderar añadir Kokoro más adelante.
 - **Trabajo completado (2026-11-14, segunda ronda en VM):** mediciones de Piper, Supertonic y MOSS-TTS-Nano ONNX con referencias Pocket/Phonon y JSON guardados; escucha directa de Piper con Regina como referencia. Resultados, licencias y límites en la [segunda ronda en VM](../pruebas-de-voces.md#segunda-ronda-en-vm-2026-11-14). Solo documentación; no se implementó otro motor.
 - **Trabajo completado (2026-11-14, voces de Piper de la comunidad):** medidas y escuchadas Julia, Laura, Esther, Adolfo y ambas MLS; ninguna incorporada. Resultados y límites en la [tercera ronda en VM](../pruebas-de-voces.md#tercera-ronda-en-vm-voces-de-piper-de-la-comunidad-2026-11-14).
-- **Condición del siguiente avance:** decisión de la persona responsable sobre Piper (Plan 3 local, sin aprobar); no iniciar implementación. Supertonic sigue pendiente. Reconsiderar Kokoro/`em_santa` requiere nueva decisión; Plan 2 sigue en pausa. Las demás evaluaciones pendientes requieren revisión de alcance antes de empezar; no se añade trabajo aprobado.
+- **Trabajo completado (2026-11-14, Supertonic con primer fragmento dividido):** F2/M1 frase por frase con primer fragmento ≤40 caracteres: picos de 549/553 MiB, CPU de 32,13/36,46 s y primer fragmento en 1,16/1,15 s, frente a 2,52/2,77 s sin dividir. La descarga inicial limita la comparación del pico anterior de F2; M1 dividido no tiene escucha nueva. Resultados, escucha y límites en la [cuarta ronda en VM](../pruebas-de-voces.md#cuarta-ronda-en-vm-supertonic-con-primer-fragmento-dividido-2026-11-14). Solo documentación; incorporación no aprobada.
+- **Condición del siguiente avance:** decisión de la persona responsable sobre Piper y Supertonic (Planes 3 y 4 locales, sin aprobar); no iniciar implementación. Reconsiderar Kokoro/`em_santa` requiere nueva decisión; Plan 2 sigue en pausa. Las demás evaluaciones pendientes requieren revisión de alcance antes de empezar; no se añade trabajo aprobado.
 
 ### RH-W-0007: Modo GPU opcional
 
