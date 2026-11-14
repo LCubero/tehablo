@@ -7,6 +7,8 @@
 <!-- doc-role:standing-decisions -->
 
 - La documentación del repositorio permanece como fuente visible del estado del proyecto.
+- teHablo es y seguirá siendo gratuito y de código abierto (decisión de la persona responsable, 2026-11-13); las licencias de modelos y voces mantienen sus propias condiciones.
+- Se descartan motores o clones que aproximadamente dupliquen la RAM de la voz original (decisión de la persona responsable, 2026-11-13).
 - teHablo conserva uv en los instaladores del servidor y del cliente SSH: obtiene un Python adecuado y aísla las dependencias con menos pasos que venv + pip, sin mantener binarios por plataforma (decisión de la persona responsable, 2026-11-10).
 - Gentle AI y Engram son capacidades opcionales independientes; solo bloquean fallos requeridos por la operación y nunca reemplazan la evidencia actual del repositorio.
 - Las operaciones de Git, proveedor, respaldo externo y publicación quedan fuera del núcleo del harness; el backup local nativo que se escribe al cerrar la sesión forma parte de él.

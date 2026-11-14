@@ -425,7 +425,7 @@ Prueba aislada en CPU del PC con Windows de la persona responsable, con `kokoro-
 
 Escucha directa, no a ciegas, de la versión comprimida frase por frase: `ef_dora` no terminó de convencer por un sonido algo extraño; `em_santa` volvió a gustar, con buen sonido y adecuada para relatos.
 
-Resultado: Kokoro fue el motor con menos RAM y generación más rápida de los probados el 2026-11-13 (CuteTTS, ajuste castellano, NeuTTS y Pocket TTS ONNX). Generar frase por frase permite el primer sonido en ~0,6–0,7 s. Como referencia, `lola` usó ~0,95 GiB en una medición anterior con otro texto; no es una comparación directa. El 2026-10-30 Kokoro gastó ~2,8 veces más CPU que `lola`, dato que esta prueba no sustituye. No incorporado: la versión comprimida de `em_santa` frase por frase es la candidata más sólida hasta ahora; su incorporación sigue pendiente de decisión de la persona responsable.
+Resultado: Kokoro fue el motor con menos RAM y generación más rápida de los probados el 2026-11-13 (CuteTTS, ajuste castellano, NeuTTS y Pocket TTS ONNX). Generar frase por frase permite el primer sonido en ~0,6–0,7 s. Como referencia, `lola` usó ~0,95 GiB en una medición anterior con otro texto; no es una comparación directa. El 2026-10-30 Kokoro gastó ~2,8 veces más CPU que `lola`, dato que esta prueba no sustituye. No incorporado: la versión comprimida de `em_santa` frase por frase es la candidata más sólida hasta ahora; la persona responsable solicita incorporarla, incluso clonada si mantiene bajo consumo. Falta evaluar la vía directa de Kokoro o una clonación ligera, medir y escuchar antes de integrarla.
 
 ## Klein-TTS (2026-11-13, Windows)
 
@@ -507,7 +507,7 @@ Escucha directa, no a ciegas. Las descripciones proceden del motor; la última c
 | 15 | Danae | clara y ligera | 0,36 | 4,4 s | 3,2 s | 16,2 s | 0,24 s | Bien |
 | 16 | Azucena | grave y tranquila | 0,37 | 5,7 s | 4,3 s | 19,8 s | 0,25 s | Bien |
 
-Resultado: Phonon es el motor más ligero y rápido de los probados en esta ronda: 0,30–0,37 GB de RAM, ~4 s de CPU para ~16 s de audio y primer sonido en ~0,2 s. Las 14 voces adicionales son candidatas a ofrecer en teHablo, pendientes de decisión de la persona responsable; no se incorporaron a la tabla. La persona responsable confirmó que teHablo seguirá siendo gratuito y de código abierto y considera compatible la licencia no comercial con su uso; la restricción de uso comercial de Phonon sigue vigente.
+Resultado: Phonon es el motor más ligero y rápido de los probados en esta ronda: 0,30–0,37 GB de RAM, ~4 s de CPU para ~16 s de audio y primer sonido en ~0,2 s. Esta prueba del modelo anterior precede a la incorporación aprobada y publicada el mismo día: 25 voces del modelo multilingüe, descarga individual y ritmo nativo en Pi ([uso actual](desarrollo.md#voces)). La persona responsable confirmó que teHablo seguirá siendo gratuito y de código abierto y considera compatible la licencia no comercial con su uso; la restricción de uso comercial de Phonon sigue vigente.
 
 ## Control de ritmo de Phonon (2026-11-13, Windows)
 
@@ -542,7 +542,7 @@ Cada opción tiene tres capas: el programa, el modelo y la voz con la que se ent
 | Kokoro-82M | `kokoro-onnx` MIT; usa `espeak-ng` (GPL-3.0) a través de `espeakng-loader` (MIT) | Apache-2.0 | voces propias del modelo | Uso comercial libre del modelo; `espeak-ng` es GPL-3.0, así que distribuir un programa que lo incluya tiene la misma condición que Piper. |
 | MeloTTS | MIT | MIT | voz propia del modelo | Depende de torch, MeCab/`unidic` y NLTK. |
 | Chatterbox | MIT | MIT | clona `voices/` (CC BY-SA 4.0) | Cada audio lleva una marca de agua inaudible (Perth). Publicar audio clonado de `voices/` exige atribución y misma licencia. |
-| Phonon 40M es (Gradium) | `ptts` MIT o Apache-2.0 | CC BY-NC 4.0, acceso restringido en Hugging Face (aceptar términos y token) | 102 voces propias (`gradium/phonon-voices`, sin acceso restringido; Apache-2.0 según su ficha, revisada el 2026-11-13; 25 en español: 13 de España y 12 de México); sin clonación en el modelo abierto | Solo uso no comercial; el uso comercial requiere hablar con Gradium. |
+| Phonon 40M multilingüe (Gradium) | `ptts` MIT o Apache-2.0 | CC BY-NC 4.0, acceso restringido en Hugging Face (aceptar términos y token) | 102 voces propias (`gradium/phonon-voices`, sin acceso restringido; Apache-2.0 según su ficha, revisada el 2026-11-13; 25 en español: 13 de España y 12 de México); sin clonación en el modelo abierto | Solo uso no comercial; el uso comercial requiere hablar con Gradium. |
 
 Licencias leídas de los archivos `LICENSE`, las fichas de Hugging Face y las `MODEL_CARD` de Piper; no es asesoría legal.
 

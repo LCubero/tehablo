@@ -7,7 +7,7 @@
 https://github.com/user-attachments/assets/4527a564-a6a9-40f7-b7d9-340f3d686f34
 
 
-- Voces de España y Latinoamérica, con Pocket TTS y Phonon opcional.
+- Pocket TTS: Lola, Rafael y seis voces latinoamericanas incluidas; Phonon opcional con 25 voces de España y México.
 - Lectura manual o automática, texto copiado y velocidad sin cambiar el tono.
 - Números y términos técnicos adaptados al español; clonación con permiso.
 
@@ -56,7 +56,7 @@ pi install E:/ruta/a/tehablo/pi-extension/tehablo-tts
 pi install /ruta/a/tehablo/pi-extension/tehablo-tts
 ```
 
-Usa la primera en Windows o la segunda en Linux/macOS. Abre Pi o ejecuta `/reload`. Se instala para todos tus proyectos y enlaza esta carpeta: **no muevas el clon**. El instalador muestra el comando con tu ruta.
+Usa la primera en Windows o la segunda en Linux/macOS. Abre Pi; para retomar una sesión, usa `pi -c` (el `/reload` de gentle-pi presenta un cierre externo conocido). Se instala para todos tus proyectos y enlaza esta carpeta: **no muevas el clon**. El instalador muestra el comando con tu ruta.
 
 Audio probado en Windows y Fedora; macOS aún no verificado. [Instalación manual](docs/desarrollo.md#instalación-manual).
 
@@ -94,7 +94,9 @@ Si Pi corre en un servidor, el cliente teHablo puede reproducir la voz en tu com
 
 CPU y arranque medidos en una laptop de 2 núcleos de 2014; son referencias, no mínimos. Apagar el servidor libera la RAM. [Mediciones Windows, Fedora y VM](docs/como-funciona.md#consumo-medido) · [Comparación con Phonon](docs/pruebas-de-voces.md#phonon-40m-es-frente-a-lola-spanish_24l-y-kokoro-2026-11-03-fedora).
 
-En Pi, Phonon ofrece **25 voces en español** (13 de España y 12 de México): es el que menos gasta y suena muy bien en las pruebas. El menú tiene pestañas por motor con su RAM (Tab o clic para cambiar); abre en el motor de la voz activa. La activa va primero, seguida de las favoritas (`F` marca o quita `★` sin elegir la voz); después, Phonon ordena España y luego México, con las descargadas primero en cada acento. Todas las pestañas mantienen la misma altura, con diez filas visibles y columnas Voz, Acento, Estilo, Estado y Dict. `✓ lista` indica descargada y `↓ descargar` que se descargará al elegirla. Permite recorrer las voces con teclado o ratón; el diccionario de la voz seleccionada se cambia con ←→ o haciendo clic en su celda Dict. **Ritmo de Phonon** (−1 a +1) ajusta las pausas, además de la velocidad común.
+**Phonon: el que menos gasta y suena muy bien** en las pruebas. Ofrece 25 voces en español (13 de España y 12 de México).
+
+En `/tts menu`, abre **Voz → Cambiar**: Tab cambia de motor. La lista tiene altura fija y columnas Voz, Acento, Estilo, Estado y Dict; la activa va primero y las favoritas debajo (`F` marca o quita `★`). `✓ lista` indica descargada; `↓ descargar`, descarga al elegirla. ←→ cambia el diccionario de la voz seleccionada. **Ritmo de Phonon** (−1 a +1) ajusta las pausas además de la velocidad común. [Detalle de controles](docs/desarrollo.md#uso-en-pi).
 
 Si ya tenías `phonon-40m-es`, descarga una vez el modelo multilingüe (75 MB, con token). Cada voz baja solo al elegirla (~256 KB, sin cuenta).
 

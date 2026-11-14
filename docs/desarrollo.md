@@ -407,7 +407,7 @@ Pi empieza con la voz marcada `"default": true` en [`src/voice_table.json`](../s
 
 Phonon 40M multilingüe es opcional: ofrece 25 voces en español (`lang='es'`), 13 de España y 12 de México. Sus pesos son **CC BY-NC 4.0** (no comercial) y requieren una cuenta gratis de Hugging Face, aceptar las condiciones en <https://huggingface.co/gradium/phonon-40m-multilingual> y un token para la primera descarga: la ventana `[ ≡ ]` lo pide al elegir una de esas voces (o usa `hf auth login`). Token recomendado: *Fine-grained* con el preset **Read-Only** (solo lectura: no puede escribir ni borrar); el permiso que usa la descarga es *Read contents of gated repos you can access*. No hace falta *Write*, *Inference* ni *Full Access*. Ya descargado, funciona desde caché sin token. Si eliges Phonon y falta el paquete, el acceso o la caché, el servidor registra el motivo y usa Pocket `spanish` con `lola`; Pi avisa qué voz no cargó, y `/health` muestra el modelo real y esa voz en `fallback`.
 
-Cada voz de Phonon se descarga solo al elegirla (~256 KB, sin cuenta) desde [`gradium/phonon-voices`](https://huggingface.co/gradium/phonon-voices), de Gradium, **Apache-2.0**. El token solo hace falta para el modelo compartido (75 MB). Si falla la descarga de una voz, se conserva la anterior; las voces ya descargadas funcionan sin conexión.
+Cada voz de Phonon se descarga solo al elegirla (~256 KB, sin cuenta) desde [`gradium/phonon-voices`](https://huggingface.co/gradium/phonon-voices), de Gradium, **Apache-2.0**. El token solo hace falta para el modelo compartido (75 MB). Si tenías `phonon-40m-es`, debes descargar una vez `gradium/phonon-40m-multilingual`; Pi muestra el aviso de migración. Si falla la descarga de una voz, se conserva la anterior; las voces ya descargadas funcionan sin conexión.
 
 **Ritmo de Phonon**, debajo de Velocidad, permite −1, −0,5, 0, +0,5 y +1: negativo más rápido, positivo más pausado. Se guarda un solo `rhythm` (0 por defecto); `/config` acepta un número finito entre −1 y +1. Pocket lo ignora; la velocidad común no cambia.
 
@@ -635,7 +635,7 @@ Escribe texto y pulsa Enter. Comandos: `/leer archivo.txt`, `/multi`, `/voz <nom
 
 ¹ Phonon necesita una cuenta gratis de Hugging Face.
 
-El modelo se descarga una vez y lo comparten todas sus voces: Pocket `spanish` 209 MB (instalador), Phonon multilingüe 75 MB (al elegirlo). Pesos medidos en Docker el 2026-11-07; RAM medida en Fedora.
+El modelo se descarga una vez y lo comparten todas sus voces: Pocket `spanish` 209 MB (instalador), Phonon multilingüe 75 MB (al elegirlo). Pocket: pesos medidos en Docker el 2026-11-07 y RAM en Fedora. Phonon multilingüe: modelo y voces revisados el 2026-11-13; RAM aproximada de las pruebas de Phonon en Windows.
 
 Haz clic en un nombre para escuchar una muestra de unos 6 s (archivos en [`docs/samples/`](samples/), con el mismo volumen que en Pi).
 
