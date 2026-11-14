@@ -39,7 +39,7 @@ type Seg = {text: string; style?: string; fn?: () => void};
 export const VOLUMES = Array.from({length: 15}, (_, i) => (i + 1) / 10);
 const W = 72, IN = W - 2;
 // RAM while the model is loaded, measured in Fedora (docs/pruebas-de-voces.md); every Pocket voice shares one model.
-const ENGINE: Record<string, string> = {phonon: 'PHONON  · el que menos gasta (0,3 GB)', spanish: 'POCKET  · 1 GB', spanish_24l: 'POCKET spanish_24l  · 1,8 GB'};
+const ENGINE: Record<string, string> = {phonon: 'Phonon · 0,3 GB', spanish: 'Pocket · 1 GB', spanish_24l: 'spanish_24l · 1,8 GB'};
 const width = (t: string) => Array.from(t).length;
 const fit = (t: string, n: number) => { const a = Array.from(t); return a.length > n ? a.slice(0, n - 1).join('') + '…' : t + ' '.repeat(n - a.length); };
 const nearest = (list: number[], value: number) => list.reduce((best, v, i) => Math.abs(v - value) < Math.abs(list[best] - value) ? i : best, 0);
@@ -107,11 +107,16 @@ export class SettingsWindow {
   }
 
   private previousVoices: VoiceRow[] = [];
+  private engine = '';
+  engines() { return Object.keys(ENGINE).filter(model => this.c.voices().some(v => v.model === model)); }
+  switchEngine(model: string) { this.engine = model; this.previousVoices = []; this.pick = 0; }
   order() {
+    const engines = this.engines();
+    if (!engines.includes(this.engine)) this.switchEngine(engines.includes(this.c.active().model) ? this.c.active().model : engines[0] ?? '');
     const selected = this.previousVoices[this.pick];
-    const engine = (v: VoiceRow) => v.model === 'phonon' ? 0 : v.model === 'spanish' ? 1 : 2;
-    const rank = (v: VoiceRow) => v.downloaded ? 0 : v.kind === 'download' ? 1 : 2;  // unknown counts as not downloaded
-    const list = this.c.voices().map((v, i) => ({v, i})).sort((a, b) => engine(a.v) - engine(b.v) || rank(a.v) - rank(b.v) || a.i - b.i).map(x => x.v);
+    const accent = (v: VoiceRow) => v.model === 'phonon' ? (v.note.includes('España') ? 0 : 1) : 0;
+    const rank = (v: VoiceRow) => v.downloaded ? 0 : 1;
+    const list = this.c.voices().filter(v => v.model === this.engine).map((v, i) => ({v, i})).sort((a, b) => accent(a.v) - accent(b.v) || rank(a.v) - rank(b.v) || a.i - b.i).map(x => x.v);
     const index = selected ? list.findIndex(v => v.model === selected.model && v.voice === selected.voice) : -1;
     if (index >= 0) this.pick = index;
     this.previousVoices = list;
@@ -175,7 +180,7 @@ export class SettingsWindow {
     const vol = nearest(VOLUMES, s.volume), spd = nearest(SPEEDS, s.speed);
     const move = (list: number[], i: number, d: number) => list[Math.min(list.length - 1, Math.max(0, i + d))];
     return [
-      {section: 'Voz y sonido', label: 'Voz', text: active ? `${active.name} · ${active.note}` : this.c.active().voice, buttons: [['[ Cambiar ]', () => { this.page = 'voices'; this.previousVoices = []; this.pick = 0; }]]},
+      {section: 'Voz y sonido', label: 'Voz', text: active ? `${active.name} · ${active.note}` : this.c.active().voice, buttons: [['[ Cambiar ]', () => { this.page = 'voices'; this.switchEngine(''); }]]},
       {label: 'Volumen', value: `${Math.round(s.volume * 100)} %`, step: (d: number) => this.c.change('volume', move(VOLUMES, vol, d))},
       {label: 'Velocidad', value: `${s.speed.toFixed(2)}x`, step: (d: number) => this.c.change('speed', move(SPEEDS, spd, d))},
       ...(this.c.active().model === 'phonon' ? [{label: 'Ritmo de Phonon',
@@ -287,6 +292,7 @@ export class SettingsWindow {
     } else if (this.page === 'voices') {
       const list = this.order();
       if (k === 'esc') this.home();
+      else if (data === '\t' || data === '\x1b[9u') { const engines = this.engines(); this.switchEngine(engines[(engines.indexOf(this.engine) + 1) % engines.length] ?? ''); }
       else if (k === 'up') this.pick = list.length ? (this.pick - 1 + list.length) % list.length : 0;
       else if (k === 'down') this.pick = list.length ? (this.pick + 1) % list.length : 0;
       else if (k === 'enter' && list[this.pick]) this.choose(list[this.pick]);
@@ -416,13 +422,13 @@ export class SettingsWindow {
         {text: '   ↑↓ mover · Tab filtro · Enter elegir · Esc cancelar', style: 'dim'}]);
     } else if (this.page === 'voices') {
       const list = this.order(), start = Math.max(0, this.pick - 9);
-      let model = '';
+      line([{text: ' '}, ...this.engines().flatMap(model => [{
+        text: model === this.engine ? `[ ${ENGINE[model]} ]` : ENGINE[model],
+        style: model === this.engine ? 'accent' : 'dim', fn: () => this.switchEngine(model),
+      }, {text: '  '}]), {text: this.engines().length < 3 ? 'Tab cambia' : '', style: 'dim'}]);
+      if (this.engine === 'phonon') line([{text: ' el que menos gasta y suena muy bien', style: 'dim'}]);
       list.slice(start, start + 10).forEach((v, j) => {
         const i = start + j;
-        if (v.model !== model) {
-          line([{text: ' ' + ENGINE[v.model], style: 'dim'}]);
-          model = v.model;
-        }
         const sel = i === this.pick, pickIt = () => { this.pick = i; this.choose(v); };
         const style = v.downloaded ? 'dim' : v.kind === 'account' && !this.c.state().token ? 'warning' : 'dim';
         line([{text: sel ? ' ▶ ' : '   ', style: 'accent', fn: pickIt},
@@ -441,7 +447,7 @@ export class SettingsWindow {
         if (!selected.downloaded && selected.kind === 'account' && selected.needsToken !== false && !this.c.state().token)
           line([{text: ' Cuenta gratis de Hugging Face para descargar (una vez)', style: 'dim'}]);
       }
-      line([{text: ' '}, {text: '[ Volver ]', style: 'accent', fn: () => this.home()}, {text: '   ↑↓ elegir · Enter usar · Esc', style: 'dim'}]);
+      line([{text: ' '}, {text: '[ Volver ]', style: 'accent', fn: () => this.home()}, {text: '   ↑↓ elegir · Enter usar · Tab motor · Esc', style: 'dim'}]);
     } else if (this.page === 'download') {
       const v = this.target!;
       if (this.downloading || this.result === 'done') {

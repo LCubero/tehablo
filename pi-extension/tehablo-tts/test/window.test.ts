@@ -45,39 +45,74 @@ function setup(over: Partial<Record<string, any>> = {}) {
     }};
 }
 
-test('S4 S5 grouped voices scroll by selectable rows, preserve identity and fit', (t) => {
+test('T3c tabs open on active engine, cycle and click without choosing', t => {
   const s = setup();
-  let rows: VoiceRow[] = [...Array.from({length: 25}, (_, i) => ({...ROWS[0], name: `Voz${i}`, voice: `v${i}`, note: 'México'})), ROWS[3]];
+  s.click('[ Cambiar ]');
+  assert.match(s.text(), /\[ Pocket · 1 GB \]/);
+  assert.doesNotMatch(s.text(), /Regina/);
+  s.key('\t');
+  assert.match(s.text(), /\[ Phonon · 0,3 GB \]/);
+  assert.match(s.text(), /el que menos gasta y suena muy bien/);
+  assert.doesNotMatch(s.text(), /lola/);
+  s.click('Pocket · 1 GB');
+  assert.match(s.text(), /\[ Pocket · 1 GB \]/);
+  assert.deepEqual(s.calls, []);
+});
+
+test('T3c per-tab scrolling, download identity and widths', t => {
+  const s = setup();
+  let rows: VoiceRow[] = [...Array.from({length: 25}, (_, i) => ({...ROWS[0], name: `Voz${i}`, voice: `v${i}`, note: i < 13 ? 'España' : 'México'})), ROWS[3]];
   s.w.c.voices = () => rows;
   s.click('[ Cambiar ]');
-  assert.match(s.text(), /PHONON  · el que menos gasta \(0,3 GB\)/);
-  assert.doesNotMatch(s.text(), /CPU|Con cuenta gratis|\*/);
-  assert.match(s.text(), /1\/26/);
-  t.diagnostic('Option B — first screen (26-voice scrolling fixture)\n' + s.text());
-  s.click('PHONON');
-  assert.deepEqual(s.calls, []);
-  assert.equal(s.w.pick, 0);
+  t.diagnostic('Pocket tab\n' + s.text());
+  s.key('\t');
+  t.diagnostic('Phonon first screen\n' + s.text());
+  assert.match(s.text(), /1\/25/);
+  assert.equal(s.w.render().filter(l => /Voz\d/.test(l)).length, 10);
   s.key('\x1b[B');
   rows = rows.map((r, i) => i === 15 ? {...r, downloaded: true} : r);
   assert.match(s.w.render().find(l => l.startsWith('│ ▶ '))!, /Voz1 /);
   for (let i = 0; i < 23; i++) s.key('\x1b[B');
-  assert.match(s.text(), /26\/26/);
-  t.diagnostic('Option B — last screen (26-voice scrolling fixture)\n' + s.text());
-  assert.match(s.text(), /POCKET  · 1 GB/);
-  assert.ok(s.w.render().every(l => Array.from(l).length <= 72));
+  assert.match(s.text(), /25\/25/);
+  assert.doesNotMatch(s.text(), /lola/);
+  assert.ok(s.w.render().every(l => Array.from(l).length === 72));
+  s.click('[ Anterior ]');
+  assert.match(s.text(), /15\/25/);
+  s.click('[ Siguiente ]');
+  assert.match(s.text(), /25\/25/);
+  s.key('\t');
+  assert.match(s.text(), /1\/1/);
   s.click('lola');
   assert.deepEqual(s.calls, [['choose', 'lola', 'spanish']]);
-  s.click('[ Cambiar ]');
-  s.key('\x1b[A'); s.key('\r');
-  assert.deepEqual(s.calls.at(-1), ['choose', 'lola', 'spanish']);
-  s.click('[ Cambiar ]');
-  s.click('[ Siguiente ]');
-  assert.match(s.text(), /11\/26/);
-  s.click('[ Anterior ]');
-  assert.match(s.text(), /1\/26/);
   s.w.choose(rows[0]);
   assert.match(s.text(), /75 MB.*token/);
   assert.doesNotMatch(s.text(), /Incluye también/);
+});
+
+test('T3c accent precedes download rank, Pocket is stable, arrows stay in tab', () => {
+  const s = setup();
+  const rows = [ROWS[0], {...ROWS[0], voice: 'mx', name: 'México lista', downloaded: true},
+    ROWS[1], {...ROWS[1], voice: 'es', name: 'España lista', downloaded: true},
+    ROWS[2], ROWS[3], ROWS[4]];
+  s.w.c.voices = () => rows;
+  s.state.settings = {...s.state.settings, model: 'phonon', voice: 'Regina'};
+  s.click('[ Cambiar ]');
+  const ordered = ['España lista', 'Iker', 'México lista', 'Regina'].map(name => s.text().indexOf(name));
+  assert.ok(ordered.every((position, i) => position >= 0 && (i === 0 || position > ordered[i - 1])));
+  s.key('\x1b[A');
+  assert.match(s.w.render().find(l => l.startsWith('│ ▶ '))!, /Regina/);
+  s.key('\x1b[B');
+  assert.match(s.w.render().find(l => l.startsWith('│ ▶ '))!, /España lista/);
+  s.key('\t');
+  const text = s.text();
+  assert.ok(text.indexOf('lola') < text.indexOf('rafael'));
+  assert.ok(text.indexOf('rafael') < text.indexOf('ar-hombre'));
+  assert.doesNotMatch(text, /Regina|el que menos/);
+  assert.deepEqual(s.calls, []);
+  s.key('\x1b');
+  s.state.settings = {...s.state.settings, model: 'missing', voice: 'missing'};
+  s.click('[ Cambiar ]');
+  assert.match(s.text(), /\[ Phonon · 0,3 GB \]/);
 });
 
 test('S4 only offered engines get headers; download priority stays within engine', () => {
@@ -86,14 +121,21 @@ test('S4 only offered engines get headers; download priority stays within engine
     {...ROWS[2], model: 'spanish_24l'}];
   s.click('[ Cambiar ]');
   const text = s.text();
-  assert.ok(text.indexOf('Iker') < text.indexOf('Regina'));
-  assert.ok(text.indexOf('Regina') < text.indexOf('lola'));
-  assert.match(text, /POCKET spanish_24l  · 1,8 GB/);
-  assert.match(text, /Iker\s+España\s+✓/);
+  assert.match(text, /spanish_24l · 1,8 GB/);
+  s.click('Phonon ·');
+  assert.ok(s.text().indexOf('Iker') < s.text().indexOf('Regina'));
+  assert.match(s.text(), /Iker\s+España\s+✓/);
   assert.ok(s.w.render().every(l => Array.from(l).length === 72));
+  s.click('spanish_24l ·');
+  assert.match(s.text(), /\[ spanish_24l · 1,8 GB \]/);
+  assert.match(s.text(), /rafael/);
+  assert.doesNotMatch(s.text(), /Iker|Regina|lola/);
+  assert.ok(s.w.render().every(l => Array.from(l).length === 72));
+  s.key('\t');
+  assert.match(s.text(), /\[ Phonon · 0,3 GB \]/);
   s.w.c.voices = () => [];
   assert.match(s.text(), /0\/0/);
-  assert.doesNotMatch(s.text(), /PHONON|POCKET/);
+  assert.doesNotMatch(s.text(), /Phonon|Pocket/);
 });
 
 test('S6 rhythm is Phonon-only, below speed, steps and clamps with arrows', () => {
@@ -665,10 +707,12 @@ test('Option B fixed name and accent columns, status symbols and legend', () => 
   s.click('[ Cambiar ]');
   const lines = s.w.render(100);
   const row = (name: string) => lines.find(l => l.includes(name))!;
-  assert.match(row('Regina'), /▶\s+Regina\s+México\s+↓/);
   assert.match(row('lola'), /● lola\s+la de siempre\s+✓/);
-  assert.equal(row('Regina').indexOf('México'), row('lola').indexOf('la de siempre'));
-  assert.equal(row('Regina').indexOf('↓'), row('lola').indexOf('✓'));
+  s.key('\t');
+  const regina = s.w.render().find(l => l.includes('Regina'))!;
+  assert.match(regina, /Regina\s+México\s+↓/);
+  assert.equal(regina.indexOf('México'), row('lola').indexOf('la de siempre'));
+  assert.equal(regina.indexOf('↓'), row('lola').indexOf('✓'));
   assert.ok(lines.findIndex(l => l.includes('lola')) < lines.findIndex(l => l.includes('rafael')));
   assert.match(s.text(), /✓ descargada  ↓ por descargar/);
   assert.doesNotMatch(s.text(), /Con cuenta gratis|\*|Estado|ES ·|CPU/);
@@ -677,15 +721,16 @@ test('Option B fixed name and accent columns, status symbols and legend', () => 
 test('Option B selected dictionary footer toggles by ←→ and click without choosing', () => {
   const s = setup();
   s.click('[ Cambiar ]');
+  s.key('\t');
   assert.match(s.text(), /Diccionario: no \(←→\)/);
   s.key('\x1b[C');
   assert.match(s.text(), /Diccionario: sí \(←→\)/);
   s.key('\x1b[D');
-  s.key('\x1b[B'); s.key('\x1b[B');
+  s.key('\t');
   assert.match(s.text(), /Diccionario: sí \(←→\)/);
   s.click('Diccionario:');
   assert.match(s.text(), /Diccionario: no \(←→\)/);
-  assert.deepEqual(s.calls, [['dict', 'Regina'], ['dict', 'Regina'], ['dict', 'lola']]);
+  assert.deepEqual(s.calls, [['dict', 'Iker'], ['dict', 'Iker'], ['dict', 'lola']]);
   assert.equal(s.w.page, 'voices');
   assert.ok(s.w.render(100).every(l => Array.from(l).length === 72));
 });
@@ -696,8 +741,8 @@ test('voice table shows the active voice name in yellow (warning), also under th
   const lines = s.w.render(100);
   const row = (n: string) => lines.find(l => l.includes(n))!;
   assert.match(row('lola'), /<warning>lola\s*<\/warning>/);
-  for (const n of ['rafael', 'Regina', 'ar-hombre-4310']) assert.ok(!row(n).includes(`<warning>${n}`), n);
-  s.key('\x1b[B'); s.key('\x1b[B'); s.key('\x1b[B');
+  for (const n of ['rafael', 'ar-hombre-4310']) assert.ok(!row(n).includes(`<warning>${n}`), n);
+  s.key('\x1b[B');
   assert.match(s.w.render(100).find(l => l.includes('lola'))!, /<warning>lola\s*<\/warning>/);
   assert.match(s.w.render(100).find(l => l.includes('rafael'))!, /<accent>rafael\s*<\/accent>/);
 });
@@ -710,7 +755,7 @@ test('choosing by type: downloaded activates, downloadable confirms, account ask
   assert.deepEqual(s.calls.at(-1), ['choose', 'rafael', 'spanish']);
   await new Promise(resolve => setImmediate(resolve));
   s.click('[ Volver al menú ]');
-  s.click('[ Cambiar ]'); s.click('Regina');
+  s.click('[ Cambiar ]'); s.key('\t'); s.click('Regina');
   const guide = s.text();
   for (const part of ['huggingface.co/join', 'huggingface.co/settings/tokens', 'Token:']) assert.ok(guide.includes(part), part);
   for (const ch of 'hf_secret') s.key(ch);
@@ -725,7 +770,7 @@ test('choosing by type: downloaded activates, downloadable confirms, account ask
 
 test('the token guide keeps its short addresses and a click opens each one in the browser', () => {
   const s = setup();
-  s.click('[ Cambiar ]'); s.click('Regina');
+  s.click('[ Cambiar ]'); s.key('\t'); s.click('Regina');
   const lines = s.w.render(100);
   assert.ok(lines.every(l => Array.from(l).length === 72), 'every line fits the window');
   assert.ok(!lines.some(l => l.includes('https://')));
@@ -741,7 +786,7 @@ test('the token guide keeps its short addresses and a click opens each one in th
 
 test('an invalid token shows the error and keeps the field without revealing it', () => {
   const s = setup();
-  s.click('[ Cambiar ]'); s.click('Regina');
+  s.click('[ Cambiar ]'); s.key('\t'); s.click('Regina');
   for (const ch of 'bad') s.key(ch);
   s.key('\r');
   const text = s.text();
@@ -752,13 +797,13 @@ test('an invalid token shows the error and keeps the field without revealing it'
 
 test('with a saved token, account voices skip the guide', () => {
   const s = setup({token: true});
-  s.click('[ Cambiar ]');
+  s.click('[ Cambiar ]'); s.key('\t');
   assert.ok(s.w.render(100).find(l => l.includes('Regina'))!.includes('↓'));
   assert.ok(!s.text().includes('Con cuenta ✓'));
   s.click('Regina');
   assert.ok(s.text().includes('[ Descargar y usar ]'));
   assert.ok(!s.text().includes('Incluye también'), 'voices download separately');
-  s.key(''); s.click('rafael');
+  s.key(''); s.key('\t'); s.click('rafael');
   assert.ok(s.text().includes('[ Descargar y usar ]') && !s.text().includes('Incluye también'), 'Pocket voices download one by one');
 });
 
@@ -834,7 +879,10 @@ test('with the server off, unknown download state is shown by kind and asks for 
   (s.w.c as any).voices = () => rows;
   s.click('[ Cambiar ]');
   const text = s.text();
-  assert.equal(text.split('\n').filter(l => /Regina|lola/.test(l) && l.includes('↓')).length, 2);
+  assert.equal(text.split('\n').filter(l => /Regina|lola/.test(l) && l.includes('↓')).length, 1);
+  s.key('\t');
+  assert.match(s.text(), /Regina\s+México\s+↓/);
+  s.key('\t');
   assert.match(text.split('\n').find(l => l.includes('lola'))!, /● lola/);
   s.click('lola');
   assert.equal(s.w.page, 'download');
@@ -848,9 +896,9 @@ test('the main row names the active voice even when none was chosen', () => {
 
 test('Option B free account note appears only for the selected gated download', () => {
   const s = setup();
-  s.click('[ Cambiar ]');
+  s.click('[ Cambiar ]'); s.key('\t');
   assert.equal(s.w.render().filter(l => l.includes('Cuenta gratis de Hugging Face')).length, 1);
-  s.key('\x1b[B'); s.key('\x1b[B');
+  s.key('\t');
   assert.doesNotMatch(s.text(), /Cuenta gratis de Hugging Face/);
   s.key('\x1b[A');
   s.state.token = true;

@@ -94,7 +94,7 @@ Si Pi corre en un servidor, el cliente teHablo puede reproducir la voz en tu com
 
 CPU y arranque medidos en una laptop de 2 núcleos de 2014; son referencias, no mínimos. Apagar el servidor libera la RAM. [Mediciones Windows, Fedora y VM](docs/como-funciona.md#consumo-medido) · [Comparación con Phonon](docs/pruebas-de-voces.md#phonon-40m-es-frente-a-lola-spanish_24l-y-kokoro-2026-11-03-fedora).
 
-En Pi, Phonon ofrece **25 voces en español** (13 de España y 12 de México): es el que menos gasta y suena muy bien en las pruebas. El menú agrupa por motor con su RAM, alinea nombre y acento/nota, y marca `✓` descargada / `↓` por descargar. Permite recorrer las voces con teclado o ratón; el diccionario de la voz seleccionada se cambia al pie con ←→. **Ritmo de Phonon** (−1 a +1) ajusta las pausas, además de la velocidad común.
+En Pi, Phonon ofrece **25 voces en español** (13 de España y 12 de México): es el que menos gasta y suena muy bien en las pruebas. El menú tiene pestañas por motor con su RAM (Tab o clic para cambiar); abre en el motor de la voz activa. Phonon ordena España y luego México, con las descargadas primero en cada acento. Cada pestaña muestra unas diez voces al recorrerla con ↑↓, alinea nombre y acento/nota, y marca `✓` descargada / `↓` por descargar. Permite recorrer las voces con teclado o ratón; el diccionario de la voz seleccionada se cambia al pie con ←→. **Ritmo de Phonon** (−1 a +1) ajusta las pausas, además de la velocidad común.
 
 Si ya tenías `phonon-40m-es`, descarga una vez el modelo multilingüe (75 MB, con token). Cada voz baja solo al elegirla (~256 KB, sin cuenta).
 
