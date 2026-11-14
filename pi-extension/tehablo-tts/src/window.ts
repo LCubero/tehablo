@@ -39,7 +39,7 @@ type Seg = {text: string; style?: string; fn?: () => void};
 export const VOLUMES = Array.from({length: 15}, (_, i) => (i + 1) / 10);
 const W = 72, IN = W - 2;
 // RAM while the model is loaded, measured in Fedora (docs/pruebas-de-voces.md); every Pocket voice shares one model.
-const ENGINE: Record<string, string> = {phonon: 'Phonon · ~0,3–0,4 GB · ~4–5 s CPU por 16 s de audio', spanish: 'Pocket · ~1 GB', spanish_24l: 'Pocket spanish_24l · ~1,8 GB'};
+const ENGINE: Record<string, string> = {phonon: 'PHONON  · el que menos gasta (0,3 GB)', spanish: 'POCKET  · 1 GB', spanish_24l: 'POCKET spanish_24l  · 1,8 GB'};
 const width = (t: string) => Array.from(t).length;
 const fit = (t: string, n: number) => { const a = Array.from(t); return a.length > n ? a.slice(0, n - 1).join('') + '…' : t + ' '.repeat(n - a.length); };
 const nearest = (list: number[], value: number) => list.reduce((best, v, i) => Math.abs(v - value) < Math.abs(list[best] - value) ? i : best, 0);
@@ -415,30 +415,33 @@ export class SettingsWindow {
       line([{text: ' '}, {text: '[ Volver ]', style: 'accent', fn: () => { this.page = 'main'; }},
         {text: '   ↑↓ mover · Tab filtro · Enter elegir · Esc cancelar', style: 'dim'}]);
     } else if (this.page === 'voices') {
-      line([{text: '   ' + fit('Voz', 44) + fit('Estado', 19) + 'Dict', style: 'dim'}]);
-      line([{text: '   ' + '─'.repeat(IN - 4), style: 'dim'}]);
       const list = this.order(), start = Math.max(0, this.pick - 9);
       let model = '';
       list.slice(start, start + 10).forEach((v, j) => {
         const i = start + j;
         if (v.model !== model) {
           line([{text: ' ' + ENGINE[v.model], style: 'dim'}]);
-          if (v.model === 'phonon') line([{text: ' el que menos gasta; suena muy bien', style: 'dim'}]);
           model = v.model;
         }
         const sel = i === this.pick, pickIt = () => { this.pick = i; this.choose(v); };
         const style = v.downloaded ? 'dim' : v.kind === 'account' && !this.c.state().token ? 'warning' : 'dim';
         line([{text: sel ? ' ▶ ' : '   ', style: 'accent', fn: pickIt},
-          {text: fit(`${this.isActive(v) ? '●' : ' '} ${v.name}${v.kind === 'account' ? ' *' : ''} (${v.model === 'phonon' ? 'ES · ' : ''}${v.note})`, 44), style: this.isActive(v) ? 'warning' : sel ? 'accent' : undefined, fn: pickIt},
-          {text: fit(this.typeLabel(v), 19), style, fn: pickIt},
-          // A click here switches this voice's pronunciation fixes without choosing the voice.
-          {text: fit(this.c.dict(v) ? 'sí' : 'no', 4), style: sel ? 'accent' : 'dim', fn: () => { this.pick = i; this.c.toggleDict(v); }}]);
+          {text: this.isActive(v) ? '● ' : '  ', style: 'warning', fn: pickIt},
+          {text: fit(v.name, 18), style: this.isActive(v) ? 'warning' : sel ? 'accent' : undefined, fn: pickIt},
+          {text: fit(v.note, 21), fn: pickIt},
+          {text: v.downloaded ? '✓' : '↓', style, fn: pickIt}]);
       });
       line([{text: ` ${list.length ? this.pick + 1 : 0}/${list.length} `, style: 'dim'},
         {text: '[ Anterior ]', fn: () => { this.pick = Math.max(0, this.pick - 10); }}, {text: ' '},
         {text: '[ Siguiente ]', fn: () => { this.pick = Math.min(Math.max(0, list.length - 1), this.pick + 10); }}]);
-      line([{text: '   * necesita una cuenta gratis de Hugging Face (1 sola vez)', style: 'dim'}]);
-      line([{text: ' '}, {text: '[ Volver ]', style: 'accent', fn: () => this.home()}, {text: '   ↑↓ elegir · Enter usar · ←→ dict · Esc', style: 'dim'}]);
+      line([{text: '✓ descargada  ↓ por descargar'.padStart(IN - 1), style: 'dim'}]);
+      const selected = list[this.pick];
+      if (selected) {
+        line([{text: ` Diccionario: ${this.c.dict(selected) ? 'sí' : 'no'} (←→)`, style: 'dim', fn: () => this.c.toggleDict(selected)}]);
+        if (!selected.downloaded && selected.kind === 'account' && selected.needsToken !== false && !this.c.state().token)
+          line([{text: ' Cuenta gratis de Hugging Face para descargar (una vez)', style: 'dim'}]);
+      }
+      line([{text: ' '}, {text: '[ Volver ]', style: 'accent', fn: () => this.home()}, {text: '   ↑↓ elegir · Enter usar · Esc', style: 'dim'}]);
     } else if (this.page === 'download') {
       const v = this.target!;
       if (this.downloading || this.result === 'done') {
