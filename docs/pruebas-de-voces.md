@@ -509,6 +509,27 @@ Escucha directa, no a ciegas. Las descripciones proceden del motor; la última c
 
 Resultado: Phonon es el motor más ligero y rápido de los probados en esta ronda: 0,30–0,37 GB de RAM, ~4 s de CPU para ~16 s de audio y primer sonido en ~0,2 s. Las 14 voces adicionales son candidatas a ofrecer en teHablo, pendientes de decisión de la persona responsable; no se incorporaron a la tabla. La persona responsable confirmó que teHablo seguirá siendo gratuito y de código abierto y considera compatible la licencia no comercial con su uso; la restricción de uso comercial de Phonon sigue vigente.
 
+## Control de ritmo de Phonon (2026-11-13, Windows)
+
+Prueba en CPU del PC con Windows de la persona responsable, sin conexión, con `ptts` 0.6.0 y el modelo `gradium/phonon-40m-multilingual` cuantizado q8 (74,6 MB). Este modelo añade 9 voces españolas: Ximena, Jimena, Lalo, Aldo, Yael, Ulises, Leonel, Nico y Nerea. Todas fueron aprobadas en escucha directa, con 0,34–0,38 GB de RAM. En inglés suenan no nativas; se ofrecerán solo en español.
+
+El checkpoint no incluye controles de emoción, tono, énfasis ni estilo: solicitar emoción devuelve `RuntimeError: no conditioner named "emotion" in this checkpoint`. Su `config.json` declara `num_speakers` (0, 1 o 2; predeterminado 1) y `duration_delta`, un control continuo de ritmo (predeterminado 0, límites no documentados). Los valores negativos producen habla más rápida y corta; los positivos, más lenta y larga. Es un ajuste nativo de la generación, no un procesamiento posterior del audio. Los parámetros de la API `temperature` (predeterminado 0.3) y `cfg_coef` controlan el muestreo, no la emoción.
+
+Mediciones con el mismo texto de prueba:
+
+| Voz | duration_delta | RAM GB | CPU s | Generación s | Audio s | Primer sonido s |
+|---|---|---|---|---|---|---|
+| Ximena | 0 | 0,30 | 4,6 | 3,4 | 17,4 | 0,23 |
+| Ximena | −1 | 0,30 | 4,2 | 3,1 | 14,1 | 0,27 |
+| Ximena | −0,5 | 0,30 | 4,2 | 3,1 | 13,9 | 0,28 |
+| Ximena | +0,5 | 0,30 | 6,1 | 4,4 | 20,9 | 0,28 |
+| Ximena | +1 | 0,31 | 6,1 | 4,5 | 21,0 | 0,27 |
+| Leonel | 0 | 0,31 | 5,1 | 3,7 | 17,5 | 0,27 |
+| Leonel | −1 | 0,31 | 4,4 | 3,2 | 14,6 | 0,27 |
+| Leonel | +1 | 0,31 | 6,0 | 4,4 | 20,8 | 0,27 |
+
+Resultado de la escucha directa, no a ciegas: todas las variantes suenan bien y la persona responsable valoró favorablemente el control nativo de ritmo. Este checkpoint no permite clonar voces (`supports_voice_cloning = False`). Prueba documentada; control aún no incorporado al menú de Pi.
+
 ## Licencias
 
 Cada opción tiene tres capas: el programa, el modelo y la voz con la que se entrenó o se clona.
