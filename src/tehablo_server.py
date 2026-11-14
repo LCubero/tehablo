@@ -63,9 +63,8 @@ def soft_limit(x):
         x = x.copy()
         x[over] = np.sign(x[over]) * (LIMIT + (1 - LIMIT) * np.tanh((np.abs(x[over]) - LIMIT) / (1 - LIMIT)))
     return x
-PHONON_VOICES = {'Regina', 'Iker', 'Noa', 'Lucía-Sol', 'Candela', 'Celia', 'Alba',
-                 'Alicia', 'Marcos', 'Borja', 'Nuno', 'Izan', 'Guillermo', 'Rebeca',
-                 'Danae', 'Azucena'}
+PHONON_MODEL = 'gradium/phonon-40m-multilingual'
+PHONON_VOICES_REVISION = 'da6c9ec0d47be8df5c87c730a3aa97187f3229c3'
 
 
 # Voices offered in the Pi settings window, shared with the extension (shown while the server is off).
@@ -73,6 +72,7 @@ PHONON_VOICES = {'Regina', 'Iker', 'Noa', 'Lucía-Sol', 'Candela', 'Celia', 'Alb
 # A voice with 'source' is included in the repository as voices/<name>.safetensors (prepared from voices/<source>.wav).
 _TABLE = json.loads((ROOT / 'src' / 'voice_table.json').read_text(encoding='utf-8'))
 VOICE_TABLE = [(v['name'], v['model'], v['kind'], v['note']) for v in _TABLE]
+PHONON_VOICES = {v['name']: v['voice_id'] for v in _TABLE if v['model'] == 'phonon'}
 INCLUDED = {v['name'] for v in _TABLE if v.get('source')}
 # Per-voice loudness correction ('gain_db'), measured against lola with one sentence (2026-11-04).
 VOICE_GAIN = {v['name']: 10 ** (v['gain_db'] / 20) for v in _TABLE if v.get('gain_db')}
@@ -93,7 +93,10 @@ def cached(name, model, kind):
     """Whether a voice can be used offline, checking the local cache only (no network)."""
     from huggingface_hub import constants, try_to_load_from_cache
     if model == 'phonon':
-        return isinstance(try_to_load_from_cache('gradium/phonon-40m-es', 'model.q8.gguf'), str)
+        model_cached = isinstance(try_to_load_from_cache(PHONON_MODEL, 'model.q8.gguf'), str)
+        return model_cached and (not name or isinstance(try_to_load_from_cache(
+            'gradium/phonon-voices', f'voices/{PHONON_VOICES[name]}.safetensors',
+            revision=PHONON_VOICES_REVISION), str))
     if name in INCLUDED:
         # A prepared voice (.safetensors) also works on the weights without voice cloning (no token).
         hub = Path(constants.HF_HUB_CACHE)
@@ -117,26 +120,40 @@ def default_voice(model):
 
 class PhononSynthesizer:
     def __init__(self):
+        from huggingface_hub import constants
         import ptts
+        self.voices = set()
         started = time.perf_counter()
         ptts.set_num_threads(1)  # 2-core VM: same pace, ~15 % less CPU than 2 (2026-11-12)
         # The repository is gated: without a token Hugging Face refuses even a cached model,
         # so a cached model loads offline, from the cache only.
         offline = (not os.environ.get('HF_TOKEN') and 'HF_HUB_OFFLINE' not in os.environ
                    and cached('', 'phonon', 'account'))
+        previous_offline = constants.HF_HUB_OFFLINE
         if offline:
             os.environ['HF_HUB_OFFLINE'] = '1'
+            constants.HF_HUB_OFFLINE = True
         try:
-            self.model = ptts.TTS('hf://gradium/phonon-40m-es', lang='es', quant='q8')
+            self.model = ptts.TTS(f'hf://{PHONON_MODEL}', lang='es', quant='q8')
         finally:
             if offline:
                 del os.environ['HF_HUB_OFFLINE']
+                constants.HF_HUB_OFFLINE = previous_offline
         print(f'Startup: model phonon loaded in {time.perf_counter() - started:.3f} s', flush=True)
         self.sample_rate = 24000
+
+    def prepare(self, voice):
+        from huggingface_hub import constants, hf_hub_download
+        if voice not in self.voices:
+            path = hf_hub_download('gradium/phonon-voices', f'voices/{PHONON_VOICES[voice]}.safetensors',
+                                   revision=PHONON_VOICES_REVISION, local_files_only=constants.HF_HUB_OFFLINE)
+            self.model.add_voice(voice, path)
+            self.voices.add(voice)
 
     def stream(self, text, voice, stop):
         if stop.is_set():
             return
+        self.prepare(voice)
         with self.model.stream(text, voice=voice) as audio:
             if audio.sample_rate != self.sample_rate:
                 raise ValueError('unexpected Phonon sample rate')
@@ -418,11 +435,14 @@ class SpeechService:
         for name, model, kind, note in VOICE_TABLE:
             try:
                 downloaded = bool(self.cached(name, model, kind))
+                needs_token = model == 'phonon' and not self.cached('', model, kind)
             except Exception:
                 downloaded = False
+                needs_token = model == 'phonon'
             voice = f'{name}.safetensors' if name in INCLUDED else name
             table.append({'name': name, 'voice': voice, 'model': model, 'kind': kind, 'note': note,
-                          'downloaded': downloaded})
+                          'downloaded': downloaded,
+                          **({'needsToken': needs_token} if model == 'phonon' else {})})
         return table
 
     @property
@@ -770,8 +790,7 @@ class SpeechService:
                         # Prepare separately: health and speech retain the active voice until success.
                         target = job['model']
                         candidate = synth if target == name else self.factory(target)
-                        if target != 'phonon':
-                            candidate.prepare(self.resolve_voice(job['voice'], target))
+                        candidate.prepare(self.resolve_voice(job['voice'], target))
                         with self.condition:
                             if self.closed or revision != self.revision:
                                 job.update(state='error', error='La voz cambió durante la descarga.')

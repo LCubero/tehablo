@@ -1553,7 +1553,7 @@ test('voices-ready S9 voices already on disk show Descargada with the server off
     writeFileSync(path, JSON.stringify([
       {name: 'lola', model: 'spanish', kind: 'download', note: 'la de siempre', default: true},
       {name: 'rafael', model: 'spanish', kind: 'download', note: 'España'},
-      {name: 'Regina', model: 'phonon', kind: 'account', note: 'México'},
+      {name: 'Regina', model: 'phonon', kind: 'account', note: 'México', voice_id: 's58clrg2fe0MO7Y-'},
       {name: 'Facundo', model: 'spanish', kind: 'download', note: 'Argentina', source: 'ar-hombre-4310'},
       {name: 'Camila', model: 'spanish', kind: 'download', note: 'Chile', source: 'cl-mujer'}]));
     const states = () => Object.fromEntries(readTable(path, hub).map(v => [v.name, v.downloaded]));
@@ -1564,8 +1564,14 @@ test('voices-ready S9 voices already on disk show Descargada with the server off
     writeFileSync(join(root, 'voices', 'Facundo.safetensors'), '');
     assert.deepEqual(states(), {lola: true, rafael: false, Regina: false, Facundo: true, Camila: false},
       'installer voice and included voice with the model; Camila lacks its file');
-    const phonon = join(hub, 'models--gradium--phonon-40m-es', 'snapshots', 'def');
+    const phonon = join(hub, 'models--gradium--phonon-40m-multilingual', 'snapshots', 'def');
+    assert.equal(readTable(path, hub).find(v => v.name === 'Regina')!.needsToken, true);
     mkdirSync(phonon, {recursive: true}); writeFileSync(join(phonon, 'model.q8.gguf'), '');
+    assert.equal(states().Regina, false, 'model alone does not include the voice');
+    assert.equal(readTable(path, hub).find(v => v.name === 'Regina')!.needsToken, false);
+    const embeddings = join(hub, 'models--gradium--phonon-voices', 'snapshots',
+      'da6c9ec0d47be8df5c87c730a3aa97187f3229c3', 'voices');
+    mkdirSync(embeddings, {recursive: true}); writeFileSync(join(embeddings, 's58clrg2fe0MO7Y-.safetensors'), '');
     assert.equal(states().Regina, true);
     // The window uses these states while the server is off: a saved server state never hides a voice on disk,
     // and never shows Descargada for one that is not on disk (voices-ready S15).

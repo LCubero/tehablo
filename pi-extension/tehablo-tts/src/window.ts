@@ -113,7 +113,7 @@ export class SettingsWindow {
   typeLabel(v: VoiceRow) {
     if (v.downloaded) return 'Descargada';
     if (v.kind === 'download') return v.downloaded === null ? 'Sin cuenta' : 'Para descargar';
-    return this.c.state().token ? 'Para descargar' : 'Con cuenta gratis';
+    return this.c.state().token || v.needsToken === false ? 'Para descargar' : 'Con cuenta gratis';
   }
   isActive(v: VoiceRow) { const a = this.c.active(); return a.voice === v.voice && a.model === v.model; }
   home() { this.page = 'main'; this.col = 0; }
@@ -121,7 +121,7 @@ export class SettingsWindow {
     this.target = v;
     const token = this.c.state().token;
     if (v.downloaded) { this.c.choose(v); this.home(); }
-    else if (v.kind === 'account' && !token) { this.token = ''; this.error = ''; this.page = 'token'; }
+    else if (v.kind === 'account' && v.needsToken !== false && !token) { this.token = ''; this.error = ''; this.page = 'token'; }
     else { this.page = 'download'; this.col = 0; this.result = ''; }
   }
   confirm() {
@@ -138,7 +138,7 @@ export class SettingsWindow {
       } catch (error) {
         this.notice = error instanceof Error ? error.message : String(error); this.result = 'error';
         // A refused token was dropped: ask for a new one on the token page, with the reason.
-        if (voice.kind === 'account' && !this.c.state().token) { this.token = ''; this.error = this.notice; this.page = 'token'; }
+        if (voice.kind === 'account' && voice.needsToken !== false && !this.c.state().token) { this.token = ''; this.error = this.notice; this.page = 'token'; }
       }
       finally { this.downloading = false; this.redraw(); }
     })();

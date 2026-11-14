@@ -49,7 +49,9 @@ function cachedFile(hub: string, repo: string, file: string) {
 }
 /** Same rules as the server's cached(), so the list is right while the server is off. */
 function onDisk(v: any, hub: string, voices: string) {
-  if (v.model === 'phonon') return cachedFile(hub, 'gradium/phonon-40m-es', 'model.q8.gguf');
+  if (v.model === 'phonon') return cachedFile(hub, 'gradium/phonon-40m-multilingual', 'model.q8.gguf')
+    && existsSync(join(hub, 'models--gradium--phonon-voices', 'snapshots',
+      'da6c9ec0d47be8df5c87c730a3aa97187f3229c3', 'voices', `${v.voice_id}.safetensors`));
   const pocket = (file: string) => ['kyutai/pocket-tts', 'kyutai/pocket-tts-without-voice-cloning']
     .some(repo => cachedFile(hub, repo, `languages/${v.model}/${file}`));
   if (v.source) return existsSync(join(voices, `${v.name}.safetensors`)) && pocket('model.safetensors');
@@ -63,6 +65,7 @@ export function readTable(path: string, hub = hfHub()): VoiceRow[] {
     return (JSON.parse(readFileSync(path, 'utf8')) as any[]).map(v => ({
       name: v.name, voice: v.source ? `${v.name}.safetensors` : v.name, model: v.model,
       kind: v.kind, note: v.note, downloaded: onDisk(v, hub, voices), ...(v.default ? {default: true} : {}),
+      ...(v.model === 'phonon' ? {needsToken: !cachedFile(hub, 'gradium/phonon-40m-multilingual', 'model.q8.gguf')} : {}),
     }));
   } catch { return []; }
 }

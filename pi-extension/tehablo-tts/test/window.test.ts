@@ -45,6 +45,22 @@ function setup(over: Partial<Record<string, any>> = {}) {
     }};
 }
 
+test('T1 missing ungated voice skips token when model is cached, including download errors', async () => {
+  const s = setup();
+  const voice = {...ROWS[0], needsToken: false};
+  s.w.choose(voice);
+  assert.equal(s.w.page, 'download');
+  assert.equal(s.w.typeLabel(voice), 'Para descargar');
+  s.w.c.download = async () => { throw new Error('voice unavailable'); };
+  s.w.confirm();
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(s.w.page, 'download');
+  assert.equal(s.w.result, 'error');
+  assert.deepEqual(s.calls, []);
+  s.w.choose({...voice, needsToken: true});
+  assert.equal(s.w.page, 'token');
+});
+
 test('main sections are rendering-only, ordered, spaced and mouse-safe', () => {
   const s = setup({server: 'ready'});
   const lines = s.w.render();

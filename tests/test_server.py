@@ -41,6 +41,9 @@ class Synth:
         self.calls = []
         self.cancelled = threading.Event()
 
+    def prepare(self, voice):
+        pass
+
     def stream(self, text, voice, stop):
         self.calls.append((text, voice))
         for _ in range(200):
@@ -190,7 +193,7 @@ class VoicePreparationTests(unittest.TestCase):
         def factory(name):
             self.assertEqual(name, 'phonon')
             loaded.set()
-            return Synth()  # Phonon voices are bundled in the model, no Pocket prepare.
+            return Synth()  # Model and selected embedding are prepared without opening audio.
         service = tehablo_server.SpeechService('phonon', 'Regina', 1, factory,
                                               mock.Mock(side_effect=AssertionError('audio opened')), ['Regina'])
         try:
@@ -204,6 +207,24 @@ class VoicePreparationTests(unittest.TestCase):
                 service.configure({'model': 'phonon', 'voice': 'nonexistent'})
         finally:
             service.close()
+
+    def test_phonon_embedding_failure_keeps_voice_and_hides_token(self):
+        synth = Synth()
+        synth.prepare = mock.Mock(side_effect=RuntimeError('voice failed hf_private'))
+        with mock.patch.dict(os.environ, {'HF_TOKEN': 'hf_private'}):
+            service = tehablo_server.SpeechService('spanish', 'lola', 1, lambda _: synth, Sink, ['lola'])
+            try:
+                service.prepare({'model': 'phonon', 'voice': 'Ximena'})
+                deadline = time.monotonic() + 2
+                while service.health()['preparation']['state'] == 'downloading' and time.monotonic() < deadline:
+                    time.sleep(.01)
+                health = service.health()
+                self.assertEqual(health['preparation']['state'], 'error')
+                self.assertEqual((health['model'], health['voice']), ('spanish', 'lola'))
+                self.assertEqual(health['preparation']['error'], 'voice failed hf_***')
+                synth.prepare.assert_called_once_with('Ximena')
+            finally:
+                service.close()
 
     def test_download_error_is_visible(self):
         synth = Synth()
@@ -1392,6 +1413,80 @@ class ServerTests(unittest.TestCase):
                     finally:
                         server.server_close()
 
+    def test_all_spanish_phonon_voices_are_offered(self):
+        status, data = self.request('/voices')
+        self.assertEqual(status, 200)
+        voices = [v for v in data['catalog'] if v['model'] == 'phonon']
+        self.assertEqual(len(voices), 25)
+        self.assertEqual(sum(v['note'] == 'España' for v in voices), 13)
+        self.assertEqual(sum(v['note'] == 'México' for v in voices), 12)
+
+    def test_phonon_http_readiness_requires_model_and_pinned_voice(self):
+        model_present = False
+        def lookup(repo, file, revision=None):
+            if repo == tehablo_server.PHONON_MODEL:
+                return '/cache/model' if model_present else None
+            if (repo, file, revision) == ('gradium/phonon-voices', 'voices/VDwnGxAo68C8U8vC.safetensors',
+                                         'da6c9ec0d47be8df5c87c730a3aa97187f3229c3'):
+                return '/cache/voice'
+            return None
+        self.server.service.cached = tehablo_server.cached
+        with mock.patch('huggingface_hub.try_to_load_from_cache', side_effect=lookup):
+            for present in (False, True):
+                model_present = present
+                status, data = self.request('/voices')
+                self.assertEqual(status, 200)
+                voices = {v['name']: v for v in data['catalog']}
+                self.assertEqual(voices['Ximena']['downloaded'], present)
+                self.assertFalse(voices['Marcos']['downloaded'])
+                self.assertEqual(voices['Ximena']['needsToken'], not present)
+                self.assertEqual(voices['Marcos']['needsToken'], not present)
+
+    def test_phonon_prepares_only_selected_embedding(self):
+        calls = []
+        class TTS:
+            def __init__(self, model, **kwargs):
+                self.assertions = (model, kwargs)
+            def add_voice(self, name, path):
+                calls.append((name, path))
+        fake = type(sys)('ptts')
+        fake.TTS, fake.set_num_threads = TTS, lambda n: None
+        with mock.patch.dict(sys.modules, {'ptts': fake}), \
+                mock.patch('huggingface_hub.hf_hub_download', return_value='/cache/voice.safetensors') as download, \
+                contextlib.redirect_stdout(io.StringIO()):
+            synth = tehablo_server.PhononSynthesizer()
+            self.assertEqual(synth.model.assertions, ('hf://gradium/phonon-40m-multilingual', {'lang': 'es', 'quant': 'q8'}))
+            synth.prepare('Ximena')
+            synth.prepare('Ximena')
+        self.assertEqual(calls, [('Ximena', '/cache/voice.safetensors')])
+        download.assert_called_once_with('gradium/phonon-voices', 'voices/VDwnGxAo68C8U8vC.safetensors',
+                                        revision='da6c9ec0d47be8df5c87c730a3aa97187f3229c3', local_files_only=False)
+
+    def test_offline_model_load_restores_hub_for_later_voice_download(self):
+        from huggingface_hub import constants
+        class TTS:
+            def __init__(self, *args, **kwargs):
+                if not constants.HF_HUB_OFFLINE:
+                    raise AssertionError('cached model must load offline')
+            def add_voice(self, name, path):
+                pass
+        fake = type(sys)('ptts')
+        fake.TTS, fake.set_num_threads = TTS, lambda n: None
+        with mock.patch.dict(sys.modules, {'ptts': fake}), \
+                mock.patch.dict(os.environ, {'HF_TOKEN': ''}), \
+                mock.patch.object(constants, 'HF_HUB_OFFLINE', False), \
+                mock.patch.object(tehablo_server, 'cached', return_value=True), \
+                mock.patch('huggingface_hub.hf_hub_download', return_value='/cache/voice') as download, \
+                contextlib.redirect_stdout(io.StringIO()):
+            os.environ.pop('HF_HUB_OFFLINE', None)
+            synth = tehablo_server.PhononSynthesizer()
+            self.assertFalse(constants.HF_HUB_OFFLINE)
+            synth.prepare('Marcos')
+            self.assertFalse(download.call_args.kwargs['local_files_only'])
+            constants.HF_HUB_OFFLINE = True
+            synth.prepare('Ximena')
+            self.assertTrue(download.call_args.kwargs['local_files_only'])
+
     def test_phonon_uses_one_thread(self):
         # Measured 2026-11-12 on a 2-core VM: 1 thread kept pace with ~15 % less CPU than 2.
         threads = []
@@ -1470,9 +1565,12 @@ class ServerTests(unittest.TestCase):
         self.assertEqual((table['Facundo']['model'], table['Facundo']['kind'], table['Facundo']['voice']),
                          ('spanish', 'download', 'Facundo.safetensors'))
         self.assertNotIn('ar-hombre-4310', table)
-        self.assertEqual(len(seen), len(data['catalog']))
+        self.assertEqual(len(seen), len(data['catalog']) + 25)
         for entry in data['catalog']:
-            self.assertEqual(set(entry), {'name', 'voice', 'model', 'kind', 'note', 'downloaded'})
+            expected = {'name', 'voice', 'model', 'kind', 'note', 'downloaded'}
+            if entry['model'] == 'phonon':
+                expected.add('needsToken')
+            self.assertEqual(set(entry), expected)
 
     def test_phonon_voice_table_checks_pocket_cache_without_importing_pocket(self):
         from huggingface_hub import constants
