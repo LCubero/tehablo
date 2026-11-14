@@ -542,7 +542,7 @@ Cada opción tiene tres capas: el programa, el modelo y la voz con la que se ent
 | Kokoro-82M | `kokoro-onnx` MIT; usa `espeak-ng` (GPL-3.0) a través de `espeakng-loader` (MIT) | Apache-2.0 | voces propias del modelo | Uso comercial libre del modelo; `espeak-ng` es GPL-3.0, así que distribuir un programa que lo incluya tiene la misma condición que Piper. |
 | MeloTTS | MIT | MIT | voz propia del modelo | Depende de torch, MeCab/`unidic` y NLTK. |
 | Chatterbox | MIT | MIT | clona `voices/` (CC BY-SA 4.0) | Cada audio lleva una marca de agua inaudible (Perth). Publicar audio clonado de `voices/` exige atribución y misma licencia. |
-| Phonon 40M es (Gradium) | `ptts` MIT o Apache-2.0 | CC BY-NC 4.0, acceso restringido en Hugging Face (aceptar términos y token) | ~100 voces propias (`gradium/phonon-voices`, CC BY-NC 4.0); sin clonación en el modelo abierto | Solo uso no comercial; el uso comercial requiere hablar con Gradium. |
+| Phonon 40M es (Gradium) | `ptts` MIT o Apache-2.0 | CC BY-NC 4.0, acceso restringido en Hugging Face (aceptar términos y token) | 102 voces propias (`gradium/phonon-voices`, sin acceso restringido; Apache-2.0 según su ficha, revisada el 2026-11-13; 25 en español: 13 de España y 12 de México); sin clonación en el modelo abierto | Solo uso no comercial; el uso comercial requiere hablar con Gradium. |
 
 Licencias leídas de los archivos `LICENSE`, las fichas de Hugging Face y las `MODEL_CARD` de Piper; no es asesoría legal.
 
