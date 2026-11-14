@@ -17,7 +17,7 @@ Opciones de voz que quedaron bien en las escuchas a ciegas con los ajustes de te
 | Mínimo consumo | `carlfm` (`x_low`) | Piper | ~0,3 GiB | 3,6 s | No | Igual que `lola` |
 | Mínimo consumo, uso personal | `miro` (licencia no comercial) | Piper (OpenVoiceOS) | ~0,3 GiB | 5,1 s | No | Bien: tranquila, ruido de fondo |
 
-Pendiente de probar: la velocidad de Kokoro. Kokoro y Supertonic no generan por partes: hay que generarlos frase por frase (primera frase en ~0,3–0,5 s).
+La [velocidad de Kokoro se midió de nuevo el 2026-11-13](#velocidad-de-kokoro-2026-11-13-windows), con texto entero y frase por frase para reducir la espera hasta el primer sonido.
 
 ## Cómo se prueba
 
@@ -407,6 +407,25 @@ Mismo texto que NeuTTS y CuteTTS, clonando desde copias PCM16 de las referencias
 | Normal (FP32), `Camila` | ~2,8 GiB | 56 s | 8,7 s | 18,7 s | 0,17 s |
 
 La generación es más rápida que el tiempo real, pero consume más RAM que `lola` (~0,95 GiB en mediciones anteriores, con otro texto). Escucha directa, no a ciegas: la persona responsable valoró la versión comprimida con `Facundo` como demasiado lenta en el ritmo del habla, con palabras alargadas, y la de `Camila` como muy mala. Resultado global: peor sonido y consumo elevado; descartado, no incorporado.
+
+## Velocidad de Kokoro (2026-11-13, Windows)
+
+Prueba aislada en CPU del PC con Windows de la persona responsable, con `kokoro-onnx` 0.6.1 y onnxruntime 1.31.1, sin PyTorch ni token y sin descargar nada: se usaron modelos locales existentes. Mismo texto que NeuTTS y CuteTTS; una sola ejecución por configuración, sin calentamiento. El modelo normal `kokoro-v1.0.onnx` ocupa 325 MB, carga en 1,0–1,8 s y usa 0,42 GB tras cargar; el comprimido `kokoro-v1.0.int8.onnx`, 92 MB, ~1,2 s y 0,20 GB.
+
+| Modelo | Voz | Forma | RAM (GB) | CPU del texto | Generación | Audio | Primer sonido |
+|---|---|---|---|---|---|---|---|
+| Normal | `ef_dora` | Texto entero | 0,79 | 24,4 s | 5,2 s | 16,0 s | — |
+| Normal | `ef_dora` | Frase por frase | 0,60 | 25,6 s | 5,0 s | 16,2 s | 0,69 s |
+| Normal | `em_santa` | Texto entero | 0,78 | 25,3 s | 5,0 s | 16,1 s | — |
+| Normal | `em_santa` | Frase por frase | 0,60 | 25,9 s | 4,9 s | 16,7 s | 0,66 s |
+| Comprimido | `ef_dora` | Texto entero | 0,60 | 23,8 s | 4,5 s | 15,8 s | — |
+| Comprimido | `ef_dora` | Frase por frase | 0,38 | 23,4 s | 4,6 s | 16,2 s | 0,62 s |
+| Comprimido | `em_santa` | Texto entero | 0,60 | 24,2 s | 4,8 s | 15,9 s | — |
+| Comprimido | `em_santa` | Frase por frase | 0,39 | 25,2 s | 5,0 s | 16,8 s | 0,66 s |
+
+Escucha directa, no a ciegas, de la versión comprimida frase por frase: `ef_dora` no terminó de convencer por un sonido algo extraño; `em_santa` volvió a gustar, con buen sonido y adecuada para relatos.
+
+Resultado: Kokoro fue el motor con menos RAM y generación más rápida de los probados el 2026-11-13 (CuteTTS, ajuste castellano, NeuTTS y Pocket TTS ONNX). Generar frase por frase permite el primer sonido en ~0,6–0,7 s. Como referencia, `lola` usó ~0,95 GiB en una medición anterior con otro texto; no es una comparación directa. El 2026-10-30 Kokoro gastó ~2,8 veces más CPU que `lola`, dato que esta prueba no sustituye. No incorporado: la versión comprimida de `em_santa` frase por frase es la candidata más sólida hasta ahora; su incorporación sigue pendiente de decisión de la persona responsable.
 
 ## Licencias
 
