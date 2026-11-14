@@ -7,7 +7,8 @@ Este archivo registra los cambios completados en orden cronológico. Las version
 ## 2026-11-13
 
 - Pi, Phonon: 25 voces en español con modelo multilingüe y descarga individual de cada voz; token solo para el modelo. Ritmo nativo guardado, además de la velocidad común.
-- Menú de voces agrupado por motor, con consumo medido, acento y 10 filas desplazables por teclado o ratón; conserva la selección al cambiar las descargas. Aviso de migración del modelo anterior (75 MB, una vez).
+- Menú de voces con una pestaña por motor (Tab), altura fija, columnas Voz, Acento, Estilo, Estado y Dict, la voz activa primero y favoritas con F (★) debajo; 10 filas desplazables por teclado o ratón. Aviso de migración del modelo anterior (75 MB, una vez).
+- Pi: el servidor arranca con `faulthandler` y conserva el registro anterior en `logs/tehablo-server.prev.log`, para diagnosticar cierres nativos.
 
 - Cliente SSH, instalador de Windows: el cliente también se descarga primero a un archivo `.part`; si la conexión se corta no queda un cliente roto y la siguiente ejecución lo vuelve a bajar.
 - Instaladores de Windows: Windows PowerShell 5.1 ya muestra bien los acentos y las flechas al ejecutar `.\install.ps1`; antes salían caracteres rotos y una línea con «Write-Host».
