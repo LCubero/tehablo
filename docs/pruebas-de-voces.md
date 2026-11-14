@@ -447,7 +447,9 @@ Revisión de [ZONOS3-Mini de Zyphra](https://huggingface.co/Zyphra/ZONOS3-Mini),
 
 No se pudo probar en Windows: la dependencia `pyicu-wheels==2.14` no tiene rueda `win_amd64` y no hay binarios precompilados del motor. No se descargaron los pesos ni se midieron consumo, velocidad o calidad de voz.
 
-Resultado: pendiente de una posible prueba en Linux (Fedora), incluida la revisión de sus controles expresivos; no incorporado.
+Prueba en Linux el mismo día, en la máquina virtual de pruebas (Ubuntu, i5-4300M de 2 núcleos, 7,4 GB de RAM), con la referencia en PyTorch para CPU en una carpeta aparte, sin tocar la instalación de tehablo: al cargar el modelo la RAM llegó a 5,7 GiB sin terminar la carga, y la prueba se detuvo para no agotar la memoria. Ocupó 12 GB de disco (9,8 GB de modelos). No generó audio.
+
+Resultado: descartado por RAM (más de 6 veces la de `lola` solo al cargar); no incorporado.
 
 ## em_santa clonada en otros motores (2026-11-13, Windows)
 
