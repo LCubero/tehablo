@@ -17,7 +17,7 @@ Opciones de voz que quedaron bien en las escuchas a ciegas con los ajustes de te
 | Mínimo consumo | `carlfm` (`x_low`) | Piper | ~0,3 GiB | 3,6 s | No | Igual que `lola` |
 | Mínimo consumo, uso personal | `miro` (licencia no comercial) | Piper (OpenVoiceOS) | ~0,3 GiB | 5,1 s | No | Bien: tranquila, ruido de fondo |
 
-Pendiente de probar: NeuTTS Nano Spanish y el ajuste castellano de `inferencekey` (con token), Pocket TTS en ONNX int4 y la velocidad de Kokoro. Kokoro y Supertonic no generan por partes: hay que generarlos frase por frase (primera frase en ~0,3–0,5 s).
+Pendiente de probar: el ajuste castellano de `inferencekey` (con token), Pocket TTS en ONNX int4 y la velocidad de Kokoro. Kokoro y Supertonic no generan por partes: hay que generarlos frase por frase (primera frase en ~0,3–0,5 s).
 
 ## Cómo se prueba
 
@@ -353,11 +353,22 @@ Búsqueda web, sin descargar ni probar nada. Datos tomados de las páginas de ca
 
 | Modelo | Tamaño | CPU | Clonación | Licencia | Nota |
 |---|---|---|---|---|---|
-| NeuTTS Nano Spanish (Neuphonic, feb. 2026) | ~117 M parámetros activos; versiones GGUF Q8 y Q4 | Sí, «tiempo real o mejor» en portátil, sin cifra publicada | Sí, con 3 a 15 s de audio | NeuTTS Open License v1.0 (comprobada el 2026-11-13): uso gratis y redistribución con copia de la licencia; el uso comercial solo hasta 5 M USD de ingresos al año | Candidato principal. Necesita `espeak-ng`; el audio lleva marca de agua inaudible (no lo descarta); solo trae la voz de ejemplo `mateo`. Antes se anotó que pide token de Hugging Face (ver [Descartados sin probar](#descartados-sin-probar)). |
+| NeuTTS Nano Spanish (Neuphonic, feb. 2026) | ~117 M parámetros activos; versiones GGUF Q8 y Q4 | Sí, «tiempo real o mejor» en portátil, sin cifra publicada | Sí, con 3 a 15 s de audio | NeuTTS Open License v1.0 (comprobada el 2026-11-13): uso gratis y redistribución con copia de la licencia; el uso comercial solo hasta 5 M USD de ingresos al año | Probado el 2026-11-13: suena bien, no incorporado ([resultados](#neutts-nano-spanish-frente-a-lola-y-regina-2026-11-13-windows)). Necesita `espeak-ng`; el audio lleva marca de agua inaudible (no lo descarta); solo trae la voz de ejemplo `mateo`. Antes se anotó que pide token de Hugging Face (ver [Descartados sin probar](#descartados-sin-probar)). |
 | CuteTTS (OPPO) | ~230 M parámetros | Dice que sí, pero solo da cifras de GPU | Sí | No figura en la página | Español entre 5 idiomas; dudoso que sea liviano en CPU. |
 | Arm `pocket-tts-es-mix-precision` | 383 MB, 26 perfiles de voz | Optimizado para CPU Arm | No | CC BY 4.0 | No sirve: su motor solo se ofrece en un programa de acceso anticipado de Arm. |
 
-El ajuste castellano de `inferencekey` (1,34 GB, `spanish_24l`) sigue pendiente como antes. Ming-3.0-tts (0,5 B) aparece en clasificaciones, pero es más pesado. Licencia de NeuTTS Nano Spanish confirmada el 2026-11-13 en [su texto](https://github.com/neuphonic/neutts/blob/main/LICENSE) (NeuTTS Open License v1.0, 11 de diciembre de 2025): permite usarlo, modificarlo y redistribuirlo gratis entregando una copia de la licencia; el uso comercial, incluido el audio generado, solo vale por debajo de 5 M USD de ingresos al año. Para tehablo, gratis y sin venta, la licencia lo permite. La descarga sigue con acceso restringido: cuenta de Hugging Face y aceptar condiciones, como Phonon. Siguiente paso propuesto: escucharlo a ciegas frente a `lola` y Phonon.
+El ajuste castellano de `inferencekey` (1,34 GB, `spanish_24l`) sigue pendiente como antes. Ming-3.0-tts (0,5 B) aparece en clasificaciones, pero es más pesado. Licencia de NeuTTS Nano Spanish confirmada el 2026-11-13 en [su texto](https://github.com/neuphonic/neutts/blob/main/LICENSE) (NeuTTS Open License v1.0, 11 de diciembre de 2025): permite usarlo, modificarlo y redistribuirlo gratis entregando una copia de la licencia; el uso comercial, incluido el audio generado, solo vale por debajo de 5 M USD de ingresos al año. Para tehablo, gratis y sin venta, la licencia lo permite. La descarga sigue con acceso restringido: cuenta de Hugging Face y aceptar condiciones, como Phonon. Escuchado a ciegas el 2026-11-13 ([resultados](#neutts-nano-spanish-frente-a-lola-y-regina-2026-11-13-windows)).
+
+## NeuTTS Nano Spanish frente a `lola` y `Regina` (2026-11-13, Windows)
+
+Prueba aislada en una carpeta ignorada por Git, sin cambiar el entorno, las voces ni los ajustes del proyecto. CPU de este PC con Windows; texto técnico de prueba con números y fechas; voz de ejemplo `mateo`, semilla 42, 24 kHz.
+
+| Versión | RAM máxima | Generación | Audio | Ritmo |
+|---|---|---|---|---|
+| PyTorch | ~4,6 GiB | 53,5 s | 17,5 s | ~3× más lento que el tiempo real |
+| GGUF Q4 + decodificador ONNX, referencia precodificada | ~1,9 GiB | 10,9 s | 18,5 s | ~1,7× más rápido que el tiempo real |
+
+Escucha a ciegas A/B/C (`lola`, `Regina`, NeuTTS): la persona responsable consideró que las tres suenan bien, y que Q4 suena igual que PyTorch. Como referencia, `lola` gasta ~0,95 GiB y `Regina` ~0,3 GiB (mediciones anteriores, con otro texto). Resultado: suena bien, pero usa más RAM que `lola` y `Regina`; no se incorpora. Los cuatro repositorios de NeuTTS en Hugging Face piden aceptar condiciones por separado.
 
 ## Licencias
 
@@ -379,7 +390,7 @@ Licencias leídas de los archivos `LICENSE`, las fichas de Hugging Face y las `M
 
 | Opción | Motivo |
 |---|---|
-| NeuTTS Nano Spanish, ajuste castellano de `inferencekey` | Piden token de Hugging Face (repositorios con acceso restringido). |
+| Ajuste castellano de `inferencekey` | Pide token de Hugging Face (repositorios con acceso restringido). |
 | XTTS-v2, Silero, F5-Spanish | Licencia no comercial; F5 y XTTS además son pesados en CPU. MMS-TTS también es no comercial (CC BY-NC 4.0), pero se probó como referencia. |
 | Edge TTS | Necesita internet; no es local. |
 | Kitten TTS | Solo inglés, sin comprobar. |
