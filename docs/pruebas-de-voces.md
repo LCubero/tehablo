@@ -17,7 +17,7 @@ Opciones de voz que quedaron bien en las escuchas a ciegas con los ajustes de te
 | Mínimo consumo | `carlfm` (`x_low`) | Piper | ~0,3 GiB | 3,6 s | No | Igual que `lola` |
 | Mínimo consumo, uso personal | `miro` (licencia no comercial) | Piper (OpenVoiceOS) | ~0,3 GiB | 5,1 s | No | Bien: tranquila, ruido de fondo |
 
-Pendiente de probar: Pocket TTS en ONNX int4 y la velocidad de Kokoro. Kokoro y Supertonic no generan por partes: hay que generarlos frase por frase (primera frase en ~0,3–0,5 s).
+Pendiente de probar: la velocidad de Kokoro. Kokoro y Supertonic no generan por partes: hay que generarlos frase por frase (primera frase en ~0,3–0,5 s).
 
 ## Cómo se prueba
 
@@ -260,7 +260,7 @@ Descartadas sin escuchar:
 | `juangonp/kokoro-spanish-onnx` | Su archivo de voces usa `pickle` (cargarlo puede ejecutar código) y no se abrió; su modelo genera exactamente el mismo audio que Kokoro oficial. |
 | Voces de `HirCoir` (astra, elena, lilith, dark, yahir, towi, capybara) | Piden token y aprobación del autor. |
 | Imitaciones de personas o personajes (Cortana, Veritasium, Lucas Melor, «1 peso de salsa», GLaDOS) | Clones sin consentimiento demostrado; chocan con los términos de uso de voz. |
-| `prasadvittaldev/pocket-tts-spanish-onnx-int4` | Pocket TTS español en ONNX int4 (106 MB, sin torch, incluye el codificador para clonar). Necesita el programa de `KevinAHM/pocket-tts-onnx-export`, que ya no existe en GitHub; no se probó. |
+| `prasadvittaldev/pocket-tts-spanish-onnx-int4` | Pocket TTS español en ONNX int4 (106 MB, sin torch, incluye el codificador para clonar). Necesita el programa de `KevinAHM/pocket-tts-onnx-export`, que ya no existe en GitHub; no se probó. En su lugar se probó el [exportado ONNX de Kevin AHM](#pocket-tts-en-onnx-sin-pytorch-2026-11-13-windows) el 2026-11-13. |
 
 ## `lola` con `spanish_24l` (2026-10-30)
 
@@ -392,6 +392,21 @@ Prueba aislada en una carpeta ignorada por Git, con entorno propio (`pocket-tts`
 | `Camila` | ~1,86 GiB | 21,6 s | 21,1 s |
 
 Genera aproximadamente a tiempo real (~0,96–0,98×). Escucha directa, no a ciegas: la persona responsable consideró que suena bien con la referencia de `Facundo` y algo robótica con la de `Camila`. Como referencia, `lola` gasta ~0,95 GiB y `Regina` ~0,3 GiB (mediciones anteriores, con otro texto). Resultado: probado, no incorporado; decidir si se añade como opción queda pendiente junto con Kokoro, Supertonic y Piper.
+
+## Pocket TTS en ONNX, sin PyTorch (2026-11-13, Windows)
+
+Prueba aislada en una carpeta ignorada por Git, sin modificar el proyecto. Pocket TTS español (`spanish`, 6 capas), sin PyTorch, con ONNX Runtime 1.32.0 y Python 3.12 en la CPU del PC con Windows de la persona responsable. Modelo y código de inferencia de `KevinAHM/pocket-tts-onnx`, revisión `58a6d00cf13d239b6748cb0769f35c580a8f606c`, descargados sin token de Hugging Face. Las voces incluidas `lola` y `alba` devolvieron HTTP 401 (requieren cuenta) y se omitieron. Según la ficha: modelos CC BY 4.0 y código Apache 2.0; no se listó un archivo `LICENSE`.
+
+Mismo texto que NeuTTS y CuteTTS, clonando desde copias PCM16 de las referencias consentidas de `Facundo` y `Camila`. El entorno y ambas versiones ocupan ~875 MB en disco. Cargar tarda menos de 2 s y consume ~0,3–0,6 GiB; el consumo alto aparece al clonar desde la grabación completa de referencia. Que `lola` use un estado de voz precalculado es una hipótesis sin verificar.
+
+| Versión / referencia | RAM al generar | CPU del texto | Generación | Audio | Primer sonido |
+|---|---|---|---|---|---|
+| Comprimida (INT8), `Facundo` | ~3,4 GiB | 55 s | 7,9 s | 24,5 s | 0,16 s |
+| Normal (FP32), `Facundo` | ~3,7 GiB | 53 s | 7,7 s | 18,9 s | 0,20 s |
+| Comprimida (INT8), `Camila` | ~2,5 GiB | 63 s | 9,1 s | 28,1 s | 0,13 s |
+| Normal (FP32), `Camila` | ~2,8 GiB | 56 s | 8,7 s | 18,7 s | 0,17 s |
+
+La generación es más rápida que el tiempo real, pero consume más RAM que `lola` (~0,95 GiB en mediciones anteriores, con otro texto). Escucha directa, no a ciegas: la persona responsable valoró la versión comprimida con `Facundo` como demasiado lenta en el ritmo del habla, con palabras alargadas, y la de `Camila` como muy mala. Resultado global: peor sonido y consumo elevado; descartado, no incorporado.
 
 ## Licencias
 
