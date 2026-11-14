@@ -6,6 +6,9 @@ Este archivo registra los cambios completados en orden cronológico. Las version
 
 ## 2026-11-13
 
+- Pi, Phonon: 25 voces en español con modelo multilingüe y descarga individual de cada voz; token solo para el modelo. Ritmo nativo guardado, además de la velocidad común.
+- Menú de voces agrupado por motor, con consumo medido, acento y 10 filas desplazables por teclado o ratón; conserva la selección al cambiar las descargas. Aviso de migración del modelo anterior (75 MB, una vez).
+
 - Cliente SSH, instalador de Windows: el cliente también se descarga primero a un archivo `.part`; si la conexión se corta no queda un cliente roto y la siguiente ejecución lo vuelve a bajar.
 - Instaladores de Windows: Windows PowerShell 5.1 ya muestra bien los acentos y las flechas al ejecutar `.\install.ps1`; antes salían caracteres rotos y una línea con «Write-Host».
 - Instalador del cliente SSH: el mensaje final se ordena en dos bloques, **[Cliente instalado]** con el comando para abrirlo y **[Cómo usar]** con los tres pasos, separados por líneas vacías.

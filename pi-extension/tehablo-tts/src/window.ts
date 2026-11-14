@@ -39,7 +39,7 @@ type Seg = {text: string; style?: string; fn?: () => void};
 export const VOLUMES = Array.from({length: 15}, (_, i) => (i + 1) / 10);
 const W = 72, IN = W - 2;
 // RAM while the model is loaded, measured in Fedora (docs/pruebas-de-voces.md); every Pocket voice shares one model.
-const RAM: Record<string, string> = {phonon: '~0,3 GB', spanish: '~1 GB', spanish_24l: '~1,8 GB'};
+const ENGINE: Record<string, string> = {phonon: 'Phonon · ~0,3–0,4 GB · ~4–5 s CPU por 16 s de audio', spanish: 'Pocket · ~1 GB', spanish_24l: 'Pocket spanish_24l · ~1,8 GB'};
 const width = (t: string) => Array.from(t).length;
 const fit = (t: string, n: number) => { const a = Array.from(t); return a.length > n ? a.slice(0, n - 1).join('') + '…' : t + ' '.repeat(n - a.length); };
 const nearest = (list: number[], value: number) => list.reduce((best, v, i) => Math.abs(v - value) < Math.abs(list[best] - value) ? i : best, 0);
@@ -106,9 +106,16 @@ export class SettingsWindow {
     this.c = c; this.th = th; this.kb = kb; this.done = done; this.redraw = redraw;
   }
 
+  private previousVoices: VoiceRow[] = [];
   order() {
+    const selected = this.previousVoices[this.pick];
+    const engine = (v: VoiceRow) => v.model === 'phonon' ? 0 : v.model === 'spanish' ? 1 : 2;
     const rank = (v: VoiceRow) => v.downloaded ? 0 : v.kind === 'download' ? 1 : 2;  // unknown counts as not downloaded
-    return this.c.voices().map((v, i) => ({v, i})).sort((a, b) => rank(a.v) - rank(b.v) || a.i - b.i).map(x => x.v);
+    const list = this.c.voices().map((v, i) => ({v, i})).sort((a, b) => engine(a.v) - engine(b.v) || rank(a.v) - rank(b.v) || a.i - b.i).map(x => x.v);
+    const index = selected ? list.findIndex(v => v.model === selected.model && v.voice === selected.voice) : -1;
+    if (index >= 0) this.pick = index;
+    this.previousVoices = list;
+    return list;
   }
   typeLabel(v: VoiceRow) {
     if (v.downloaded) return 'Descargada';
@@ -168,7 +175,7 @@ export class SettingsWindow {
     const vol = nearest(VOLUMES, s.volume), spd = nearest(SPEEDS, s.speed);
     const move = (list: number[], i: number, d: number) => list[Math.min(list.length - 1, Math.max(0, i + d))];
     return [
-      {section: 'Voz y sonido', label: 'Voz', text: active ? `${active.name} · ${active.note}` : this.c.active().voice, buttons: [['[ Cambiar ]', () => { this.page = 'voices'; this.pick = 0; }]]},
+      {section: 'Voz y sonido', label: 'Voz', text: active ? `${active.name} · ${active.note}` : this.c.active().voice, buttons: [['[ Cambiar ]', () => { this.page = 'voices'; this.previousVoices = []; this.pick = 0; }]]},
       {label: 'Volumen', value: `${Math.round(s.volume * 100)} %`, step: (d: number) => this.c.change('volume', move(VOLUMES, vol, d))},
       {label: 'Velocidad', value: `${s.speed.toFixed(2)}x`, step: (d: number) => this.c.change('speed', move(SPEEDS, spd, d))},
       ...(this.c.active().model === 'phonon' ? [{label: 'Ritmo de Phonon',
@@ -408,18 +415,28 @@ export class SettingsWindow {
       line([{text: ' '}, {text: '[ Volver ]', style: 'accent', fn: () => { this.page = 'main'; }},
         {text: '   ↑↓ mover · Tab filtro · Enter elegir · Esc cancelar', style: 'dim'}]);
     } else if (this.page === 'voices') {
-      line([{text: '   ' + fit('Voz', 31) + fit('Estado', 19) + fit('RAM aprox.', 11) + 'Dict', style: 'dim'}]);
+      line([{text: '   ' + fit('Voz', 44) + fit('Estado', 19) + 'Dict', style: 'dim'}]);
       line([{text: '   ' + '─'.repeat(IN - 4), style: 'dim'}]);
-      this.order().forEach((v, i) => {
+      const list = this.order(), start = Math.max(0, this.pick - 9);
+      let model = '';
+      list.slice(start, start + 10).forEach((v, j) => {
+        const i = start + j;
+        if (v.model !== model) {
+          line([{text: ' ' + ENGINE[v.model], style: 'dim'}]);
+          if (v.model === 'phonon') line([{text: ' el que menos gasta; suena muy bien', style: 'dim'}]);
+          model = v.model;
+        }
         const sel = i === this.pick, pickIt = () => { this.pick = i; this.choose(v); };
         const style = v.downloaded ? 'dim' : v.kind === 'account' && !this.c.state().token ? 'warning' : 'dim';
         line([{text: sel ? ' ▶ ' : '   ', style: 'accent', fn: pickIt},
-          {text: fit(`${this.isActive(v) ? '●' : ' '} ${v.name}${v.kind === 'account' ? ' *' : ''} (${v.note})`, 31), style: this.isActive(v) ? 'warning' : sel ? 'accent' : undefined, fn: pickIt},
+          {text: fit(`${this.isActive(v) ? '●' : ' '} ${v.name}${v.kind === 'account' ? ' *' : ''} (${v.model === 'phonon' ? 'ES · ' : ''}${v.note})`, 44), style: this.isActive(v) ? 'warning' : sel ? 'accent' : undefined, fn: pickIt},
           {text: fit(this.typeLabel(v), 19), style, fn: pickIt},
-          {text: fit(RAM[v.model] ?? '', 11), style: 'dim', fn: pickIt},
           // A click here switches this voice's pronunciation fixes without choosing the voice.
-          {text: fit(this.c.dict(v) ? 'sí' : 'no', 6), style: sel ? 'accent' : 'dim', fn: () => { this.pick = i; this.c.toggleDict(v); }}]);
+          {text: fit(this.c.dict(v) ? 'sí' : 'no', 4), style: sel ? 'accent' : 'dim', fn: () => { this.pick = i; this.c.toggleDict(v); }}]);
       });
+      line([{text: ` ${list.length ? this.pick + 1 : 0}/${list.length} `, style: 'dim'},
+        {text: '[ Anterior ]', fn: () => { this.pick = Math.max(0, this.pick - 10); }}, {text: ' '},
+        {text: '[ Siguiente ]', fn: () => { this.pick = Math.min(Math.max(0, list.length - 1), this.pick + 10); }}]);
       line([{text: '   * necesita una cuenta gratis de Hugging Face (1 sola vez)', style: 'dim'}]);
       line([{text: ' '}, {text: '[ Volver ]', style: 'accent', fn: () => this.home()}, {text: '   ↑↓ elegir · Enter usar · ←→ dict · Esc', style: 'dim'}]);
     } else if (this.page === 'download') {
@@ -435,9 +452,10 @@ export class SettingsWindow {
       }
       line([{text: ` ${v.name} (${v.note}) no está descargada.`}]);
       line([{text: ' Se descarga 1 sola vez al usarla y luego funciona sin internet.', style: 'dim'}]);
-      // Every Phonon voice lives in one model file, so one download brings them all (Pocket voices download one by one).
-      const also = v.model === 'phonon' ? this.c.voices().filter(o => o.model === 'phonon' && o.voice !== v.voice) : [];
-      if (also.length) line([{text: ` Incluye también: ${also.map(o => `${o.name} (${o.note})`).join(', ')}.`, style: 'dim'}]);
+      if (v.model === 'phonon') {
+        line([{text: ' Solo baja esta voz (~256 KB); el token es solo para el modelo.', style: 'dim'}]);
+        line([{text: ' Si tenías phonon-40m-es: nuevo modelo, 75 MB con token, una vez.', style: 'dim'}]);
+      }
       errorLines(this.result === 'error' ? this.notice : '');
       line([{text: ' '}, {text: '[ Descargar y usar ]', style: this.col === 0 ? 'accent' : undefined, fn: () => this.confirm()},
         {text: ' '}, {text: '[ Volver ]', style: this.col === 1 ? 'accent' : undefined, fn: () => { this.page = 'voices'; }}]);
@@ -447,7 +465,8 @@ export class SettingsWindow {
       const link = (step: string, path: string) =>
         line([{text: step}, {text: `huggingface.co/${path}`, style: 'accent', fn: () => this.c.open(`https://huggingface.co/${path}`)}]);
       line([{text: ` ${v.name} viene de Hugging Face y pide una cuenta gratis.`}]);
-      line([{text: ' El token solo hace falta para descargarla; luego funciona sin él.'}]);
+      line([{text: v.model === 'phonon' ? ' El token solo descarga el modelo; cada voz baja sin cuenta.' : ' El token solo hace falta para descargarla; luego funciona sin él.'}]);
+      if (v.model === 'phonon') line([{text: ' Si tenías phonon-40m-es: nuevo modelo, 75 MB con token, una vez.', style: 'dim'}]);
       line();
       link(' 1. Crea una cuenta:   ', 'join');
       link(' 2. Acepta términos:   ', v.model === 'phonon' ? 'gradium/phonon-40m-multilingual' : 'kyutai/pocket-tts');

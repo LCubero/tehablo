@@ -88,15 +88,19 @@ Si Pi corre en un servidor, el cliente teHablo puede reproducir la voz en tu com
 | CPU al leer | Phonon **~0,4 núcleos**; Pocket **~0,75** (picos de ~1,5–1,7) |
 | CPU en reposo | **~0,5 %** de un núcleo |
 | Arranque | Phonon **~0,5 s**; Pocket **~7 s** |
-| RAM | Phonon (Regina, Iker) **~0,2–0,35 GB**; Pocket `spanish` (Lola y demás) **~1 GB**; `spanish_24l` **~1,8 GB** |
+| RAM | Phonon multilingüe (25 voces) **~0,3–0,4 GB**; Pocket `spanish` (Lola y demás) **~1 GB**; `spanish_24l` **~1,8 GB** |
 | Disco | Entorno Python **0,8–1,1 GB**; modelos Pocket **0,9–1,2 GB**; Phonon **~0,15 GB** |
 | Internet | Solo para instalar y descargar voces; después funciona sin conexión |
 
 CPU y arranque medidos en una laptop de 2 núcleos de 2014; son referencias, no mínimos. Apagar el servidor libera la RAM. [Mediciones Windows, Fedora y VM](docs/como-funciona.md#consumo-medido) · [Comparación con Phonon](docs/pruebas-de-voces.md#phonon-40m-es-frente-a-lola-spanish_24l-y-kokoro-2026-11-03-fedora).
 
+En Pi, Phonon ofrece **25 voces en español** (13 de España y 12 de México): es el que menos gasta y suena muy bien en las pruebas. El menú agrupa por motor y permite recorrer las voces con teclado o ratón. **Ritmo de Phonon** (−1 a +1) ajusta las pausas, además de la velocidad común.
+
+Si ya tenías `phonon-40m-es`, descarga una vez el modelo multilingüe (75 MB, con token). Cada voz baja solo al elegirla (~256 KB, sin cuenta).
+
 ## Voces y licencias
 
-Pocket: pesos y Lola/Rafael **CC BY 4.0** (Kyutai; el origen de sus grabaciones no está verificado); las seis voces latinoamericanas incluidas, **CC BY-SA 4.0**. Phonon es opcional: requiere cuenta gratis de Hugging Face para descargar y sus pesos son **CC BY-NC 4.0 (no comercial)**. Clona solo voces que tengas permiso para usar. [Voces, acceso y atribución](docs/desarrollo.md#voces).
+Pocket: pesos y Lola/Rafael **CC BY 4.0** (Kyutai; el origen de sus grabaciones no está verificado); las seis voces latinoamericanas incluidas, **CC BY-SA 4.0**. Phonon es opcional: el modelo multilingüe requiere cuenta gratis de Hugging Face para descargar y sus pesos son **CC BY-NC 4.0 (no comercial)**; las voces de Gradium ([`gradium/phonon-voices`](https://huggingface.co/gradium/phonon-voices)) son **Apache-2.0**. Clona solo voces que tengas permiso para usar. [Voces, acceso y atribución](docs/desarrollo.md#voces).
 
 Código del proyecto: [MIT](LICENSE).
 

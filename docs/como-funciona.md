@@ -50,7 +50,7 @@ Texto escrito
 
 | Pieza | Para qué | Licencia |
 |---|---|---|
-| **Phonon 40M es** (`ptts`) | Voz opcional en Pi, más natural | Pesos CC BY-NC 4.0, acceso restringido |
+| **Phonon 40M multilingüe** (`ptts`, `lang='es'`) | 25 voces españolas opcionales en Pi | Modelo CC BY-NC 4.0, acceso restringido; voces Gradium Apache-2.0 |
 | **Pocket TTS** (Kyutai) | Modelo de IA que genera la voz | Código MIT, pesos CC BY 4.0 |
 | **PyTorch**, versión solo CPU | Motor que ejecuta el modelo | BSD |
 | **Textual** | Interfaz de la TUI | MIT |
