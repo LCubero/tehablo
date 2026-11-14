@@ -17,7 +17,7 @@ Opciones de voz que quedaron bien en las escuchas a ciegas con los ajustes de te
 | Mínimo consumo | `carlfm` (`x_low`) | Piper | ~0,3 GiB | 3,6 s | No | Igual que `lola` |
 | Mínimo consumo, uso personal | `miro` (licencia no comercial) | Piper (OpenVoiceOS) | ~0,3 GiB | 5,1 s | No | Bien: tranquila, ruido de fondo |
 
-Pendiente de probar: el ajuste castellano de `inferencekey` (con token), Pocket TTS en ONNX int4 y la velocidad de Kokoro. Kokoro y Supertonic no generan por partes: hay que generarlos frase por frase (primera frase en ~0,3–0,5 s).
+Pendiente de probar: Pocket TTS en ONNX int4 y la velocidad de Kokoro. Kokoro y Supertonic no generan por partes: hay que generarlos frase por frase (primera frase en ~0,3–0,5 s).
 
 ## Cómo se prueba
 
@@ -357,7 +357,7 @@ Búsqueda web, sin descargar ni probar nada. Datos tomados de las páginas de ca
 | CuteTTS (OPPO) | ~230 M parámetros | Dice que sí, pero solo da cifras de GPU | Sí | Apache-2.0 (comprobada el 2026-11-13) | Español entre 5 idiomas. Probado el 2026-11-13: lento en CPU y mucha RAM, no incorporado ([resultados](#cutetts-2026-11-13-windows)). |
 | Arm `pocket-tts-es-mix-precision` | 383 MB, 26 perfiles de voz | Optimizado para CPU Arm | No | CC BY 4.0 | No sirve: su motor solo se ofrece en un programa de acceso anticipado de Arm. |
 
-El ajuste castellano de `inferencekey` (1,34 GB, `spanish_24l`) sigue pendiente como antes. Ming-3.0-tts (0,5 B) aparece en clasificaciones, pero es más pesado. Licencia de NeuTTS Nano Spanish confirmada el 2026-11-13 en [su texto](https://github.com/neuphonic/neutts/blob/main/LICENSE) (NeuTTS Open License v1.0, 11 de diciembre de 2025): permite usarlo, modificarlo y redistribuirlo gratis entregando una copia de la licencia; el uso comercial, incluido el audio generado, solo vale por debajo de 5 M USD de ingresos al año. Para tehablo, gratis y sin venta, la licencia lo permite. La descarga sigue con acceso restringido: cuenta de Hugging Face y aceptar condiciones, como Phonon. Escuchado a ciegas el 2026-11-13 ([resultados](#neutts-nano-spanish-frente-a-lola-y-regina-2026-11-13-windows)).
+El ajuste castellano de `inferencekey` (1,34 GB, `spanish_24l`) se probó el 2026-11-13 en Windows ([resultados](#ajuste-castellano-de-pocket-tts-2026-11-13-windows)). Ming-3.0-tts (0,5 B) aparece en clasificaciones, pero es más pesado. Licencia de NeuTTS Nano Spanish confirmada el 2026-11-13 en [su texto](https://github.com/neuphonic/neutts/blob/main/LICENSE) (NeuTTS Open License v1.0, 11 de diciembre de 2025): permite usarlo, modificarlo y redistribuirlo gratis entregando una copia de la licencia; el uso comercial, incluido el audio generado, solo vale por debajo de 5 M USD de ingresos al año. Para tehablo, gratis y sin venta, la licencia lo permite. La descarga sigue con acceso restringido: cuenta de Hugging Face y aceptar condiciones, como Phonon. Escuchado a ciegas el 2026-11-13 ([resultados](#neutts-nano-spanish-frente-a-lola-y-regina-2026-11-13-windows)).
 
 ## NeuTTS Nano Spanish frente a `lola` y `Regina` (2026-11-13, Windows)
 
@@ -382,6 +382,17 @@ Prueba aislada en una carpeta ignorada por Git, sin cambiar el entorno, las voce
 
 Va unas 5 a 6 veces más lento que el tiempo real. Escucha directa de los tres audios, no a ciegas: la persona responsable consideró que no suenan lo bastante bien para tanta RAM. Resultado: no se incorpora.
 
+## Ajuste castellano de Pocket TTS (2026-11-13, Windows)
+
+Prueba aislada en una carpeta ignorada por Git, con entorno propio (`pocket-tts` 4.0.1, torch 2.15.0+cpu), sin cambiar el entorno, las voces ni los ajustes del proyecto. Modelo `inferencekey/pocket-tts-spanish-24l-castilian`, ajuste castellano de `spanish_24l` (1,34 GB, float32, CC BY 4.0, atribución a Kyutai e inferencekey). Descargado sin token de Hugging Face: la API indicó `gated: false` y el tokenizador procede del repositorio público `kyutai/pocket-tts-without-voice-cloning`. CPU del PC con Windows de la persona responsable, mismo texto que NeuTTS y CuteTTS y clonación desde copias PCM16 de las referencias consentidas de `Facundo` (`ar-hombre-4310.wav`) y `Camila` (`cl-mujer-9334.wav`). Cargar el modelo tarda ~7 s, con pico de RAM de ~2,9 GiB; preparar cada referencia de voz, ~4–5 s.
+
+| Referencia | RAM al generar | Generación | Audio |
+|---|---|---|---|
+| `Facundo` | ~1,85 GiB | 20,4 s | 19,5 s |
+| `Camila` | ~1,86 GiB | 21,6 s | 21,1 s |
+
+Genera aproximadamente a tiempo real (~0,96–0,98×). Escucha directa, no a ciegas: la persona responsable consideró que suena bien con la referencia de `Facundo` y algo robótica con la de `Camila`. Como referencia, `lola` gasta ~0,95 GiB y `Regina` ~0,3 GiB (mediciones anteriores, con otro texto). Resultado: probado, no incorporado; decidir si se añade como opción queda pendiente junto con Kokoro, Supertonic y Piper.
+
 ## Licencias
 
 Cada opción tiene tres capas: el programa, el modelo y la voz con la que se entrenó o se clona.
@@ -402,7 +413,6 @@ Licencias leídas de los archivos `LICENSE`, las fichas de Hugging Face y las `M
 
 | Opción | Motivo |
 |---|---|
-| Ajuste castellano de `inferencekey` | Pide token de Hugging Face (repositorios con acceso restringido). |
 | XTTS-v2, Silero, F5-Spanish | Licencia no comercial; F5 y XTTS además son pesados en CPU. MMS-TTS también es no comercial (CC BY-NC 4.0), pero se probó como referencia. |
 | Edge TTS | Necesita internet; no es local. |
 | Kitten TTS | Solo inglés, sin comprobar. |

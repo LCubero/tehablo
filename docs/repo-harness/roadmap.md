@@ -79,8 +79,7 @@ Antecedente aprobado el 2026-10-30: base confiable, medición (`RH-W-0003`), ser
 - **Dependencias:** ninguna; usar como punto de partida el [catálogo de voces gratuitas](../voces-gratuitas.md), sin asumir que todas sus fuentes son compatibles o ya están probadas.
 - **Estado:** `active`.
 - **Trabajo restante:**
-  - Decidir si se incorporan más voces como opciones (Kokoro, Supertonic, Piper `carlfm`; Phonon y 6 clonadas ya están) y cómo (frase por frase para no esperar al texto completo).
-  - Probar el ajuste castellano de `inferencekey` (con token).
+  - Decidir si se incorporan más voces como opciones (Kokoro, Supertonic, Piper `carlfm`, ajuste castellano de Pocket TTS de `inferencekey`; Phonon y 6 clonadas ya están) y cómo (frase por frase para no esperar al texto completo).
   - Probar las demás voces disponibles en el proyecto, no solo Lola.
   - Probar referencias de voz de Hugging Face y evaluar otras fuentes gratuitas.
   - Verificar compatibilidad real con Pocket TTS y el flujo local del proyecto antes de añadirlas como opciones utilizables.
@@ -100,6 +99,7 @@ Antecedente aprobado el 2026-10-30: base confiable, medición (`RH-W-0003`), ser
 - **Decisión (2026-11-13):** una marca de agua inaudible no descarta un motor (la persona responsable: «si la marca no se oye entonces si sirve»); NeuTTS Nano Spanish sigue como candidato.
 - **Trabajo completado (2026-11-13, escucha en Windows):** prueba aislada de NeuTTS Nano Spanish sin cambiar el entorno del proyecto. Probado: suena bien, usa más RAM que `lola` y `Regina`, no incorporado. Con PyTorch gasta ~4,6 GiB y va ~3× más lento que el tiempo real; con Q4 GGUF y decodificador ONNX, ~1,9 GiB y ~1,7× más rápido, con el mismo sonido ([resultados](../pruebas-de-voces.md#neutts-nano-spanish-frente-a-lola-y-regina-2026-11-13-windows)).
 - **Trabajo completado (2026-11-13, CuteTTS en Windows):** prueba aislada autorizada por la persona responsable, sin afectar la instalación actual. Licencia Apache-2.0 y descarga libre, pero en CPU gasta ~2,2–3,6 GiB y va 5–6× más lento que el tiempo real. La persona responsable consideró que no suena lo bastante bien para tanta RAM; no incorporado ([resultados](../pruebas-de-voces.md#cutetts-2026-11-13-windows)).
+- **Trabajo completado (2026-11-13, ajuste castellano en Windows):** prueba aislada de `inferencekey/pocket-tts-spanish-24l-castilian` en CPU, sin modificar el entorno, las voces ni los ajustes del proyecto. Descargado sin token (API HF: `gated: false`), con licencia CC BY 4.0 y atribución a Kyutai e inferencekey. Usa ~1,85–1,86 GiB al generar y alcanza aproximadamente el tiempo real (~0,96–0,98×). En escucha directa, no a ciegas, suena bien con la referencia de `Facundo` y algo robótica con la de `Camila`; probado, no incorporado, pendiente de decisión como opción ([resultados](../pruebas-de-voces.md#ajuste-castellano-de-pocket-tts-2026-11-13-windows)).
 - **Condición del siguiente avance:** la persona responsable sigue probando para tener varias opciones de voz (2026-10-30: «la idea es tratar de tener opciones de voz, no solo 1»); ya se incorporaron Phonon (`Regina`, `Iker`) y las 6 clonadas aprobadas; falta decidir sobre otros motores y voces.
 
 ### RH-W-0007: Modo GPU opcional
