@@ -36,8 +36,8 @@ class VoiceChannelTest(unittest.TestCase):
                          "ssh -p 2222 -i 'key file' -J jump -N -R 18766:127.0.0.1:18766 pepe@host")
         self.assertEqual(c.manual_command(argv, windows=True),
                          "ssh -p 2222 -i 'key file' -J jump -N -R 18766:127.0.0.1:18766 pepe@host")
-        plain = c.voice_argv(r'C:\WINDOWS\System32\OpenSSH\ssh.exe ld9@192.168.5.83', interactive=True)
-        self.assertEqual(c.manual_command(plain, windows=True), 'ssh -N -R 18766:127.0.0.1:18766 ld9@192.168.5.83')
+        plain = c.voice_argv(r'C:\WINDOWS\System32\OpenSSH\ssh.exe pepe@192.168.7.88', interactive=True)
+        self.assertEqual(c.manual_command(plain, windows=True), 'ssh -N -R 18766:127.0.0.1:18766 pepe@192.168.7.88')
         self.assertNotIn('StrictHostKeyChecking=no', argv)
     def test_literal_connection_identity(self):
         expected = c.connection_key('ssh pepe@host -p2222')

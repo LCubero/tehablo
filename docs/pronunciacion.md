@@ -93,7 +93,7 @@ El procedimiento de escucha con un agente (preguntar antes de reproducir, cuadro
 
 ## Fuentes
 
-- Regla de reescritura, convenciones de sonidos y términos técnicos: basadas en la skill `wk-en-pronun-tico-ld9` («pronunciación a lo tico», MIT) de Luis Diego Cubero Chavarría, adaptadas aquí para un modelo de voz.
+- Regla de reescritura, convenciones de sonidos y términos técnicos: basadas en la skill `wk-en-pronun-tico-ld9` («pronunciación a lo tico», MIT) de la persona responsable del proyecto, adaptadas aquí para un modelo de voz.
 - Reglas 6 y 7, variantes para la voz `lola` y cómo probarlas: guía privada de la persona responsable (`Pocket_TTS_Lola_Guia.md`, 2026-10-31). Sus propuestas de CMUdict, G2P y análisis gramatical no se adoptaron: tehablo usa un diccionario de excepciones.
 - Nombres de las letras en inglés: [UNAM, CCH — Spelling](https://portalacademico.cch.unam.mx/ingles1/gettingPersonalInformation/spelling).
 - Buenas prácticas de diccionarios de pronunciación (reescritura, probar cada entrada, repetir pruebas al cambiar de modelo o voz): [ElevenLabs](https://elevenlabs.io/blog/pronunciation-dictionary-guide), [Mahimai](https://mahimai.ca/learn/100x/tts/tts-pronunciation-control).
