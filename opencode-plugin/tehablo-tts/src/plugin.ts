@@ -60,6 +60,7 @@ export interface PluginDeps {
   clientOptions?: ServerOptions;
   loadSettings?: () => Settings;
   onError?: (error: unknown) => void;
+  pollIntervalMs?: number;
 }
 
 const HELP_TEXT = [
@@ -94,12 +95,16 @@ export async function createTehabloPlugin(ctx: PluginContext, deps: PluginDeps =
   const client = deps.client ?? new ServerClient({root: explicitRoot, ...deps.clientOptions});
   const readSettings = deps.loadSettings ?? (() => loadSettings(settingsDir(), client.root || undefined, DEFAULTS));
 
+  const pollIntervalMs = deps.pollIntervalMs ?? 500;
   let settings = readSettings();
   let auto = false;
   let applied = false;
   let epoch = 0;
   let readingSeq = 0;
   let disposed = false;
+  let pollEpoch = 0;
+  let pollFailures = 0;
+  let pollTimer: ReturnType<typeof setTimeout> | undefined;
 
   const spokenIds = new Set<string>();
   const pendingText = new Map<string, { messageId: string; text: string }>();
@@ -185,6 +190,47 @@ export async function createTehabloPlugin(ctx: PluginContext, deps: PluginDeps =
     return health;
   };
 
+  const cancelPoll = () => {
+    pollEpoch++;
+    pollFailures = 0;
+    if (pollTimer) {
+      clearTimeout(pollTimer);
+      pollTimer = undefined;
+    }
+  };
+
+  const schedulePoll = (expectedEpoch = pollEpoch) => {
+    if (disposed || expectedEpoch !== pollEpoch) return;
+    if (pollTimer) clearTimeout(pollTimer);
+    pollTimer = setTimeout(async () => {
+      pollTimer = undefined;
+      if (disposed || expectedEpoch !== pollEpoch) return;
+      try {
+        const status = await client.request('/status');
+        if (disposed || expectedEpoch !== pollEpoch) return;
+        pollFailures = 0;
+        const queueEmpty = !Array.isArray(status?.queue) || status.queue.length === 0;
+        if ((status?.state === 'idle' || status?.state === 'error') && queueEmpty) {
+          cancelPoll();
+          return;
+        }
+      } catch {
+        if (disposed || expectedEpoch !== pollEpoch) return;
+        if (++pollFailures >= 3) {
+          cancelPoll();
+          return;
+        }
+      }
+      if (!disposed && expectedEpoch === pollEpoch) schedulePoll(expectedEpoch);
+    }, pollIntervalMs);
+    pollTimer.unref?.();
+  };
+
+  const startPolling = () => {
+    cancelPoll();
+    schedulePoll(pollEpoch);
+  };
+
   const play = async (messageId: string, text: string, allowRepeat: boolean) => {
     const generation = epoch;
     const health = await boot(generation);
@@ -198,6 +244,8 @@ export async function createTehabloPlugin(ctx: PluginContext, deps: PluginDeps =
       lexicon: dictEnabled(settings, model, voice),
       ...(settings.policy === 'wait' ? {policy: 'wait'} : {}),
     });
+    if (generation !== epoch || disposed) return;
+    startPolling();
   };
 
   const resolveLatestResponse = async (sessionID: string): Promise<{ messageId: string; text: string } | undefined> => {
@@ -264,6 +312,7 @@ export async function createTehabloPlugin(ctx: PluginContext, deps: PluginDeps =
         }
         if (sub === 'stop') {
           epoch++;
+          cancelPoll();
           try {
             await client.stop();
             await notify(input.sessionID, 'Lectura detenida.', {variant: 'info'});
@@ -340,6 +389,7 @@ export async function createTehabloPlugin(ctx: PluginContext, deps: PluginDeps =
   return async () => {
     disposed = true;
     epoch++;
+    cancelPoll();
     controller.abort();
     await eventLoop;
     await Promise.resolve(rpc?.dispose()).catch(() => {});

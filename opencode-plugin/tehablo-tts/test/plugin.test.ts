@@ -488,3 +488,83 @@ test('eventLoop survives handleIdle errors and clears pendingText on session.exe
     h.cleanupDir();
   }
 });
+
+test('polls /status while reading is active and stops once idle', async () => {
+  const h = createHarness({
+    contexts: {
+      main: [{ id: 'msg-long', type: 'assistant', finish: 'stop', content: [{ type: 'text', text: 'Texto largo.' }] }],
+    },
+  });
+  const states = [
+    { id: 'msg-long:tehablo:1', queue: [], promoted: [], state: 'generating' },
+    { id: 'msg-long:tehablo:1', queue: [], promoted: [], state: 'playing' },
+    { id: 'msg-long:tehablo:1', queue: [], promoted: [], state: 'paused' },
+    { id: null, queue: ['msg-long:tehablo:1'], promoted: [], state: 'idle' },
+    { id: null, queue: [], promoted: [], state: 'idle' },
+  ];
+  let idx = 0;
+  const baseFetch = h.client['options'].fetch!;
+  h.client['options'].fetch = async (url: any, init: any) => {
+    if (new URL(url).pathname === '/status') {
+      h.calls.push({ path: '/status', body: undefined });
+      const reply = states[Math.min(idx, states.length - 1)];
+      idx++;
+      return Response.json(reply);
+    }
+    return baseFetch(url, init);
+  };
+
+  const cleanup = await createTehabloPlugin(h.ctx, { client: h.client, loadSettings: h.loadSettings, pollIntervalMs: 10 });
+  try {
+    await h.commands.get('tts')!({ sessionID: 'main', prompt: { text: '/tts play' } });
+    await new Promise(r => setTimeout(r, 120));
+
+    const statusCountAtIdle = h.calls.filter(c => c.path === '/status').length;
+    assert.equal(statusCountAtIdle, 5);
+
+    await new Promise(r => setTimeout(r, 50));
+    assert.equal(h.calls.filter(c => c.path === '/status').length, 5);
+  } finally {
+    await cleanup();
+    h.cleanupDir();
+  }
+});
+
+test('/tts stop and repeated /status failures halt keepalive polling', async () => {
+  const h = createHarness({
+    contexts: {
+      main: [{ id: 'msg-stop', type: 'assistant', finish: 'stop', content: [{ type: 'text', text: 'Lectura.' }] }],
+    },
+  });
+  let failStatus = false;
+  const baseFetch = h.client['options'].fetch!;
+  h.client['options'].fetch = async (url: any, init: any) => {
+    if (new URL(url).pathname === '/status') {
+      h.calls.push({ path: '/status', body: undefined });
+      if (failStatus) throw new Error('server down');
+      return Response.json({ id: 'msg-stop:tehablo:1', queue: [], promoted: [], state: 'playing' });
+    }
+    return baseFetch(url, init);
+  };
+
+  const cleanup = await createTehabloPlugin(h.ctx, { client: h.client, loadSettings: h.loadSettings, pollIntervalMs: 10 });
+  try {
+    const tts = h.commands.get('tts')!;
+    await tts({ sessionID: 'main', prompt: { text: '/tts play' } });
+    await new Promise(r => setTimeout(r, 70));
+    assert.ok(h.calls.filter(c => c.path === '/status').length >= 2);
+
+    await tts({ sessionID: 'main', prompt: { text: '/tts stop' } });
+    const countAfterStop = h.calls.filter(c => c.path === '/status').length;
+    await new Promise(r => setTimeout(r, 50));
+    assert.equal(h.calls.filter(c => c.path === '/status').length, countAfterStop);
+
+    failStatus = true;
+    await tts({ sessionID: 'main', prompt: { text: '/tts play' } });
+    await new Promise(r => setTimeout(r, 120));
+    assert.equal(h.calls.filter(c => c.path === '/status').length - countAfterStop, 3);
+  } finally {
+    await cleanup();
+    h.cleanupDir();
+  }
+});
