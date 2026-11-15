@@ -1,0 +1,16 @@
+{
+  "name": "tehablo-tts",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./index.ts",
+    "./tui": "./tui.ts",
+    "./rpc": "./rpc.ts"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.ts"
+  },
+  "dependencies": {
+    "@opencode/plugin": "^2.3.0"
+  }
+}
