@@ -12,6 +12,7 @@ Guía de uso detallado, instalación y referencia para quien trabaja en teHablo.
 8. [Uso en Pi](#uso-en-pi)
 9. [Audio por SSH](#audio-por-ssh)
 10. [TUI](#uso-tui), [consola](#uso-consola-simple) y [voces](#voces)
+11. [Llevar teHablo a otro agente](#llevar-tehablo-a-otro-agente)
 
 ---
 
@@ -663,6 +664,32 @@ Listado y licencias: [docs/pocket-tts.md](pocket-tts.md#7-catálogo-de-voces-pre
 Solo hace falta para la primera descarga; después funciona sin internet.
 
 Las voces incluidas ya vienen procesadas en `voices/<nombre>.safetensors` (unos 11 MB cada una): cargan al instante y no piden token. Solo para recrearlas desde los WAV hace falta el token: `python scripts/get_voices.py` descarga las referencias y `python scripts/get_voices.py --prepare` las vuelve a preparar.
+
+## Llevar teHablo a otro agente
+
+Para usar teHablo desde otro agente (por ejemplo OpenCode) no hace falta tocar el servidor: la extensión de Pi es solo un cliente HTTP de [`src/tehablo_server.py`](../src/tehablo_server.py). Un plugin nuevo hace lo mismo.
+
+- **Dónde va:** en su propia carpeta junto a `pi-extension/` (por ejemplo `opencode-plugin/`), con sus pruebas. Si cambias el servidor, la extensión de Pi debe seguir pasando sus pruebas.
+- **Arrancar el servidor:** con el Python del entorno que crea el instalador (`.venv-pocket` o `.venv-pocket-<os>`): `python src/tehablo_server.py --port 8765`. Opciones: `--model`, `--voice`, `--speed`, `--audio local|ssh` e `--idle-exit`. El puerto también se cambia con `TEHABLO_PORT`.
+- **Se apaga solo:** tras 30 s sin peticiones autenticadas. Mantenlo vivo consultando `/status` o arráncalo con `--idle-exit 0`, que lo desactiva.
+- **Código de vinculación:** toda petición, salvo `GET /health`, lleva la cabecera `X-Tehablo-Codigo` con el contenido de `~/.tehablo/ssh-codigo` (32 caracteres hexadecimales; el servidor crea el archivo). Sin él responde 403.
+- **Formato:** los `POST` llevan `Content-Type: application/json` y un objeto JSON (máximo 1 MiB). Se rechaza cualquier petición con cabecera `Origin`. Las respuestas son JSON; los errores, `{"error": "..."}`: 400 entrada inválida, 403 sin código o con `Origin`, 404 ruta desconocida, 415 sin JSON y 503 fallo del servidor.
+
+| Ruta | Cuerpo | Respuesta |
+|---|---|---|
+| `GET /health` | — | `ok`, `version`, `ready`, modelo, voz y ajustes actuales; no necesita código |
+| `GET /status` | — | `state` (`idle`, `loading`, `generating`, `playing`, `paused`, `error`), `id`, `audio`, `error` y `queue` si hay cola |
+| `GET /voices` | — | `voices` (del modelo actual) y `catalog` (todas, con `downloaded`) |
+| `GET /devices`, `GET /devices/all` | — | Salidas de audio |
+| `POST /speak` | `{"id": "...", "text": "...", "policy": "stop", "lexicon": true}` | 202. `stop` corta la lectura actual; `wait` la pone en cola (máximo 10) |
+| `POST /pause`, `/resume`, `/stop` | `{"id": "..."}` (opcional) | `{"state": ...}`. `/stop` sin `id` también vacía la cola |
+| `POST /config` | `voice`, `model`, `audio`, `device`, `speed`, `rhythm`, `volume` | Lo mismo que `/health`, ya con los cambios |
+| `POST /prepare` | `{"model": "...", "voice": "..."}` | 202; descarga una voz del catálogo que aún no está; el avance sale en `preparation` de `/health` |
+| `POST /shutdown` | `{}` | Apaga el servidor |
+
+Referencia en la extensión de Pi: [`src/server.ts`](../pi-extension/tehablo-tts/src/server.ts) (arranque, código y peticiones), [`src/text.ts`](../pi-extension/tehablo-tts/src/text.ts) (texto que se envía a leer) y [`src/settings.ts`](../pi-extension/tehablo-tts/src/settings.ts) (ajustes guardados). Para que la CI corra las pruebas del plugin, agrégalas a `.github/workflows/tests.yml` en el mismo PR.
+
+El harness del repositorio está instalado solo para Pi. OpenCode carga `AGENTS.md`, que le pide al agente leer [REPO-HARNESS.md](../REPO-HARNESS.md); para contribuir basta con seguir sus reglas.
 
 ## Qué se puede agregar, modificar o aprovechar
 
