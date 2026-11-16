@@ -25,6 +25,8 @@ Este archivo proyecta solo hechos verificados del proyecto: registros activos, b
 
 ## Trabajo reciente completado
 
+- `RH-W-0046` (`completed`, 2026-11-15): integración inicial de OpenCode fusionada en GitHub; reproducir/detener confirmado por la persona responsable en Windows y CI aprobada en Windows/Ubuntu. Audio manual en Linux no verificado. Menú y selección/descarga de voces aplazados hasta nueva aprobación explícita. [Evidencia, límites y avisos no bloqueantes](roadmap.md#rh-w-0046-integración-inicial-del-plugin-de-opencode).
+
 - `RH-W-0005` (2026-11-13): publicadas 25 voces de Phonon multilingüe con descarga individual, ritmo nativo y menú de voces con pestañas por motor, voz activa primero y favoritas; aprobado por la persona responsable tras la prueba manual en Pi. Sigue activo por las decisiones pendientes sobre Supertonic y Piper; `em_santa`/Kokoro queda en pausa por decisión del 2026-11-14, sin integración ([registro canónico](roadmap.md#rh-w-0005-probar-voces-existentes-y-ampliar-fuentes-gratuitas-compatibles)).
 
 - `RH-W-0032` (`completed`, 2026-11-10): opción **Iconos: Símbolos / Texto** en `[ ≡ ]` y [significado de cada icono](../desarrollo.md#barra-de-controles) (`6365882`, 2026-11-06); video regrabado con JetBrainsMonoNL NF y aprobado por la persona responsable (2026-11-10, `15fce1c`).

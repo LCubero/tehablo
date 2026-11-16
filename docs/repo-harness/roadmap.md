@@ -489,6 +489,23 @@ Antecedente aprobado el 2026-10-30: base confiable, medición (`RH-W-0003`), ser
 ## Registros resueltos
 <!-- doc-role:resolved-records -->
 
+### RH-W-0046: Integración inicial del plugin de OpenCode
+
+- **Origen:** solicitud de la persona responsable de integrar el plugin aportado por una colaboración.
+- **Prioridad:** P2; integración inicial solicitada, sin ampliar funciones.
+- **Dependencias:** servidor local de teHablo existente.
+- **Estado:** `completed`.
+- **Trabajo restante:** ninguno dentro de la integración inicial.
+- **Trabajo completado (2026-11-15):** plugin integrado en GitHub mediante [PR #2](https://github.com/LCubero/tehablo/pull/2), fusionado por squash en [0520462](https://github.com/LCubero/tehablo/commit/0520462536c86981e5697a08dcc9f176c72183a9). La persona responsable probó OpenCode en Windows y confirmó reproducir/detener tras la corrección.
+- **Evidencia verificada por el agente principal:** [CI 43807167408](https://github.com/LCubero/tehablo/actions/runs/43807167408) aprobada para Python, Pi y OpenCode en Windows y Ubuntu; 17 pruebas del plugin y 251 de Pi en el árbol del PR. Revisión nativa aprobada tras corregir la propiedad de detener por sesión, sin hallazgos bloqueantes. Audio manual en Linux no verificado.
+- **Aplazamientos:** menú y selección/descarga de voces quedan `deferred`, hasta nueva aprobación explícita de alcance por la persona responsable; no son requisitos nuevos ni trabajo autorizado.
+- **Avisos de revisión no bloqueantes:** inferencias del código, no reproducidas en ejecución; aplazadas hasta volver a tocar la lógica correspondiente o recibir una reproducción reportada. Rutas relativas al código del plugin:
+  - `src/text.ts:35`: la ausencia de marcador de finalización podría aceptar texto aún en streaming.
+  - `src/plugin.ts:235–291`: un arranque cancelado podría conservar el ID de un mensaje no leído.
+  - `src/server.ts:157–168`: un proceso vivo pero no saludable al arrancar podría atascar el consumidor serial de eventos.
+- **Exclusiones y decisión:** solo cierre documental de la integración inicial; sin cambios de código, nuevas funciones ni correcciones de los avisos ahora.
+- **Condición del siguiente avance:** ninguna dentro del alcance completado; las ampliaciones requieren nueva aprobación explícita y los avisos conservan el disparador anterior.
+
 ### RH-W-0032: Iconos de pausa y encendido que se vean bien
 
 - **Origen:** solicitud de la persona responsable del 2026-11-05, al ver el video del README: «el icono de pausa se me muy mal en el showreel» y «quiza usa esto [ || ], pal show reel, o buscar un icono o algo que sirva se vea centrado y del mismo tamañao o parecido que el de play. para que no se vea raro al cambiar (regla del bar)».

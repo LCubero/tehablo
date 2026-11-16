@@ -6,6 +6,8 @@ Este archivo registra los cambios completados en orden cronológico. Las version
 
 ## 2026-11-15
 
+- OpenCode: integración inicial del plugin fusionada en [PR #2](https://github.com/LCubero/tehablo/pull/2) ([0520462](https://github.com/LCubero/tehablo/commit/0520462536c86981e5697a08dcc9f176c72183a9)); reproducir/detener corregido y confirmado en Windows. CI aprobada en Windows y Ubuntu; [evidencia y límites](docs/repo-harness/roadmap.md#rh-w-0046-integración-inicial-del-plugin-de-opencode).
+
 - Pi, menú de voces: las voces descargadas («✓ lista») salen primero, debajo de la activa y las favoritas; el acento solo ordena dentro de cada grupo. «↓ descargar» se resalta solo si esa descarga aún necesita el token.
 - Pi, ajustes: en todas las pantallas los botones («[ Cerrar ]», «[ Volver ]»…) pasan al borde derecho y un clic en «Esc» hace lo mismo que la tecla: cierra en la principal y vuelve atrás en las demás. La ayuda de la principal muestra «Tab botón» solo en la fila donde Tab sirve (Audio SSH: Copiar y Ver).
 
