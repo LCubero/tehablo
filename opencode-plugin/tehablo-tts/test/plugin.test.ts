@@ -10,6 +10,23 @@ import { ServerClient, resolveTehabloRoot } from '../src/server.ts';
 import { DEFAULTS, type Settings } from '../src/settings.ts';
 import { cleanText, finalAssistantText } from '../src/text.ts';
 
+async function waitUntil(condition: () => boolean, message = 'Condition timed out') {
+  const deadline = Date.now() + 2000;
+  while (!condition()) {
+    assert.ok(Date.now() < deadline, message);
+    await new Promise(resolve => setTimeout(resolve, 5));
+  }
+}
+
+async function assertStable(count: () => number) {
+  const expected = count();
+  const deadline = Date.now() + 100;
+  await waitUntil(() => {
+    assert.equal(count(), expected);
+    return Date.now() >= deadline;
+  });
+}
+
 interface EventItem {
   type: string;
   location?: { directory?: string };
@@ -48,7 +65,7 @@ function createHarness(options: {
     } else {
       queue.push(event);
     }
-    await new Promise(r => setTimeout(r, 15));
+    await waitUntil(() => waiting !== undefined || closed);
   };
 
   const fetcher = async (url: any, init: any) => {
@@ -489,6 +506,69 @@ test('eventLoop survives handleIdle errors and clears pendingText on session.exe
   }
 });
 
+test('unload finishes while a spawned server never becomes healthy', async () => {
+  const h = createHarness({ contexts: {
+    main: [{ id: 'msg-boot', type: 'assistant', finish: 'stop', content: [{ type: 'text', text: 'Waiting.' }] }],
+  } });
+  const cleanup = await createTehabloPlugin(h.ctx, { client: h.client, loadSettings: h.loadSettings });
+  let releaseDelay: (() => void) | undefined;
+  let bootWaiting = false;
+  try {
+    await h.commands.get('tts')!({ sessionID: 'main', prompt: { text: '/tts auto' } });
+    h.client['options'].fetch = (async (url: any) => {
+      h.calls.push({ path: new URL(url).pathname, body: undefined });
+      throw new Error('Server offline');
+    }) as any;
+    h.client['options'].openLog = () => { throw new Error('No log'); };
+    h.client['options'].spawn = (() => ({ once() {}, unref() {}, kill() { assert.fail('Shared server must stay alive'); } })) as any;
+    h.client['options'].delay = () => {
+      bootWaiting = true;
+      return new Promise(resolve => { releaseDelay = resolve; });
+    };
+    const event = h.pushEvent({ type: 'session.execution.succeeded', data: { sessionID: 'main' } });
+    await waitUntil(() => bootWaiting);
+    let finished = false;
+    const unloading = cleanup().then(() => { finished = true; });
+    // Release the startup delay only after cleanup has had a chance to close the client.
+    await Promise.resolve();
+    releaseDelay!();
+    await waitUntil(() => finished, 'Unload did not finish during server startup');
+    await unloading;
+    await event;
+    await assertStable(() => h.calls.filter(c => c.path === '/health').length);
+    assert.equal(h.calls.some(c => c.path === '/shutdown' || c.path === '/stop'), false);
+  } finally {
+    const closing = h.client.shutdown();
+    releaseDelay?.();
+    await closing;
+    await cleanup();
+    h.cleanupDir();
+  }
+});
+
+test('auto off cancels an idle handler waiting for session lookup', async () => {
+  const h = createHarness({ contexts: {
+    main: [{ id: 'msg-race', type: 'assistant', finish: 'stop', content: [{ type: 'text', text: 'Stale.' }] }],
+  } });
+  const cleanup = await createTehabloPlugin(h.ctx, { client: h.client, loadSettings: h.loadSettings });
+  let resolveSession: ((info: { id: string }) => void) | undefined;
+  h.ctx.session.get = () => new Promise(resolve => { resolveSession = resolve; });
+  try {
+    const tts = h.commands.get('tts')!;
+    await tts({ sessionID: 'main', prompt: { text: '/tts auto' } });
+    const event = h.pushEvent({ type: 'session.execution.succeeded', data: { sessionID: 'main' } });
+    await waitUntil(() => resolveSession !== undefined);
+    await tts({ sessionID: 'main', prompt: { text: '/tts auto' } });
+    resolveSession!({ id: 'main' });
+    await event;
+    assert.equal(h.calls.filter(c => c.path === '/speak').length, 0);
+  } finally {
+    resolveSession?.({ id: 'main' });
+    await cleanup();
+    h.cleanupDir();
+  }
+});
+
 test('polls /status while reading is active and stops once idle', async () => {
   const h = createHarness({
     contexts: {
@@ -517,12 +597,12 @@ test('polls /status while reading is active and stops once idle', async () => {
   const cleanup = await createTehabloPlugin(h.ctx, { client: h.client, loadSettings: h.loadSettings, pollIntervalMs: 10 });
   try {
     await h.commands.get('tts')!({ sessionID: 'main', prompt: { text: '/tts play' } });
-    await new Promise(r => setTimeout(r, 120));
+    await waitUntil(() => idx >= states.length);
 
     const statusCountAtIdle = h.calls.filter(c => c.path === '/status').length;
     assert.equal(statusCountAtIdle, 5);
 
-    await new Promise(r => setTimeout(r, 50));
+    await assertStable(() => h.calls.filter(c => c.path === '/status').length);
     assert.equal(h.calls.filter(c => c.path === '/status').length, 5);
   } finally {
     await cleanup();
@@ -551,17 +631,18 @@ test('/tts stop and repeated /status failures halt keepalive polling', async () 
   try {
     const tts = h.commands.get('tts')!;
     await tts({ sessionID: 'main', prompt: { text: '/tts play' } });
-    await new Promise(r => setTimeout(r, 70));
+    await waitUntil(() => h.calls.filter(c => c.path === '/status').length >= 2);
     assert.ok(h.calls.filter(c => c.path === '/status').length >= 2);
 
     await tts({ sessionID: 'main', prompt: { text: '/tts stop' } });
     const countAfterStop = h.calls.filter(c => c.path === '/status').length;
-    await new Promise(r => setTimeout(r, 50));
+    await assertStable(() => h.calls.filter(c => c.path === '/status').length);
     assert.equal(h.calls.filter(c => c.path === '/status').length, countAfterStop);
 
     failStatus = true;
     await tts({ sessionID: 'main', prompt: { text: '/tts play' } });
-    await new Promise(r => setTimeout(r, 120));
+    await waitUntil(() => h.calls.filter(c => c.path === '/status').length - countAfterStop >= 3);
+    await assertStable(() => h.calls.filter(c => c.path === '/status').length);
     assert.equal(h.calls.filter(c => c.path === '/status').length - countAfterStop, 3);
   } finally {
     await cleanup();

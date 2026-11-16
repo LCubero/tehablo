@@ -231,8 +231,7 @@ export async function createTehabloPlugin(ctx: PluginContext, deps: PluginDeps =
     schedulePoll(pollEpoch);
   };
 
-  const play = async (messageId: string, text: string, allowRepeat: boolean) => {
-    const generation = epoch;
+  const play = async (messageId: string, text: string, allowRepeat: boolean, generation = epoch) => {
     const health = await boot(generation);
     if (generation !== epoch || disposed) return;
     const model = typeof health?.model === 'string' ? health.model : (settings.model || 'spanish');
@@ -265,9 +264,11 @@ export async function createTehabloPlugin(ctx: PluginContext, deps: PluginDeps =
   };
 
   const handleIdle = async (sessionID: string) => {
+    const generation = epoch;
     await loadSpoken;
-    if (!auto || disposed) return;
+    if (!auto || disposed || generation !== epoch) return;
     const info = await ctx.session.get({sessionID});
+    if (!auto || disposed || generation !== epoch) return;
     if (info.parentID != null || !sameLocation(info.location?.directory, ctx.location.directory)) {
       pendingText.delete(sessionID);
       return;
@@ -277,12 +278,13 @@ export async function createTehabloPlugin(ctx: PluginContext, deps: PluginDeps =
       return;
     }
     const candidate = await resolveLatestResponse(sessionID);
+    if (!auto || disposed || generation !== epoch) return;
     pendingText.delete(sessionID);
     if (!candidate || spokenIds.has(candidate.messageId)) return;
 
     spokenIds.add(candidate.messageId);
     try {
-      await play(candidate.messageId, candidate.text, false);
+      await play(candidate.messageId, candidate.text, false, generation);
       await saveSpoken();
     } catch (error) {
       spokenIds.delete(candidate.messageId);
@@ -391,8 +393,8 @@ export async function createTehabloPlugin(ctx: PluginContext, deps: PluginDeps =
     epoch++;
     cancelPoll();
     controller.abort();
+    await client.shutdown().catch(() => {});
     await eventLoop;
     await Promise.resolve(rpc?.dispose()).catch(() => {});
-    await client.shutdown().catch(() => {});
   };
 }
