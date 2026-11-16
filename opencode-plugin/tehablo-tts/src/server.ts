@@ -56,15 +56,10 @@ export class ServerClient {
   private child?: ReturnType<typeof nodeSpawn>;
   private starting?: Promise<void>;
   private closed = false;
-  private ending = false;
-  private poweringOff?: Promise<void>;
-  private used = false;
   private readings = new Set<string>();
   private inFlight = new Set<string>();
   /** Extra arguments for the next spawned server, such as the saved model and voice. */
   startArgs: string[] = [];
-  /** Hugging Face token for the next spawned server, kept only in memory and passed in its environment. */
-  token?: string;
   /** True when this client spawned the running server, so it already started with startArgs. */
   spawned = false;
 
@@ -73,8 +68,6 @@ export class ServerClient {
     this.root = resolveTehabloRoot(options.root, process.env.TEHABLO_ROOT, options.exists ?? existsSync);
     this.base = `http://127.0.0.1:${options.port ?? process.env.TEHABLO_PORT ?? '8765'}`;
   }
-
-  beginSession() { this.closed = false; this.used = false; this.ending = false; }
 
   async request(path: string, body?: unknown): Promise<any> {
     const id = (body as {id?: string} | undefined)?.id;
@@ -109,9 +102,7 @@ export class ServerClient {
   }
 
   async ensure(): Promise<void> {
-    await this.poweringOff;
     if (this.closed) throw new Error('Sesión TTS cerrada.');
-    this.used = true;
     if (!this.starting) this.starting = this.start().finally(() => { this.starting = undefined; });
     return this.starting;
   }
@@ -151,7 +142,7 @@ export class ServerClient {
       let child: ReturnType<typeof nodeSpawn>;
       try {
         child = (this.options.spawn ?? nodeSpawn)(python, ['-X', 'faulthandler', join(this.root, 'src', 'tehablo_server.py'), '--port', new URL(this.base).port, ...this.startArgs], {
-          cwd: this.root, env: this.token ? {...process.env, HF_TOKEN: this.token} : undefined, stdio: log === undefined ? 'ignore' : ['ignore', log, log], windowsHide: true, detached: true,
+          cwd: this.root, stdio: log === undefined ? 'ignore' : ['ignore', log, log], windowsHide: true, detached: true,
         });
       } finally {
         if (log !== undefined) (this.options.closeLog ?? closeSync)(log);
@@ -196,27 +187,18 @@ export class ServerClient {
   }
 
   async shutdown() {
-    this.ending = true;
-    await this.poweringOff;
     await this.close();
   }
 
   /** Only cancel this client's readings on unload; idle exit shuts down the shared Python server. */
-  private async close(shared = false) {
+  private async close() {
     if (this.closed) return;
     this.closed = true;
     await this.starting?.catch(() => {});
     let failure: unknown;
     try {
-      if (shared && this.used) await this.request('/stop', {});
-      else await this.stop();
+      await this.stop();
     } catch (error) { failure = error; }
-    if (shared) {
-      try { await this.request('/shutdown', {}); }
-      catch (error) {
-        if (this.child) { this.child.kill(); failure = error; }
-      }
-    }
     this.child = undefined;
     if (failure) throw failure;
   }

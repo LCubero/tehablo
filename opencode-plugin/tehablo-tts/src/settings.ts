@@ -1,5 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync, renameSync, unlinkSync } from 'node:fs';
-import { randomUUID } from 'node:crypto';
+import { existsSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 
@@ -64,35 +63,3 @@ export function loadSettings(dir: string, project?: string, fallback: Settings =
   return s;
 }
 
-/** Merge only this session's edits into the latest file; voice and model form one choice. */
-export function saveSettings(dir: string, settings: Settings, previous?: Settings): void {
-  const merged = previous ? loadSettings(dir, undefined, previous) : structuredClone(settings);
-  if (previous) {
-    for (const key of ['volume', 'speed', 'rhythm', 'toolbar', 'indicator', 'icons', 'audio', 'sshListo', 'device', 'policy', 'shortcutsOn', 'voices'] as const)
-      if (JSON.stringify(settings[key]) !== JSON.stringify(previous[key])) (merged as any)[key] = settings[key];
-    if (settings.model !== previous.model || settings.voice !== previous.voice) {
-      merged.model = settings.model; merged.voice = settings.voice;
-    }
-    const beforeFavorites = previous.favorites ?? [], afterFavorites = settings.favorites ?? [];
-    for (const name of new Set([...beforeFavorites, ...afterFavorites])) {
-      if (beforeFavorites.includes(name) === afterFavorites.includes(name)) continue;
-      merged.favorites = merged.favorites.filter(v => v !== name);
-      if (afterFavorites.includes(name)) merged.favorites.push(name);
-    }
-    for (const key of ['dict', 'shortcuts'] as const) {
-      const before = previous[key], after = settings[key];
-      for (const entry of new Set([...Object.keys(before), ...Object.keys(after)])) {
-        if ((before as any)[entry] === (after as any)[entry]) continue;
-        if (Object.hasOwn(after, entry)) (merged[key] as any)[entry] = (after as any)[entry];
-        else delete (merged[key] as any)[entry];
-      }
-    }
-  }
-  const {auto: _auto, ...shared} = merged;
-  mkdirSync(dir, {recursive: true, mode: 0o700});
-  const temporary = join(dir, `${FILE}.${randomUUID()}.tmp`);
-  try {
-    writeFileSync(temporary, JSON.stringify(shared, null, 2) + '\n', {mode: 0o600, flag: 'wx'});
-    renameSync(temporary, join(dir, FILE));
-  } finally { if (existsSync(temporary)) unlinkSync(temporary); }
-}
