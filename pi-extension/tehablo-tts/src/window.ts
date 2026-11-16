@@ -116,7 +116,8 @@ export class SettingsWindow {
     const selected = this.previousVoices[this.pick];
     const accent = (v: VoiceRow) => v.model === 'phonon' ? (v.note.includes('España') ? 0 : 1) : 0;
     const rank = (v: VoiceRow) => v.downloaded ? 0 : 1;
-    const list = this.c.voices().filter(v => v.model === this.engine).map((v, i) => ({v, i})).sort((a, b) => Number(this.isActive(b.v)) - Number(this.isActive(a.v)) || Number(this.isFavorite(b.v)) - Number(this.isFavorite(a.v)) || accent(a.v) - accent(b.v) || rank(a.v) - rank(b.v) || a.i - b.i).map(x => x.v);
+    // Ready (downloaded) voices come first so they are seen first; accent only orders within each group.
+    const list = this.c.voices().filter(v => v.model === this.engine).map((v, i) => ({v, i})).sort((a, b) => Number(this.isActive(b.v)) - Number(this.isActive(a.v)) || Number(this.isFavorite(b.v)) - Number(this.isFavorite(a.v)) || rank(a.v) - rank(b.v) || accent(a.v) - accent(b.v) || a.i - b.i).map(x => x.v);
     const index = selected ? list.findIndex(v => v.model === selected.model && v.voice === selected.voice) : -1;
     if (index >= 0) this.pick = index;
     this.previousVoices = list;
@@ -215,6 +216,17 @@ export class SettingsWindow {
     ] as any[];
   }
 
+  /** What Esc does on each page; the key and a click on «Esc» in the footer share it. */
+  escape() {
+    if (this.page === 'shortcuts') { if (this.capturing) { this.capturing = false; this.scError = ''; } else this.home(); }
+    else if (this.page === 'code') this.closeCode();
+    else if (this.page === 'devices') this.page = 'main';
+    else if (this.page === 'main') this.done();
+    else if (this.page === 'voices') this.home();
+    else if (this.page === 'download') { if ((this.result === 'done' && !this.downloading) || this.downloading) this.home(); else this.page = 'voices'; }
+    else this.page = 'voices';
+  }
+
   key(data: string) {
     const m = (id: string) => this.kb.matches(data, id);
     if (m('tui.select.up')) return 'up';
@@ -239,7 +251,7 @@ export class SettingsWindow {
     const k = this.key(data);
     if (this.page === 'shortcuts') {
       if (this.capturing) this.capture(data);
-      else if (k === 'esc') this.home();
+      else if (k === 'esc') this.escape();
       else if (k === 'up') { this.scRow = (this.scRow - 1 + ACTIONS.length) % ACTIONS.length; this.col = 0; }
       else if (k === 'down') { this.scRow = (this.scRow + 1) % ACTIONS.length; this.col = 0; }
       else if (k === 'left' || k === 'right') this.col = k === 'right' && this.c.state().settings.shortcuts[ACTIONS[this.scRow]] ? 1 : 0;
@@ -251,14 +263,14 @@ export class SettingsWindow {
     }
     if (this.page === 'code') {
       const actions = [() => { void this.copyCode(); }, () => this.closeCode(), () => this.done()];
-      if (k === 'esc') this.closeCode();
+      if (k === 'esc') this.escape();
       else if (k === 'left' || k === 'right') this.col = Math.max(0, Math.min(2, this.col + (k === 'right' ? 1 : -1)));
       else if (k === 'enter') { const run = actions[this.col]; if (this.col === 2) { run(); return; } run(); }
       this.redraw();
       return;
     }
     if (this.page === 'devices') {
-      if (k === 'esc') this.page = 'main';
+      if (k === 'esc') this.escape();
       else if (data.toLowerCase() === 'r') { void this.refreshDeviceList(); }
       else if (data === '\t') this.deviceToggleFocused = !this.deviceToggleFocused;
       else if (k === 'up' || k === 'down') {
@@ -273,7 +285,7 @@ export class SettingsWindow {
     }
     if (this.page === 'main') {
       const rows = this.mainRows(), r = rows[this.row];
-      if (k === 'esc') { this.done(); return; }
+      if (k === 'esc') { this.escape(); return; }
       if (k === 'up') { this.row = (this.row - 1 + rows.length) % rows.length; this.col = 0; }
       else if (k === 'down') { this.row = (this.row + 1) % rows.length; this.col = 0; }
       else if ((k === 'left' || k === 'right') && r.step) r.step(k === 'right' ? 1 : -1);
@@ -292,7 +304,7 @@ export class SettingsWindow {
       }
     } else if (this.page === 'voices') {
       const list = this.order();
-      if (k === 'esc') this.home();
+      if (k === 'esc') this.escape();
       else if (data === '\t' || data === '\x1b[9u') { const engines = this.engines(); this.switchEngine(engines[(engines.indexOf(this.engine) + 1) % engines.length] ?? ''); }
       else if (k === 'up') this.pick = list.length ? (this.pick - 1 + list.length) % list.length : 0;
       else if (k === 'down') this.pick = list.length ? (this.pick + 1) % list.length : 0;
@@ -305,13 +317,13 @@ export class SettingsWindow {
       else if ((k === 'left' || k === 'right') && list[this.pick]) this.c.toggleDict(list[this.pick]);
     } else if (this.page === 'download') {
       const done = this.result === 'done' && !this.downloading;
-      if (k === 'esc') { if (done || this.downloading) this.home(); else this.page = 'voices'; }
+      if (k === 'esc') this.escape();
       else if (this.downloading) { /* Wait: Esc goes back to the menu, the download goes on. */ }
       else if (k === 'left' || k === 'right') this.col = k === 'right' ? 1 : 0;
       else if (k === 'enter' && done) { if (this.col === 0) { this.done(); return; } this.home(); }
       else if (k === 'enter') { if (this.col === 0) this.confirm(); else this.page = 'voices'; }
     } else {
-      if (k === 'esc') this.page = 'voices';
+      if (k === 'esc') this.escape();
       else if (k === 'enter') this.saveToken();
       else if (k === 'back') this.token = this.token.slice(0, -1);
       else if (!k) this.token += this.text(data);
@@ -353,6 +365,12 @@ export class SettingsWindow {
       }
       line([{text: ' ' + current, style: 'error'}]);
     };
+    // Every footer: help on the left with a clickable «Esc» (same as the key), buttons at the right edge.
+    const footer = (help: string, buttons: Seg[], after = '') => {
+      const left: Seg[] = [{text: ' ' + help, style: 'dim'}, {text: 'Esc', style: 'dim', fn: () => this.escape()}, ...(after ? [{text: after, style: 'dim'}] : [])];
+      const used = [...left, ...buttons].reduce((n, g) => n + width(g.text), 0) + 1;
+      line([...left, {text: ' '.repeat(Math.max(1, IN - used))}, ...buttons, {text: ' '}]);
+    };
     const titles = {shortcuts: ' Atajos de teclado ', main: ' teHablo · Ajustes ', code: ' Código SSH ', devices: ' Salida de audio ', voices: ' Elegir voz ', download: ' Descargar voz ', token: ' Activar voces con cuenta gratis '};
     const title = titles[this.page], left = Math.floor((IN - width(title)) / 2);
     out.push(th.fg('border', '╭' + '─'.repeat(left)) + th.fg('accent', title) + th.fg('border', '─'.repeat(IN - left - width(title)) + '╮'));
@@ -373,7 +391,7 @@ export class SettingsWindow {
       line();
       line(this.capturing ? [{text: ' Presiona la combinación (Ctrl o Alt + letra o número) · Esc cancela', style: 'warning'}] : []);
       line(this.scError ? [{text: ' ' + this.scError, style: 'error'}] : []);
-      line([{text: ' '}, {text: '[ Volver ]', style: 'accent', fn: () => this.home()}, {text: '   ↑↓ fila · ←→ botón · Enter · ⌫ quitar · Esc', style: 'dim'}]);
+      footer('↑↓ fila · ←→ botón · Enter · ⌫ quitar · ', [{text: '[ Volver ]', style: 'accent', fn: () => this.home()}]);
     } else if (this.page === 'code') {
       line([{text: ' Código de vinculación de este servidor:'}]);
       line();
@@ -383,8 +401,7 @@ export class SettingsWindow {
       line([{text: ' No lo compartas.', style: 'dim'}]);
       line(this.codeStatus ? [{text: ' ' + this.codeStatus, style: 'dim'}] : []);
       const buttons: [string, () => void][] = [['[ Copiar ]', () => { void this.copyCode(); }], ['[ Volver ]', () => this.closeCode()], ['[ Cerrar ]', () => this.done()]];
-      line([{text: ' '}, ...buttons.flatMap(([text, fn], j) => [{text, style: this.col === j ? 'accent' : undefined, fn}, {text: ' '}]),
-        {text: '  ←→ elegir · Enter · Esc', style: 'dim'}]);
+      footer('←→ elegir · Enter · ', buttons.flatMap(([text, fn], j) => [...(j ? [{text: ' '}] : []), {text, style: this.col === j ? 'accent' : undefined, fn}]));
     } else if (this.page === 'main') {
       this.mainRows().forEach((r: any, i: number) => {
         if (r.section) line([{text: '   ' + r.section, style: 'dim'}]);
@@ -406,7 +423,9 @@ export class SettingsWindow {
       });
       line(this.downloading && this.notice ? [{text: ' ' + this.notice}] : []);
       const enter = this.mainRows()[this.row]?.label === 'Salida' && this.c.state().settings.audio === 'local' ? 'Enter lista' : 'Enter';
-      line([{text: ' '}, {text: '[ Cerrar ]', style: 'accent', fn: () => this.done()}, {text: `   ↑↓ elegir · ←→ cambiar · Tab botón · ${enter} · Esc`, style: 'dim'}]);
+      // Tab only helps on a row whose ←→ change a value and that has 2+ buttons (Audio SSH: Copiar, Ver).
+      const r = this.mainRows()[this.row], tab = r?.step && (r.buttons ?? []).filter((b: any) => b[1]).length > 1 ? 'Tab botón · ' : '';
+      footer(`↑↓ elegir · ←→ cambiar · ${tab}${enter} · `, [{text: '[ Cerrar ]', style: 'accent', fn: () => this.done()}]);
     } else if (this.page === 'devices') {
       line([{text: this.deviceToggleFocused ? ' ▶ ' : '   ', style: 'accent'},
         {text: `[ Mostrar ocultos: ${this.showHiddenDevices ? 'sí' : 'no'} ]`, style: this.deviceToggleFocused ? 'accent' : undefined, fn: () => this.toggleHiddenDevices()},
@@ -424,8 +443,7 @@ export class SettingsWindow {
       line();
       line([{text: ` ${this.devicePick + 1}/${this.deviceOptions.length} · ● actual`, style: 'dim'}]);
       if (this.c.state().deviceError) errorLines(this.c.state().deviceError!);
-      line([{text: ' '}, {text: '[ Volver ]', style: 'accent', fn: () => { this.page = 'main'; }},
-        {text: '   ↑↓ mover · Tab filtro · Enter elegir · Esc cancelar', style: 'dim'}]);
+      footer('↑↓ mover · Tab filtro · Enter elegir · ', [{text: '[ Volver ]', style: 'accent', fn: () => { this.page = 'main'; }}], ' cancelar');
     } else if (this.page === 'voices') {
       const list = this.order(), start = Math.max(0, this.pick - 9);
       line([{text: ' '}, ...this.engines().flatMap(model => [{
@@ -437,7 +455,7 @@ export class SettingsWindow {
       list.slice(start, start + 10).forEach((v, j) => {
         const i = start + j;
         const sel = i === this.pick, pickIt = () => { this.pick = i; this.choose(v); };
-        const style = v.downloaded ? 'dim' : v.kind === 'account' && !this.c.state().token ? 'warning' : 'dim';
+        const style = !v.downloaded && v.kind === 'account' && v.needsToken !== false && !this.c.state().token ? 'warning' : 'dim';
         line([{text: sel ? ' ▶ ' : '   ', style: 'accent', fn: pickIt},
           {text: fit((this.isActive(v) ? '● ' : '') + v.name + (this.isFavorite(v) ? ' ★' : ''), 14), style: this.isActive(v) ? 'warning' : sel ? 'accent' : undefined, fn: pickIt},
           {text: fit(v.note, 16), fn: pickIt},
@@ -452,14 +470,15 @@ export class SettingsWindow {
       const selected = list[this.pick];
       line([{text: selected && !selected.downloaded && selected.kind === 'account' && selected.needsToken !== false && !this.c.state().token
         ? ' Cuenta gratis de Hugging Face para descargar (una vez)' : '', style: 'dim'}]);
-      line([{text: ' '}, {text: '[ Volver ]', style: 'accent', fn: () => this.home()}, {text: ' ↑↓ · Enter usar · ←→ dict · Tab motor · F favorita · Esc', style: 'dim'}]);
+      footer('↑↓ · Enter usar · ←→ dict · Tab motor · F favorita · ', [{text: '[ Volver ]', style: 'accent', fn: () => this.home()}]);
     } else if (this.page === 'download') {
       const v = this.target!;
       if (this.downloading || this.result === 'done') {
         line([{text: this.downloading ? ` Descargando ${v.name}…` : ` ${v.name} (${v.note}): Descargada.`, style: this.downloading ? undefined : 'dim'}]);
         line([{text: this.downloading ? ' Esc vuelve al menú; la descarga sigue.' : ' Ya funciona sin internet.', style: 'dim'}]);
         line();
-        line(this.downloading ? [] : [{text: ' '}, {text: '[ Cerrar ]', style: this.col === 0 ? 'accent' : undefined, fn: () => this.done()},
+        if (this.downloading) line();
+        else footer('←→ elegir · Enter · ', [{text: '[ Cerrar ]', style: this.col === 0 ? 'accent' : undefined, fn: () => this.done()},
           {text: ' '}, {text: '[ Volver al menú ]', style: this.col === 1 ? 'accent' : undefined, fn: () => this.home()}]);
         out.push(th.fg('border', '╰' + '─'.repeat(IN) + '╯'));
         return out;
@@ -471,7 +490,7 @@ export class SettingsWindow {
         line([{text: ' Si tenías phonon-40m-es: nuevo modelo, 75 MB con token, una vez.', style: 'dim'}]);
       }
       errorLines(this.result === 'error' ? this.notice : '');
-      line([{text: ' '}, {text: '[ Descargar y usar ]', style: this.col === 0 ? 'accent' : undefined, fn: () => this.confirm()},
+      footer('←→ elegir · Enter · ', [{text: '[ Descargar y usar ]', style: this.col === 0 ? 'accent' : undefined, fn: () => this.confirm()},
         {text: ' '}, {text: '[ Volver ]', style: this.col === 1 ? 'accent' : undefined, fn: () => { this.page = 'voices'; }}]);
     } else {
       const v = this.target!;
@@ -490,8 +509,8 @@ export class SettingsWindow {
       line([{text: ' Token: '}, {text: '•'.repeat(Math.min(50, width(this.token))) + '▏', style: 'accent'}]);
       errorLines(this.error);
       line();
-      line([{text: ' '}, {text: '[ Usar ]', style: 'accent', fn: () => this.saveToken()}, {text: ' '},
-        {text: '[ Volver ]', style: 'accent', fn: () => { this.page = 'voices'; }}, {text: '   Enter · Esc · clic en un enlace lo abre', style: 'dim'}]);
+      footer('Enter · ', [{text: '[ Usar ]', style: 'accent', fn: () => this.saveToken()}, {text: ' '},
+        {text: '[ Volver ]', style: 'accent', fn: () => { this.page = 'voices'; }}], ' · clic en un enlace lo abre');
     }
     out.push(th.fg('border', '╰' + '─'.repeat(IN) + '╯'));
     return out;

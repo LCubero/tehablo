@@ -101,7 +101,7 @@ test('T3e active voice leads its tab, preserves remaining order and follows Ente
   s.key('\t'); s.key('\x1b[B'); s.key('\r');
   // Choosing a cached voice keeps the existing return to the main page.
   s.click('[ Cambiar ]');
-  assert.deepEqual(names(), ['Alba', 'Iker', 'Regina', 'Ximena']);
+  assert.deepEqual(names(), ['Alba', 'Regina', 'Iker', 'Ximena']);
   assert.match(s.text(), /▶ ● Alba/);
   assert.match(s.text(), /1\/4/);
   s.key('\t');
@@ -183,7 +183,8 @@ test('T3c per-tab scrolling, download identity and widths', t => {
   s.key('\x1b[B');
   rows = rows.map((r, i) => i === 15 ? {...r, downloaded: true} : r);
   assert.match(s.w.render().find(l => l.startsWith('│ ▶ '))!, /Voz1 /);
-  for (let i = 0; i < 23; i++) s.key('\x1b[B');
+  // Voz15 is now downloaded and moves up to the top, so Voz1 is third.
+  for (let i = 0; i < 22; i++) s.key('\x1b[B');
   assert.match(s.text(), /25\/25/);
   assert.doesNotMatch(s.text(), /lola/);
   assert.ok(s.w.render().every(l => Array.from(l).length === 72));
@@ -200,7 +201,7 @@ test('T3c per-tab scrolling, download identity and widths', t => {
   assert.doesNotMatch(s.text(), /Incluye también/);
 });
 
-test('T3c accent precedes download rank, Pocket is stable, arrows stay in tab', () => {
+test('T3c downloaded voices come before accent, Pocket is stable, arrows stay in tab', () => {
   const s = setup();
   const rows = [ROWS[0], {...ROWS[0], voice: 'mx', name: 'México lista', downloaded: true},
     ROWS[1], {...ROWS[1], voice: 'es', name: 'España lista', downloaded: true},
@@ -208,10 +209,10 @@ test('T3c accent precedes download rank, Pocket is stable, arrows stay in tab', 
   s.w.c.voices = () => rows;
   s.state.settings = {...s.state.settings, model: 'phonon', voice: 'Regina'};
   s.click('[ Cambiar ]');
-  const ordered = ['Regina', 'España lista', 'Iker', 'México lista'].map(name => s.text().indexOf(name));
+  const ordered = ['Regina', 'España lista', 'México lista', 'Iker'].map(name => s.text().indexOf(name));
   assert.ok(ordered.every((position, i) => position >= 0 && (i === 0 || position > ordered[i - 1])));
   s.key('\x1b[A');
-  assert.match(s.w.render().find(l => l.startsWith('│ ▶ '))!, /México lista/);
+  assert.match(s.w.render().find(l => l.startsWith('│ ▶ '))!, /Iker/);
   s.key('\x1b[B');
   assert.match(s.w.render().find(l => l.startsWith('│ ▶ '))!, /Regina/);
   s.key('\t');
@@ -845,6 +846,72 @@ test('T3d row dictionary toggles by ←→ and click without choosing', () => {
   assert.deepEqual(s.calls, [['dict', 'Iker'], ['dict', 'Iker'], ['dict', 'lola']]);
   assert.equal(s.w.page, 'voices');
   assert.ok(s.w.render(100).every(l => Array.from(l).length === 72));
+});
+
+test('main window: Cerrar sits at the right edge and clicking Esc closes', () => {
+  const s = setup();
+  const footer = s.w.render(100).find(l => l.includes('[ Cerrar ]'))!;
+  assert.match(footer, /Esc.*\[ Cerrar \] │$/);
+  assert.equal(Array.from(footer).length, 72);
+  s.click('Esc');
+  assert.equal(s.closed(), true);
+  assert.deepEqual(s.calls, []);
+});
+
+test('every page: buttons sit at the right edge and clicking Esc does what the Esc key does', async () => {
+  const s = setup();
+  const footer = () => { const lines = s.w.render(100); return lines[lines.length - 2]; };
+  const clickEsc = () => {
+    const lines = s.w.render(100), y = lines.length - 2, chars = Array.from(lines[y]);
+    const x = chars.findIndex((_, i) => chars.slice(i, i + 3).join('') === 'Esc');
+    assert.ok(x >= 0, 'footer has Esc');
+    s.w.handleMouse({type: 'click', button: 'left', x, y});
+  };
+  const check = (end: RegExp, page: string) => {
+    assert.match(footer(), end);
+    assert.equal(Array.from(footer()).length, 72);
+    clickEsc();
+    assert.equal(s.w.page, page);
+  };
+  s.click('[ Cambiar ]');
+  check(/Esc.*\[ Volver \] │$/, 'main');
+  s.click('[ Editar ]');
+  check(/Esc.*\[ Volver \] │$/, 'main');
+  s.w.openDevices();
+  check(/Esc cancelar.*\[ Volver \] │$/, 'main');
+  await s.w.openCode();
+  check(/Esc.*\[ Copiar \] \[ Volver \] \[ Cerrar \] │$/, 'main');
+  s.w.page = 'voices';
+  s.w.choose({...ROWS[0], needsToken: true});
+  check(/Esc.*\[ Usar \] \[ Volver \] │$/, 'voices');
+  s.w.choose({...ROWS[0], needsToken: false});
+  check(/Esc.*\[ Descargar y usar \] \[ Volver \] │$/, 'voices');
+  s.w.choose({...ROWS[0], needsToken: false});
+  s.w.result = 'done';
+  check(/Esc.*\[ Cerrar \] \[ Volver al menú \] │$/, 'main');
+  assert.equal(s.closed(), false);
+  assert.deepEqual(s.calls.filter(c => c[0] !== 'sshCode'), []);
+});
+
+test('main footer shows Tab only on a row where Tab moves between buttons', () => {
+  const s = setup();
+  const footer = () => { const lines = s.w.render(100); return lines[lines.length - 2]; };
+  s.w.mainRows().forEach((_r: any, i: number) => { s.w.row = i; assert.doesNotMatch(footer(), /Tab/, s.w.mainRows()[i].label); });
+  s.state.settings = {...s.state.settings, audio: 'ssh'};
+  s.w.row = s.w.mainRows().findIndex((r: any) => r.label === 'Audio');
+  assert.match(footer(), /Tab botón/);
+  s.key('\t');
+  assert.equal(s.w.col, 1);
+});
+
+test('Descargar is highlighted only when that download really needs a token', () => {
+  const s = setup({theme: {fg: (st: string, t: string) => `<${st}>${t}</${st}>`}});
+  s.w.c.voices = () => [{...ROWS[0], needsToken: false}, {...ROWS[1], needsToken: true}];
+  s.state.settings = {...s.state.settings, model: 'phonon', voice: 'Iker'};
+  s.key('\r');
+  const row = (n: string) => s.w.render(100).find(l => l.includes(n))!;
+  assert.match(row('Regina'), /<dim>↓ descargar\s*<\/dim>/);
+  assert.match(row('Iker'), /<warning>↓ descargar\s*<\/warning>/);
 });
 
 test('voice table shows the active voice name in yellow (warning), also under the cursor', () => {

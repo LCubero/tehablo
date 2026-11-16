@@ -96,7 +96,7 @@ CPU y arranque medidos en una laptop de 2 núcleos de 2014; son referencias, no 
 
 **Phonon: el que menos gasta y suena muy bien** en las pruebas. Ofrece 25 voces en español (13 de España y 12 de México).
 
-En `/tts menu`, abre **Voz → Cambiar**: Tab cambia de motor. La lista tiene altura fija y columnas Voz, Acento, Estilo, Estado y Dict; la activa va primero y las favoritas debajo (`F` marca o quita `★`). `✓ lista` indica descargada; `↓ descargar`, descarga al elegirla. ←→ cambia el diccionario de la voz seleccionada. **Ritmo de Phonon** (−1 a +1) ajusta las pausas además de la velocidad común. [Detalle de controles](docs/desarrollo.md#uso-en-pi).
+En `/tts menu`, abre **Voz → Cambiar**: Tab cambia de motor. La lista tiene altura fija y columnas Voz, Acento, Estilo, Estado y Dict; la activa va primero, las favoritas debajo (`F` marca o quita `★`) y luego las descargadas. `✓ lista` indica descargada; `↓ descargar`, descarga al elegirla. ←→ cambia el diccionario de la voz seleccionada. **Ritmo de Phonon** (−1 a +1) ajusta las pausas además de la velocidad común. [Detalle de controles](docs/desarrollo.md#uso-en-pi).
 
 Si ya tenías `phonon-40m-es`, descarga una vez el modelo multilingüe (75 MB, con token). Cada voz baja solo al elegirla (~256 KB, sin cuenta).
 

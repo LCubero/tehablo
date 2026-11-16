@@ -4,6 +4,11 @@
 
 Este archivo registra los cambios completados en orden cronológico. Las versiones (`VERSION` y tags `vX.Y.Z`) marcan hasta qué fecha llega cada una.
 
+## 2026-11-15
+
+- Pi, menú de voces: las voces descargadas («✓ lista») salen primero, debajo de la activa y las favoritas; el acento solo ordena dentro de cada grupo. «↓ descargar» se resalta solo si esa descarga aún necesita el token.
+- Pi, ajustes: en todas las pantallas los botones («[ Cerrar ]», «[ Volver ]»…) pasan al borde derecho y un clic en «Esc» hace lo mismo que la tecla: cierra en la principal y vuelve atrás en las demás. La ayuda de la principal muestra «Tab botón» solo en la fila donde Tab sirve (Audio SSH: Copiar y Ver).
+
 ## 2026-11-14
 
 - Pruebas de voces en la máquina virtual de pruebas (2 núcleos, 8 GB), sin cambios en teHablo ([resultados](docs/pruebas-de-voces.md)):
