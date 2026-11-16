@@ -39,3 +39,5 @@ jobs:
           done
       - name: Pi extension
         run: node --test pi-extension/tehablo-tts/test/*.test.ts
+      - name: OpenCode plugin
+        run: node --test opencode-plugin/tehablo-tts/test/*.test.ts
