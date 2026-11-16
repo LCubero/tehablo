@@ -56,7 +56,7 @@ export class ServerClient {
   private child?: ReturnType<typeof nodeSpawn>;
   private starting?: Promise<void>;
   private closed = false;
-  private readings = new Set<string>();
+  private readings = new Map<string, string | undefined>();
   private inFlight = new Set<string>();
   /** Extra arguments for the next spawned server, such as the saved model and voice. */
   startArgs: string[] = [];
@@ -69,11 +69,11 @@ export class ServerClient {
     this.base = `http://127.0.0.1:${options.port ?? process.env.TEHABLO_PORT ?? '8765'}`;
   }
 
-  async request(path: string, body?: unknown): Promise<any> {
+  async request(path: string, body?: unknown, sessionID?: string): Promise<any> {
     const id = (body as {id?: string} | undefined)?.id;
     const speaking = path === '/speak' && typeof id === 'string';
-    if (speaking) { this.readings.add(id); this.inFlight.add(id); }
-    const observed = path === '/status' ? [...this.readings].filter(id => !this.inFlight.has(id)) : [];
+    if (speaking) { this.readings.set(id, sessionID); this.inFlight.add(id); }
+    const observed = path === '/status' ? [...this.readings.keys()].filter(id => !this.inFlight.has(id)) : [];
     try {
       const codePath = this.options.codePath;
       const response = await (this.options.fetch ?? globalThis.fetch)(this.base + path, {
@@ -178,10 +178,11 @@ export class ServerClient {
     return this.request(path, body);
   }
 
-  async stop() {
-    if (!this.readings.size) return;
+  async stop(sessionID?: string) {
+    const owned = () => [...this.readings.keys()].filter(id => sessionID === undefined || this.readings.get(id) === sessionID);
+    if (!owned().length) return;
     const status = await this.request('/status');
-    const ids = [...this.readings];
+    const ids = owned();
     for (const id of [...ids.filter(id => id !== status.id), ...ids.filter(id => id === status.id)])
       await this.request('/stop', {id});
   }

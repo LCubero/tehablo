@@ -231,7 +231,7 @@ export async function createTehabloPlugin(ctx: PluginContext, deps: PluginDeps =
     schedulePoll(pollEpoch);
   };
 
-  const play = async (messageId: string, text: string, allowRepeat: boolean, generation = epoch) => {
+  const play = async (sessionID: string, messageId: string, text: string, allowRepeat: boolean, generation = epoch) => {
     const health = await boot(generation);
     if (generation !== epoch || disposed) return;
     const model = typeof health?.model === 'string' ? health.model : (settings.model || 'spanish');
@@ -242,7 +242,7 @@ export async function createTehabloPlugin(ctx: PluginContext, deps: PluginDeps =
       text,
       lexicon: dictEnabled(settings, model, voice),
       ...(settings.policy === 'wait' ? {policy: 'wait'} : {}),
-    });
+    }, sessionID);
     if (generation !== epoch || disposed) return;
     startPolling();
   };
@@ -284,7 +284,7 @@ export async function createTehabloPlugin(ctx: PluginContext, deps: PluginDeps =
 
     spokenIds.add(candidate.messageId);
     try {
-      await play(candidate.messageId, candidate.text, false, generation);
+      await play(sessionID, candidate.messageId, candidate.text, false, generation);
       await saveSpoken();
     } catch (error) {
       spokenIds.delete(candidate.messageId);
@@ -306,7 +306,7 @@ export async function createTehabloPlugin(ctx: PluginContext, deps: PluginDeps =
             return;
           }
           try {
-            await play(candidate.messageId, candidate.text, true);
+            await play(input.sessionID, candidate.messageId, candidate.text, true);
           } catch (error) {
             await notify(input.sessionID, error instanceof Error ? error.message : String(error), {variant: 'warning'});
           }
@@ -316,7 +316,7 @@ export async function createTehabloPlugin(ctx: PluginContext, deps: PluginDeps =
           epoch++;
           cancelPoll();
           try {
-            await client.stop();
+            await client.stop(input.sessionID);
             await notify(input.sessionID, 'Lectura detenida.', {variant: 'info'});
           } catch (error) {
             await notify(input.sessionID, error instanceof Error ? error.message : String(error), {variant: 'warning'});

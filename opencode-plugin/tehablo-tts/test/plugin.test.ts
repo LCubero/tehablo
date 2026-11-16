@@ -347,6 +347,61 @@ test('policy wait queues readings and /tts stop cancels queued before active', a
   }
 });
 
+test('session stop preserves other sessions and unload cancels remaining owned readings', async () => {
+  const h = createHarness({ settings: { policy: 'wait' }, contexts: {
+    alpha: [{ id: 'a', type: 'assistant', finish: 'stop', content: [{ type: 'text', text: 'Alpha.' }] }],
+    beta: [{ id: 'b', type: 'assistant', finish: 'stop', content: [{ type: 'text', text: 'Beta.' }] }],
+  } });
+  const pending: string[] = [];
+  let active: string | undefined;
+  const baseFetch = h.client['options'].fetch!;
+  h.client['options'].fetch = async (url: any, init: any) => {
+    const path = new URL(url).pathname;
+    const body = init?.body ? JSON.parse(init.body) : undefined;
+    if (path === '/status') {
+      h.calls.push({ path, body });
+      return Response.json({ id: active, queue: [...pending], promoted: [], state: 'playing' });
+    }
+    if (path === '/speak') {
+      if (active) pending.push(body.id); else active = body.id;
+    }
+    if (path === '/stop') {
+      assert.equal(typeof body?.id, 'string', 'stop must always be targeted');
+      if (active === body.id) active = pending.shift();
+      else {
+        const index = pending.indexOf(body.id);
+        if (index >= 0) pending.splice(index, 1);
+      }
+    }
+    return baseFetch(url, init);
+  };
+  const cleanup = await createTehabloPlugin(h.ctx, { client: h.client, loadSettings: h.loadSettings });
+  const stops = () => h.calls.filter(c => c.path === '/stop').map(c => c.body.id);
+  const command = (sessionID: string, text: string) => h.commands.get('tts')!({ sessionID, prompt: { text } });
+  try {
+    await command('alpha', 'play');
+    await command('beta', 'play');
+    await command('alpha', 'play');
+    await command('beta', 'play');
+    // A separate client's queued reading must survive both operations.
+    pending.push('external');
+    await command('alpha', 'stop');
+    assert.deepEqual(stops(), ['a:tehablo:3', 'a:tehablo:1']);
+    assert.equal(active, 'b:tehablo:2');
+    assert.deepEqual(pending, ['b:tehablo:4', 'external']);
+    await command('alpha', 'stop');
+    assert.equal(stops().length, 2);
+    await cleanup();
+    assert.deepEqual(stops(), ['a:tehablo:3', 'a:tehablo:1', 'b:tehablo:4', 'b:tehablo:2']);
+    assert.equal(active, 'external');
+    assert.deepEqual(pending, []);
+    assert.equal(h.calls.some(c => c.path === '/shutdown'), false);
+  } finally {
+    await cleanup();
+    h.cleanupDir();
+  }
+});
+
 test('saved settings apply before the first /speak even when /health reports ready=false', async () => {
   const h = createHarness({
     health: { ready: false, volume: 1, speed: 1, rhythm: 0, audio: 'local', device: '' },
