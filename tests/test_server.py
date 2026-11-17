@@ -1,6 +1,7 @@
 """HTTP contract tests without a model download or audio device."""
 import contextlib
 import io
+import inspect
 import tempfile
 import http.client
 import json
@@ -70,6 +71,9 @@ class Sink:
 
 
 class VersionTests(unittest.TestCase):
+    def test_default_port(self):
+        self.assertEqual(inspect.signature(create_server).parameters['port'].default, 23765)
+
     def test_health_version(self):
         root_version = Path(__file__).resolve().parents[1] / 'VERSION'
         for path, expected in [(root_version, root_version.read_text().strip()),
@@ -84,7 +88,9 @@ class VersionTests(unittest.TestCase):
                     conn.request('GET', '/health', headers={'X-Tehablo-Codigo': CODE})
                     response = conn.getresponse()
                     self.assertEqual(response.status, 200)
-                    self.assertEqual(json.loads(response.read())['version'], expected)
+                    payload = json.loads(response.read())
+                    self.assertEqual(payload['version'], expected)
+                    self.assertEqual(payload['service'], 'tehablo')
                     conn.close()
                 finally:
                     server.shutdown(); server.server_close(); thread.join()
