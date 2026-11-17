@@ -25,9 +25,11 @@ Este archivo proyecta solo hechos verificados del proyecto: registros activos, b
 
 ## Trabajo activo
 
-- `RH-W-0047` (`active`, 2026-11-17): implementados el puerto por defecto 23765, la selección automática 23765–23769 y los mensajes de puerto ocupado en Pi y OpenCode; pendientes la prueba manual de la persona responsable y push. [Alcance y condición de cierre](roadmap.md#rh-w-0047-puerto-ocupado-mensaje-claro-puerto-por-defecto-menos-común-y-puerto-automático).
+Los trabajos activos y sus condiciones se resumen en Trabajo pendiente.
 
 ## Trabajo reciente completado
+
+- `RH-W-0047` (`completed`, 2026-11-17): puerto automático y mensajes de puerto ocupado fusionados en PR #3 (`4752257`); prueba manual en Windows, servidor compartido entre Pi y OpenCode y CI en Windows/Ubuntu aprobados. Recargar todas las sesiones de Pi con `/reload`; audio manual en Linux sin probar. [Evidencia y migración](roadmap.md#rh-w-0047-puerto-ocupado-mensaje-claro-puerto-por-defecto-menos-común-y-puerto-automático).
 
 - `RH-W-0046` (`completed`, 2026-11-15): integración inicial de OpenCode fusionada en GitHub; reproducir/detener confirmado por la persona responsable en Windows y CI aprobada en Windows/Ubuntu. Audio manual en Linux no verificado. Menú y selección/descarga de voces aplazados hasta nueva aprobación explícita. [Evidencia, límites y avisos no bloqueantes](roadmap.md#rh-w-0046-integración-inicial-del-plugin-de-opencode).
 
