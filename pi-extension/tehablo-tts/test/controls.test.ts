@@ -11,7 +11,7 @@ import {ServerClient} from '../src/server.ts';
 for (const token of [undefined, 'test-token']) test(`T4 spawn enables faulthandler and preserves token environment (token=${!!token})`, async () => {
   let health = 0, args: string[] = [], options: any;
   const client = new ServerClient({root: 'test-root', openLog: () => 42, closeLog: () => {},
-    fetch: async () => { if (health++ === 0) throw Error('offline'); return {ok: true, json: async () => ({})} as any; },
+    fetch: async url => { if (health++ === 0) throw Error('offline'); return {ok: true, json: async () => ({service: new URL(String(url)).port === '23765' ? 'tehablo' : undefined, instance: args[args.indexOf('--instance') + 1]})} as any; },
     spawn: ((_python: string, a: string[], o: any) => { args = a; options = o; return {once() {}, unref() {}}; }) as any,
   });
   client.token = token;
@@ -30,10 +30,11 @@ for (const prior of ['missing', 'file', 'blocked']) test(`T4 log rotation preser
     if (prior !== 'missing') writeFileSync(log, 'Fatal Python error: old run\n');
     if (prior === 'file') writeFileSync(prev, 'older run');
     if (prior === 'blocked') mkdirSync(prev);
-    let health = 0;
+    let health = 0, nonce: string | undefined;
     const client = new ServerClient({root,
-      fetch: async () => { if (health++ === 0) throw Error('offline'); return {ok: true, json: async () => ({})} as any; },
-      spawn: (() => {
+      fetch: async url => { if (health++ === 0) throw Error('offline'); return {ok: true, json: async () => ({service: new URL(String(url)).port === '23765' ? 'tehablo' : undefined, instance: nonce})} as any; },
+      spawn: ((_python: string, args: string[]) => {
+        nonce = args[args.indexOf('--instance') + 1];
         assert.equal(readFileSync(log, 'utf8'), '');
         if (prior === 'file') assert.equal(readFileSync(prev, 'utf8'), 'Fatal Python error: old run\n');
         return {once() {}, unref() {}};
@@ -215,7 +216,7 @@ test('scoped controls S3: session_shutdown preserves a foreign current reading a
     if (path === '/status') return Response.json({state: 'playing', id: 'foreign', queue});
     if (path === '/stop') { stops.push(body); queue = queue.filter(id => id !== body.id); }
     assert.notEqual(path, '/shutdown');
-    return Response.json({ready: true});
+    return Response.json({ready: true, service: 'tehablo'});
   }) as any});
   s.client.ensure = real.ensure.bind(real);
   s.client.request = real.request.bind(real);

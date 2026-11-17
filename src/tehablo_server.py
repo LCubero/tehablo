@@ -4,6 +4,7 @@ import time
 IMPORT_STARTED = time.perf_counter()
 
 import argparse
+import errno
 from collections import deque
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
@@ -25,6 +26,7 @@ from tehablo_numbers import normalize_numbers
 from tehablo_tech import normalize_technical
 from tehablo_speed import SpeedStream
 
+DEFAULT_PORT = 23765
 ROOT = Path(__file__).resolve().parent.parent
 VOICES_DIR = ROOT / 'voices'
 AUDIO_EXT = {'.wav', '.mp3', '.flac', '.safetensors'}
@@ -536,7 +538,7 @@ class SpeechService:
 
     def health(self):
         with self.condition:
-            return {'ok': True, 'version': getattr(self, 'version', None), 'ready': self.ready, 'model': self.model_name,
+            return {'ok': True, 'service': 'tehablo', 'instance': getattr(self, 'instance', None), 'version': getattr(self, 'version', None), 'ready': self.ready, 'model': self.model_name,
                     'voice': self.voice, 'speed': float(self.speed), 'rhythm': self.rhythm, 'volume': self.volume, 'audio': self.audio, 'device': self.device,
                     'error': self.error, 'fallback': self.fallback,
                     'preparation': dict(self.preparation) if self.preparation else None,
@@ -1026,8 +1028,8 @@ class Handler(BaseHTTPRequestHandler):
             self.reply(400, {'error': str(exc)})
 
 
-def create_server(port=8765, model=START_MODEL, voice=None, speed=1.0,
-                  synthesizer_factory=synthesizer, audio_factory=audio_sink, catalog=None, idle_exit=30, audio='local', device_provider=output_devices, version_path=ROOT / 'VERSION'):
+def create_server(port=DEFAULT_PORT, model=START_MODEL, voice=None, speed=1.0,
+                  synthesizer_factory=synthesizer, audio_factory=audio_sink, catalog=None, idle_exit=30, audio='local', device_provider=output_devices, version_path=ROOT / 'VERSION', instance=None):
     if not math.isfinite(idle_exit) or idle_exit < 0:
         raise ValueError('idle-exit must be a finite nonnegative number')
     if catalog is None:
@@ -1040,6 +1042,7 @@ def create_server(port=8765, model=START_MODEL, voice=None, speed=1.0,
         if model != 'phonon':
             catalog = catalog()
     service = SpeechService(model, voice, speed, synthesizer_factory, audio_factory, catalog, audio, device_provider)
+    service.instance = instance
     try:
         service.version = Path(version_path).read_text(encoding='utf-8').strip() or None
     except (OSError, UnicodeError):
@@ -1058,7 +1061,12 @@ def create_server(port=8765, model=START_MODEL, voice=None, speed=1.0,
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--port', type=int, default=os.environ.get('TEHABLO_PORT', '8765'))
+    parser.add_argument('--port', type=int, default=os.environ.get('TEHABLO_PORT', str(DEFAULT_PORT)))
+    def instance_nonce(value):
+        if len(value) != 32 or any(char not in '0123456789abcdef' for char in value):
+            raise argparse.ArgumentTypeError('instance must be 32 lowercase hexadecimal characters')
+        return value
+    parser.add_argument('--instance', type=instance_nonce, default=None)
     parser.add_argument('--model', choices=sorted(MODELS), default=START_MODEL,
                         help=f'engine (default: {START_MODEL}; see src/voice_table.json)')
     parser.add_argument('--voice', default=None,
@@ -1073,6 +1081,11 @@ def main():
         server = create_server(**vars(args))
     except ValueError as exc:
         parser.error(str(exc))
+    except OSError as exc:
+        if exc.errno == errno.EADDRINUSE or getattr(exc, 'winerror', None) == 10048:
+            print(f'Port {args.port} is already in use', flush=True)
+            sys.exit(3)
+        raise
     try:
         print(f'Listening on http://127.0.0.1:{server.server_port}', flush=True)
         server.serve_forever()

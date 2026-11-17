@@ -1,6 +1,8 @@
 """Startup diagnostics without loading a model, downloading, or playing audio."""
 import contextlib
 import io
+import errno
+import socket
 from pathlib import Path
 import sys
 import tempfile
@@ -13,6 +15,72 @@ import tehablo_server as server
 
 
 class StartupTests(unittest.TestCase):
+    def test_instance_health_and_validation(self):
+        for nonce in (None, 'a' * 32):
+            instance = server.create_server(port=0, model='phonon', catalog=['Regina'],
+                                           synthesizer_factory=lambda name: SimpleNamespace(sample_rate=24000),
+                                           **({'instance': nonce} if nonce is not None else {}))
+            try:
+                self.assertEqual(instance.service.health()['instance'], nonce)
+            finally:
+                instance.server_close()
+        for nonce in ('A' * 32, 'a' * 31, 'g' * 32):
+            with patch.object(sys, 'argv', ['tehablo_server.py', '--instance', nonce]), \
+                    contextlib.redirect_stderr(io.StringIO()), patch.object(server, 'create_server') as create:
+                with self.assertRaises(SystemExit) as raised:
+                    server.main()
+                self.assertEqual(raised.exception.code, 2)
+                create.assert_not_called()
+
+    def test_main_busy_port_exits_cleanly(self):
+        with socket.socket() as listener:
+            listener.bind(('127.0.0.1', 0))
+            listener.listen()
+            port = listener.getsockname()[1]
+            output, errors = io.StringIO(), io.StringIO()
+            create = server.create_server
+            def create_light_server(**kwargs):
+                return create(**kwargs, catalog=['Regina'],
+                              synthesizer_factory=lambda name: SimpleNamespace(sample_rate=24000))
+            with patch.object(server, 'create_server', side_effect=create_light_server), \
+                    patch.object(sys, 'argv', ['tehablo_server.py', '--port', str(port),
+                                           '--model', 'phonon', '--idle-exit', '0']), \
+                    contextlib.redirect_stdout(output), contextlib.redirect_stderr(errors):
+                with self.assertRaises(SystemExit) as exit:
+                    server.main()
+            self.assertEqual(exit.exception.code, 3)
+            self.assertEqual(output.getvalue().splitlines()[1:],
+                             [f'Port {port} is already in use'])
+            self.assertEqual(errors.getvalue(), '')
+            self.assertNotIn('Traceback', output.getvalue())
+
+    def test_main_errno_busy_port_exits_cleanly(self):
+        self.check_main_busy_error(OSError(errno.EADDRINUSE, 'busy'))
+
+    def test_main_windows_busy_port_exits_cleanly(self):
+        failure = OSError('busy')
+        failure.winerror = 10048
+        self.check_main_busy_error(failure)
+
+    def check_main_busy_error(self, failure):
+        output = io.StringIO()
+        with patch.object(sys, 'argv', ['tehablo_server.py', '--port', '23768']), \
+                patch.object(server, 'create_server', side_effect=failure), \
+                contextlib.redirect_stdout(output):
+            with self.assertRaises(SystemExit) as exit:
+                server.main()
+        self.assertEqual(exit.exception.code, 3)
+        self.assertEqual(output.getvalue().splitlines()[1:], ['Port 23768 is already in use'])
+
+    def test_main_other_bind_error_is_reraised(self):
+        failure = OSError(errno.EACCES, 'permission denied')
+        with patch.object(sys, 'argv', ['tehablo_server.py']), \
+                patch.object(server, 'create_server', side_effect=failure), \
+                contextlib.redirect_stdout(io.StringIO()):
+            with self.assertRaises(OSError) as raised:
+                server.main()
+        self.assertIs(raised.exception, failure)
+
     def test_model_load_timing_preserves_model_and_sample_rate(self):
         model = SimpleNamespace(sample_rate=24000)
         calls = []
@@ -176,13 +244,15 @@ class StartupTests(unittest.TestCase):
                 self.closed = True
         instance = FakeServer()
         output = io.StringIO()
-        with patch.object(server, 'create_server', return_value=instance), \
+        with patch.dict(server.os.environ, {}, clear=True), \
+                patch.object(server, 'create_server', return_value=instance) as create, \
                 patch.object(sys, 'argv', ['tehablo_server.py']), \
                 patch('tehablo_server.time.perf_counter', return_value=server.IMPORT_STARTED + 0.5), \
                 contextlib.redirect_stdout(output):
             server.main()
         self.assertEqual(output.getvalue(), 'Startup: server imports completed in 0.500 s\nListening on http://127.0.0.1:12345\n')
         self.assertTrue(instance.closed)
+        self.assertEqual(create.call_args.kwargs['port'], 23765)
 
 
 if __name__ == '__main__':

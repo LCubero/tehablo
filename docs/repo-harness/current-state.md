@@ -23,6 +23,10 @@
 
 Este archivo proyecta solo hechos verificados del proyecto: registros activos, bloqueos, IDs completados recientemente y la siguiente condición accionable. El propietario canónico es [roadmap.md](roadmap.md).
 
+## Trabajo activo
+
+- `RH-W-0047` (`active`, 2026-11-17): implementados el puerto por defecto 23765, la selección automática 23765–23769 y los mensajes de puerto ocupado en Pi y OpenCode; pendientes la prueba manual de la persona responsable y push. [Alcance y condición de cierre](roadmap.md#rh-w-0047-puerto-ocupado-mensaje-claro-puerto-por-defecto-menos-común-y-puerto-automático).
+
 ## Trabajo reciente completado
 
 - `RH-W-0046` (`completed`, 2026-11-15): integración inicial de OpenCode fusionada en GitHub; reproducir/detener confirmado por la persona responsable en Windows y CI aprobada en Windows/Ubuntu. Audio manual en Linux no verificado. Menú y selección/descarga de voces aplazados hasta nueva aprobación explícita. [Evidencia, límites y avisos no bloqueantes](roadmap.md#rh-w-0046-integración-inicial-del-plugin-de-opencode).

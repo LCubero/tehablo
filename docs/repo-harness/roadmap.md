@@ -31,6 +31,22 @@ Antecedente aprobado el 2026-10-30: base confiable, medición (`RH-W-0003`), ser
 ## Registros activos
 <!-- doc-role:active-records -->
 
+### RH-W-0047: Puerto ocupado: mensaje claro, puerto por defecto menos común y puerto automático
+
+- **Origen:** colisión del servidor HTTP local con otro programa; solicitud de diagnóstico claro y selección de puerto menos propensa a conflictos.
+- **Prioridad:** P2; una colisión impide iniciar la lectura y el mensaje genérico no permite identificar la causa.
+- **Dependencias:** identidad explícita en `/health` antes de reutilizar un servidor; coordinación del servidor Python y los clientes de Pi y OpenCode.
+- **Estado:** `active`.
+- **Trabajo restante:** prueba manual de la persona responsable y push.
+- **Trabajo completado (2026-11-17):** código implementado para el puerto por defecto 23765, candidatos automáticos 23765–23769, identidad `service: tehablo`, salida 3 por puerto ocupado y mensajes específicos en ambos clientes; documentación y skill de pronunciación actualizadas. La implementación está en la rama `feat/port-collision`; no acredita prueba manual ni publicación.
+- **Adiciones:** compatibilidad de `TEHABLO_PORT` como puerto único fijo; `options.port` tiene prioridad. [Comportamiento y mensajes exactos](../desarrollo.md#uso-en-pi).
+- **Decisiones y razones:** 23765 se eligió por no figurar en la lista nmap-services y quedar por debajo de los rangos efímeros de Linux (32768+) y Windows (49152+), según el diseño de `odd/tasks/port-collision.md`. Se rechazó 18765 por su uso previo en un túnel SSH; el puerto de audio SSH 18766 no cambia. Una lista fija de cinco candidatos y la comprobación de identidad evitan añadir un archivo de estado o un bloqueo compartido.
+- **Exclusiones:** sin incremento de versión; no se cambia el orden de arranque: las importaciones y la preparación del catálogo preceden al enlace del puerto; la carga del modelo es asíncrona.
+- **Aplazamientos:** ninguno fuera de la prueba manual y publicación pendientes.
+- **Rechazos:** archivo de estado y bloqueo compartido, por complejidad innecesaria para cinco candidatos locales.
+- **Evidencia:** especificación `odd/tasks/port-collision.md`, `src/tehablo_server.py` y ambos `src/server.ts`; inspección documental del código, sin nueva ejecución funcional en esta actualización.
+- **Condición del siguiente avance:** confirmación de la prueba manual por la persona responsable y autorización de publicación; solo entonces reconciliar el cierre como `completed`.
+
 ### RH-W-0002: Ajustar la lectura de hashes de commit y CPU
 
 - **Origen:** prueba de audio realizada por la persona responsable con las respuestas de Pi.
