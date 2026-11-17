@@ -114,7 +114,7 @@ tehablo/
 | `src/tehablo_numbers.py` | Conversión de números a palabras en español | Sí |
 | `src/tehablo_lexicon.py`, `pronunciaciones.json` | Pronunciación de términos en inglés | Sí |
 | `src/tehablo_speed.py` | Velocidad de la voz sin cambiar el tono (WSOLA con `audiotsm`) | Sí |
-| `src/tehablo_server.py` | Servidor HTTP local (`127.0.0.1:8765`) que usa la extensión de Pi | Sí |
+| `src/tehablo_server.py` | Servidor HTTP local (`127.0.0.1:23765` por defecto) que usa la extensión de Pi | Sí |
 | `cliente/tehablo_cliente.py` | Cliente de audio SSH: espera conexiones en 127.0.0.1:18766 (RemoteForward), valida el código antes del WAV; menú, sounddevice y volumen (PEP 723, uv) | Sí |
 | `receptor/` | Instaladores finos del cliente para [Audio por SSH](#audio-por-ssh); requieren uv, sin FFmpeg | Sí |
 | `pi-extension/tehablo-tts/` | Extensión de Pi; se instala con `pi install <ruta>` (ver README) | Sí |
@@ -254,7 +254,7 @@ Tras `/reload` y un arranque, el registro real mostró:
 |---|---|
 | Importaciones del servidor | 0.240 s |
 | Importaciones de TTS | 5.258 s |
-| Escucha HTTP | `Listening on http://127.0.0.1:8765` |
+| Escucha HTTP | `Listening on http://127.0.0.1:8765` (registro histórico; hoy 23765 por defecto) |
 | Carga del modelo `spanish` | 0.617 s |
 
 Las tres etapas medidas suman **6.115 s**; no incluyen creación del proceso
@@ -517,7 +517,17 @@ Si la **Salida** elegida no está conectada, la lectura usa la predeterminada de
 
 ### Servidor y ajustes guardados
 
-La extensión arranca sola el servidor local [`src/tehablo_server.py`](../src/tehablo_server.py) (`127.0.0.1:8765`, se cambia con `TEHABLO_PORT`) y no lo apaga al cerrar o recargar una sesión de Pi: solo cancela sus lecturas. El servidor se apaga solo tras unos 30 s sin peticiones de ninguna sesión; `[ ⏻ ]` o `/tts` lo apagan para todas. En ejecuciones manuales, `--idle-exit SECONDS` cambia ese plazo (30 por defecto; `0` lo desactiva). Necesita el entorno `.venv-pocket` (o `.venv-pocket-<sistema>`) instalado. Los ajustes se guardan en tu carpeta de usuario, `~/.tehablo/settings.json` (`C:\Users\<usuario>\.tehablo\settings.json` en Windows), así que cada usuario y cada sistema de un dual boot tiene los suyos; se comparten entre sesiones y se actualizan en unos segundos, incluido el indicador de estado; la lectura automática es por sesión y no se guarda. La primera vez se parte del antiguo `tehablo-settings.json` del proyecto, si existe, sin cambiarlo. Los mensajes y errores del servidor se guardan en `logs/tehablo-server.log`, que se reescribe en cada arranque; si el servidor no responde a tiempo, el aviso indica esa ruta. Si el modelo no carga, Pi muestra el error en lugar de quedarse en «cargando»; también avisa si una lectura falla (por ejemplo, sin dispositivo de audio) o si se pierde la conexión con el servidor. La selección y recuperación de dispositivos se describe en [Uso en Pi](#uso-en-pi). Por seguridad, el servidor rechaza peticiones de páginas web (cabecera `Origin`, 403) y los `POST` que no declaran JSON (415).
+Sin `TEHABLO_PORT` ni `options.port`, los clientes de Pi y OpenCode consultan `GET /health` en los candidatos 23765–23769 y solo reconocen teHablo si la respuesta HTTP es correcta y contiene `"service": "tehablo"`. Reutilizan un servidor reconocido; si no hay ninguno, intentan arrancar en el primer candidato libre, en ese orden, omitiendo servicios ajenos y tiempos de espera agotados. Si otro cliente gana el puerto durante el arranque (salida 3), vuelven a comprobar su identidad para reutilizarlo o continúan con el siguiente candidato. Las peticiones posteriores usan el puerto elegido. `TEHABLO_PORT` (o `options.port`, con prioridad) fija un único puerto, sin buscar alternativas. El servidor iniciado manualmente usa 23765 por defecto y no explora candidatos; `--port` tiene prioridad sobre `TEHABLO_PORT`.
+
+Mensajes de puerto ocupado (con `<N>` sustituido por el puerto):
+
+- Servidor: `Port <N> is already in use`, sin traceback y con código de salida 3.
+- Cliente con puerto explícito: `El puerto <N> está ocupado por otro programa. Ciérralo o define otro TEHABLO_PORT.`
+- Clientes sin candidatos disponibles: `Los puertos 23765–23769 están ocupados por otros programas. Cierra alguno o define TEHABLO_PORT.`
+
+Otros cierres al arrancar mantienen `El servidor TTS se cerró al arrancar. Revisa <log>.` Un servidor antiguo que permanezca en el puerto anterior no se reutiliza y se cierra por su plazo de inactividad.
+
+La extensión arranca sola el servidor local [`src/tehablo_server.py`](../src/tehablo_server.py) (`127.0.0.1:23765` por defecto; selección descrita arriba) y no lo apaga al cerrar o recargar una sesión de Pi: solo cancela sus lecturas. El servidor se apaga solo tras unos 30 s sin peticiones de ninguna sesión; `[ ⏻ ]` o `/tts` lo apagan para todas. En ejecuciones manuales, `--idle-exit SECONDS` cambia ese plazo (30 por defecto; `0` lo desactiva). Necesita el entorno `.venv-pocket` (o `.venv-pocket-<sistema>`) instalado. Los ajustes se guardan en tu carpeta de usuario, `~/.tehablo/settings.json` (`C:\Users\<usuario>\.tehablo\settings.json` en Windows), así que cada usuario y cada sistema de un dual boot tiene los suyos; se comparten entre sesiones y se actualizan en unos segundos, incluido el indicador de estado; la lectura automática es por sesión y no se guarda. La primera vez se parte del antiguo `tehablo-settings.json` del proyecto, si existe, sin cambiarlo. Los mensajes y errores del servidor se guardan en `logs/tehablo-server.log`, que se reescribe en cada arranque; si el servidor no responde a tiempo, el aviso indica esa ruta. Si el modelo no carga, Pi muestra el error en lugar de quedarse en «cargando»; también avisa si una lectura falla (por ejemplo, sin dispositivo de audio) o si se pierde la conexión con el servidor. La selección y recuperación de dispositivos se describe en [Uso en Pi](#uso-en-pi). Por seguridad, el servidor rechaza peticiones de páginas web (cabecera `Origin`, 403) y los `POST` que no declaran JSON (415).
 
 El registro incluye líneas `Startup:` con segundos por etapa: importaciones del servidor, importaciones de TTS y carga del modelo (sin repetir el tiempo de importación de TTS). Sirven para comparar próximos arranques, no para diagnosticar retrospectivamente la demora ni atribuirla a la caché. No miden la creación del proceso Python ni el inicio de la reproducción. Guarda el registro antes de volver a arrancar: se sobrescribe. Las [mediciones de arranque en Windows y sus límites](desarrollo.md#arranque-en-windows-mediciones-y-límites) quedan documentadas para futuras comparaciones.
 
@@ -670,7 +680,7 @@ Las voces incluidas ya vienen procesadas en `voices/<nombre>.safetensors` (unos 
 Para usar teHablo desde otro agente (por ejemplo OpenCode) no hace falta tocar el servidor: la extensión de Pi es solo un cliente HTTP de [`src/tehablo_server.py`](../src/tehablo_server.py). Un plugin nuevo hace lo mismo.
 
 - **Dónde va:** en su propia carpeta junto a `pi-extension/` (por ejemplo `opencode-plugin/`), con sus pruebas. Si cambias el servidor, la extensión de Pi debe seguir pasando sus pruebas.
-- **Arrancar el servidor:** con el Python del entorno que crea el instalador (`.venv-pocket` o `.venv-pocket-<os>`): `python src/tehablo_server.py --port 8765`. Opciones: `--model`, `--voice`, `--speed`, `--audio local|ssh` e `--idle-exit`. El puerto también se cambia con `TEHABLO_PORT`.
+- **Arrancar el servidor:** con el Python del entorno que crea el instalador (`.venv-pocket` o `.venv-pocket-<os>`): `python src/tehablo_server.py --port 23765`. Opciones: `--model`, `--voice`, `--speed`, `--audio local|ssh` e `--idle-exit`. El argumento opcional `--instance` acepta 32 caracteres hexadecimales en minúsculas y se devuelve en `/health` para identificar qué cliente inició el servidor (sin argumento, `instance` es `null`). El puerto también se cambia con `TEHABLO_PORT`.
 - **Se apaga solo:** tras 30 s sin peticiones autenticadas. Mantenlo vivo consultando `/status` o arráncalo con `--idle-exit 0`, que lo desactiva.
 - **Código de vinculación:** toda petición, salvo `GET /health`, lleva la cabecera `X-Tehablo-Codigo` con el contenido de `~/.tehablo/ssh-codigo` (32 caracteres hexadecimales; el servidor crea el archivo). Sin él responde 403.
 - **Formato:** los `POST` llevan `Content-Type: application/json` y un objeto JSON (máximo 1 MiB). Se rechaza cualquier petición con cabecera `Origin`. Las respuestas son JSON; los errores, `{"error": "..."}`: 400 entrada inválida, 403 sin código o con `Origin`, 404 ruta desconocida, 415 sin JSON y 503 fallo del servidor.

@@ -45,8 +45,9 @@ Use when the owner tests how tehablo speaks English terms, compares spellings, o
 
 ## Playback
 
-1. Use the server that answers: `PORT=8765`, or `PORT=8766` if `curl -s localhost:8765/status` gets no reply. In that case start a test server in the background and leave Pi's port alone:
-   `.venv-pocket/bin/python src/tehablo_server.py --port 8766`
+1. With explicit playback permission, use the running teHablo server: default `PORT=23765`; Pi may automatically choose any port in 23765–23769. Check `curl --fail -s localhost:$PORT/health` and require `"service":"tehablo"` (JSON whitespace may vary), then check `/status` before playback. If no teHablo server is available, use a free test port outside that automatic range, such as `PORT=23770`, and start a test server in the background without disturbing Pi:
+   `.venv-pocket/bin/python src/tehablo_server.py --port 23770`
+   Verify its `/health` identity before sending requests. `TEHABLO_PORT` fixes a single client port without automatic fallback.
 2. When comparing variants, send one word per request with a short pause (about 0.6 s between words, 1.5 s between groups). Run this Bash sequence in the background with the `PORT` selected in step 1. It stops on HTTP, transport, invalid status or speech errors. It polls at most 120 times (1 s apart, each HTTP call limited to 5 s); on timeout it aborts without sending another word or stopping accepted audio:
 
    ```bash

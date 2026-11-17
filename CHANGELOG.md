@@ -4,6 +4,11 @@
 
 Este archivo registra los cambios completados en orden cronológico. Las versiones (`VERSION` y tags `vX.Y.Z`) marcan hasta qué fecha llega cada una.
 
+## 2026-11-17
+
+- Pi y OpenCode: puerto HTTP por defecto 23765 y selección automática entre 23765–23769 cuando no se fija `TEHABLO_PORT`; se reutiliza un servidor solo si se identifica como teHablo.
+- Mensajes claros cuando el puerto está ocupado; `TEHABLO_PORT` conserva un único puerto fijo, sin buscar alternativas. Guía de desarrollo y pruebas de pronunciación actualizadas.
+
 ## 2026-11-15
 
 - OpenCode: integración inicial del plugin fusionada en [PR #2](https://github.com/LCubero/tehablo/pull/2) ([0520462](https://github.com/LCubero/tehablo/commit/0520462536c86981e5697a08dcc9f176c72183a9)); reproducir/detener corregido y confirmado en Windows. CI aprobada en Windows y Ubuntu; [evidencia y límites](docs/repo-harness/roadmap.md#rh-w-0046-integración-inicial-del-plugin-de-opencode).
