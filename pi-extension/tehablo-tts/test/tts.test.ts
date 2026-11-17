@@ -16,7 +16,7 @@ function setup(mode = 'tui', clipboard?: () => Promise<string>, health: any = {m
     calls.push([path, body]);
     if (health === null) throw new Error('Server off');
     if (path === '/config' && body.speed > 1.5) return new Response(JSON.stringify({error:'Velocidad fuera de rango'}), {status:400});
-    return Response.json({ok:true, ready:true, state:'idle', audio:'local', ...health, speed:1, voices:['voz']});
+    return Response.json({service:'tehablo', ok:true, ready:true, state:'idle', audio:'local', ...health, speed:1, voices:['voz']});
   };
   const client = new ServerClient({root, fetch:fetcher as any});
   const ctx: any = {mode, sessionManager:{getBranch:()=>entries}, ui:{notify:(...args:any[])=>notices.push(args), setStatus(){}, setWidget(){}}};
@@ -266,7 +266,7 @@ test('event and command failures become warnings, never escape Pi',async()=>{
 });
 test('health failure spawns once with computed Windows root/python; session shutdown leaves owned child running',async()=>{
   let healthy=false, killed=0; const spawned:any[]=[]; const calls:string[]=[];
-  const options:any={root:'E:/tehablo', platform:'win32', fetch:async(url:string)=>{calls.push(new URL(url).pathname); if(!healthy) throw Error('offline'); return Response.json({ok:true});}, spawn:(...args:any[])=>{spawned.push(args); healthy=true; return {once(){},unref(){},kill(){killed++;}};}, delay:async()=>{}};
+  const options:any={root:'E:/tehablo', platform:'win32', fetch:async(url:string)=>{calls.push(new URL(url).pathname); if(!healthy) throw Error('offline'); return Response.json({ok:true,service:'tehablo',instance:spawned.at(-1)?.[1][spawned.at(-1)?.[1].indexOf('--instance')+1]});}, spawn:(...args:any[])=>{spawned.push(args); healthy=true; return {once(){},unref(){},kill(){killed++;}};}, delay:async()=>{}};
   const c=new ServerClient(options); await Promise.all([c.ensure(),c.ensure()]);
   assert.equal(spawned.length,1); assert.match(spawned[0][0],/E:[/\\]tehablo[/\\]\.venv-pocket[/\\]Scripts[/\\]python.exe$/);
   assert.deepEqual(spawned[0][1].slice(0,2),['-X','faulthandler']); assert.match(spawned[0][1][2],/src[/\\]tehablo_server.py$/);

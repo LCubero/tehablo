@@ -1,4 +1,114 @@
 import { test } from 'node:test';
+
+test('instance ownership waits for loser exit and rejects unchecked live-child health', async () => {
+  for (const own of [false, true]) {
+    let nonce = '', exit: any, waiting = false;
+    const child = {once(event: string, cb: any) { if (event === 'exit') exit = cb; }, unref() {}};
+    const client = new ServerClient({root: '/tehablo', port: '24123', exists: () => true, openLog: () => 1, closeLog: () => {},
+      spawn: ((_python: string, args: string[]) => { nonce = args[args.indexOf('--instance') + 1]; assert.match(nonce, /^[0-9a-f]{32}$/); return child; }) as any,
+      fetch: (async () => { if (!nonce) throw Error('refused'); return Response.json({service: 'tehablo', instance: own ? nonce : 'other'}); }) as any,
+      delay: async () => { waiting = true; exit(3); }});
+    await client.ensure();
+    assert.equal(waiting, !own);
+    assert.equal(client.spawned, own);
+    assert.equal((client as any).child, own ? child : undefined);
+    if (own) {
+      (client as any).options.fetch = async () => Response.json({ok: true});
+      await assert.rejects(client.ensure(), {message: `El servidor TTS no responde. Revisa ${client.logPath}.`});
+    }
+  }
+});
+
+test('port selection: later teHablo is reused and subsequent requests follow it', async () => {
+  const urls: string[] = [];
+  const client = new ServerClient({fetch: (async (url: any) => {
+    urls.push(String(url)); return Response.json(new URL(url).port === '23768' ? {service: 'tehablo'} : {ok: true});
+  }) as any, spawn: (() => assert.fail('must reuse')) as any});
+  await client.ensure(); await client.request('/status');
+  assert.equal(client.base, 'http://127.0.0.1:23768');
+  assert.equal(urls.at(-1), client.base + '/status');
+});
+
+test('non-JSON, unsuccessful identity and timeout responses are skipped, never spawned on', async () => {
+  for (const kind of ['non-json', 'http-error', 'timeout', 'null', 'wrong-service']) {
+    const spawned: string[] = [];
+    let ready = false;
+    const client = new ServerClient({root: '/tehablo', exists: () => true, openLog: () => 1, closeLog: () => {},
+      fetch: (async (url: any) => {
+        const port = new URL(url).port;
+        if (port === '23765') {
+          if (kind === 'timeout') throw new DOMException('timed out', 'TimeoutError');
+          if (kind === 'non-json') return new Response('not JSON');
+          if (kind === 'null') return Response.json(null);
+          if (kind === 'wrong-service') return Response.json({service: 'other'});
+          return Response.json({service: 'tehablo'}, {status: 503});
+        }
+        if (port === '23766' && ready) return Response.json({service: 'tehablo'});
+        throw new TypeError('connection refused');
+      }) as any, spawn: ((_python: string, args: string[]) => {
+        spawned.push(args[args.indexOf('--port') + 1]); ready = true;
+        return {once() {}, unref() {}};
+      }) as any});
+    await client.ensure();
+    assert.deepEqual(spawned, ['23766'], kind);
+    assert.equal(client.base, 'http://127.0.0.1:23766');
+  }
+});
+
+test('default first free port is 23765 and other exit codes retain the exact startup error', async () => {
+  for (const code of [1, 2, null]) {
+    const ports: string[] = [];
+    const client = new ServerClient({root: '/tehablo', exists: () => true, openLog: () => 1, closeLog: () => {},
+      fetch: (async () => {throw new TypeError('connection refused');}) as any,
+      spawn: ((_python: string, args: string[]) => {
+        ports.push(args[args.indexOf('--port') + 1]);
+        return {once(event: string, cb: (code: number | null) => void) {
+          if (event === 'exit') setImmediate(() => cb(code));
+        }, unref() {}};
+      }) as any, delay: () => new Promise(r => setImmediate(r))});
+    await assert.rejects(client.ensure(), {message: `El servidor TTS se cerró al arrancar. Revisa ${client.logPath}.`});
+    assert.deepEqual(ports, ['23765']);
+  }
+});
+
+test('foreign candidates produce exact automatic and explicit errors without spawning', async () => {
+  for (const port of [undefined, '24123']) {
+    const seen: string[] = [];
+    const client = new ServerClient({port, fetch: (async (url: any) => {
+      seen.push(new URL(url).port); return Response.json({ok: true});
+    }) as any, spawn: (() => assert.fail('foreign port')) as any});
+    await assert.rejects(client.ensure(), {message: port
+      ? `El puerto ${port} está ocupado por otro programa. Ciérralo o define otro TEHABLO_PORT.`
+      : 'Los puertos 23765–23769 están ocupados por otros programas. Cierra alguno o define TEHABLO_PORT.'});
+    assert.deepEqual(seen, port ? [port] : ['23765', '23766', '23767', '23768', '23769']);
+  }
+});
+
+test('port collision race reuses the winner or skips a foreign winner', async () => {
+  for (const winner of ['tehablo', 'foreign']) {
+    let occupied = false, ready = false;
+    const ports: string[] = [];
+    const client = new ServerClient({root: '/tehablo', exists: () => true, openLog: () => 1, closeLog: () => {},
+      fetch: (async (url: any) => {
+        const port = new URL(url).port;
+        if (port === '23765') return Response.json({ok: true});
+        if (port === '23766' && occupied) return Response.json({service: winner});
+        if (port === '23767' && ready) return Response.json({service: 'tehablo'});
+        throw Error('connection refused');
+      }) as any,
+      spawn: ((_python: string, args: string[]) => {
+        const port = args[args.indexOf('--port') + 1]; ports.push(port);
+        assert.ok(['23766', '23767'].includes(port), `unexpected spawn port ${port}`);
+        if (port === '23767') ready = true;
+        return {once(event: string, cb: (code: number) => void) {
+          if (event === 'exit' && port === '23766') setImmediate(() => {occupied = true; cb(3);});
+        }, unref() {}};
+      }) as any, delay: () => new Promise(r => setImmediate(r))});
+    await client.ensure();
+    assert.deepEqual(ports, winner === 'tehablo' ? ['23766'] : ['23766', '23767']);
+    assert.equal(client.base, `http://127.0.0.1:${winner === 'tehablo' ? '23766' : '23767'}`);
+  }
+});
 import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
@@ -6,7 +116,30 @@ import { tmpdir } from 'node:os';
 import { createTehabloPlugin, sameLocation, type PluginContext } from '../src/plugin.ts';
 import { createTehabloTui } from '../src/tui.ts';
 import type { NoticePayload } from '../rpc.ts';
-import { ServerClient, resolveTehabloRoot } from '../src/server.ts';
+import { ServerClient as RealServerClient, resolveTehabloRoot } from '../src/server.ts';
+
+// Spawned mock servers echo their CLI nonce, just like Python's /health.
+class ServerClient extends RealServerClient {
+  constructor(options: any = {}) {
+    let nonce: string | undefined;
+    const spawn = options.spawn, fetch = options.fetch;
+    super({...options,
+      ...(spawn && {spawn: (...args: any[]) => {
+        nonce = args[1][args[1].indexOf('--instance') + 1];
+        return spawn(...args);
+      }}),
+      ...(fetch && {fetch: async (...args: any[]) => {
+        const response = await fetch(...args);
+        if (!nonce || new URL(args[0]).pathname !== '/health') return response;
+        try {
+          const data = await response.clone().json();
+          return data?.service === 'tehablo' && data.instance === undefined
+            ? Response.json({...data, instance: nonce}, {status: response.status}) : response;
+        } catch { return response; }
+      }}),
+    });
+  }
+}
 import { DEFAULTS, type Settings } from '../src/settings.ts';
 import { cleanText, finalAssistantText } from '../src/text.ts';
 
@@ -74,7 +207,7 @@ function createHarness(options: {
     calls.push({ path, body });
     if (options.health === null) throw new Error('Server offline');
     if (path === '/health') {
-      return Response.json({ ok: true, ready: true, model: 'spanish', voice: 'lola', volume: 0.5, speed: 1, rhythm: 0, audio: 'local', device: '', ...options.health });
+      return Response.json({ service: 'tehablo', ok: true, ready: true, model: 'spanish', voice: 'lola', volume: 0.5, speed: 1, rhythm: 0, audio: 'local', device: '', ...options.health });
     }
     if (path === '/status') {
       return Response.json({ id: calls.findLast(c => c.path === '/speak')?.body?.id ?? null, queue: [], promoted: [], state: 'playing' });

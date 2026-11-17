@@ -5,6 +5,7 @@ import { homedir } from 'node:os';
 import { resolve, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+const CANDIDATES = ['23765', '23766', '23767', '23768', '23769'];
 const OS_NAMES: Record<string, string> = { win32: 'windows', linux: 'linux', darwin: 'macos' };
 
 export type ServerOptions = {
@@ -54,6 +55,7 @@ export class ServerClient {
   base: string;
   private options: ServerOptions;
   private child?: ReturnType<typeof nodeSpawn>;
+  private instance?: string;
   private starting?: Promise<void>;
   private closed = false;
   private readings = new Map<string, string | undefined>();
@@ -66,7 +68,7 @@ export class ServerClient {
   constructor(options: ServerOptions = {}) {
     this.options = options;
     this.root = resolveTehabloRoot(options.root, process.env.TEHABLO_ROOT, options.exists ?? existsSync);
-    this.base = `http://127.0.0.1:${options.port ?? process.env.TEHABLO_PORT ?? '8765'}`;
+    this.base = `http://127.0.0.1:${options.port ?? process.env.TEHABLO_PORT ?? CANDIDATES[0]}`;
   }
 
   async request(path: string, body?: unknown, sessionID?: string): Promise<any> {
@@ -132,43 +134,84 @@ export class ServerClient {
     return python;
   }
 
+  private async probe(port: string): Promise<{service: 'tehablo'; instance?: string | null} | 'free' | 'foreign'> {
+    let response: Response;
+    try {
+      response = await (this.options.fetch ?? globalThis.fetch)(`http://127.0.0.1:${port}/health`, {signal: AbortSignal.timeout(2000)});
+    } catch (error) {
+      return ['TimeoutError', 'AbortError'].includes((error as Error).name) ? 'foreign' : 'free';
+    }
+    try {
+      const health = await response.json();
+      return response.ok && health?.service === 'tehablo' ? health : 'foreign';
+    }
+    catch { return 'foreign'; }
+  }
   private async start() {
-    try { await this.request('/health'); this.spawned = !!this.child; return; } catch { /* Start only when unavailable. */ }
+    const explicit = this.options.port ?? process.env.TEHABLO_PORT;
+    const ports = explicit === undefined ? CANDIDATES : [explicit];
+    const states = await Promise.all(ports.map(port => this.probe(port)));
     if (this.closed) return;
+    const reuse = states.findIndex(state => typeof state === 'object' && (!this.child || state.instance === this.instance));
+    if (reuse !== -1) {
+      this.base = `http://127.0.0.1:${ports[reuse]}`;
+      this.spawned = !!this.child;
+      return;
+    }
     if (!this.child) {
-      const python = this.assertConfigured();
-      let log: number | undefined;
-      try { log = (this.options.openLog ?? openLogFile)(this.logPath); } catch { /* Logging is best effort. */ }
-      let child: ReturnType<typeof nodeSpawn>;
-      try {
-        child = (this.options.spawn ?? nodeSpawn)(python, ['-X', 'faulthandler', join(this.root, 'src', 'tehablo_server.py'), '--port', new URL(this.base).port, ...this.startArgs], {
-          cwd: this.root, stdio: log === undefined ? 'ignore' : ['ignore', log, log], windowsHide: true, detached: true,
-        });
-      } finally {
-        if (log !== undefined) (this.options.closeLog ?? closeSync)(log);
-      }
-      this.child = child;
-      this.spawned = true;
-      let spawnError: Error | undefined;
-      let exited = false;
-      child.once('error', error => { spawnError = error; });
-      child.once('exit', () => { exited = true; if (this.child === child) this.child = undefined; });
-      child.unref?.();
-      // No fixed timeout: startup time depends on the machine and disk, so wait while the process lives.
-      while (!this.closed) {
-        if (spawnError) {
-          this.child = undefined;
-          if ((spawnError as NodeJS.ErrnoException).code === 'ENOENT') {
-            throw new Error(`No se encontró el Python del entorno (${python}). Ejecuta el instalador de teHablo.`);
-          }
-          throw spawnError;
+      for (let index = 0; index < ports.length; index++) {
+        if (states[index] !== 'free') continue;
+        this.base = `http://127.0.0.1:${ports[index]}`;
+        const python = this.assertConfigured();
+        let log: number | undefined;
+        try { log = (this.options.openLog ?? openLogFile)(this.logPath); } catch { /* Logging is best effort. */ }
+        const instance = randomBytes(16).toString('hex');
+        let child: ReturnType<typeof nodeSpawn>;
+        try {
+          child = (this.options.spawn ?? nodeSpawn)(python, ['-X', 'faulthandler', join(this.root, 'src', 'tehablo_server.py'), '--port', new URL(this.base).port, '--instance', instance, ...this.startArgs], {
+            cwd: this.root, stdio: log === undefined ? 'ignore' : ['ignore', log, log], windowsHide: true, detached: true,
+          });
+        } finally {
+          if (log !== undefined) (this.options.closeLog ?? closeSync)(log);
         }
-        if (exited) throw new Error(`El servidor TTS se cerró al arrancar. Revisa ${this.logPath}.`);
-        try { await this.request('/health'); return; } catch { /* Not listening yet. */ }
-        await (this.options.delay ?? (ms => new Promise(r => setTimeout(r, ms))))(250);
+        this.child = child;
+        this.instance = instance;
+        this.spawned = false;
+        let spawnError: Error | undefined;
+        let exited = false;
+        let exitCode: number | null = null;
+        child.once('error', error => { spawnError = error; });
+        child.once('exit', code => { exited = true; exitCode = code; if (this.child === child) this.child = undefined; });
+        child.unref?.();
+        // No fixed timeout: startup time depends on the machine and disk, so wait while the process lives.
+        while (!this.closed) {
+          if (spawnError) {
+            this.child = undefined;
+            if ((spawnError as NodeJS.ErrnoException).code === 'ENOENT') {
+              throw new Error(`No se encontró el Python del entorno (${python}). Ejecuta el instalador de teHablo.`);
+            }
+            throw spawnError;
+          }
+          if (exited) {
+            if (exitCode !== 3) throw new Error(`El servidor TTS se cerró al arrancar. Revisa ${this.logPath}.`);
+            this.spawned = false;
+            if (typeof await this.probe(ports[index]) === 'object') return;
+            break;
+          }
+          const health = await this.probe(ports[index]);
+          if (typeof health === 'object' && health.instance === instance && !exited) {
+            this.spawned = true;
+            return;
+          }
+          await (this.options.delay ?? (ms => new Promise(r => setTimeout(r, ms))))(250);
+        }
+        if (this.closed) return;
       }
+      throw new Error(explicit === undefined
+        ? 'Los puertos 23765–23769 están ocupados por otros programas. Cierra alguno o define TEHABLO_PORT.'
+        : `El puerto ${explicit} está ocupado por otro programa. Ciérralo o define otro TEHABLO_PORT.`);
     } else {
-      await this.request('/health');
+      throw new Error(`El servidor TTS no responde. Revisa ${this.logPath}.`);
     }
   }
 

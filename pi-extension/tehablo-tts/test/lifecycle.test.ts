@@ -1,6 +1,140 @@
 import {test} from 'node:test';
+
+test('instance ownership waits for loser exit and rejects unchecked live-child health', async () => {
+  for (const own of [false, true]) {
+    let nonce = '', exit: any, waiting = false, returned = false;
+    const child = {once(event: string, cb: any) { if (event === 'exit') exit = cb; }, unref() {}};
+    const client = new ServerClient({root: '/tehablo', port: '24123', exists: () => true, openLog: () => 1, closeLog: () => {},
+      spawn: ((_python: string, args: string[]) => { nonce = args[args.indexOf('--instance') + 1]; assert.match(nonce, /^[0-9a-f]{32}$/); return child; }) as any,
+      fetch: (async () => { if (!nonce) throw Error('refused'); return Response.json({service: 'tehablo', instance: own ? nonce : 'other'}); }) as any,
+      delay: async () => { waiting = true; assert.equal(returned, false); exit(3); }});
+    await client.ensure().then(() => { returned = true; });
+    assert.equal(waiting, !own);
+    assert.equal(client.spawned, own);
+    assert.equal((client as any).child, own ? child : undefined);
+    if (own) {
+      (client as any).options.fetch = async () => Response.json({ok: true});
+      await assert.rejects(client.ensure(), {message: `El servidor TTS no responde. Revisa ${client.logPath}.`});
+    }
+  }
+});
+
+test('port selection reuses a later teHablo and directs subsequent requests there', async () => {
+  const urls: string[] = [];
+  const client = new ServerClient({fetch: (async (url: any) => {
+    urls.push(String(url));
+    return Response.json(new URL(url).port === '23768' ? {service: 'tehablo'} : {ok: true});
+  }) as any, spawn: (() => assert.fail('must reuse')) as any});
+  await client.ensure(); await client.request('/status');
+  assert.equal(client.base, 'http://127.0.0.1:23768');
+  assert.equal(urls.at(-1), client.base + '/status');
+});
+
+test('non-JSON, unsuccessful identity and timeout responses are skipped, never spawned on', async () => {
+  for (const kind of ['non-json', 'http-error', 'timeout', 'null', 'wrong-service']) {
+    const spawned: string[] = [];
+    let ready = false;
+    const client = new ServerClient({root: '/tehablo', exists: () => true, openLog: () => 1, closeLog: () => {},
+      fetch: (async (url: any) => {
+        const port = new URL(url).port;
+        if (port === '23765') {
+          if (kind === 'timeout') throw new DOMException('timed out', 'TimeoutError');
+          if (kind === 'non-json') return new Response('not JSON');
+          if (kind === 'null') return Response.json(null);
+          if (kind === 'wrong-service') return Response.json({service: 'other'});
+          return Response.json({service: 'tehablo'}, {status: 503});
+        }
+        if (port === '23766' && ready) return Response.json({service: 'tehablo'});
+        throw new TypeError('connection refused');
+      }) as any, spawn: ((_python: string, args: string[]) => {
+        spawned.push(args[args.indexOf('--port') + 1]); ready = true;
+        return {once() {}, unref() {}};
+      }) as any});
+    await client.ensure();
+    assert.deepEqual(spawned, ['23766'], kind);
+    assert.equal(client.base, 'http://127.0.0.1:23766');
+  }
+});
+
+test('default first free port is 23765 and other exit codes retain the exact startup error', async () => {
+  for (const code of [1, 2, null]) {
+    const ports: string[] = [];
+    const client = new ServerClient({root: '/tehablo', exists: () => true, openLog: () => 1, closeLog: () => {},
+      fetch: (async () => {throw new TypeError('connection refused');}) as any,
+      spawn: ((_python: string, args: string[]) => {
+        ports.push(args[args.indexOf('--port') + 1]);
+        return {once(event: string, cb: (code: number | null) => void) {
+          if (event === 'exit') setImmediate(() => cb(code));
+        }, unref() {}};
+      }) as any, delay: () => new Promise(r => setImmediate(r))});
+    await assert.rejects(client.ensure(), {message: `El servidor TTS se cerró al arrancar. Revisa ${client.logPath}.`});
+    assert.deepEqual(ports, ['23765']);
+  }
+});
+
+test('foreign candidates produce exact automatic and explicit errors without spawning', async () => {
+  for (const port of [undefined, '24123']) {
+    const seen: string[] = [];
+    const client = new ServerClient({port, fetch: (async (url: any) => {
+      seen.push(new URL(url).port); return Response.json({ok: true});
+    }) as any, spawn: (() => assert.fail('foreign port')) as any});
+    await assert.rejects(client.ensure(), {message: port
+      ? `El puerto ${port} está ocupado por otro programa. Ciérralo o define otro TEHABLO_PORT.`
+      : 'Los puertos 23765–23769 están ocupados por otros programas. Cierra alguno o define TEHABLO_PORT.'});
+    assert.deepEqual(seen, port ? [port] : ['23765', '23766', '23767', '23768', '23769']);
+  }
+});
+
+test('port collision race reuses the winner or skips a foreign winner', async () => {
+  for (const winner of ['tehablo', 'foreign']) {
+    let occupied = false, ready = false;
+    const ports: string[] = [];
+    const client = new ServerClient({root: '/tehablo', exists: () => true, openLog: () => 1, closeLog: () => {},
+      fetch: (async (url: any) => {
+        const port = new URL(url).port;
+        if (port === '23765') return Response.json({ok: true});
+        if (port === '23766' && occupied) return Response.json({service: winner});
+        if (port === '23767' && ready) return Response.json({service: 'tehablo'});
+        throw Error('connection refused');
+      }) as any,
+      spawn: ((_python: string, args: string[]) => {
+        const port = args[args.indexOf('--port') + 1]; ports.push(port);
+        assert.ok(['23766', '23767'].includes(port), `unexpected spawn port ${port}`);
+        if (port === '23767') ready = true;
+        return {once(event: string, cb: (code: number) => void) {
+          if (event === 'exit' && port === '23766') setImmediate(() => {occupied = true; cb(3);});
+        }, unref() {}};
+      }) as any, delay: () => new Promise(r => setImmediate(r))});
+    await client.ensure();
+    assert.deepEqual(ports, winner === 'tehablo' ? ['23766'] : ['23766', '23767']);
+    assert.equal(client.base, `http://127.0.0.1:${winner === 'tehablo' ? '23766' : '23767'}`);
+  }
+});
 import assert from 'node:assert/strict';
-import {ServerClient} from '../src/server.ts';
+import {ServerClient as RealServerClient} from '../src/server.ts';
+
+// Spawned mock servers echo their CLI nonce, just like Python's /health.
+class ServerClient extends RealServerClient {
+  constructor(options: any = {}) {
+    let nonce: string | undefined;
+    const spawn = options.spawn, fetch = options.fetch;
+    super({...options,
+      ...(spawn && {spawn: (...args: any[]) => {
+        nonce = args[1][args[1].indexOf('--instance') + 1];
+        return spawn(...args);
+      }}),
+      ...(fetch && {fetch: async (...args: any[]) => {
+        const response = await fetch(...args);
+        if (!nonce || new URL(args[0]).pathname !== '/health') return response;
+        try {
+          const data = await response.clone().json();
+          return data?.service === 'tehablo' && data.instance === undefined
+            ? Response.json({...data, instance: nonce}, {status: response.status}) : response;
+        } catch { return response; }
+      }}),
+    });
+  }
+}
 import {fileURLToPath} from 'node:url';
 import {resolve} from 'node:path';
 
@@ -13,7 +147,7 @@ test('scoped controls S3: shutdown stops only owned current and queued readings 
     if (path === '/speak') { if (body.id !== current) queue.push(body.id); return Response.json({id: body.id}); }
     if (path === '/status') return Response.json({state: 'playing', id: current, queue});
     if (path === '/stop') { stops.push(body); queue = queue.filter(id => id !== body.id); if (body.id === current) current = queue.shift()!; }
-    return Response.json({ok: true});
+    return Response.json({ok: true, service: 'tehablo'});
   }) as any});
   await client.ensure();
   await client.request('/speak', {id: 'mine', text: 'first'});
@@ -56,31 +190,33 @@ test('default root is two levels above extension, POSIX python, stop only after 
   assert.equal(defaultClient.root,process.env.TEHABLO_ROOT ?? resolve(fileURLToPath(new URL('../../..',import.meta.url))));
   let healthy=false; const commands:any[]=[]; const calls:string[]=[];
   const client=new ServerClient({root:'/tehablo',platform:'linux',fetch:(async(url:any)=>{
-    calls.push(new URL(url).pathname); if(!healthy) throw Error('offline'); return Response.json({ok:true});
+    calls.push(new URL(url).pathname); if(!healthy) throw Error('offline'); return Response.json({ok:true,service:'tehablo'});
   }) as any,spawn:((...args:any[])=>{commands.push(args); healthy=true; return {once(){},unref(){},kill(){}};}) as any});
   await client.stop(); assert.equal(calls.length,0);
   await client.ensure(); assert.match(commands[0][0],/\.venv-pocket[/\\]bin[/\\]python$/);
-  await client.shutdown(); assert.deepEqual(calls,['/health','/health']);
+  await client.shutdown(); assert.deepEqual(calls,Array(6).fill('/health'));
   client.beginSession(); await client.ensure(); await client.shutdown(); assert.equal(commands.length,1);
 });
 
 test('start arguments are passed to the spawned server, which is then marked as spawned here',async()=>{
   let healthy=false; const commands:any[]=[];
-  const client=new ServerClient({root:'/tehablo',platform:'linux',fetch:(async()=>{ if(!healthy) throw Error('offline'); return Response.json({ok:true}); }) as any,
+  const client=new ServerClient({root:'/tehablo',platform:'linux',fetch:(async()=>{ if(!healthy) throw Error('offline'); return Response.json({ok:true,service:'tehablo'}); }) as any,
     spawn:((...args:any[])=>{commands.push(args); healthy=true; return {once(){},unref(){},kill(){}};}) as any, openLog:()=>{throw Error('no log');}});
   assert.equal(client.spawned,false);
   client.startArgs=['--model','phonon','--voice','Regina'];
   await client.ensure();
-  assert.deepEqual(commands[0][1].slice(-6),['--port','8765','--model','phonon','--voice','Regina']);
+  assert.deepEqual(commands[0][1].slice(-4),['--model','phonon','--voice','Regina']);
+  assert.deepEqual(commands[0][1].slice(3,6), ['--port','23765','--instance']);
+  assert.match(commands[0][1][6], /^[0-9a-f]{32}$/);
   assert.equal(client.spawned,true);
-  const reused=new ServerClient({fetch:(async()=>Response.json({ok:true})) as any});
+  const reused=new ServerClient({fetch:(async()=>Response.json({ok:true,service:'tehablo'})) as any});
   await reused.ensure(); assert.equal(reused.spawned,false);
 });
 
 test('a token is passed only in the environment of the spawned server, never as an argument',async()=>{
   for(const token of [undefined,'hf_secret']) {
     let healthy=false; const commands:any[]=[];
-    const client=new ServerClient({root:'/tehablo',platform:'linux',fetch:(async()=>{ if(!healthy) throw Error('offline'); return Response.json({ok:true}); }) as any,
+    const client=new ServerClient({root:'/tehablo',platform:'linux',fetch:(async()=>{ if(!healthy) throw Error('offline'); return Response.json({ok:true,service:'tehablo'}); }) as any,
       spawn:((...args:any[])=>{commands.push(args); healthy=true; return {once(){},unref(){},kill(){}};}) as any, openLog:()=>{throw Error('no log');}});
     client.token=token;
     await client.ensure();
@@ -94,7 +230,7 @@ test('owner session close never shuts down or kills; explicit failed power off k
   let healthy=false,kills=0; const exits: (()=>void)[]=[];
   const client=new ServerClient({fetch:(async(url:any)=>{
     if(!healthy || new URL(url).pathname==='/shutdown') throw Error('sin conexión');
-    return Response.json({ok:true});
+    return Response.json({ok:true,service:'tehablo'});
   }) as any,spawn:(()=>{healthy=true;return {once(event:string,cb:()=>void){if(event==='exit')exits.push(cb);},unref(){},kill(){kills++;for(const cb of exits)cb();}};}) as any});
   await client.ensure(); await client.shutdown(); assert.equal(kills,0);
   client.beginSession(); healthy=false; await client.ensure();
@@ -104,7 +240,7 @@ test('owner session close never shuts down or kills; explicit failed power off k
 test('power off releases the owned process and allows same-session restart; shutdown stays terminal',async()=>{
   let healthy=false,kills=0,exit=()=>{};const calls:string[]=[],spawned:any[]=[];
   const client=new ServerClient({root:'/tehablo',openLog:()=>1,closeLog:()=>{},
-    fetch:(async(url:any)=>{const path=new URL(url).pathname;calls.push(path);if(!healthy)throw Error('offline');if(path==='/shutdown')setImmediate(()=>{healthy=false;exit();});return Response.json({ok:true});}) as any,
+    fetch:(async(url:any)=>{const path=new URL(url).pathname;calls.push(path);if(!healthy)throw Error('offline');if(path==='/shutdown')setImmediate(()=>{healthy=false;exit();});return Response.json({ok:true,service:'tehablo'});}) as any,
     spawn:((...args:any[])=>{spawned.push(args);healthy=true;return {once(event:string,callback:()=>void){if(event==='exit'){const previous=exit;exit=()=>{previous();callback();};}},unref(){},kill(){kills++;}};}) as any});
   await client.ensure();await client.powerOff();assert.deepEqual(calls.slice(-2),['/stop','/shutdown']);assert.equal(kills,0);
   assert.equal(healthy,false,'power off waits for process exit before allowing restart');
@@ -115,7 +251,7 @@ test('power off releases the owned process and allows same-session restart; shut
 test('power off during pending startup prevents stale spawn and can restart',async()=>{
   let release!:()=>void,checks=0,spawns=0;
   const client=new ServerClient({root:'/tehablo',openLog:()=>1,closeLog:()=>{},
-    fetch:(async()=>{if(++checks===1) {await new Promise<void>(r=>{release=r;});throw Error('offline');}return Response.json({ok:true});}) as any,
+    fetch:(async()=>{if(++checks===1) {await new Promise<void>(r=>{release=r;});throw Error('offline');}return Response.json({ok:true,service:'tehablo'});}) as any,
     spawn:(()=>{spawns++;return {once(){},unref(){},kill(){}};}) as any});
   const boot=client.ensure();await new Promise(r=>setImmediate(r));
   const off=client.powerOff();release();await boot;await off;assert.equal(spawns,0);
@@ -230,7 +366,7 @@ test('dual boot: Windows falls back to .venv-pocket-windows when .venv-pocket ho
   let healthy=false; const spawned:any[]=[];
   const client=new ServerClient({root:'E:/tehablo',platform:'win32',
     exists:(path:string)=>path.replaceAll('\\','/').endsWith('/.venv-pocket-windows/Scripts/python.exe'),
-    fetch:(async()=>{ if(!healthy) throw Error('offline'); return Response.json({ok:true}); }) as any,
+    fetch:(async()=>{ if(!healthy) throw Error('offline'); return Response.json({ok:true,service:'tehablo'}); }) as any,
     spawn:spawnRecorder(spawned,()=>{healthy=true;}), delay:async()=>{}});
   await client.ensure();
   assert.equal(slash(spawned[0][0]),'E:/tehablo/.venv-pocket-windows/Scripts/python.exe');
@@ -239,7 +375,7 @@ test('dual boot: Windows falls back to .venv-pocket-windows when .venv-pocket ho
 test('dual boot: .venv-pocket wins over the OS-named environment when both exist',async()=>{
   let healthy=false; const spawned:any[]=[];
   const client=new ServerClient({root:'/tehablo',platform:'linux',exists:()=>true,
-    fetch:(async()=>{ if(!healthy) throw Error('offline'); return Response.json({ok:true}); }) as any,
+    fetch:(async()=>{ if(!healthy) throw Error('offline'); return Response.json({ok:true,service:'tehablo'}); }) as any,
     spawn:spawnRecorder(spawned,()=>{healthy=true;}), delay:async()=>{}});
   await client.ensure();
   assert.ok(slash(spawned[0][0]).endsWith('/tehablo/.venv-pocket/bin/python'));
@@ -267,7 +403,7 @@ function exitingSpawn(spawned:any[]){
 test('slow startup: waits past 30 health checks while the process lives',async()=>{
   let checks=0; const spawned:any[]=[];
   const client=new ServerClient({root:'/tehablo',platform:'linux',exists:()=>true,
-    fetch:(async()=>{ if(++checks<=60) throw Error('offline'); return Response.json({ok:true}); }) as any,
+    fetch:(async()=>{ if(++checks<=60) throw Error('offline'); return Response.json({ok:true,service:'tehablo'}); }) as any,
     spawn:spawnRecorder(spawned,()=>{}), delay:async()=>{}});
   await client.ensure();
   assert.equal(spawned.length,1);
@@ -302,7 +438,7 @@ test('after the server exits, the next attempt starts a new one',async()=>{
 test('an unwritable log falls back to ignored output',async()=>{
   let healthy=false; const spawned:any[]=[];
   const client=new ServerClient({root:'/tehablo',platform:'linux',exists:()=>true,
-    fetch:(async()=>{ if(!healthy) throw Error('offline'); return Response.json({ok:true}); }) as any,
+    fetch:(async()=>{ if(!healthy) throw Error('offline'); return Response.json({ok:true,service:'tehablo'}); }) as any,
     openLog:()=>{throw Error('EACCES');}, spawn:spawnRecorder(spawned,()=>{healthy=true;}), delay:async()=>{}});
   await client.ensure();
   assert.equal(spawned[0][2].stdio,'ignore');
@@ -311,10 +447,10 @@ test('an unwritable log falls back to ignored output',async()=>{
 test('power off shuts down a server another Pi session started; closing this session leaves it running',async()=>{
   for(const end of ['powerOff','shutdown'] as const) {
     const calls:string[]=[];let spawns=0;
-    const client=new ServerClient({root:'/tehablo',platform:'linux',fetch:(async(url:any)=>{calls.push(new URL(url).pathname);return Response.json({ok:true,ready:true});}) as any,
+    const client=new ServerClient({root:'/tehablo',platform:'linux',fetch:(async(url:any)=>{calls.push(new URL(url).pathname);return Response.json({ok:true,ready:true,service:'tehablo'});}) as any,
       spawn:(()=>{spawns++;return {once(){},unref(){},kill(){}};}) as any});
     await client.ensure();assert.equal(spawns,0);
     await client[end]();
-    assert.deepEqual(calls.slice(-2),end==='powerOff'?['/stop','/shutdown']:['/health'],end);
+    assert.deepEqual(calls.slice(-2),end==='powerOff'?['/stop','/shutdown']:['/health','/health'],end);
   }
 });
