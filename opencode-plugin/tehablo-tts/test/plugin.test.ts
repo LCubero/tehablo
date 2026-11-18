@@ -110,12 +110,13 @@ test('port collision race reuses the winner or skips a foreign winner', async ()
   }
 });
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
+import { createHash } from 'node:crypto';
 import { createTehabloPlugin, sameLocation, type PluginContext } from '../src/plugin.ts';
 import { createTehabloTui } from '../src/tui.ts';
-import type { NoticePayload } from '../rpc.ts';
+import { tehabloRpc, type NoticePayload } from '../rpc.ts';
 import { ServerClient as RealServerClient, resolveTehabloRoot } from '../src/server.ts';
 
 // Spawned mock servers echo their CLI nonce, just like Python's /health.
@@ -182,6 +183,7 @@ function createHarness(options: {
   const location = options.location ?? 'D:/repo/tehablo';
   const calls: Array<{ path: string; body: any }> = [];
   const notices: NoticePayload[] = [];
+  let rpcHandlers: Record<string, (input: any) => Promise<unknown>> = {};
   let rpcDisposed = false;
   const storage = new Map<string, unknown>(Object.entries(options.initialStorage ?? {}));
   const commands = new Map<string, (input: { sessionID: string; prompt: { text: string } }) => Promise<void>>();
@@ -269,7 +271,8 @@ function createHarness(options: {
       },
     },
     rpc: {
-      async register() {
+      async register(_definition, handlers) {
+        rpcHandlers = handlers;
         return {
           dispose() { rpcDisposed = true; },
           events: {
@@ -290,6 +293,7 @@ function createHarness(options: {
     ctx,
     calls,
     notices,
+    rpcHandlers: () => rpcHandlers,
     isRpcDisposed: () => rpcDisposed,
     storage,
     commands,
@@ -310,6 +314,408 @@ test('cleanText and finalAssistantText skip tool-call messages and strip markdow
     { id: 'm1', type: 'assistant', finish: 'tool-calls', content: [{ type: 'text', text: 'Paso 1' }, { type: 'tool' }] },
     { id: 'm2', type: 'assistant', finish: 'stop', content: [{ type: 'text', text: 'Respuesta final.' }] },
   ]), { messageId: 'm2', text: 'Respuesta final.' });
+});
+
+test('portable RPC declares an explicit serializable output for every method', () => {
+  for (const [name, method] of Object.entries(tehabloRpc.methods)) {
+    assert.ok('output' in method, `${name} must declare output before the host encodes its result`);
+    assert.equal(typeof method.output, 'object');
+  }
+  assert.deepEqual(tehabloRpc.methods.control.output, {type: 'null'});
+});
+
+test('RPC exposes exactly the one plugin method', () => {
+  assert.deepEqual(Object.keys(tehabloRpc.methods), ['control']);
+});
+
+test('menu exposes only the four documented actions and ignores unknown selections', async () => {
+  let listener: any;
+  const menus: any[] = [];
+  const dispose = createTehabloTui({
+    data: {listen(cb) {listener = cb; return () => {};}},
+    client: {rpc: () => ({control: async () => assert.fail('No synthetic action')})},
+    ui: {router: {current: () => ({type: 'session', sessionID: 'main'})}, toast: {show() {assert.fail('No toast');}},
+      dialog: {select: async options => {menus.push(options); return 'rpc-identity';}, alert: async () => assert.fail('No alert')}},
+  });
+  try {
+    listener({details: {type: 'rpc.tehablo-tts.notice', data: {sessionID: 'main', kind: 'menu', variant: 'info', message: '', auto: false}}});
+    await new Promise(r => setImmediate(r));
+    assert.deepEqual(menus[0].options.map((option: any) => option.value), ['play', 'stop', 'auto', 'help']);
+  } finally {dispose();}
+});
+
+test('Help emits once and returns a serializable acknowledgement without server effects', async () => {
+  const h = createHarness();
+  const cleanup = await createTehabloPlugin(h.ctx, {client: h.client, settingsDirectory: h.dir});
+  const args = [...h.client.startArgs];
+  try {
+    const result = await h.rpcHandlers().control({sessionID: 'main', action: 'help'});
+    assert.equal(result, null);
+    assert.deepEqual(JSON.parse(JSON.stringify({output: result})), {output: null});
+    assert.equal(h.notices.length, 1);
+    assert.equal(h.notices[0].kind, 'help');
+    assert.match(h.notices[0].message, /Uso de \/tts:/);
+    assert.doesNotMatch(h.notices[0].message, /DEBUG-tehablo-rpc/);
+    assert.deepEqual(h.calls, []);
+    assert.deepEqual(h.client.startArgs, args);
+    assert.throws(() => readFileSync(join(h.dir, 'settings.json')), {code: 'ENOENT'});
+  } finally { await cleanup(); h.cleanupDir(); }
+});
+
+test('RPC malformed inputs preserve exact errors and settings hashes', async () => {
+  const h = createHarness({initialStorage: {spokenIds: ['prior']}});
+  writeFileSync(join(h.dir, 'settings.json'), '{"voice":"lola","future":true}\n');
+  h.client.ensure = async () => assert.fail('Rejected input must not boot');
+  const cleanup = await createTehabloPlugin(h.ctx, {client: h.client, settingsDirectory: h.dir});
+  const snapshot = () => ({
+    hash: createHash('sha256').update(readFileSync(join(h.dir, 'settings.json'))).digest('hex'),
+    calls: structuredClone(h.calls), notices: structuredClone(h.notices),
+    storage: structuredClone([...h.storage]), args: [...h.client.startArgs],
+  });
+  const errors = {
+    control: 'Acción de menú no válida.',
+  };
+  try {
+    for (const [method, message] of Object.entries(errors)) {
+      for (const input of [null, [], {}, {sessionID: 0}, {sessionID: false}]) {
+        const before = snapshot();
+        await assert.rejects(() => h.rpcHandlers()[method](input), {name: 'Error', message});
+        assert.deepEqual(snapshot(), before);
+      }
+    }
+  } finally { await cleanup(); h.cleanupDir(); }
+});
+
+test('menu control routing captures Location for all four actions and preserves missing-location defaults', async () => {
+  for (const directory of ['D:/private-project', undefined, '', '   ']) {
+    for (const action of ['play', 'stop', 'auto', 'help']) {
+      let listener: any, clientReads = 0;
+      const location = directory === undefined ? undefined : {directory};
+      const calls: any[] = [], alerts: any[] = [], toasts: any[] = [];
+      const dispose = createTehabloTui({
+        location,
+        get client() {
+          const client = ++clientReads;
+          return {rpc: () => ({control: async (input, options) => {calls.push({input, options, client});}})};
+        },
+        data: {listen(cb) {listener = cb; return () => {};}},
+        ui: {router: {current: () => ({type: 'session', sessionID: 'main'})}, toast: {show(n) {toasts.push(n);}},
+          dialog: {select: async () => {
+            if (location) location.directory = 'D:/changed-project';
+            return action;
+          }, alert: async options => {alerts.push(options);}}},
+      });
+      try {
+        listener({details: {type: 'rpc.tehablo-tts.notice', data: {sessionID: 'main', kind: 'menu', variant: 'info', message: '', auto: false}}});
+        await waitUntil(() => calls.length > 0 || toasts.length > 0);
+        assert.equal(calls.length, 1);
+        assert.deepEqual(calls[0].input, {sessionID: 'main', action});
+        assert.deepEqual(calls[0].options, directory?.trim() ? {location: {directory}} : undefined);
+        assert.ok(calls[0].client > 1, 'read the current client after awaiting selection');
+        assert.deepEqual(alerts, []);
+        assert.deepEqual(toasts, []);
+      } finally {dispose();}
+    }
+  }
+});
+
+test('menu control routing does not retry a scoped rejection or revive cancelled selections', async () => {
+  for (const outcome of ['reject', 'cancel', 'navigate', 'unload']) {
+    let listener: any, changed: any;
+    const calls: any[] = [], toasts: any[] = [];
+    const dispose = createTehabloTui({
+      location: {directory: 'D:/private-project'},
+      client: {rpc: () => ({control: async (input, options) => {
+        calls.push({input, options});
+        throw {type: 'rpc.unavailable', message: 'Test rejection'};
+      }})},
+      data: {listen(cb) {listener = cb; return () => {};}},
+      ui: {router: {current: () => ({type: 'session', sessionID: 'main'})}, toast: {show(n) {toasts.push(n);}},
+        dialog: {select: async () => {
+          if (outcome === 'navigate') {changed({type: 'home'}); changed({type: 'session', sessionID: 'main'});}
+          if (outcome === 'unload') dispose();
+          return outcome === 'cancel' ? undefined : 'auto';
+        }, alert: async () => assert.fail('No alert')}},
+    }, {watchRoute(cb) {changed = cb; return () => {}; }});
+    try {
+      listener({details: {type: 'rpc.tehablo-tts.notice', data: {sessionID: 'main', kind: 'menu', variant: 'info', message: '', auto: false}}});
+      await new Promise(r => setImmediate(r));
+      assert.deepEqual(calls, outcome === 'reject' ? [
+        {input: {sessionID: 'main', action: 'auto'}, options: {location: {directory: 'D:/private-project'}}},
+      ] : []);
+      assert.equal(toasts.length, outcome === 'reject' ? 1 : 0);
+      if (toasts.length) assert.equal(toasts[0].message, 'rpc.unavailable: Test rejection');
+    } finally {dispose();}
+  }
+});
+
+test('menu re-captures the TUI Location on each invocation instead of reusing a stale directory', async () => {
+  const location = {directory: 'D:/first-project'};
+  const calls: any[] = [], answers: (string | undefined)[] = [undefined, 'play'];
+  let listener: any;
+  const dispose = createTehabloTui({
+    location,
+    client: {rpc: () => ({control: async (...args: any[]) => {calls.push(args);}})},
+    data: {listen(cb) {listener = cb; return () => {};}},
+    ui: {router: {current: () => ({type: 'session', sessionID: 'main'})}, toast: {show() {}},
+      dialog: {select: async () => answers.shift(), alert: async () => assert.fail('No alert')}},
+  });
+  const open = () => listener({details: {type: 'rpc.tehablo-tts.notice',
+    data: {sessionID: 'main', kind: 'menu', variant: 'info', message: '', auto: false}}});
+  try {
+    open();
+    await new Promise(r => setImmediate(r));
+    assert.deepEqual(calls, []);
+    location.directory = 'D:/second-project';
+    open();
+    await waitUntil(() => calls.length > 0);
+    assert.deepEqual(calls, [[{sessionID: 'main', action: 'play'}, {location: {directory: 'D:/second-project'}}]]);
+  } finally {dispose();}
+});
+
+test('menu does not silently ignore explicit arguments', async () => {
+  const h = createHarness();
+  const cleanup = await createTehabloPlugin(h.ctx, {client: h.client, loadSettings: h.loadSettings});
+  try {
+    for (const text of ['/tts menu --help', '/tts menu play', '/tts menu extra argument']) {
+      h.notices.length = 0;
+      await h.commands.get('tts')!({sessionID: 'main', prompt: {text}});
+      assert.equal(h.notices.at(-1)?.kind, 'help', text);
+      assert.equal(h.notices.at(-1)?.variant, 'warning', text);
+      assert.match(h.notices.at(-1)!.message, /\/tts menu/);
+      assert.deepEqual(h.calls, []);
+      assert.equal(h.storage.size, 0);
+    }
+  } finally {
+    await cleanup();
+    h.cleanupDir();
+  }
+});
+
+test('control rejects malformed actions without side effects', async () => {
+  const h = createHarness({initialStorage: {spokenIds: ['prior']}});
+  const cleanup = await createTehabloPlugin(h.ctx, {client: h.client, loadSettings: h.loadSettings});
+  try {
+    for (const input of [null, {}, [], {sessionID: 'main'}, {sessionID: 'main', action: ''},
+      {sessionID: 'main', action: 'menu'}, {sessionID: 'main', action: 'auto on'}, {sessionID: 0, action: 'play'}]) {
+      await assert.rejects(() => h.rpcHandlers().control(input), {message: 'Acción de menú no válida.'});
+      assert.deepEqual(h.calls, []);
+      assert.deepEqual(h.notices, []);
+      assert.deepEqual([...h.storage], [['spokenIds', ['prior']]]);
+    }
+  } finally {
+    await cleanup();
+    h.cleanupDir();
+  }
+});
+
+test('menu actions preserve legacy action results including automatic reading', async () => {
+  const options = {contexts: {main: [{id: 'm', type: 'assistant', finish: 'stop',
+    content: [{type: 'text', text: 'Respuesta.'}]}]}, settings: {volume: 0.4, speed: 1.25}};
+  const old = createHarness(options);
+  const menu = createHarness(options);
+  const a = await createTehabloPlugin(old.ctx, {client: old.client, loadSettings: old.loadSettings, pollIntervalMs: 1e9});
+  const b = await createTehabloPlugin(menu.ctx, {client: menu.client, loadSettings: menu.loadSettings, pollIntervalMs: 1e9});
+  try {
+    for (const action of ['play', 'play', 'stop', 'auto', 'help', 'auto']) {
+      await old.commands.get('tts')!({sessionID: 'main', prompt: {text: action}});
+      await menu.rpcHandlers().control({sessionID: 'main', action});
+      await old.pushEvent({type: 'session.idle', data: {sessionID: 'main'}});
+      await menu.pushEvent({type: 'session.idle', data: {sessionID: 'main'}});
+      assert.deepEqual(menu.calls, old.calls);
+      assert.deepEqual(menu.notices, old.notices);
+      assert.deepEqual([...menu.storage], [...old.storage]);
+    }
+    assert.deepEqual(menu.storage.get('spokenIds'), ['m']);
+    assert.ok(menu.calls.some(c => c.path === '/config'));
+  } finally {
+    await a();
+    await b();
+    old.cleanupDir();
+    menu.cleanupDir();
+  }
+});
+
+test('returning to the original session does not revive a stale menu', async () => {
+  let listener: any;
+  let select: (value: string) => void = () => {};
+  let route = {type: 'session', sessionID: 'main'};
+  const actions: unknown[] = [];
+  const dispose = createTehabloTui({
+    data: {listen(handler) {listener = handler; return () => {listener = undefined; };}},
+    client: {rpc: () => ({control: async input => {actions.push(input);}})},
+    ui: {
+      router: {current: () => route}, toast: {show() {}},
+      dialog: {alert: async () => {}, select: async () => new Promise<string>(r => {select = r;})},
+    },
+  });
+  try {
+    listener({details: {type: 'rpc.tehablo-tts.notice', data: {
+      sessionID: 'main', kind: 'menu', variant: 'info', message: 'Estado', auto: false,
+    }}});
+    route = {type: 'session', sessionID: 'other'};
+    listener({details: {type: 'rpc.tehablo-tts.notice', data: {
+      sessionID: 'other', kind: 'toast', variant: 'info', message: 'Otro estado',
+    }}});
+    await new Promise(r => setImmediate(r));
+    route = {type: 'session', sessionID: 'main'};
+    select('play');
+    await new Promise(r => setImmediate(r));
+    assert.deepEqual(actions, []);
+  } finally {
+    dispose();
+  }
+});
+
+test('route watcher invalidates a menu without server events and is disposed', async () => {
+  let listener: any;
+  let selected: (value: string) => void = () => {};
+  let changed: (route: {type: string; sessionID?: string}) => void = () => {};
+  let stopped = 0;
+  const actions: unknown[] = [];
+  const dispose = createTehabloTui({
+    data: {listen(handler) {listener = handler; return () => {}; }},
+    client: {rpc: () => ({control: async input => {actions.push(input);}})},
+    ui: {
+      router: {current: () => ({type: 'session', sessionID: 'main'})},
+      toast: {show() {}},
+      dialog: {alert: async () => {}, select: async () => new Promise<string>(r => {selected = r;})},
+    },
+  }, {watchRoute(handler) {changed = handler; return () => {stopped++;};}});
+  try {
+    listener({details: {type: 'rpc.tehablo-tts.notice', data: {
+      sessionID: 'main', kind: 'menu', variant: 'info', message: 'Estado', auto: false,
+    }}});
+    changed({type: 'session', sessionID: 'other'});
+    changed({type: 'session', sessionID: 'main'});
+    selected('play');
+    await new Promise(r => setImmediate(r));
+    assert.deepEqual(actions, []);
+    assert.equal(stopped, 1);
+  } finally {
+    dispose();
+  }
+  assert.equal(stopped, 1);
+});
+
+test('/tts menu opens without booting and its RPC actions reuse existing commands', async () => {
+  const h = createHarness({ contexts: {
+    main: [{ id: 'menu-message', type: 'assistant', finish: 'stop', content: [{ type: 'text', text: 'Desde el menú.' }] }],
+  } });
+  const cleanup = await createTehabloPlugin(h.ctx, { client: h.client, loadSettings: h.loadSettings });
+  try {
+    await h.commands.get('tts')!({ sessionID: 'main', prompt: { text: '/tts menu' } });
+    assert.equal(h.notices.at(-1)?.kind, 'menu');
+    assert.equal(h.notices.at(-1)?.auto, false);
+    assert.equal(h.calls.length, 0);
+    const control = h.rpcHandlers().control;
+    assert.equal(typeof control, 'function');
+    for (const action of ['play', 'stop', 'auto', 'help']) {
+      await control({ sessionID: 'main', action });
+    }
+    assert.equal(h.calls.filter(c => c.path === '/speak').length, 1);
+    assert.equal(h.calls.filter(c => c.path === '/stop').length, 1);
+    assert.match(h.notices.at(-1)!.message, /lectura automática activada/);
+    await assert.rejects(() => control({ sessionID: 'main', action: 'invalid' }));
+  } finally {
+    await cleanup();
+    h.cleanupDir();
+  }
+});
+
+test('native menu shows structured rejection diagnostics without dumping private fields or changing legacy errors', async () => {
+  const privateFields = {headers: {authorization: 'private-token'}, input: {code: 'private-pairing-code'}};
+  const unreadable: any = {...privateFields};
+  unreadable.self = unreadable;
+  const cases = [
+    {error: {type: 'server_unavailable', message: 'Se requiere un servidor teHablo disponible para elegir voces locales.'}, text: 'server_unavailable: Se requiere un servidor teHablo disponible para elegir voces locales.'},
+    {error: {type: 'rpc.not_found', message: 'RPC is not registered', ...privateFields}, text: 'rpc.not_found: RPC is not registered'},
+    {error: {error: {_tag: 'InvalidRequestError', message: 'Invalid RPC request'}, ...privateFields}, text: 'InvalidRequestError: Invalid RPC request'},
+    {error: {data: {message: 'Connection unavailable'}, ...privateFields}, text: 'Connection unavailable'},
+    {error: {_tag: 'RpcUnavailable', ...privateFields}, text: 'RpcUnavailable'},
+    {error: unreadable, text: 'No se pudo ejecutar la acción del menú: error sin mensaje legible.'},
+    {error: new Error('Legacy failure'), text: 'Legacy failure', legacy: true},
+    {error: 'Legacy rejection', text: 'Legacy rejection', legacy: true},
+  ];
+  for (const item of cases) {
+    for (const action of item.legacy ? ['play', 'stop', 'auto', 'help'] : ['help']) {
+      let listener: any;
+      const toasts: any[] = [], calls: string[] = [];
+      const reject = async (method: string) => {calls.push(method); throw item.error;};
+      const dispose = createTehabloTui({
+        data: {listen(cb) {listener = cb; return () => {}; }},
+        client: {rpc: () => ({
+          control: async input => {assert.equal(input.action, action); return reject('control');},
+        })},
+        ui: {router: {current: () => ({type: 'session', sessionID: 'main'})},
+          toast: {show(n) {toasts.push(n);}},
+          dialog: {
+            select: async () => action,
+            alert: async () => assert.fail('Failure is not a Help dialog'),
+          }},
+      });
+      try {
+        listener({details: {type: 'rpc.tehablo-tts.notice', data: {
+          sessionID: 'main', kind: 'menu', variant: 'info', message: '', auto: false,
+        }}});
+        await waitUntil(() => toasts.length === 1);
+        assert.equal(toasts[0].message, item.text);
+        assert.equal(toasts[0].variant, 'warning');
+        assert.deepEqual(calls, ['control']);
+      } finally {dispose();}
+    }
+  }
+});
+
+test('native menu dispatches only an explicit selection in the same live session', async () => {
+  let listener: any;
+  let resolveSelection: (value?: string) => void = () => {};
+  let route = { type: 'session', sessionID: 'main' };
+  const selections: any[] = [];
+  const actions: any[] = [];
+  const dispose = createTehabloTui({
+    data: { listen(handler) { listener = handler; return () => { listener = undefined; }; } },
+    client: { rpc: () => ({ control: async (input: any) => { actions.push(input); } }) },
+    ui: {
+      router: { current: () => route },
+      toast: { show() {} },
+      dialog: {
+        alert: async () => {},
+        select: async (options: any) => {
+          selections.push(options);
+          return new Promise<string | undefined>(resolve => { resolveSelection = resolve; });
+        },
+      },
+    },
+  });
+  const open = () => listener({ details: { type: 'rpc.tehablo-tts.notice', data: {
+    sessionID: 'main', kind: 'menu', variant: 'info', message: 'Estado', auto: false,
+  } } });
+  try {
+    open();
+    assert.deepEqual(selections[0].options.map((o: any) => o.value), ['play', 'stop', 'auto', 'help']);
+    assert.match(selections[0].options[2].title, /Activar/);
+    resolveSelection(undefined);
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(actions.length, 0);
+    open();
+    resolveSelection('play');
+    await waitUntil(() => actions.length === 1);
+    assert.deepEqual(actions[0], { sessionID: 'main', action: 'play' });
+    open();
+    route = { type: 'session', sessionID: 'other' };
+    resolveSelection('stop');
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(actions.length, 1);
+    route = { type: 'session', sessionID: 'main' };
+    open();
+    dispose();
+    resolveSelection('auto');
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(actions.length, 1);
+  } finally {
+    dispose();
+  }
 });
 
 test('resolveTehabloRoot honors explicit root, TEHABLO_ROOT, and repo fallback', () => {

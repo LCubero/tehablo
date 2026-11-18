@@ -17,6 +17,8 @@ Este archivo registra los cambios completados en orden cronológico. Las version
 - Pi, menú de voces: las voces descargadas («✓ lista») salen primero, debajo de la activa y las favoritas; el acento solo ordena dentro de cada grupo. «↓ descargar» se resalta solo si esa descarga aún necesita el token.
 - Pi, ajustes: en todas las pantallas los botones («[ Cerrar ]», «[ Volver ]»…) pasan al borde derecho y un clic en «Esc» hace lo mismo que la tecla: cierra en la principal y vuelve atrás en las demás. La ayuda de la principal muestra «Tab botón» solo en la fila donde Tab sirve (Audio SSH: Copiar y Ver).
 
+- OpenCode TUI: `/tts menu` ofrece las acciones existentes de lectura, detención, lectura automática y ayuda en un selector nativo, sin añadir mensajes al historial. Rechaza argumentos no admitidos e invalida las selecciones al salir de la sesión mediante Solid (dependencia par). Los métodos RPC declaran su esquema de salida y los controles envían la ubicación del TUI. Pruebas automáticas sin audio: 39 aprobadas; correcciones verificadas de forma independiente. Aceptación manual en OpenCode confirmada para el menú, Play/Stop y Auto desde el menú.
+
 ## 2026-11-14
 
 - Pruebas de voces en la máquina virtual de pruebas (2 núcleos, 8 GB), sin cambios en teHablo ([resultados](docs/pruebas-de-voces.md)):
