@@ -47,9 +47,12 @@ class CleanTest(unittest.TestCase):
 
 
 class LabelTest(unittest.TestCase):
-    def test_prefers_the_agent_name(self):
+    def test_prefers_the_terminal_title(self):
         agent = {'name': 'Mi agente', 'terminal_title_stripped': 'OC | X'}
-        self.assertEqual(notify.label_of(agent), 'Mi agente')
+        self.assertEqual(notify.label_of(agent), 'X')
+
+    def test_uses_the_agent_name_without_a_title(self):
+        self.assertEqual(notify.label_of({'name': 'Mi agente'}), 'Mi agente')
 
     def test_uses_the_title_without_the_agent_tag(self):
         self.assertEqual(notify.label_of({'terminal_title_stripped': 'OC | PRs para issues 8 y 9'}),

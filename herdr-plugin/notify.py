@@ -64,15 +64,15 @@ def clean(text, limit=MAX_TITLE):
 
 
 def label_of(agent):
-    """Name of the task inside a project: agent name, then title, then kind."""
+    """Name of the task inside a project: terminal title, then agent name, then kind."""
     if not isinstance(agent, dict):
         return 'agente'
-    named = clean(agent.get('name'))
-    if named:
-        return named
     title = clean(strip_prefix(agent.get('terminal_title_stripped') or agent.get('terminal_title')))
     if title:
         return title
+    named = clean(agent.get('name'))
+    if named:
+        return named
     kind = clean(agent.get('display_agent') or agent.get('agent')) or 'agente'
     pane = agent.get('pane_id')
     if isinstance(pane, str) and ':' in pane:
