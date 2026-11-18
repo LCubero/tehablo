@@ -118,6 +118,7 @@ tehablo/
 | `cliente/tehablo_cliente.py` | Cliente de audio SSH: espera conexiones en 127.0.0.1:18766 (RemoteForward), valida el código antes del WAV; menú, sounddevice y volumen (PEP 723, uv) | Sí |
 | `receptor/` | Instaladores finos del cliente para [Audio por SSH](#audio-por-ssh); requieren uv, sin FFmpeg | Sí |
 | `pi-extension/tehablo-tts/` | Extensión de Pi; se instala con `pi install <ruta>` (ver README) | Sí |
+| `herdr-plugin/` | Plugin de [herdr](https://herdr.dev): avisos por voz cuando un agente termina o espera ([detalle](#avisos-por-voz-en-herdr)) | Sí |
 | `scripts/get_voices.py` | Descarga selectiva de voces | Sí |
 | `tests/` | Pruebas ejecutables sin pytest | Sí |
 | `samples/prueba-larga.txt` | Texto largo para `/leer` | Sí |
@@ -702,6 +703,16 @@ En `/prepare`, `voice` es el `name` del catálogo, no una ruta arbitraria. El mo
 Referencia en la extensión de Pi: [`src/server.ts`](../pi-extension/tehablo-tts/src/server.ts) (arranque, código y peticiones), [`src/text.ts`](../pi-extension/tehablo-tts/src/text.ts) (texto que se envía a leer) y [`src/settings.ts`](../pi-extension/tehablo-tts/src/settings.ts) (ajustes guardados). Para que la CI corra las pruebas del plugin, agrégalas a `.github/workflows/tests.yml` en el mismo PR.
 
 El harness del repositorio está instalado solo para Pi. OpenCode carga `AGENTS.md`, que le pide al agente leer [REPO-HARNESS.md](../REPO-HARNESS.md); para contribuir basta con seguir sus reglas.
+
+## Avisos por voz en herdr
+
+[Herdr](https://herdr.dev) es un gestor de terminales para agentes. Con el plugin de [`herdr-plugin/`](../herdr-plugin/), teHablo avisa por voz cuando un agente termina o queda esperando. No lee el mensaje del agente: herdr expone su estado, no su texto.
+
+- **Qué se oye:** «tehablo, PRs para issues 8 y 9: terminó.» y «tehablo, PRs para issues 8 y 9: te espera.». El proyecto es la etiqueta del espacio de trabajo y la tarea es el título del terminal sin la etiqueta del agente (`OC | …` queda en `…`); sin título se usa el nombre del agente y, si tampoco, su tipo con el panel (`opencode p6`).
+- **Instalación:** `herdr plugin install LCubero/tehablo/herdr-plugin`; para probar una copia local, `herdr plugin link /ruta/a/tehablo/herdr-plugin`.
+- **Cómo funciona:** herdr lanza un proceso por cada cambio de estado del panel. El proceso descarta `working`, `idle` y `unknown`, calla el panel enfocado, compara `completion_seq` para no repetir el mismo aviso, espera 2 s para juntar varios en una sola frase y hace un único `POST /speak` con `policy: wait` e `id` igual al panel, así `/stop` corta el aviso de un agente sin silenciar a los demás. No hay demonio: el primer proceso que despierta se lleva el lote.
+- **Configuración:** `config.json` en `herdr plugin config-dir tehablo.agent-voice`, con `skip_focused` (`true`), `window` (`2.0`; `0` desactiva la agrupación) y `lexicon` (`true`). Si `python` es el alias de Microsoft Store, escribe la ruta del intérprete en `python.txt` en ese mismo directorio o define `TEHABLO_PYTHON`.
+- **Límites:** no arranca el servidor; si no responde, se calla. No usa `herdr agent read`, que devuelve la pantalla con el spinner y las barras de interfaz, inservible para voz.
 
 ## Qué se puede agregar, modificar o aprovechar
 
