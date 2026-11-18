@@ -84,7 +84,7 @@ Los trabajos activos y sus condiciones se resumen en Trabajo pendiente.
 <!-- doc-role:pending-work -->
 
 - Registrar todo pendiente no trivial en [roadmap.md](roadmap.md), sin mantener un segundo backlog aquí.
-- `RH-W-0049` (`pending`, P2): `/tts off` en Pi y OpenCode; `/tts` sin argumentos alterna encendido/apagado también en OpenCode, con aviso del efecto compartido. Responsable sugerido: Totopo27. [Alcance y pruebas](roadmap.md#rh-w-0049-unificar-el-apagado-por-comando-en-pi-y-opencode).
+- `RH-W-0049` (`pending`, P2): en OpenCode, `/tts` sin argumentos alterna encendido/apagado como en Pi (alternativa: `/tts on` y `/tts off` en ambos clientes), con aviso del efecto compartido. Responsable sugerido: Totopo27. [Alcance y pruebas](roadmap.md#rh-w-0049-unificar-el-apagado-por-comando-en-pi-y-opencode).
 - `RH-W-0050` (`pending`, P2): confirmar slots en la API instalada, indicador compacto sin sondeo periódico y comprobación manual de menú, voces, descarga y audio en Linux; Windows ya consta en `RH-W-0048`. Responsable sugerido: Totopo27. [Guía y condición](roadmap.md#rh-w-0050-indicador-de-estado-y-verificación-de-opencode-en-linux).
 - `RH-W-0052` (`pending`, P2): inventario y revisión de CLI/HTTP para futuras integraciones; investigación y guía primero, código solo tras aprobar los hallazgos. Responsable sugerido: persona responsable o Totopo27. [Inventario inicial y límites](roadmap.md#rh-w-0052-revisar-cli-y-http-como-superficie-de-integración).
 - `RH-W-0051` (`deferred`, P3): evaluar barra de controles de OpenCode solo tras completar y evaluar `RH-W-0050`, si `/tts menu` resulta insuficiente; interacción por clic sin verificar. [Condición de reconsideración](roadmap.md#rh-w-0051-evaluar-una-barra-de-controles-para-opencode).
@@ -124,7 +124,6 @@ Los trabajos activos y sus condiciones se resumen en Trabajo pendiente.
 
 <!-- doc-role:next-step -->
 
-- Antes de publicar: el commit local `2bee6d1` (Pi: «↓ descargar» en texto normal en el menú de voces) espera la comprobación manual de la persona responsable en Pi antes del push.
 - Orden de estos seguimientos aprobados: `RH-W-0049` (P2, apagado y comandos), `RH-W-0050` (P2, indicador y verificación Linux), `RH-W-0052` (P2, investigación CLI/HTTP); después, `RH-W-0051` (P3, aplazado y condicionado a evaluar el menú tras `RH-W-0050`). No se inicia ninguno automáticamente.
 - Conserva las comprobaciones manuales de puertos en Linux vinculadas a `RH-W-0047` y las de audio Linux ya registradas; no se duplican como trabajos nuevos. El flujo de OpenCode en Linux se verifica dentro de `RH-W-0050`.
 
