@@ -552,7 +552,7 @@ Antecedente aprobado el 2026-10-30: base confiable, medición (`RH-W-0003`), ser
 - **Origen:** solicitud de la persona responsable del 2026-11-17, publicada como [issue #10](https://github.com/LCubero/tehablo/issues/10): avisar por voz cuando un agente de [Herdr](https://herdr.dev) termina o queda esperando, sin leer su mensaje.
 - **Prioridad:** P2; herdr no expone el texto del agente, así que leer es imposible y avisar es la única superficie viable.
 - **Dependencias:** `RH-W-0047` (puertos 23765–23769) y el inventario de `RH-W-0052`; no reabre `RH-W-0049`.
-- **Estado:** `pending`; implementado con pruebas en la rama `feat/herdr-agent-voice`, pendiente de revisión y prueba manual.
+- **Estado:** `pending`; implementado con pruebas en el [PR #11](https://github.com/LCubero/tehablo/pull/11), pendiente de revisión y prueba manual.
 - **Trabajo completado:**
   - `herdr-plugin/herdr-plugin.toml` declara un hook `[[events]] on = "pane.agent_status_changed"`, con `command` por plataforma: `sh run.sh` y `cmd /c run.cmd`.
   - `herdr-plugin/notify.py` decide y habla: descarta `working`, `idle` y `unknown`; calla el panel enfocado; deduplica por `completion_seq`; agrupa los avisos de una ventana de 2 s en una sola llamada a `/speak` con `policy: wait` e `id = pane_id`, para que `/stop` siga siendo por agente.
