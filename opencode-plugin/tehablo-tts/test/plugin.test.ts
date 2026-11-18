@@ -329,13 +329,18 @@ test('portable RPC declares an explicit serializable output for every method', (
   for (const name of ['control', 'selectVoice']) {
     assert.deepEqual(tehabloRpc.methods[name].output, {type: 'null'});
   }
+  for (const name of ['downloadVoice', 'downloadStatus']) {
+    assert.deepEqual(tehabloRpc.methods[name].output.required, ['id', 'state']);
+    assert.deepEqual(tehabloRpc.methods[name].output.properties.state.enum, ['downloading', 'ready', 'error']);
+  }
 });
 
-test('RPC exposes exactly the three plugin methods', () => {
-  assert.deepEqual(Object.keys(tehabloRpc.methods), ['voices', 'selectVoice', 'control']);
+test('RPC exposes exactly the six plugin methods', () => {
+  assert.deepEqual(Object.keys(tehabloRpc.methods),
+    ['downloadVoices', 'downloadVoice', 'downloadStatus', 'voices', 'selectVoice', 'control']);
 });
 
-test('menu exposes only the five documented actions and ignores unknown selections', async () => {
+test('menu exposes only the six documented actions and ignores unknown selections', async () => {
   let listener: any;
   const menus: any[] = [];
   const dispose = createTehabloTui({
@@ -347,7 +352,7 @@ test('menu exposes only the five documented actions and ignores unknown selectio
   try {
     listener({details: {type: 'rpc.tehablo-tts.notice', data: {sessionID: 'main', kind: 'menu', variant: 'info', message: '', auto: false}}});
     await new Promise(r => setImmediate(r));
-    assert.deepEqual(menus[0].options.map((option: any) => option.value), ['play', 'stop', 'auto', 'help', 'voices']);
+    assert.deepEqual(menus[0].options.map((option: any) => option.value), ['play', 'stop', 'auto', 'help', 'voices', 'downloads']);
   } finally {dispose();}
 });
 
@@ -389,10 +394,13 @@ function assertOutputShape(schema: any, value: any): void {
   if (Object.hasOwn(schema, 'const')) assert.equal(value, schema.const);
 }
 
-test('RPC outputs match all three registered handlers without download selection effects', async () => {
+test('RPC outputs match all six registered handlers without download selection effects', async () => {
   const remote = {...localVoice, name: 'Remote', voice: 'remote', downloaded: false};
+  let job: any = {id: 'job', state: 'downloading'};
   const h = createHarness({respond: async path => {
     if (path === '/voices') return Response.json({catalog: [localVoice, remote]});
+    if (path === '/prepare') return Response.json(job);
+    if (path === '/health') return Response.json({ok: true, ready: true, preparation: job});
   }});
   writeFileSync(join(h.dir, 'settings.json'), '{"voice":"lola","future":true}\n');
   h.client.ensure = async () => {};
@@ -405,7 +413,18 @@ test('RPC outputs match all three registered handlers without download selection
   try {
     for (const action of ['help', 'play', 'stop', 'auto', 'auto']) await invoke('control', {sessionID: 'main', action});
     await invoke('voices', {sessionID: 'main'});
+    await invoke('downloadVoices', {sessionID: 'main'});
     await invoke('selectVoice', {sessionID: 'main', model: localVoice.model, voice: localVoice.voice});
+    const before = readFileSync(join(h.dir, 'settings.json'), 'utf8'), args = [...h.client.startArgs];
+    for (const state of ['downloading', 'ready', 'error']) {
+      for (const error of [undefined, '', 'Cache unavailable', 7]) {
+        job = {id: 'job', state, ...(error === undefined ? {} : {error})};
+        await invoke('downloadVoice', {sessionID: 'main', model: remote.model, voice: remote.voice, confirmed: true});
+        await invoke('downloadStatus', {sessionID: 'main', id: 'job'});
+        assert.equal(readFileSync(join(h.dir, 'settings.json'), 'utf8'), before);
+        assert.deepEqual(h.client.startArgs, args);
+      }
+    }
   } finally { await cleanup(); h.cleanupDir(); }
 });
 
@@ -421,7 +440,9 @@ test('RPC malformed inputs preserve exact errors and settings hashes', async () 
   });
   const errors = {
     control: 'Acción de menú no válida.', selectVoice: 'Selección de voz no válida.',
-    voices: 'Sesión no válida.',
+    voices: 'Sesión no válida.', downloadVoices: 'Sesión no válida.',
+    downloadVoice: 'Se requiere confirmar una voz válida antes de descargar.',
+    downloadStatus: 'Identificador de descarga no válido.',
   };
   try {
     for (const [method, message] of Object.entries(errors)) {
@@ -448,6 +469,181 @@ test('voice settings preserve legacy records and refuse malformed existing data'
       assert.equal(readFileSync(join(directory, 'settings.json'), 'utf8'), content);
     }
   } finally {h.cleanupDir();}
+});
+
+test('downloads require confirmation, revalidate catalog pairs and never write selection', async () => {
+  let catalog = [{...localVoice, downloaded: false}];
+  let preparation = {id: 'job-1', state: 'downloading'};
+  const h = createHarness({respond: async path => {
+    if (path === '/voices') return Response.json({catalog});
+    if (path === '/prepare') return Response.json(preparation, {status: 202});
+    if (path === '/health') return Response.json({preparation});
+  }});
+  const file = join(h.dir, 'settings.json');
+  writeFileSync(file, '{"voice":"lola","future":{"keep":true}}');
+  const before = readFileSync(file, 'utf8'), args = [...h.client.startArgs];
+  h.client.ensure = async () => assert.fail('Downloads must not start Python');
+  const cleanup = await createTehabloPlugin(h.ctx, {client: h.client, settingsDirectory: h.dir});
+  const input = {sessionID: 'main', model: 'spanish', voice: localVoice.voice, confirmed: true};
+  try {
+    for (const confirmed of [undefined, false, 'true']) {
+      await assert.rejects(() => h.rpcHandlers().downloadVoice({...input, confirmed}));
+      assert.equal(h.calls.length, 0);
+    }
+    assert.deepEqual(await h.rpcHandlers().downloadVoices({sessionID: 'main'}), catalog);
+    assert.deepEqual(await h.rpcHandlers().downloadVoice(input), preparation);
+    assert.deepEqual(h.calls.filter(c => c.path === '/prepare').map(c => c.body),
+      [{model: 'spanish', voice: 'Facundo', select: false}]);
+    assert.deepEqual(await h.rpcHandlers().downloadStatus({sessionID: 'main', id: 'job-1'}), preparation);
+    preparation = {id: 'other-job', state: 'ready'};
+    await assert.rejects(() => h.rpcHandlers().downloadStatus({sessionID: 'main', id: 'job-1'}), /descarga/i);
+    catalog = [];
+    await assert.rejects(() => h.rpcHandlers().downloadVoice(input));
+    assert.equal(h.calls.filter(c => c.path === '/prepare').length, 1);
+    assert.equal(readFileSync(file, 'utf8'), before);
+    assert.deepEqual(h.client.startArgs, args);
+    assert.ok(!h.calls.some(c => ['/config', '/speak'].includes(c.path)));
+    assert.equal(h.notices.length, 0);
+  } finally { await cleanup(); h.cleanupDir(); }
+});
+
+test('downloads explain gated models and offline servers and reject overlapping or stale submissions', async () => {
+  for (const mode of ['offline', 'gated', 'cached', 'overlap', 'reject', 'unload']) {
+    let release: () => void = () => {};
+    const phonon = mode === 'gated' || mode === 'cached';
+    const row = phonon ? {...localVoice, model: 'phonon', voice: 'Regina', name: 'Regina',
+      downloaded: false, needsToken: mode === 'gated'} : {...localVoice, downloaded: false};
+    const h = createHarness({health: mode === 'offline' ? null : {}, respond: async path => {
+      if (path === '/voices') {
+        if (mode === 'overlap' || mode === 'unload') await new Promise<void>(r => {release = r;});
+        return Response.json({catalog: [row]});
+      }
+      if (path === '/prepare') return mode === 'reject'
+        ? Response.json({error: 'select field unsupported'}, {status: 400})
+        : Response.json({id: 'job', state: 'downloading'});
+    }});
+    h.client.ensure = async () => assert.fail('No server startup');
+    const file = join(h.dir, 'settings.json');
+    writeFileSync(file, 'malformed settings remain untouched');
+    const cleanup = await createTehabloPlugin(h.ctx, {client: h.client, settingsDirectory: h.dir});
+    const input = {sessionID: 'main', model: row.model, voice: row.voice, confirmed: true};
+    try {
+      if (mode === 'overlap' || mode === 'unload') {
+        const pending = h.rpcHandlers().downloadVoice(input);
+        await waitUntil(() => h.calls.length === 1);
+        if (mode === 'unload') await cleanup();
+        else await assert.rejects(() => h.rpcHandlers().downloadVoice(input), /curso/);
+        release();
+        if (mode === 'unload') await assert.rejects(() => pending, /cancelada/);
+        else await pending;
+      } else if (mode === 'cached') await h.rpcHandlers().downloadVoice(input);
+      else await assert.rejects(() => h.rpcHandlers().downloadVoice(input), mode === 'gated' ? /Phonon/
+        : mode === 'offline' ? {message: 'Se requiere un servidor teHablo disponible para descargar voces. No se ha iniciado el servidor; inícialo con /tts play o /tts auto.'} : undefined);
+      assert.equal(readFileSync(file, 'utf8'), 'malformed settings remain untouched');
+      assert.equal(h.calls.filter(c => c.path === '/prepare').length,
+        ['cached', 'overlap', 'reject'].includes(mode) ? 1 : 0);
+      assert.ok(!h.calls.some(c => ['/config', '/speak', '/shutdown'].includes(c.path)));
+    } finally {release(); await cleanup(); h.cleanupDir();}
+  }
+});
+
+test('download menu confirms explicitly, refreshes availability and bounds observation without selection', async () => {
+  for (const mode of ['ready', 'cancel', 'gated', 'navigate', 'unload', 'error', 'timeout', 'poll-navigation']) {
+    let listener: any, changed: any, releaseConfirm: any;
+    let lists = 0, polls = 0, submissions = 0, closed = 0, selects = 0;
+    const toasts: any[] = [];
+    const dispose = createTehabloTui({
+      data: {listen(cb) {listener = cb; return () => {}; }},
+      client: {rpc: () => ({
+        control: async () => assert.fail('Not a control action'),
+        selectVoice: async () => assert.fail('Download must not select'),
+        downloadVoices: async () => { lists++; return [{...localVoice, downloaded: false,
+          ...(mode === 'gated' ? {model: 'phonon', needsToken: true} : {})}]; },
+        downloadVoice: async input => {
+          assert.equal(input.confirmed, true); submissions++;
+          return {id: 'job', state: 'downloading'};
+        },
+        downloadStatus: async () => {
+          polls++;
+          if (mode === 'poll-navigation') changed({type: 'home'});
+          return {id: 'job', state: mode === 'ready' ? 'ready' : mode === 'error' ? 'error' : 'downloading', error: 'disk full'};
+        },
+      })},
+      ui: {router: {current: () => ({type: 'session', sessionID: 'main'})},
+        toast: {show(n) {toasts.push(n);}},
+        dialog: {
+          alert: async () => {},
+          select: async options => {selects++; return selects === 1 ? 'downloads' : options.options[0].value;},
+          confirm: async () => new Promise(r => {releaseConfirm = r;}),
+        }},
+    }, {downloadPollIntervalMs: 1, downloadPollLimit: 2, watchRoute(cb) {changed = cb; return () => {closed++;};}});
+    try {
+      listener({details: {type: 'rpc.tehablo-tts.notice', data: {sessionID: 'main', kind: 'menu', variant: 'info', message: '', auto: false}}});
+      await waitUntil(() => !!releaseConfirm || toasts.length > 0);
+      assert.equal(submissions, 0);
+      if (mode === 'navigate') {changed({type: 'home'}); changed({type: 'session', sessionID: 'main'});}
+      if (mode === 'unload') dispose();
+      releaseConfirm?.(mode !== 'cancel');
+      await waitUntil(() => closed > 0);
+      assert.equal(submissions, ['cancel', 'gated', 'navigate', 'unload'].includes(mode) ? 0 : 1);
+      assert.equal(lists, mode === 'ready' ? 2 : 1);
+      assert.equal(polls, mode === 'timeout' ? 2 : submissions);
+      assert.equal(toasts.some(t => t.variant === 'success'), mode === 'ready');
+      if (mode === 'error') assert.match(toasts.at(-1).message, /disk full/);
+      if (mode === 'timeout') assert.match(toasts.at(-1).message, /servidor|continúa/);
+    } finally {dispose();}
+  }
+});
+
+test('download observation stops at every navigation or unload await boundary', async () => {
+  const tick = () => new Promise<void>(resolve => setImmediate(resolve));
+  for (const boundary of ['catalog', 'choose', 'confirm', 'submit', 'status', 'refresh', 'delay']) {
+    for (const action of ['navigate', 'unload']) {
+      let listener: any, changed: any, release: () => void = () => {};
+      let route = {type: 'session', sessionID: 'main'};
+      let reached = false, lists = 0, choices = 0, polls = 0, closed = 0;
+      const calls: string[] = [];
+      const hold = new Promise<void>(resolve => {release = resolve;});
+      const pauseAt = async <T,>(name: string, result: T): Promise<T> => {
+        if (name === boundary) {reached = true; await hold;}
+        return result;
+      };
+      const dispose = createTehabloTui({
+        client: {rpc: () => ({
+          control: async () => assert.fail('No legacy control dispatch'),
+          downloadVoices: async () => pauseAt(++lists === 1 ? 'catalog' : 'refresh', [{...localVoice, downloaded: false}]),
+          downloadVoice: async () => {calls.push('submit'); return pauseAt('submit', {id: 'job'});},
+          downloadStatus: async () => {
+            calls.push('status'); polls++;
+            return pauseAt('status', {id: 'job', state: boundary === 'delay' ? 'downloading' : 'ready'});
+          },
+        })},
+        data: {listen(cb) {listener = cb; return () => {}; }},
+        ui: {router: {current: () => route}, toast: {show(n) {calls.push(n.variant ?? 'info');}},
+          dialog: {
+            alert: async () => {},
+            select: async () => ++choices === 1 ? 'downloads' : pauseAt('choose', '0'),
+            confirm: async () => pauseAt('confirm', true),
+          }},
+      }, {watchRoute(cb) {changed = cb; return () => {closed++;};}, downloadPollIntervalMs: 60_000});
+      try {
+        listener({details: {type: 'rpc.tehablo-tts.notice', data: {
+          sessionID: 'main', kind: 'menu', variant: 'info', message: '', auto: false,
+        }}});
+        await waitUntil(() => reached || (boundary === 'delay' && polls === 1));
+        const before = [...calls];
+        if (action === 'unload') dispose();
+        else {
+          route = {type: 'session', sessionID: 'away'}; changed(route);
+          route = {type: 'session', sessionID: 'main'}; changed(route);
+        }
+        release();
+        for (let i = 0; i < 10; i++) await tick();
+        assert.deepEqual(calls, before, `${boundary}/${action}`);
+        assert.equal(closed, 1, `${boundary}/${action}: watcher disposed and delay cancelled`);
+      } finally {release(); dispose();}
+    }
+  }
 });
 
 test('local voices list and revalidate downloaded pairs, preserving raw settings and later boot', async () => {
@@ -508,7 +704,7 @@ test('local voices declare the offline RPC error without startup or settings cha
   const args = [...h.client.startArgs];
   h.client.ensure = async () => assert.fail('Offline listing must not start the server');
   const cleanup = await createTehabloPlugin(h.ctx, {client: h.client, settingsDirectory: h.dir});
-  const declared = Object.assign(new Error('Se requiere un servidor teHablo disponible para elegir voces locales. No se ha iniciado el servidor.'), {
+  const declared = Object.assign(new Error('Se requiere un servidor teHablo disponible para elegir voces locales. No se ha iniciado el servidor; inícialo con /tts play o /tts auto.'), {
     type: 'server_unavailable', data: {},
   });
   const errors: unknown[] = [];
@@ -587,7 +783,7 @@ test('voice submenu selects exact pairs and cancels on Escape, navigation, or un
   }
 });
 
-test('voice selector keeps the default route and opens the list without diagnostics', async () => {
+test('voice selector routes to the TUI Location and opens the list without diagnostics', async () => {
   let listener: any;
   const calls: any[] = [], dialogs: any[] = [], alerts: any[] = [];
   const dispose = createTehabloTui({
@@ -606,9 +802,46 @@ test('voice selector keeps the default route and opens the list without diagnost
     listener({details: {type: 'rpc.tehablo-tts.notice', data: {sessionID: 'main', kind: 'menu', variant: 'info', message: '', auto: false}}});
     await waitUntil(() => dialogs.length === 2 || alerts.length > 0);
     assert.deepEqual(alerts, []);
-    assert.deepEqual(calls, [{input: {sessionID: 'main'}, options: undefined}]);
+    assert.deepEqual(calls, [{input: {sessionID: 'main'}, options: {location: {directory: 'D:/private-project'}}}]);
     assert.equal(dialogs[1].options[0].title, 'Facundo');
   } finally {dispose();}
+});
+
+test('voice and download menu RPC calls use the TUI Location captured when the menu opens', async () => {
+  for (const directory of ['D:/private-project', undefined, '   ']) {
+    for (const entry of ['voices', 'downloads']) {
+      let listener: any;
+      const location = directory === undefined ? undefined : {directory};
+      const calls: any[] = [], dialogs: any[] = [], toasts: any[] = [];
+      const record = (name: string, result: unknown) => async (input: unknown, options: unknown) => {
+        calls.push({name, options}); return result;
+      };
+      const dispose = createTehabloTui({
+        location,
+        data: {listen(cb) {listener = cb; return () => {};}},
+        client: {rpc: () => ({control: async () => assert.fail('Not a control action'),
+          voices: record('voices', [localVoice]), selectVoice: record('selectVoice', null),
+          downloadVoices: record('downloadVoices', [{...localVoice, downloaded: false}]),
+          downloadVoice: record('downloadVoice', {id: 'job', state: 'downloading'}),
+          downloadStatus: record('downloadStatus', {id: 'job', state: 'ready'})})},
+        ui: {router: {current: () => ({type: 'session', sessionID: 'main'})}, toast: {show(n) {toasts.push(n);}},
+          dialog: {alert: async () => {}, confirm: async () => true, select: async options => {
+            dialogs.push(options);
+            if (location) location.directory = 'D:/changed-project';
+            return dialogs.length === 1 ? entry : options.options[0].value;
+          }}},
+      }, {downloadPollIntervalMs: 0});
+      try {
+        listener({details: {type: 'rpc.tehablo-tts.notice', data: {sessionID: 'main', kind: 'menu', variant: 'info', message: '', auto: false}}});
+        const expected = entry === 'voices' ? ['voices', 'selectVoice']
+          : ['downloadVoices', 'downloadVoice', 'downloadStatus', 'downloadVoices'];
+        await waitUntil(() => calls.length === expected.length || toasts.some(t => t.variant === 'warning'));
+        assert.deepEqual(calls.map(c => c.name), expected);
+        const options = directory?.trim() ? {location: {directory}} : undefined;
+        assert.deepEqual(calls.map(c => c.options), expected.map(() => options));
+      } finally {dispose();}
+    }
+  }
 });
 
 test('menu control routing captures Location for all four actions and preserves missing-location defaults', async () => {
@@ -863,7 +1096,7 @@ test('native menu shows structured rejection diagnostics without dumping private
     {error: 'Legacy rejection', text: 'Legacy rejection', legacy: true},
   ];
   for (const item of cases) {
-    for (const action of item.legacy ? ['play', 'stop', 'auto', 'help', 'voices'] : ['help']) {
+    for (const action of item.legacy ? ['play', 'stop', 'auto', 'help', 'voices', 'downloads'] : ['help']) {
       let listener: any;
       const toasts: any[] = [], calls: string[] = [];
       const reject = async (method: string) => {calls.push(method); throw item.error;};
@@ -873,11 +1106,15 @@ test('native menu shows structured rejection diagnostics without dumping private
           control: async input => {assert.equal(input.action, action); return reject('control');},
           voices: async () => reject('voices'),
           selectVoice: async () => assert.fail('Diagnostics must not select'),
+          downloadVoices: async () => reject('downloadVoices'),
+          downloadVoice: async () => assert.fail('Diagnostics must not download'),
+          downloadStatus: async () => assert.fail('Diagnostics must not observe downloads'),
         })},
         ui: {router: {current: () => ({type: 'session', sessionID: 'main'})},
           toast: {show(n) {toasts.push(n);}},
           dialog: {
             select: async () => action,
+            confirm: async () => assert.fail('Diagnostics must not confirm a download'),
             alert: async () => assert.fail('Failure is not a Help dialog'),
           }},
       });
@@ -888,7 +1125,7 @@ test('native menu shows structured rejection diagnostics without dumping private
         await waitUntil(() => toasts.length === 1);
         assert.equal(toasts[0].message, item.text);
         assert.equal(toasts[0].variant, 'warning');
-        assert.deepEqual(calls, [action === 'voices' ? 'voices' : 'control']);
+        assert.deepEqual(calls, [action === 'voices' ? 'voices' : action === 'downloads' ? 'downloadVoices' : 'control']);
       } finally {dispose();}
     }
   }
@@ -920,7 +1157,7 @@ test('native menu dispatches only an explicit selection in the same live session
   } } });
   try {
     open();
-    assert.deepEqual(selections[0].options.map((o: any) => o.value), ['play', 'stop', 'auto', 'help', 'voices']);
+    assert.deepEqual(selections[0].options.map((o: any) => o.value), ['play', 'stop', 'auto', 'help', 'voices', 'downloads']);
     assert.match(selections[0].options[2].title, /Activar/);
     resolveSelection(undefined);
     await new Promise(resolve => setImmediate(resolve));

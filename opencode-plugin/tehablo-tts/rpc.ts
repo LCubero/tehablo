@@ -15,6 +15,47 @@ export interface NoticePayload {
 export const tehabloRpc = {
   id: 'tehablo-tts',
   methods: {
+    downloadVoices: {
+      input: {
+        type: 'object', properties: {sessionID: {type: 'string'}},
+        required: ['sessionID'], additionalProperties: false,
+      },
+      output: {
+        type: 'array', items: {
+          type: 'object', properties: {
+            name: {type: 'string'}, voice: {type: 'string'}, model: {type: 'string'},
+            kind: {type: 'string'}, note: {type: 'string'}, downloaded: {type: 'boolean'},
+            needsToken: {type: 'boolean'},
+          }, required: ['name', 'voice', 'model', 'kind', 'note', 'downloaded'],
+        },
+      },
+    },
+    downloadVoice: {
+      input: {
+        type: 'object', properties: {
+          sessionID: {type: 'string'}, model: {type: 'string'}, voice: {type: 'string'},
+          confirmed: {type: 'boolean', const: true},
+        }, required: ['sessionID', 'model', 'voice', 'confirmed'], additionalProperties: false,
+      },
+      output: {
+        type: 'object', properties: {
+          id: {type: 'string'}, state: {type: 'string', enum: ['downloading', 'ready', 'error']},
+          error: {type: 'string'},
+        }, required: ['id', 'state'],
+      },
+    },
+    downloadStatus: {
+      input: {
+        type: 'object', properties: {sessionID: {type: 'string'}, id: {type: 'string'}},
+        required: ['sessionID', 'id'], additionalProperties: false,
+      },
+      output: {
+        type: 'object', properties: {
+          id: {type: 'string'}, state: {type: 'string', enum: ['downloading', 'ready', 'error']},
+          error: {type: 'string'},
+        }, required: ['id', 'state'],
+      },
+    },
     voices: {
       input: {
         type: 'object', properties: {sessionID: {type: 'string'}},

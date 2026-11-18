@@ -9,10 +9,13 @@ Este archivo registra los cambios completados en orden cronológico. Las version
 - Puerto automático y diagnóstico de colisiones fusionados en [PR #3](https://github.com/LCubero/tehablo/pull/3) ([4752257](https://github.com/LCubero/tehablo/commit/4752257fefd0944778be8385c6d966221e39a120)); prueba manual en Windows y CI en Windows y Ubuntu aprobadas. Tras actualizar, ejecutar `/reload` en cada sesión abierta de Pi para no conservar el código anterior y un servidor adicional en 8765.
 - Pi y OpenCode: puerto HTTP por defecto 23765 y selección automática entre 23765–23769 cuando no se fija `TEHABLO_PORT`; se reutiliza un servidor solo si se identifica como teHablo.
 - Mensajes claros cuando el puerto está ocupado; `TEHABLO_PORT` conserva un único puerto fijo, sin buscar alternativas. Guía de desarrollo y pruebas de pronunciación actualizadas.
+- OpenCode TUI: con el servidor apagado, los avisos de elegir y descargar voces indican iniciarlo con `/tts play` o `/tts auto`.
+- OpenCode TUI: elegir y descargar voces envían la ubicación del TUI, como los controles del menú, para no caer en una instancia sin el plugin (`rpc.unavailable`).
 
 ## 2026-11-16
 
-- OpenCode TUI: el menú permite elegir voces y modelos ya descargados, con un servidor disponible y sin iniciarlo ni descargar recursos. Revalida la disponibilidad antes de aplicar y guarda el par modelo/voz conservando los demás ajustes. Pruebas silenciosas: 47 aprobadas. Aceptación real en OpenCode y audio pendiente.
+- OpenCode TUI: descarga de voces con confirmación, sin cambiar la voz activa ni los ajustes guardados; refresca el catálogo al terminar. Requiere servidor disponible y admite Phonon solo con su modelo ya en caché, sin pedir credenciales. El servidor añade `select: false` a `/prepare`, conservando el comportamiento anterior de Pi. La descarga confirmada se aceptó en OpenCode; el aviso final de descarga y el chequeo de tipos no se observaron.
+- OpenCode TUI: el menú permite elegir voces y modelos ya descargados, con un servidor disponible y sin iniciarlo ni descargar recursos. Revalida la disponibilidad antes de aplicar y guarda el par modelo/voz conservando los demás ajustes. Pruebas silenciosas: 51 aprobadas. Aceptación manual en OpenCode confirmada para el aviso de servidor no disponible y la selección de voz; audio pendiente.
 
 ## 2026-11-15
 
