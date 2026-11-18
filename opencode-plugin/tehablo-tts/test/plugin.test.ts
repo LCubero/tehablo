@@ -537,7 +537,8 @@ test('downloads explain gated models and offline servers and reject overlapping 
         if (mode === 'unload') await assert.rejects(() => pending, /cancelada/);
         else await pending;
       } else if (mode === 'cached') await h.rpcHandlers().downloadVoice(input);
-      else await assert.rejects(() => h.rpcHandlers().downloadVoice(input), mode === 'gated' ? /Phonon/ : undefined);
+      else await assert.rejects(() => h.rpcHandlers().downloadVoice(input), mode === 'gated' ? /Phonon/
+        : mode === 'offline' ? {message: 'Se requiere un servidor teHablo disponible para descargar voces. No se ha iniciado el servidor; inícialo con /tts play o /tts auto.'} : undefined);
       assert.equal(readFileSync(file, 'utf8'), 'malformed settings remain untouched');
       assert.equal(h.calls.filter(c => c.path === '/prepare').length,
         ['cached', 'overlap', 'reject'].includes(mode) ? 1 : 0);
@@ -703,7 +704,7 @@ test('local voices declare the offline RPC error without startup or settings cha
   const args = [...h.client.startArgs];
   h.client.ensure = async () => assert.fail('Offline listing must not start the server');
   const cleanup = await createTehabloPlugin(h.ctx, {client: h.client, settingsDirectory: h.dir});
-  const declared = Object.assign(new Error('Se requiere un servidor teHablo disponible para elegir voces locales. No se ha iniciado el servidor.'), {
+  const declared = Object.assign(new Error('Se requiere un servidor teHablo disponible para elegir voces locales. No se ha iniciado el servidor; inícialo con /tts play o /tts auto.'), {
     type: 'server_unavailable', data: {},
   });
   const errors: unknown[] = [];

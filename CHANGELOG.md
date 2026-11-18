@@ -9,6 +9,7 @@ Este archivo registra los cambios completados en orden cronológico. Las version
 - Puerto automático y diagnóstico de colisiones fusionados en [PR #3](https://github.com/LCubero/tehablo/pull/3) ([4752257](https://github.com/LCubero/tehablo/commit/4752257fefd0944778be8385c6d966221e39a120)); prueba manual en Windows y CI en Windows y Ubuntu aprobadas. Tras actualizar, ejecutar `/reload` en cada sesión abierta de Pi para no conservar el código anterior y un servidor adicional en 8765.
 - Pi y OpenCode: puerto HTTP por defecto 23765 y selección automática entre 23765–23769 cuando no se fija `TEHABLO_PORT`; se reutiliza un servidor solo si se identifica como teHablo.
 - Mensajes claros cuando el puerto está ocupado; `TEHABLO_PORT` conserva un único puerto fijo, sin buscar alternativas. Guía de desarrollo y pruebas de pronunciación actualizadas.
+- OpenCode TUI: con el servidor apagado, los avisos de elegir y descargar voces indican iniciarlo con `/tts play` o `/tts auto`.
 
 ## 2026-11-16
 

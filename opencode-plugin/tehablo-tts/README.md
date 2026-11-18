@@ -38,6 +38,8 @@ Escape, salir de la sesión o descargar el plugin cancela una selección pendien
 
 ### Descargar sin seleccionar
 
+El menú no arranca el servidor: si está apagado, el aviso indica iniciarlo con `/tts play` o `/tts auto`.
+
 Con el servidor disponible, abre `/tts menu` → **Descargar voz**, elige una voz pendiente y confirma el uso de red y disco. Cancelar antes de confirmar no envía la descarga. Al terminar, se actualiza el catálogo; para usar la voz hay que elegirla después en **Elegir voz local**.
 
 No modifica la voz activa, los ajustes guardados ni los argumentos de arranque. No inicia el servidor ni reproduce audio. Permite voces públicas y voces Phonon cuyo modelo ya esté en caché; si falta el modelo restringido, muestra un aviso sin pedir tokens, inspeccionar credenciales ni reiniciar el servidor.

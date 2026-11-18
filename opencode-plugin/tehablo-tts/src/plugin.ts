@@ -378,7 +378,7 @@ export async function createTehabloPlugin(ctx: PluginContext, deps: PluginDeps =
     let result: any;
     try { result = await client.request('/voices'); }
     catch {
-      const message = 'Se requiere un servidor teHablo disponible para elegir voces locales. No se ha iniciado el servidor.';
+      const message = 'Se requiere un servidor teHablo disponible para elegir voces locales. No se ha iniciado el servidor; inícialo con /tts play o /tts auto.';
       throw context ? context.error('server_unavailable', message, {}) : new Error(message);
     }
     if (disposed) throw new Error('Selección cancelada.');
@@ -391,7 +391,7 @@ export async function createTehabloPlugin(ctx: PluginContext, deps: PluginDeps =
     if (disposed) throw new Error('Descarga cancelada.');
     let result: any;
     try { result = await client.request('/voices'); }
-    catch { throw new Error('Se requiere un servidor teHablo disponible para descargar voces. No se ha iniciado el servidor.'); }
+    catch { throw new Error('Se requiere un servidor teHablo disponible para descargar voces. No se ha iniciado el servidor; inícialo con /tts play o /tts auto.'); }
     if (disposed) throw new Error('Descarga cancelada.');
     if (!Array.isArray(result?.catalog)) throw new Error('El servidor no devolvió un catálogo de voces válido.');
     return result.catalog.filter((row: any) => typeof row?.downloaded === 'boolean' && MODELS.includes(row.model)
