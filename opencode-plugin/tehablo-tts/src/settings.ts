@@ -1,4 +1,5 @@
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, mkdirSync, writeFileSync, renameSync, unlinkSync } from 'node:fs';
+import { randomUUID } from 'node:crypto';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 
@@ -35,6 +36,32 @@ export const settingsDir = () => join(homedir(), '.tehablo');
 const isRow = (v: any): v is VoiceRow => v && ['name', 'voice', 'model', 'kind', 'note'].every(k => typeof v[k] === 'string')
   && (typeof v.downloaded === 'boolean' || v.downloaded === null);
 
+/** Unlike loadSettings, writes must reject unreadable data rather than replace it with defaults. */
+export function readSettingsRecord(dir: string, project?: string): Record<string, unknown> {
+  const file = existsSync(join(dir, FILE)) || !project ? join(dir, FILE) : join(project, OLD_FILE);
+  let text: string;
+  try { text = readFileSync(file, 'utf8'); }
+  catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return {};
+    throw error;
+  }
+  const raw = JSON.parse(text);
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw new Error('Los ajustes no son un objeto JSON.');
+  return raw;
+}
+
+export function saveVoiceSettings(dir: string, pair: {model: string; voice: string}, project?: string): void {
+  const raw = readSettingsRecord(dir, project);
+  mkdirSync(dir, {recursive: true});
+  const temporary = join(dir, `${FILE}.${randomUUID()}.tmp`);
+  try {
+    writeFileSync(temporary, JSON.stringify({...raw, model: pair.model, voice: pair.voice}, null, 2) + '\n', {flag: 'wx', mode: 0o600});
+    renameSync(temporary, join(dir, FILE));
+  } finally {
+    try { unlinkSync(temporary); } catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; }
+  }
+}
+
 export function loadSettings(dir: string, project?: string, fallback: Settings = DEFAULTS): Settings {
   let raw: any = {};
   const file = existsSync(join(dir, FILE)) || !project ? join(dir, FILE) : join(project, OLD_FILE);
@@ -62,4 +89,3 @@ export function loadSettings(dir: string, project?: string, fallback: Settings =
   if (Array.isArray(raw.voices)) s.voices = raw.voices.filter(isRow);
   return s;
 }
-

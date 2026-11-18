@@ -141,7 +141,7 @@ class ServerClient extends RealServerClient {
     });
   }
 }
-import { DEFAULTS, type Settings } from '../src/settings.ts';
+import { DEFAULTS, saveVoiceSettings, type Settings } from '../src/settings.ts';
 import { cleanText, finalAssistantText } from '../src/text.ts';
 
 async function waitUntil(condition: () => boolean, message = 'Condition timed out') {
@@ -175,6 +175,7 @@ function createHarness(options: {
   initialStorage?: Record<string, unknown>;
   settings?: Partial<Settings>;
   health?: Record<string, unknown> | null;
+  respond?: (path: string, body: any) => Promise<Response | undefined>;
 } = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'tehablo-opencode-test-'));
   const codePath = join(dir, 'ssh-codigo');
@@ -183,7 +184,7 @@ function createHarness(options: {
   const location = options.location ?? 'D:/repo/tehablo';
   const calls: Array<{ path: string; body: any }> = [];
   const notices: NoticePayload[] = [];
-  let rpcHandlers: Record<string, (input: any) => Promise<unknown>> = {};
+  let rpcHandlers: Record<string, (input: any, context?: {error: (type: string, message: string, data: unknown) => unknown}) => Promise<unknown>> = {};
   let rpcDisposed = false;
   const storage = new Map<string, unknown>(Object.entries(options.initialStorage ?? {}));
   const commands = new Map<string, (input: { sessionID: string; prompt: { text: string } }) => Promise<void>>();
@@ -208,6 +209,8 @@ function createHarness(options: {
     const body = init?.body ? JSON.parse(init.body) : undefined;
     calls.push({ path, body });
     if (options.health === null) throw new Error('Server offline');
+    const response = await options.respond?.(path, body);
+    if (response) return response;
     if (path === '/health') {
       return Response.json({ service: 'tehablo', ok: true, ready: true, model: 'spanish', voice: 'lola', volume: 0.5, speed: 1, rhythm: 0, audio: 'local', device: '', ...options.health });
     }
@@ -316,19 +319,23 @@ test('cleanText and finalAssistantText skip tool-call messages and strip markdow
   ]), { messageId: 'm2', text: 'Respuesta final.' });
 });
 
+const localVoice = {name: 'Facundo', model: 'spanish', voice: 'Facundo.safetensors', kind: 'source', note: 'Argentina', downloaded: true};
+
 test('portable RPC declares an explicit serializable output for every method', () => {
   for (const [name, method] of Object.entries(tehabloRpc.methods)) {
     assert.ok('output' in method, `${name} must declare output before the host encodes its result`);
     assert.equal(typeof method.output, 'object');
   }
-  assert.deepEqual(tehabloRpc.methods.control.output, {type: 'null'});
+  for (const name of ['control', 'selectVoice']) {
+    assert.deepEqual(tehabloRpc.methods[name].output, {type: 'null'});
+  }
 });
 
-test('RPC exposes exactly the one plugin method', () => {
-  assert.deepEqual(Object.keys(tehabloRpc.methods), ['control']);
+test('RPC exposes exactly the three plugin methods', () => {
+  assert.deepEqual(Object.keys(tehabloRpc.methods), ['voices', 'selectVoice', 'control']);
 });
 
-test('menu exposes only the four documented actions and ignores unknown selections', async () => {
+test('menu exposes only the five documented actions and ignores unknown selections', async () => {
   let listener: any;
   const menus: any[] = [];
   const dispose = createTehabloTui({
@@ -340,7 +347,7 @@ test('menu exposes only the four documented actions and ignores unknown selectio
   try {
     listener({details: {type: 'rpc.tehablo-tts.notice', data: {sessionID: 'main', kind: 'menu', variant: 'info', message: '', auto: false}}});
     await new Promise(r => setImmediate(r));
-    assert.deepEqual(menus[0].options.map((option: any) => option.value), ['play', 'stop', 'auto', 'help']);
+    assert.deepEqual(menus[0].options.map((option: any) => option.value), ['play', 'stop', 'auto', 'help', 'voices']);
   } finally {dispose();}
 });
 
@@ -362,6 +369,46 @@ test('Help emits once and returns a serializable acknowledgement without server 
   } finally { await cleanup(); h.cleanupDir(); }
 });
 
+// Registered-handler checks only: this does not execute OpenCode's encoder.
+function assertOutputShape(schema: any, value: any): void {
+  assert.ok(schema, 'Every registered method needs an output schema');
+  if (schema.type === 'null') return assert.equal(value, null);
+  if (schema.type === 'array') {
+    assert.ok(Array.isArray(value));
+    for (const row of value) assertOutputShape(schema.items, row);
+    return;
+  }
+  if (schema.type === 'object') {
+    assert.ok(value && typeof value === 'object' && !Array.isArray(value));
+    for (const key of schema.required ?? []) assert.ok(Object.hasOwn(value, key), key);
+    for (const [key, child] of Object.entries(schema.properties ?? {})) {
+      if (Object.hasOwn(value, key)) assertOutputShape(child, value[key]);
+    }
+  } else assert.equal(typeof value, schema.type);
+  if (schema.enum) assert.ok(schema.enum.includes(value));
+  if (Object.hasOwn(schema, 'const')) assert.equal(value, schema.const);
+}
+
+test('RPC outputs match all three registered handlers without download selection effects', async () => {
+  const remote = {...localVoice, name: 'Remote', voice: 'remote', downloaded: false};
+  const h = createHarness({respond: async path => {
+    if (path === '/voices') return Response.json({catalog: [localVoice, remote]});
+  }});
+  writeFileSync(join(h.dir, 'settings.json'), '{"voice":"lola","future":true}\n');
+  h.client.ensure = async () => {};
+  const cleanup = await createTehabloPlugin(h.ctx, {client: h.client, settingsDirectory: h.dir, pollIntervalMs: 1e9});
+  const invoke = async (method: keyof typeof tehabloRpc.methods, input: any) => {
+    const value = await h.rpcHandlers()[method](input);
+    assertOutputShape(tehabloRpc.methods[method].output, value);
+    assert.deepEqual(JSON.parse(JSON.stringify({output: value})), {output: value});
+  };
+  try {
+    for (const action of ['help', 'play', 'stop', 'auto', 'auto']) await invoke('control', {sessionID: 'main', action});
+    await invoke('voices', {sessionID: 'main'});
+    await invoke('selectVoice', {sessionID: 'main', model: localVoice.model, voice: localVoice.voice});
+  } finally { await cleanup(); h.cleanupDir(); }
+});
+
 test('RPC malformed inputs preserve exact errors and settings hashes', async () => {
   const h = createHarness({initialStorage: {spokenIds: ['prior']}});
   writeFileSync(join(h.dir, 'settings.json'), '{"voice":"lola","future":true}\n');
@@ -373,7 +420,8 @@ test('RPC malformed inputs preserve exact errors and settings hashes', async () 
     storage: structuredClone([...h.storage]), args: [...h.client.startArgs],
   });
   const errors = {
-    control: 'Acción de menú no válida.',
+    control: 'Acción de menú no válida.', selectVoice: 'Selección de voz no válida.',
+    voices: 'Sesión no válida.',
   };
   try {
     for (const [method, message] of Object.entries(errors)) {
@@ -384,6 +432,183 @@ test('RPC malformed inputs preserve exact errors and settings hashes', async () 
       }
     }
   } finally { await cleanup(); h.cleanupDir(); }
+});
+
+test('voice settings preserve legacy records and refuse malformed existing data', () => {
+  const h = createHarness();
+  try {
+    const directory = join(h.dir, 'new-settings');
+    const legacy = join(h.dir, 'tehablo-settings.json');
+    writeFileSync(legacy, '{"voice":"lola","future":{"enabled":true}}');
+    saveVoiceSettings(directory, {model: 'spanish', voice: 'rafael'}, h.dir);
+    assert.deepEqual(JSON.parse(readFileSync(join(directory, 'settings.json'), 'utf8')), {model: 'spanish', voice: 'rafael', future: {enabled: true}});
+    for (const content of ['broken', '[]', 'null']) {
+      writeFileSync(join(directory, 'settings.json'), content);
+      assert.throws(() => saveVoiceSettings(directory, {model: 'spanish', voice: 'lola'}, h.dir));
+      assert.equal(readFileSync(join(directory, 'settings.json'), 'utf8'), content);
+    }
+  } finally {h.cleanupDir();}
+});
+
+test('local voices list and revalidate downloaded pairs, preserving raw settings and later boot', async () => {
+  let catalog = [localVoice, {...localVoice, voice: 'remote', downloaded: false}, {...localVoice, voice: 'unknown', downloaded: null}];
+  const h = createHarness({respond: async path => path === '/voices' ? Response.json({voices: ['wrong'], catalog}) : undefined});
+  const file = join(h.dir, 'settings.json');
+  const original = {model: 'spanish', voice: 'lola', volume: 0.4, dict: {lola: false}, future: {key: ['keep']}, shortcuts: {custom: 'x'}};
+  writeFileSync(file, JSON.stringify(original));
+  h.client.ensure = async () => { throw new Error('Selector must not start server'); };
+  const cleanup = await createTehabloPlugin(h.ctx, {client: h.client, settingsDirectory: h.dir});
+  try {
+    assert.deepEqual(await h.rpcHandlers().voices({sessionID: 'main'}), [localVoice]);
+    assert.equal(await h.rpcHandlers().selectVoice({sessionID: 'main', model: localVoice.model, voice: localVoice.voice}), null);
+    assert.deepEqual(JSON.parse(readFileSync(file, 'utf8')), {...original, model: localVoice.model, voice: localVoice.voice});
+    assert.deepEqual(h.calls.filter(c => c.path === '/config').map(c => c.body), [{model: localVoice.model, voice: localVoice.voice}]);
+    assert.equal(h.notices.at(-1)?.variant, 'success');
+    h.client.ensure = async () => {};
+    await h.commands.get('tts')!({sessionID: 'main', prompt: {text: 'auto on'}});
+    assert.deepEqual(h.client.startArgs.slice(0, 4), ['--model', 'spanish', '--voice', 'Facundo.safetensors']);
+    catalog = catalog.map(row => ({...row, downloaded: false}));
+    const saved = readFileSync(file, 'utf8');
+    const configs = h.calls.filter(c => c.path === '/config').length;
+    await assert.rejects(() => h.rpcHandlers().selectVoice({sessionID: 'main', model: 'spanish', voice: localVoice.voice}), /disponible/);
+    assert.equal(readFileSync(file, 'utf8'), saved);
+    assert.equal(h.calls.filter(c => c.path === '/config').length, configs);
+    assert.ok(!h.calls.some(c => ['/prepare', '/speak'].includes(c.path)));
+  } finally { await cleanup(); h.cleanupDir(); }
+});
+
+test('local voices refuse offline server and failed configuration without saving or starting', async () => {
+  for (const offline of [true, false]) {
+    const h = createHarness({health: offline ? null : {}, respond: async path => {
+      if (path === '/voices') return Response.json({catalog: [localVoice]});
+      if (path === '/config') return Response.json({error: 'Config rejected'}, {status: 400});
+    }});
+    const file = join(h.dir, 'settings.json');
+    writeFileSync(file, '{"voice":"lola","future":42}');
+    h.client.ensure = async () => { assert.fail('Must not start server'); };
+    const cleanup = await createTehabloPlugin(h.ctx, {client: h.client, settingsDirectory: h.dir});
+    try {
+      if (offline) await assert.rejects(() => h.rpcHandlers().voices({sessionID: 'main'}), /servidor/i);
+      await assert.rejects(() => h.rpcHandlers().selectVoice({sessionID: 'main', model: 'spanish', voice: localVoice.voice}));
+      assert.equal(readFileSync(file, 'utf8'), '{"voice":"lola","future":42}');
+      assert.ok(!h.calls.some(c => ['/speak', '/prepare'].includes(c.path)));
+      assert.ok(!h.notices.some(n => n.variant === 'success'));
+    } finally { await cleanup(); h.cleanupDir(); }
+  }
+});
+
+test('local voices declare the offline RPC error without startup or settings changes', async () => {
+  assert.deepEqual(tehabloRpc.methods.voices.errors, {
+    server_unavailable: {type: 'object', additionalProperties: false},
+  });
+  const h = createHarness({health: null});
+  const file = join(h.dir, 'settings.json');
+  writeFileSync(file, '{"voice":"lola","future":42}\n');
+  const before = readFileSync(file);
+  const args = [...h.client.startArgs];
+  h.client.ensure = async () => assert.fail('Offline listing must not start the server');
+  const cleanup = await createTehabloPlugin(h.ctx, {client: h.client, settingsDirectory: h.dir});
+  const declared = Object.assign(new Error('Se requiere un servidor teHablo disponible para elegir voces locales. No se ha iniciado el servidor.'), {
+    type: 'server_unavailable', data: {},
+  });
+  const errors: unknown[] = [];
+  try {
+    await assert.rejects(() => h.rpcHandlers().voices({sessionID: 'main'}, {
+      error(type: string, message: string, data: unknown) {
+        errors.push({type, message, data});
+        return declared;
+      },
+    }), error => error === declared);
+    assert.deepEqual(errors, [{type: declared.type, message: declared.message, data: {}}]);
+    assert.deepEqual(readFileSync(file), before);
+    assert.deepEqual(h.client.startArgs, args);
+    assert.deepEqual(h.calls.map(call => call.path), ['/voices']);
+    assert.deepEqual(h.notices, []);
+  } finally { await cleanup(); h.cleanupDir(); }
+});
+
+test('local voices reject malformed selection and overlapping changes without modifying settings', async () => {
+  let release: () => void = () => {};
+  const h = createHarness({respond: async path => {
+    if (path !== '/voices') return;
+    await new Promise<void>(resolve => {release = resolve;});
+    return Response.json({catalog: [localVoice]});
+  }});
+  const cleanup = await createTehabloPlugin(h.ctx, {client: h.client, settingsDirectory: h.dir});
+  try {
+    for (const input of [null, {}, {sessionID: 1}, {sessionID: 'main', model: 'spanish'}, {sessionID: 'main', model: 'bad', voice: 'x'}]) {
+      await assert.rejects(() => h.rpcHandlers().selectVoice(input));
+      assert.deepEqual(h.calls, []);
+    }
+    const pending = h.rpcHandlers().selectVoice({sessionID: 'main', model: 'spanish', voice: localVoice.voice});
+    await waitUntil(() => h.calls.length === 1);
+    await assert.rejects(() => h.rpcHandlers().selectVoice({sessionID: 'main', model: 'spanish', voice: localVoice.voice}), /curso/);
+    const closing = cleanup();
+    release();
+    await assert.rejects(() => pending, /cancelada/);
+    await closing;
+    assert.ok(!h.calls.some(c => c.path === '/config'));
+  } finally { await cleanup(); h.cleanupDir(); }
+});
+
+test('voice submenu selects exact pairs and cancels on Escape, navigation, or unload', async () => {
+  for (const outcome of ['select', 'cancel', 'navigate', 'unload', 'loading']) {
+    let listener: any, changed: any, choose: any, finishList: any;
+    const dialogs: any[] = [], applied: any[] = [], toasts: any[] = [];
+    const dispose = createTehabloTui({
+      data: {listen(cb) {listener = cb; return () => {}; }},
+      client: {rpc: () => ({control: async () => assert.fail('Not a control action'),
+        voices: async () => outcome === 'loading' ? new Promise(r => {finishList = r;}) : [localVoice],
+        selectVoice: async input => {applied.push(input);}})},
+      ui: {router: {current: () => ({type: 'session', sessionID: 'main'})}, toast: {show(n) {toasts.push(n);}},
+        dialog: {alert: async () => {}, select: async options => {
+          dialogs.push(options);
+          return dialogs.length === 1 ? 'voices' : new Promise(r => {choose = r;});
+        }}},
+    }, {watchRoute(cb) {changed = cb; return () => {};}});
+    try {
+      listener({details: {type: 'rpc.tehablo-tts.notice', data: {sessionID: 'main', kind: 'menu', variant: 'info', message: '', auto: false}}});
+      if (outcome === 'loading') {
+        await waitUntil(() => !!finishList);
+        changed({type: 'home'}); changed({type: 'session', sessionID: 'main'});
+        finishList([localVoice]);
+      } else {
+        await waitUntil(() => dialogs.length === 2 || toasts.length > 0);
+        assert.equal(dialogs.length, 2);
+        assert.equal(dialogs[1].options[0].title, 'Facundo');
+        if (outcome === 'navigate') {changed({type: 'home'}); changed({type: 'session', sessionID: 'main'});}
+        if (outcome === 'unload') dispose();
+        choose(outcome === 'cancel' ? undefined : dialogs[1].options[0].value);
+      }
+      await new Promise(r => setImmediate(r));
+      assert.deepEqual(applied, outcome === 'select' ? [{sessionID: 'main', model: 'spanish', voice: 'Facundo.safetensors'}] : []);
+      if (outcome === 'loading') assert.equal(dialogs.length, 1);
+    } finally {dispose();}
+  }
+});
+
+test('voice selector keeps the default route and opens the list without diagnostics', async () => {
+  let listener: any;
+  const calls: any[] = [], dialogs: any[] = [], alerts: any[] = [];
+  const dispose = createTehabloTui({
+    location: {directory: 'D:/private-project'},
+    data: {listen(cb) {listener = cb; return () => {};}},
+    client: {rpc: () => ({control: async () => assert.fail('Not a control action'),
+      voices: async (input, options) => {calls.push({input, options}); return [localVoice];},
+      selectVoice: async () => assert.fail('No selection')})},
+    ui: {router: {current: () => ({type: 'session', sessionID: 'main'})}, toast: {show() {assert.fail('No toast');}},
+      dialog: {alert: async options => {alerts.push(options);}, select: async options => {
+        dialogs.push(options);
+        return dialogs.length === 1 ? 'voices' : undefined;
+      }}},
+  });
+  try {
+    listener({details: {type: 'rpc.tehablo-tts.notice', data: {sessionID: 'main', kind: 'menu', variant: 'info', message: '', auto: false}}});
+    await waitUntil(() => dialogs.length === 2 || alerts.length > 0);
+    assert.deepEqual(alerts, []);
+    assert.deepEqual(calls, [{input: {sessionID: 'main'}, options: undefined}]);
+    assert.equal(dialogs[1].options[0].title, 'Facundo');
+  } finally {dispose();}
 });
 
 test('menu control routing captures Location for all four actions and preserves missing-location defaults', async () => {
@@ -638,7 +863,7 @@ test('native menu shows structured rejection diagnostics without dumping private
     {error: 'Legacy rejection', text: 'Legacy rejection', legacy: true},
   ];
   for (const item of cases) {
-    for (const action of item.legacy ? ['play', 'stop', 'auto', 'help'] : ['help']) {
+    for (const action of item.legacy ? ['play', 'stop', 'auto', 'help', 'voices'] : ['help']) {
       let listener: any;
       const toasts: any[] = [], calls: string[] = [];
       const reject = async (method: string) => {calls.push(method); throw item.error;};
@@ -646,6 +871,8 @@ test('native menu shows structured rejection diagnostics without dumping private
         data: {listen(cb) {listener = cb; return () => {}; }},
         client: {rpc: () => ({
           control: async input => {assert.equal(input.action, action); return reject('control');},
+          voices: async () => reject('voices'),
+          selectVoice: async () => assert.fail('Diagnostics must not select'),
         })},
         ui: {router: {current: () => ({type: 'session', sessionID: 'main'})},
           toast: {show(n) {toasts.push(n);}},
@@ -661,7 +888,7 @@ test('native menu shows structured rejection diagnostics without dumping private
         await waitUntil(() => toasts.length === 1);
         assert.equal(toasts[0].message, item.text);
         assert.equal(toasts[0].variant, 'warning');
-        assert.deepEqual(calls, ['control']);
+        assert.deepEqual(calls, [action === 'voices' ? 'voices' : 'control']);
       } finally {dispose();}
     }
   }
@@ -693,7 +920,7 @@ test('native menu dispatches only an explicit selection in the same live session
   } } });
   try {
     open();
-    assert.deepEqual(selections[0].options.map((o: any) => o.value), ['play', 'stop', 'auto', 'help']);
+    assert.deepEqual(selections[0].options.map((o: any) => o.value), ['play', 'stop', 'auto', 'help', 'voices']);
     assert.match(selections[0].options[2].title, /Activar/);
     resolveSelection(undefined);
     await new Promise(resolve => setImmediate(resolve));

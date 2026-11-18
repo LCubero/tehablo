@@ -10,6 +10,10 @@ Este archivo registra los cambios completados en orden cronológico. Las version
 - Pi y OpenCode: puerto HTTP por defecto 23765 y selección automática entre 23765–23769 cuando no se fija `TEHABLO_PORT`; se reutiliza un servidor solo si se identifica como teHablo.
 - Mensajes claros cuando el puerto está ocupado; `TEHABLO_PORT` conserva un único puerto fijo, sin buscar alternativas. Guía de desarrollo y pruebas de pronunciación actualizadas.
 
+## 2026-11-16
+
+- OpenCode TUI: el menú permite elegir voces y modelos ya descargados, con un servidor disponible y sin iniciarlo ni descargar recursos. Revalida la disponibilidad antes de aplicar y guarda el par modelo/voz conservando los demás ajustes. Pruebas silenciosas: 47 aprobadas. Aceptación real en OpenCode y audio pendiente.
+
 ## 2026-11-15
 
 - OpenCode: integración inicial del plugin fusionada en [PR #2](https://github.com/LCubero/tehablo/pull/2) ([0520462](https://github.com/LCubero/tehablo/commit/0520462536c86981e5697a08dcc9f176c72183a9)); reproducir/detener corregido y confirmado en Windows. CI aprobada en Windows y Ubuntu; [evidencia y límites](docs/repo-harness/roadmap.md#rh-w-0046-integración-inicial-del-plugin-de-opencode).
