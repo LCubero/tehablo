@@ -486,6 +486,66 @@ Antecedente aprobado el 2026-10-30: base confiable, medición (`RH-W-0003`), ser
 - **Trabajo restante (comprobado el 2026-11-13):** el cliente SSH (`cliente/tehablo_cliente.py`) no muestra la versión ni avisa si no coincide con el servidor, y los instaladores del cliente (`receptor/install.sh`, `receptor/install.ps1`) descargan siempre la rama `master` en lugar de una versión fija.
 - **Diseño mínimo propuesto (original):** un solo número de versión del proyecto, en un único sitio; el cliente lo muestra en su menú, Pi en `/tts status` y el servidor en `/health`; si cliente y servidor no coinciden, el cliente lo avisa sin bloquear. Cada versión nueva se anota en `CHANGELOG.md`. Sin herramientas nuevas ni dependencias.
 
+### RH-W-0049: Unificar el apagado por comando en Pi y OpenCode
+
+- **Origen:** seguimiento aprobado por la persona responsable el 2026-11-17.
+- **Prioridad:** P2; coherencia del contrato de comandos y apagado explícito del servidor compartido.
+- **Dependencias:** `RH-W-0047` y `RH-W-0048`, completados.
+- **Estado:** `pending`.
+- **Responsable sugerido:** Totopo27 (Luis Araya).
+- **Guía para quien lo implemente:**
+  - En `pi-extension/tehablo-tts/src/extension.ts`, añade `/tts off` como alias de `turnOff()`. Conserva `/tts` sin argumentos como interruptor; `src/server.ts` ya implementa `powerOff()`: `/stop`, `POST /shutdown` autenticado y terminación del hijo propio solo si falla el cierre.
+  - En `opencode-plugin/tehablo-tts/src/plugin.ts` y `src/server.ts`, incorpora ese mismo apagado y cambia `/tts` sin argumentos de ayuda/estado a encender/apagar como Pi; conserva la ayuda en `/tts help`. El servidor implementa `/shutdown` en `src/tehablo_server.py` (actualmente líneas 1034–1036).
+  - Aceptación: ambos clientes apagan con `/tts off`, incluso si no iniciaron el servidor; OpenCode alterna con `/tts`; apagar no inicia un servidor ausente. El aviso debe explicar que el apagado afecta también al otro cliente, porque comparten servidor.
+  - Añade pruebas en los directorios `test/` de ambos clientes para cada comando, encendido/apagado, servidor ausente, fallo de cierre y protección de procesos ajenos; prueba por regresión que los demás subcomandos conservan su comportamiento. Actualiza ayuda, `opencode-plugin/tehablo-tts/README.md`, `docs/desarrollo.md` y `CHANGELOG.md` por el cambio de contrato.
+- **Exclusiones:** no añadir `/tts on`; `/tts`, `/tts play` y la activación de `/tts auto` ya cubren el arranque. Sin cambios al modelo de autenticación.
+- **Condición del siguiente avance:** implementar el alcance aprobado, superar las pruebas de ambos clientes y comprobar manualmente el apagado compartido y el reinicio antes de publicar.
+
+### RH-W-0050: Indicador de estado y verificación de OpenCode en Linux
+
+- **Origen:** seguimiento aprobado por la persona responsable el 2026-11-17.
+- **Prioridad:** P2; visibilidad del estado con consumo mínimo y cobertura manual de Linux.
+- **Dependencias:** `RH-W-0048`, completado; coordinar los estados de encendido con `RH-W-0049`.
+- **Estado:** `pending`.
+- **Responsable sugerido:** Totopo27 (Luis Araya).
+- **Guía para quien lo implemente:**
+  - Primero confirma si `@opencode/plugin` 2.3.0 permite `context.ui.slot(...)`. Las referencias de TUI v2 describen `sidebar.content`, `sidebar.footer` y `prompt.footer.status`: [documentación oficial](https://opencode.ai/docs/build/plugins/cli/) e [issue #5971](https://github.com/anomalyco/opencode/issues/5971). Son referencias aportadas, no leídas en este registro; su disponibilidad en la dependencia actual sigue sin verificar. Si no existe soporte, presenta el hallazgo antes de proponer una actualización de dependencias.
+  - Revisa `opencode-plugin/tehablo-tts/src/plugin.ts` y sus ajustes; toma como referencia `pi-extension/tehablo-tts/src/extension.ts:159–172`: `ctx.ui.setStatus`, `TTS off`, `TTS manual`, `TTS auto` y sufijo ` · cargando`. Respeta `indicator: false`.
+  - Aceptación: indicador compacto, coherente al iniciar, cargar, apagar, cambiar auto y fallar; actualízalo por cambios de estado/acciones, sin consultas periódicas nuevas al servidor. Añade pruebas de transiciones, ocultación y ausencia de sondeo periódico en `opencode-plugin/tehablo-tts/test/`.
+  - Comprueba manualmente en Linux menú, selección de voz, descarga y audio; Windows ya consta en `RH-W-0048`. Registra plataforma, versión, resultados y límites en `docs/desarrollo.md`; actualiza el README del plugin, `CHANGELOG.md` y el estado canónico cuando corresponda.
+- **Exclusiones:** sin barra interactiva, sin prometer soporte en Desktop ni sustituir las comprobaciones de puertos de `RH-W-0047`.
+- **Condición del siguiente avance:** confirmar la API instalada; después implementar y verificar indicador y flujo manual en Linux, o presentar la limitación técnica para decisión de la persona responsable.
+
+### RH-W-0051: Evaluar una barra de controles para OpenCode
+
+- **Origen:** seguimiento aprobado por la persona responsable el 2026-11-17, aplazado hasta evaluar el indicador y el menú existente.
+- **Prioridad:** P3; comodidad adicional, ya cubierta funcionalmente por `/tts menu`.
+- **Dependencias:** `RH-W-0050` completado y evaluado; reconsiderar solo si el menú resulta insuficiente.
+- **Estado:** `deferred`.
+- **Responsable sugerido:** por asignar al reconsiderar el alcance.
+- **Guía para quien lo implemente:**
+  - Cuando se cumpla la condición, revisa `pi-extension/tehablo-tts/src/extension.ts:684–744`: widget interactivo con `ctx.ui.setWidget` y `registerEntryRenderer`, encendido, ajustes, reproducir, pausa/continuación, detener, volumen, velocidad y auto. Punto de integración: `opencode-plugin/tehablo-tts/src/plugin.ts`.
+  - Verifica primero los slots `prompt.footer` y `session.composer.top` y si admiten clics/interacción en la versión instalada; no está comprobado. Presenta una propuesta mínima antes de implementar.
+  - Aceptación de una eventual implementación: controles equivalentes sin romper `/tts menu`, teclado, indicador ni apagado compartido; sin sondeo periódico nuevo. Añade pruebas de acciones y regresión del menú, y comprobación manual de interacción. Actualiza README del plugin, `docs/desarrollo.md` y `CHANGELOG.md` si se implementa.
+- **Exclusiones:** no implementar ahora ni añadir dependencias o prometer interacción de ratón sin verificación.
+- **Condición del siguiente avance:** evaluar `RH-W-0050`, documentar una insuficiencia concreta del menú y obtener decisión explícita sobre la propuesta de barra.
+
+### RH-W-0052: Revisar CLI y HTTP como superficie de integración
+
+- **Origen:** investigación aprobada por la persona responsable el 2026-11-17 para futuras conexiones con otras herramientas, por ejemplo [Herdr](https://herdr.dev), aplicación de escritorio para terminales y agentes de programación; no implica una integración aprobada.
+- **Prioridad:** P2; disponer de contratos vigentes y suficientes antes de crear nuevos clientes.
+- **Dependencias:** partir del contrato de puertos de `RH-W-0047` y coordinar con `RH-W-0014` sin reabrir su integración aplazada.
+- **Estado:** `pending`.
+- **Responsable sugerido:** persona responsable o Totopo27 (Luis Araya); investigación primero.
+- **Guía para quien lo implemente:**
+  - Inventario inicial verificado mediante lectura acotada: `src/tehablo_server.py:1076–1092` define CLI (`--port`, `--instance`, `--model`, `--voice`, `--speed`, `--audio`, `--idle-exit`); `:998–1038` expone GET `/health`, `/status`, `/devices`, `/devices/all`, `/voices` y POST `/speak`, `/pause`, `/resume`, `/stop`, `/config`, `/prepare`, `/shutdown`. `:539–541` aporta identidad `service`, `instance` y `version`; `:958–995` controla autenticación, JSON de respuesta y rechazo de `Origin`; `:1017–1042` valida entradas y errores.
+  - Otros puntos verificados: consola `src/tehablo_tts.py:57–67` (texto, `/leer`, `/multi`, `/voz`, `/voces`, `/modelo`, `/guardar`, `/ayuda`, `/salir`) y `:179–182` (`--language`, `--voice`); TUI lanzada por `install.sh:71` e `install.ps1:66`; instalación Pi en `install.sh:67` e `install.ps1:69`, y cliente SSH mediante `install.ps1:1–6`, `receptor/install.sh:15–25` y `cliente/tehablo_cliente.py:1057–1058` (`--uninstall`, `--codigo`). No se encontró `pyproject.toml` en el descubrimiento acotado: no se acredita un comando global `tehablo`.
+  - Observaciones documentales, no correcciones: `docs/desarrollo.md`, sección «Llevar teHablo a otro agente», ya contiene tabla HTTP, autenticación y errores; su fila `/health` no enumera `service`/`instance` y el arranque directo no explica allí la selección automática 23765–23769 de los clientes. Consolida las diferencias sin duplicar la guía existente; no presupongas que el servidor recorre puertos por sí solo.
+  - Entrega un inventario de comandos/endpoints con entradas, respuestas, autenticación `X-Tehablo-Codigo`, puertos 23765–23769, identidad `/health`, errores y ciclo de vida; lista de brechas y guía breve de integración en `docs/desarrollo.md`. Contrasta con `src/server.ts` de ambos clientes y los instaladores antes de concluir suficiencia.
+  - Aceptación: ejemplos reproducibles sin datos personales ni secretos, distinción entre hechos, brechas y propuestas, y pruebas propuestas para contratos no cubiertos. Revisa `tests/test_server.py`, `tests/test_startup.py` y los `test/` de los clientes; cualquier corrección posterior debe añadir pruebas de identidad, autenticación, errores y puertos según el hallazgo. Actualiza roadmap y estado con resultados; `CHANGELOG.md` solo si después se aprueba un cambio funcional.
+- **Exclusiones:** no implementar Herdr ni otros clientes; no modificar código hasta que la persona responsable apruebe los hallazgos. Conserva autenticación local/token y enlace local, sin nueva exposición de red.
+- **Condición del siguiente avance:** presentar inventario, brechas y guía; obtener aprobación explícita de los hallazgos antes de corregir código.
+
 ## Registros resueltos
 <!-- doc-role:resolved-records -->
 
