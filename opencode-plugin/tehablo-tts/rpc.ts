@@ -15,6 +15,30 @@ export interface NoticePayload {
 export const tehabloRpc = {
   id: 'tehablo-tts',
   methods: {
+    voices: {
+      input: {
+        type: 'object', properties: {sessionID: {type: 'string'}},
+        required: ['sessionID'], additionalProperties: false,
+      },
+      output: {
+        type: 'array', items: {
+          type: 'object', properties: {
+            name: {type: 'string'}, voice: {type: 'string'}, model: {type: 'string'},
+            kind: {type: 'string'}, note: {type: 'string'}, downloaded: {type: 'boolean', const: true},
+          }, required: ['name', 'voice', 'model', 'kind', 'note', 'downloaded'],
+        },
+      },
+      errors: {
+        server_unavailable: {type: 'object', additionalProperties: false},
+      },
+    },
+    selectVoice: {
+      input: {
+        type: 'object', properties: {sessionID: {type: 'string'}, model: {type: 'string'}, voice: {type: 'string'}},
+        required: ['sessionID', 'model', 'voice'], additionalProperties: false,
+      },
+      output: {type: 'null'},
+    },
     control: {
       input: {
         type: 'object',

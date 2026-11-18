@@ -1,10 +1,14 @@
 import { tehabloRpc, type NoticeKind, type NoticePayload, type NoticeVariant } from '../rpc.ts';
 import { ServerClient, type ServerOptions } from './server.ts';
-import { DEFAULTS, loadSettings, settingsDir, type Settings } from './settings.ts';
+import { DEFAULTS, MODELS, loadSettings, readSettingsRecord, saveVoiceSettings, settingsDir, type Settings, type VoiceRow } from './settings.ts';
 import { cleanText, finalAssistantText } from './text.ts';
 
 const SPOKEN_KEY = 'spokenIds';
 const MAX_SPOKEN_IDS = 100;
+
+interface RpcHandlerContext {
+  readonly error: (type: string, message: string, data: Record<string, never>) => unknown;
+}
 
 export interface PluginContext {
   readonly location: { readonly directory: string };
@@ -43,7 +47,7 @@ export interface PluginContext {
   readonly rpc?: {
     readonly register: (
       definition: typeof tehabloRpc,
-      handlers: Record<string, (input: any) => Promise<unknown>>,
+      handlers: Record<string, (input: any, context?: RpcHandlerContext) => Promise<unknown>>,
     ) => Promise<{
       readonly dispose: () => Promise<void> | void;
       readonly events: { readonly emit: (name: 'notice', data: NoticePayload) => Promise<void> };
@@ -61,11 +65,13 @@ export interface PluginDeps {
   loadSettings?: () => Settings;
   onError?: (error: unknown) => void;
   pollIntervalMs?: number;
+  settingsDirectory?: string;
 }
 
 const HELP_TEXT = [
   'Uso de /tts:',
   '/tts menu   abre el menú de controles',
+  'En el menú: Elegir voz local (requiere servidor disponible; sin descargas).',
   '/tts play   lee la última respuesta',
   '/tts stop   detiene las lecturas actuales y en espera',
   '/tts auto   activa o desactiva la lectura automática',
@@ -94,7 +100,8 @@ function parseCommandArgs(rawText: string): [string, string] {
 export async function createTehabloPlugin(ctx: PluginContext, deps: PluginDeps = {}): Promise<() => Promise<void>> {
   const explicitRoot = typeof ctx.options?.tehabloRoot === 'string' ? ctx.options.tehabloRoot : undefined;
   const client = deps.client ?? new ServerClient({root: explicitRoot, ...deps.clientOptions});
-  const readSettings = deps.loadSettings ?? (() => loadSettings(settingsDir(), client.root || undefined, DEFAULTS));
+  const directory = deps.settingsDirectory ?? settingsDir();
+  const readSettings = deps.loadSettings ?? (() => loadSettings(directory, client.root || undefined, DEFAULTS));
 
   const pollIntervalMs = deps.pollIntervalMs ?? 500;
   let settings = readSettings();
@@ -103,6 +110,7 @@ export async function createTehabloPlugin(ctx: PluginContext, deps: PluginDeps =
   let epoch = 0;
   let readingSeq = 0;
   let disposed = false;
+  let selectingVoice = false;
   let pollEpoch = 0;
   let pollFailures = 0;
   let pollTimer: ReturnType<typeof setTimeout> | undefined;
@@ -355,7 +363,49 @@ export async function createTehabloPlugin(ctx: PluginContext, deps: PluginDeps =
         await notify(input.sessionID, `Subcomando desconocido "${sub}".\n${HELP_TEXT}`, {kind: 'help', variant: 'warning'});
   };
 
+  const localVoices = async (context?: RpcHandlerContext): Promise<VoiceRow[]> => {
+    if (disposed) throw new Error('Selección cancelada.');
+    let result: any;
+    try { result = await client.request('/voices'); }
+    catch {
+      const message = 'Se requiere un servidor teHablo disponible para elegir voces locales. No se ha iniciado el servidor.';
+      throw context ? context.error('server_unavailable', message, {}) : new Error(message);
+    }
+    if (disposed) throw new Error('Selección cancelada.');
+    if (!Array.isArray(result?.catalog)) throw new Error('El servidor no devolvió un catálogo de voces válido.');
+    return result.catalog.filter((row: any) => row?.downloaded === true && MODELS.includes(row.model)
+      && ['name', 'voice', 'model', 'kind', 'note'].every(key => typeof row[key] === 'string'));
+  };
+
   rpc = await ctx.rpc?.register(tehabloRpc, {
+    voices: async (input: any, context) => {
+      if (!input || typeof input.sessionID !== 'string') throw new Error('Sesión no válida.');
+      return localVoices(context);
+    },
+    selectVoice: async (input: any) => {
+      if (!input || typeof input.sessionID !== 'string' || !MODELS.includes(input.model)
+        || typeof input.voice !== 'string' || !input.voice) throw new Error('Selección de voz no válida.');
+      if (selectingVoice) throw new Error('Ya hay un cambio de voz en curso.');
+      if (disposed) throw new Error('Selección cancelada.');
+      selectingVoice = true;
+      try {
+        const rows = await localVoices();
+        const row = rows.find(row => row.model === input.model && row.voice === input.voice);
+        if (!row) throw new Error('La voz y su modelo ya no están disponibles localmente.');
+        readSettingsRecord(directory, client.root || undefined);
+        if (disposed) throw new Error('Selección cancelada.');
+        epoch++;
+        const pair = {model: row.model, voice: row.voice};
+        await client.request('/config', pair);
+        if (disposed) throw new Error('Selección cancelada.');
+        try { saveVoiceSettings(directory, pair, client.root || undefined); }
+        catch (error) { throw new Error(`La voz se aplicó al servidor, pero no se pudo guardar: ${error instanceof Error ? error.message : String(error)}`); }
+        settings = {...settings, ...pair};
+        client.startArgs = ['--model', pair.model, '--voice', pair.voice, '--audio', settings.audio];
+        await notify(input.sessionID, `Voz seleccionada: ${row.name} (${row.model}).`, {variant: 'success'});
+        return null;
+      } finally { selectingVoice = false; }
+    },
     control: async (input: unknown) => {
       const value = input as { sessionID?: unknown; action?: unknown } | null;
       if (!value || typeof value.sessionID !== 'string' || typeof value.action !== 'string'

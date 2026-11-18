@@ -1,10 +1,13 @@
 import { tehabloRpc, type NoticeKind, type NoticeVariant } from '../rpc.ts';
+import type { VoiceRow } from './settings.ts';
 
 export interface TuiContext {
   readonly location?: {readonly directory: string};
   readonly client?: {
     readonly rpc: (definition: typeof tehabloRpc) => {
       readonly control: (input: { sessionID: string; action: string }, options?: {location: {directory: string}}) => Promise<unknown>;
+      readonly voices?: (input: {sessionID: string}) => Promise<unknown>;
+      readonly selectVoice?: (input: {sessionID: string; model: string; voice: string}) => Promise<unknown>;
     };
   };
   readonly data: {
@@ -113,11 +116,31 @@ export function createTehabloTui(ctx: TuiContext, deps: {
           {title: 'Detener lectura', value: 'stop'},
           {title: auto ? 'Desactivar lectura automática' : 'Activar lectura automática', value: 'auto'},
           {title: 'Ayuda y estado', value: 'help'},
+          {title: 'Elegir voz local', value: 'voices'},
         ],
       });
       const route = ctx.ui.router.current();
-      if (disposed || invalidated || !action || !['play', 'stop', 'auto', 'help'].includes(action)
+      if (disposed || invalidated || !action || !['play', 'stop', 'auto', 'help', 'voices'].includes(action)
         || route.type !== 'session' || route.sessionID !== sessionID) return;
+      if (action === 'voices') {
+        const api = ctx.client.rpc(tehabloRpc);
+        if (!api.voices || !api.selectVoice) throw new Error('El selector de voces no está disponible en este servidor.');
+        const rows = await api.voices({sessionID});
+        checkRoute(ctx.ui.router.current());
+        if (disposed || invalidated) return;
+        if (!Array.isArray(rows)) throw new Error('Catálogo de voces no válido.');
+        const local: VoiceRow[] = rows.filter(row => row?.downloaded === true && typeof row.name === 'string'
+          && typeof row.model === 'string' && typeof row.voice === 'string');
+        if (!local.length) throw new Error('No hay voces y modelos descargados disponibles.');
+        const selected = await ctx.ui.dialog.select({title: 'Elegir voz local', options: local.map((row, index) => ({
+          title: row.name, value: String(index), description: `${row.model} · ${row.note}`,
+        }))});
+        checkRoute(ctx.ui.router.current());
+        if (disposed || invalidated || selected === undefined) return;
+        const row = local.find((_, index) => String(index) === selected);
+        if (row) await api.selectVoice({sessionID, model: row.model, voice: row.voice});
+        return;
+      }
       const api = ctx.client.rpc(tehabloRpc);
       const input = {sessionID, action};
       if (controlDirectory?.trim()) await api.control(input, {location: {directory: controlDirectory}});
