@@ -29,9 +29,11 @@ Los trabajos activos y sus condiciones se resumen en Trabajo pendiente.
 
 ## Trabajo reciente completado
 
+- `RH-W-0048` (`completed`, 2026-11-17): menú, selección y descarga de voces de OpenCode fusionados en PR #4, #5 y #6 (`c64512b`, `af60077`, `c743b27`), contribución de Totopo27; aprobación explícita de la persona responsable, prueba manual en Windows y CI en Windows/Ubuntu aprobadas. Tras actualizar, reinicia OpenCode y el servidor TTS; audio manual en Linux sin verificar y menú no disponible en OpenCode Desktop. [Evidencia y migración](roadmap.md#rh-w-0048-menú-de-opencode-controles-selección-y-descarga-de-voces).
+
 - `RH-W-0047` (`completed`, 2026-11-17): puerto automático y mensajes de puerto ocupado fusionados en PR #3 (`4752257`); prueba manual en Windows, servidor compartido entre Pi y OpenCode y CI en Windows/Ubuntu aprobados. Recargar todas las sesiones de Pi con `/reload`; audio manual en Linux sin probar. [Evidencia y migración](roadmap.md#rh-w-0047-puerto-ocupado-mensaje-claro-puerto-por-defecto-menos-común-y-puerto-automático).
 
-- `RH-W-0046` (`completed`, 2026-11-15): integración inicial de OpenCode fusionada en GitHub; reproducir/detener confirmado por la persona responsable en Windows y CI aprobada en Windows/Ubuntu. Audio manual en Linux no verificado. Menú y selección/descarga de voces aplazados hasta nueva aprobación explícita. [Evidencia, límites y avisos no bloqueantes](roadmap.md#rh-w-0046-integración-inicial-del-plugin-de-opencode).
+- `RH-W-0046` (`completed`, 2026-11-15): integración inicial de OpenCode fusionada en GitHub; reproducir/detener confirmado por la persona responsable en Windows y CI aprobada en Windows/Ubuntu. Audio manual en Linux no verificado. Menú y selección/descarga de voces, antes aplazados hasta nueva aprobación explícita, aprobados y completados el 2026-11-17 en [RH-W-0048](roadmap.md#rh-w-0048-menú-de-opencode-controles-selección-y-descarga-de-voces). [Evidencia, límites y avisos no bloqueantes](roadmap.md#rh-w-0046-integración-inicial-del-plugin-de-opencode).
 
 - `RH-W-0005` (2026-11-13): publicadas 25 voces de Phonon multilingüe con descarga individual, ritmo nativo y menú de voces con pestañas por motor, voz activa primero y favoritas; aprobado por la persona responsable tras la prueba manual en Pi. Sigue activo por las decisiones pendientes sobre Supertonic y Piper; `em_santa`/Kokoro queda en pausa por decisión del 2026-11-14, sin integración ([registro canónico](roadmap.md#rh-w-0005-probar-voces-existentes-y-ampliar-fuentes-gratuitas-compatibles)).
 

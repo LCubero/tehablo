@@ -489,6 +489,23 @@ Antecedente aprobado el 2026-10-30: base confiable, medición (`RH-W-0003`), ser
 ## Registros resueltos
 <!-- doc-role:resolved-records -->
 
+### RH-W-0048: Menú de OpenCode: controles, selección y descarga de voces
+
+- **Origen:** contribución de Totopo27 (Luis Araya), aprobada explícitamente por la persona responsable el 2026-11-17 tras el aplazamiento de `RH-W-0046`.
+- **Prioridad:** P2; acceso a los controles y gestión de voces desde el menú nativo de OpenCode.
+- **Dependencias:** integración inicial `RH-W-0046` y servidor TTS actualizado con soporte de `select: false` en `POST /prepare`.
+- **Estado:** `completed`.
+- **Trabajo restante:** ninguno.
+- **Trabajo completado (2026-11-17):** tres PR encadenados fusionados por squash en `master`: [PR #4](https://github.com/LCubero/tehablo/pull/4) ([c64512b](https://github.com/LCubero/tehablo/commit/c64512b80f57cf4e5a757d139a67a0dcf1c7ea12)), selector nativo `/tts menu` para leer, detener, lectura automática y ayuda, esquemas de salida RPC, enrutamiento por ubicación del TUI y errores estructurados legibles; [PR #5](https://github.com/LCubero/tehablo/pull/5) ([af60077](https://github.com/LCubero/tehablo/commit/af600777ede5b771bd7fc6eef3e96a37284fc0f4)), **Elegir voz local**, solo descargadas, con revalidación antes de aplicar y guardado de modelo/voz conservando los demás ajustes; [PR #6](https://github.com/LCubero/tehablo/pull/6) ([c743b27](https://github.com/LCubero/tehablo/commit/c743b2716cec69e973832612e8fb9bd0cc66cb51)), **Descargar voz** con confirmación, sin cambiar la voz activa ni los ajustes.
+- **Adiciones:** dos correcciones del mantenedor dentro del PR #6 tras la prueba manual: los avisos sin servidor indican iniciarlo con `/tts play` o `/tts auto`; las llamadas RPC de selección y descarga envían la ubicación del TUI, como los controles, para evitar `rpc.unavailable` tras reiniciar OpenCode.
+- **Decisiones y razones:** seleccionar una voz local nunca inicia el servidor y muestra `server_unavailable` si no está disponible. La descarga usa `select: false` en `POST /prepare`, sin alterar el comportamiento de Pi; admite Phonon solo con el modelo en caché, sin pedir credenciales, y sigue el ID exacto del trabajo durante un máximo de 15 minutos.
+- **Exclusiones:** menú en OpenCode Desktop, que no dispone de él; sin solicitud de credenciales ni cambio de voz al descargar.
+- **Aplazamientos y límites:** audio manual en Linux sin verificar; no bloquea este cierre.
+- **Rechazos:** ninguno dentro de este alcance.
+- **Evidencia verificada:** suites locales ejecutadas por el agente principal en cada PR: OpenCode 39/39 (#4), 47/47 (#5), 51/51 (#6) y 52/52 tras la corrección; Pi 261/261, `test_server` 103/103 y `test_startup` 17/17 en #6. CI aprobada en Windows y Ubuntu para los tres PR y tras las fusiones en `master`. Prueba manual de la persona responsable en OpenCode sobre Windows aprobada: menú, Play/Stop, lectura automática, aviso sin servidor con la indicación nueva, descarga confirmada de Yael (Phonon) y aviso final «Descarga completada», seguida de selección y escucha de Yael. Archivo descargado de nuevo idéntico byte a byte, con SHA-256 verificado; árbol final de `master` idéntico al probado manualmente. Evidencia comunicada para este cierre; no se repitieron pruebas funcionales en esta actualización documental.
+- **Migración observada:** tras actualizar, reinicia OpenCode y el servidor TTS. Un servidor anterior rechaza `select: false`; la descarga falla con un error claro sin cambiar la voz.
+- **Condición del siguiente avance:** cierre acreditado; no queda trabajo dentro de este alcance.
+
 ### RH-W-0047: Puerto ocupado: mensaje claro, puerto por defecto menos común y puerto automático
 
 - **Origen:** colisión del servidor HTTP local con otro programa; solicitud de diagnóstico claro y selección de puerto menos propensa a conflictos.
@@ -515,7 +532,7 @@ Antecedente aprobado el 2026-10-30: base confiable, medición (`RH-W-0003`), ser
 - **Trabajo restante:** ninguno dentro de la integración inicial.
 - **Trabajo completado (2026-11-15):** plugin integrado en GitHub mediante [PR #2](https://github.com/LCubero/tehablo/pull/2), fusionado por squash en [0520462](https://github.com/LCubero/tehablo/commit/0520462536c86981e5697a08dcc9f176c72183a9). La persona responsable probó OpenCode en Windows y confirmó reproducir/detener tras la corrección.
 - **Evidencia verificada por el agente principal:** [CI 43807167408](https://github.com/LCubero/tehablo/actions/runs/43807167408) aprobada para Python, Pi y OpenCode en Windows y Ubuntu; 17 pruebas del plugin y 251 de Pi en el árbol del PR. Revisión nativa aprobada tras corregir la propiedad de detener por sesión, sin hallazgos bloqueantes. Audio manual en Linux no verificado.
-- **Aplazamientos:** menú y selección/descarga de voces quedan `deferred`, hasta nueva aprobación explícita de alcance por la persona responsable; no son requisitos nuevos ni trabajo autorizado.
+- **Aplazamientos:** menú y selección/descarga de voces quedan `deferred`, hasta nueva aprobación explícita de alcance por la persona responsable; no son requisitos nuevos ni trabajo autorizado. Aprobados explícitamente y completados el 2026-11-17 en [RH-W-0048](#rh-w-0048-menú-de-opencode-controles-selección-y-descarga-de-voces).
 - **Avisos de revisión no bloqueantes:** inferencias del código, no reproducidas en ejecución; aplazadas hasta volver a tocar la lógica correspondiente o recibir una reproducción reportada. Rutas relativas al código del plugin:
   - `src/text.ts:35`: la ausencia de marcador de finalización podría aceptar texto aún en streaming.
   - `src/plugin.ts:235–291`: un arranque cancelado podría conservar el ID de un mensaje no leído.
