@@ -43,7 +43,7 @@ export interface PluginContext {
   readonly rpc?: {
     readonly register: (
       definition: typeof tehabloRpc,
-      handlers: Record<string, never>,
+      handlers: Record<string, (input: any) => Promise<unknown>>,
     ) => Promise<{
       readonly dispose: () => Promise<void> | void;
       readonly events: { readonly emit: (name: 'notice', data: NoticePayload) => Promise<void> };
@@ -65,6 +65,7 @@ export interface PluginDeps {
 
 const HELP_TEXT = [
   'Uso de /tts:',
+  '/tts menu   abre el menú de controles',
   '/tts play   lee la última respuesta',
   '/tts stop   detiene las lecturas actuales y en espera',
   '/tts auto   activa o desactiva la lectura automática',
@@ -129,7 +130,7 @@ export async function createTehabloPlugin(ctx: PluginContext, deps: PluginDeps =
     catch { /* Storage persistence is best effort. */ }
   };
 
-  const rpc = await ctx.rpc?.register(tehabloRpc, {}).catch(() => undefined);
+  let rpc: Awaited<ReturnType<NonNullable<PluginContext['rpc']>['register']>> | undefined;
 
   const notify = async (
     sessionID: string,
@@ -141,6 +142,7 @@ export async function createTehabloPlugin(ctx: PluginContext, deps: PluginDeps =
       kind: opts.kind ?? 'toast',
       variant: opts.variant ?? 'info',
       message,
+      ...(opts.kind === 'menu' ? { auto } : {}),
     };
     if (rpc) {
       try {
@@ -293,12 +295,17 @@ export async function createTehabloPlugin(ctx: PluginContext, deps: PluginDeps =
     }
   };
 
-  await ctx.command.transform(editor => {
-    editor.add({
-      name: 'tts',
-      description: 'Controla la lectura en voz alta con teHablo (play, stop, auto, help).',
-      execute: async (input) => {
+  const executeCommand = async (input: { sessionID: string; prompt: { text: string } }) => {
+        if (disposed) return;
         const [sub, arg] = parseCommandArgs(input.prompt.text);
+        if (sub === 'menu') {
+          if (arg) {
+            await notify(input.sessionID, 'El comando /tts menu no admite argumentos.\n' + HELP_TEXT, {kind: 'help', variant: 'warning'});
+            return;
+          }
+          await notify(input.sessionID, `Lectura automática ${auto ? 'activada' : 'desactivada'}.`, {kind: 'menu'});
+          return;
+        }
         if (sub === 'play') {
           const candidate = await resolveLatestResponse(input.sessionID);
           if (!candidate) {
@@ -346,7 +353,23 @@ export async function createTehabloPlugin(ctx: PluginContext, deps: PluginDeps =
           return;
         }
         await notify(input.sessionID, `Subcomando desconocido "${sub}".\n${HELP_TEXT}`, {kind: 'help', variant: 'warning'});
-      },
+  };
+
+  rpc = await ctx.rpc?.register(tehabloRpc, {
+    control: async (input: unknown) => {
+      const value = input as { sessionID?: unknown; action?: unknown } | null;
+      if (!value || typeof value.sessionID !== 'string' || typeof value.action !== 'string'
+        || !['play', 'stop', 'auto', 'help'].includes(value.action)) throw new Error('Acción de menú no válida.');
+      await executeCommand({sessionID: value.sessionID, prompt: {text: value.action}});
+      return null;
+    },
+  }).catch(() => undefined);
+
+  await ctx.command.transform(editor => {
+    editor.add({
+      name: 'tts',
+      description: 'Controla la lectura en voz alta con teHablo (menu, play, stop, auto, help).',
+      execute: executeCommand,
     });
   });
 
