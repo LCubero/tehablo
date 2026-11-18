@@ -19,7 +19,9 @@ if [ -z "$PY" ] && [ -n "${HERDR_PLUGIN_CONFIG_DIR:-}" ] && [ -f "$HERDR_PLUGIN_
   try "$hint" || true
 fi
 
-try python3 || try python || true
+if [ -z "$PY" ]; then
+  try python3 || try python || true
+fi
 
 if [ -z "$PY" ]; then
   echo "tehablo-herdr: no Python interpreter found. Set TEHABLO_PYTHON or write its path to python.txt in the plugin config directory." >&2

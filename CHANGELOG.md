@@ -4,6 +4,11 @@
 
 Este archivo registra los cambios completados en orden cronológico. Las versiones (`VERSION` y tags `vX.Y.Z`) marcan hasta qué fecha llega cada una.
 
+## 2026-11-18
+
+- herdr: corregida la agrupación real entre procesos; el bloqueo ya no cubre la espera ni el envío HTTP y los avisos pendientes no caducan por contención. Pruebas silenciosas con dos y seis procesos simultáneos, incluido `window: 0`.
+- herdr: el lanzador POSIX respeta `TEHABLO_PYTHON` y `python.txt`. El cliente rechaza códigos de emparejamiento inválidos, tolera respuestas no HTTP y no sigue redirecciones ni usa proxies.
+
 ## 2026-11-17
 
 - herdr: avisos por voz cuando un agente termina o queda esperando, sin leer su mensaje; plugin en `herdr-plugin/` con pruebas y sin cambios en el servidor ([issue #10](https://github.com/LCubero/tehablo/issues/10), [evidencia y límites](docs/repo-harness/roadmap.md#rh-w-0053-avisos-por-voz-de-agentes-en-herdr)).

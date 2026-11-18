@@ -47,8 +47,9 @@ Opcional, en `herdr plugin config-dir tehablo.agent-voice`, archivo `config.json
 | `lexicon` | `true` | Pasa el texto por el léxico de pronunciación de teHablo. |
 
 Si `python` en `PATH` es el alias de Microsoft Store, escribe la ruta del intérprete en
-`python.txt` dentro del mismo directorio, o define `TEHABLO_PYTHON`. `run.cmd` y `run.sh`
-prueban las dos cosas antes de caer en `python3`, `py` y `python`.
+`python.txt` dentro del mismo directorio, o define `TEHABLO_PYTHON`. Ambos lanzadores
+respetan ese orden antes de buscar alternativas: `run.sh` prueba `python3` y `python`;
+`run.cmd` prueba `python3`, `py` y `python`.
 
 ## Cómo funciona
 
@@ -59,11 +60,14 @@ herdr lanza un proceso por cada cambio de estado del panel, con el `pane_id` en
 2. Ignora el panel enfocado, si `skip_focused` está activo.
 3. Compara `completion_seq` con el último aviso de ese panel: sin eso, volver a mirar el
    panel repetiría el mismo aviso.
-4. Espera la ventana y hace **una** llamada a `/speak` con todos los avisos juntos.
+4. Añade el aviso a la cola, libera el bloqueo y espera la ventana.
+5. Reclama el lote bajo un bloqueo breve, vacía esa cola y libera el bloqueo antes
+   de hacer **una** llamada a `/speak`. Los demás procesos no vuelven a enviar ese lote.
 
 No hay demonio: herdr desaconseja procesos largos, así que el primer proceso que despierta
-se lleva el lote. Un archivo de bloqueo en el directorio de estado evita que dos hablen a
-la vez, y el bloqueo se libera solo si un proceso muere.
+se lleva el lote. El bloqueo protege solo los cambios de la cola, nunca la espera ni
+la petición HTTP. Los avisos pendientes no caducan por esperar ese bloqueo.
+Con `window: 0`, cada evento se envía por separado, sin pasar por el lote.
 
 El `id` de `/speak` es el panel, así que `/stop` corta el aviso de un agente sin silenciar
 a los demás. La política es `wait`: nunca interrumpe una lectura en curso.
@@ -71,7 +75,7 @@ a los demás. La política es `wait`: nunca interrumpe una lectura en curso.
 ## Pruebas
 
 ```sh
-python tests/test_herdr_plugin.py          # lógica de decisión, sin red
+python tests/test_herdr_plugin.py          # lógica y procesos simultáneos, sin red ni audio
 python herdr-plugin/notify.py --say "prueba de voz"
 HERDR_PLUGIN_EVENT_JSON='{"data":{"pane_id":"w1:p1"}}' python herdr-plugin/notify.py --dry-run
 ```
@@ -89,6 +93,12 @@ sola frase.
 - `focused` es del panel y con varios monitores puede no coincidir con lo que ves; por eso
   el filtro se puede desactivar.
 - Con varios avisos agrupados, `/stop` corta el turno del primer panel de la frase.
+- El envío es de un solo intento: si el servidor está apagado o rechaza la petición,
+  ese lote se descarta, sin reintentos ni reproducción diferida al encenderlo.
+- Las peticiones locales no usan proxies ni siguen redirecciones. Un código de
+  emparejamiento que no tenga 32 caracteres hexadecimales se rechaza sin enviarlo.
+  `/health` solo comprueba la identidad declarada: no autentica al dueño del puerto
+  frente a otro proceso local malicioso.
 
 ## Desinstalar
 

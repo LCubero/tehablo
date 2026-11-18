@@ -1,9 +1,16 @@
-"""Decision logic for the herdr voice plugin, without network or processes."""
+"""Silent decision and multiprocess tests for the herdr voice plugin."""
 import importlib.util
+import http.client
+import io
 import json
 import os
+import shutil
+import subprocess
+import sys
 import tempfile
+import time
 import unittest
+import urllib.response
 from pathlib import Path
 from unittest import mock
 
@@ -134,18 +141,19 @@ class ParseEventTest(unittest.TestCase):
 class PendingTest(unittest.TestCase):
     now = 1_000.0
 
-    def test_keeps_fresh_notices_and_drops_the_rest(self):
+    def test_keeps_delayed_notices_and_drops_invalid_entries(self):
         state = {'pending': [
             {'pane': 'w1:p1', 'status': 'done', 'project': 'tehablo', 'label': 'A', 'ts': self.now - 1},
             {'pane': 'w1:p2', 'status': 'done', 'project': 'tehablo', 'label': 'B', 'ts': self.now - 100},
             {'pane': 'w1:p3', 'status': 'working', 'project': 'tehablo', 'label': 'C', 'ts': self.now},
             {'pane': 'w1:p4', 'status': 'done', 'project': 'tehablo', 'label': 'D', 'ts': 'x'},
         ]}
-        self.assertEqual(notify.pending_items(state, self.now, 2.0),
-                         [{'pane': 'w1:p1', 'status': 'done', 'project': 'tehablo', 'label': 'A'}])
+        self.assertEqual(notify.pending_items(state),
+                         [{'pane': 'w1:p1', 'status': 'done', 'project': 'tehablo', 'label': 'A'},
+                          {'pane': 'w1:p2', 'status': 'done', 'project': 'tehablo', 'label': 'B'}])
 
     def test_survives_a_corrupt_state(self):
-        self.assertEqual(notify.pending_items({'pending': 'nope'}, self.now, 2.0), [])
+        self.assertEqual(notify.pending_items({'pending': 'nope'}), [])
 
     def test_ignores_a_repeat_of_the_same_pane_and_status(self):
         state = {'pending': []}
@@ -207,6 +215,230 @@ class SettingsTest(unittest.TestCase):
         self.assertEqual(self.read('{"skip_focused": "no", "window": 99, "lexicon": 1}'),
                          {'skip_focused': True, 'window': 2.0, 'lexicon': True})
         self.assertEqual(self.read('no json'), {'skip_focused': True, 'window': 2.0, 'lexicon': True})
+
+
+PROCESS_PROBE = r'''
+import importlib.util
+import json
+import os
+import sys
+import time
+from pathlib import Path
+
+spec = importlib.util.spec_from_file_location("notify", sys.argv[1])
+notify = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(notify)
+root, pane = Path(sys.argv[2]), sys.argv[3]
+notify.agent_info = lambda _: {
+    "pane_id": pane, "workspace_id": pane, "agent_status": "done",
+    "completion_seq": 1, "terminal_title_stripped": "task " + pane,
+    "focused": False,
+}
+notify.workspace_label = lambda _: "project"
+notify.tehablo_base = lambda: "http://unused"
+def speak(base, identifier, text, lexicon=True):
+    (root / ("spoken-" + pane + ".json")).write_text(
+        json.dumps({"id": identifier, "text": text, "lexicon": lexicon}),
+        encoding="utf-8")
+    return True
+notify.speak = speak
+(root / ("ready-" + pane)).touch()
+deadline = time.monotonic() + 15
+while not (root / "start").exists():
+    if time.monotonic() > deadline:
+        raise RuntimeError("start barrier timed out")
+    time.sleep(0.01)
+sys.exit(notify.main([]))
+'''
+
+
+class ConcurrentHandleTest(unittest.TestCase):
+    def run_events(self, root, count, window):
+        config = root / 'config'
+        config.mkdir()
+        (config / 'config.json').write_text(json.dumps({'window': window}), encoding='utf-8')
+        processes = []
+        try:
+            for index in range(count):
+                pane = f'p{index}'
+                env = dict(os.environ, PYTHONDONTWRITEBYTECODE='1',
+                           HERDR_PLUGIN_CONFIG_DIR=str(config),
+                           HERDR_PLUGIN_STATE_DIR=str(root / 'state'),
+                           HERDR_PLUGIN_EVENT_JSON=json.dumps({'data': {'pane_id': pane}}))
+                processes.append(subprocess.Popen(
+                    [sys.executable, '-c', PROCESS_PROBE, str(PLUGIN / 'notify.py'), str(root), pane],
+                    env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
+            deadline = time.monotonic() + 15
+            while len(list(root.glob('ready-*'))) != count:
+                self.assertTrue(all(p.poll() is None for p in processes), 'child failed before barrier')
+                self.assertLess(time.monotonic(), deadline, 'children did not reach start barrier')
+                time.sleep(0.01)
+            (root / 'start').touch()
+            for process in processes:
+                stdout, stderr = process.communicate(timeout=25)
+                self.assertEqual(process.returncode, 0, stderr.decode('utf-8', 'replace'))
+                self.assertEqual(stdout, b'')
+                self.assertEqual(stderr, b'')
+        finally:
+            for process in processes:
+                if process.poll() is None:
+                    process.kill()
+                process.communicate()
+        calls = [json.loads(p.read_text(encoding='utf-8')) for p in root.glob('spoken-*.json')]
+        state = json.loads((root / 'state' / 'state.json').read_text(encoding='utf-8'))
+        return calls, state
+
+    def test_two_concurrent_events_share_one_phrase(self):
+        with tempfile.TemporaryDirectory() as directory:
+            calls, state = self.run_events(Path(directory), count=2, window=0.5)
+        self.assertEqual(len(calls), 1, calls)
+        self.assertIn('project, task p0', calls[0]['text'])
+        self.assertIn('project, task p1', calls[0]['text'])
+        self.assertIn(calls[0]['id'], ('p0', 'p1'))
+        self.assertTrue(calls[0]['lexicon'])
+        self.assertEqual(state['seen'], {'p0': 1, 'p1': 1})
+        self.assertEqual(state['pending'], [])
+
+    def test_six_concurrent_events_are_counted_without_lock_timeout_or_loss(self):
+        with tempfile.TemporaryDirectory() as directory:
+            calls, state = self.run_events(Path(directory), count=6, window=2.0)
+        self.assertEqual(len(calls), 1, calls)
+        self.assertEqual(calls[0]['text'].count('project, task '), 2)
+        self.assertIn('y 4 más', calls[0]['text'])
+        self.assertEqual(state['seen'], {f'p{i}': 1 for i in range(6)})
+        self.assertEqual(state['pending'], [])
+
+    def test_zero_window_preserves_individual_notices(self):
+        with tempfile.TemporaryDirectory() as directory:
+            calls, state = self.run_events(Path(directory), count=2, window=0)
+        self.assertEqual({call['id'] for call in calls}, {'p0', 'p1'})
+        self.assertEqual(len(calls), 2)
+        for call in calls:
+            self.assertEqual(call['text'], f"project, task {call['id']}: terminó.")
+        self.assertEqual(state['seen'], {'p0': 1, 'p1': 1})
+        self.assertEqual(state['pending'], [])
+
+
+@unittest.skipUnless(shutil.which('sh'), 'POSIX shell unavailable')
+class LauncherTest(unittest.TestCase):
+    def test_configured_interpreters_take_precedence_and_fallback_still_works(self):
+        for source in ('environment', 'config', 'fallback'):
+            with self.subTest(source=source), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                (root / 'run.sh').write_text((PLUGIN / 'run.sh').read_text(encoding='utf-8'),
+                                             encoding='utf-8')
+                (root / 'notify.py').write_text('', encoding='utf-8')
+                for name in ('chosen', 'python3', 'python'):
+                    script = root / name
+                    script.write_text(f'#!/bin/sh\nprintf "{name}\\n" >> "$TEST_LOG"\nexit 0\n',
+                                      encoding='utf-8')
+                    script.chmod(0o755)
+                env = dict(os.environ, PATH=str(root) + os.pathsep + os.environ.get('PATH', ''),
+                           HOME=str(root), USERPROFILE=str(root), TEST_LOG=(root / 'log').as_posix())
+                env.pop('TEHABLO_PYTHON', None)
+                env.pop('HERDR_PLUGIN_CONFIG_DIR', None)
+                if source == 'environment':
+                    env['TEHABLO_PYTHON'] = (root / 'chosen').as_posix()
+                elif source == 'config':
+                    env['HERDR_PLUGIN_CONFIG_DIR'] = str(root)
+                    (root / 'python.txt').write_text('  ' + (root / 'chosen').as_posix() + '\r\n',
+                                                    encoding='utf-8')
+                done = subprocess.run([shutil.which('sh'), str(root / 'run.sh'), '--dry-run'],
+                                      env=env, cwd=root, capture_output=True, timeout=15)
+                self.assertEqual(done.returncode, 0, done.stderr)
+                expected = 'python3' if source == 'fallback' else 'chosen'
+                self.assertEqual((root / 'log').read_text().splitlines(), [expected, expected])
+
+
+class HttpBoundaryTest(unittest.TestCase):
+    def test_manual_notice_preserves_authenticated_wait_request(self):
+        with tempfile.TemporaryDirectory() as directory:
+            home = Path(directory)
+            (home / '.tehablo').mkdir()
+            code = 'a' * 32
+            (home / '.tehablo' / 'ssh-codigo').write_text(code, encoding='ascii')
+            with mock.patch.object(Path, 'home', return_value=home), \
+                 mock.patch.object(notify, 'tehablo_base', return_value='http://127.0.0.1:23765'), \
+                 mock.patch.object(notify.urllib.request, 'build_opener') as build, \
+                 mock.patch('socket.create_connection', side_effect=AssertionError('network forbidden')):
+                client = build.return_value
+                client.open.return_value.__enter__.return_value.status = 202
+                self.assertEqual(notify.main(['--say', 'manual notice']), 0)
+                request = client.open.call_args.args[0]
+                self.assertEqual(request.full_url, 'http://127.0.0.1:23765/speak')
+                self.assertEqual(request.get_method(), 'POST')
+                self.assertEqual(request.get_header('X-tehablo-codigo'), code)
+                self.assertEqual(json.loads(request.data),
+                                 {'id': 'herdr-manual', 'text': 'manual notice',
+                                  'policy': 'wait', 'lexicon': True})
+                client.open.assert_called_once()
+                proxies = [handler for handler in build.call_args.args
+                           if isinstance(handler, notify.urllib.request.ProxyHandler)]
+                self.assertEqual(len(proxies), 1)
+                self.assertEqual(proxies[0].proxies, {})
+
+    def test_health_ignores_non_http_services(self):
+        with mock.patch.object(notify.urllib.request, 'urlopen',
+                               side_effect=http.client.BadStatusLine('not HTTP')), \
+             mock.patch.object(notify.urllib.request.OpenerDirector, 'open',
+                               side_effect=http.client.BadStatusLine('not HTTP')):
+            self.assertIsNone(notify.tehablo_base())
+            with mock.patch.object(notify, 'auth_code', return_value='a' * 32), \
+                 mock.patch('sys.stderr', new_callable=io.StringIO) as stderr:
+                self.assertFalse(notify.speak('http://127.0.0.1:23765', 'p1', 'notice'))
+                self.assertIn('/speak failed', stderr.getvalue())
+
+    def test_invalid_pairing_code_is_not_sent_or_logged(self):
+        invalid = 'a' * 16 + '\n' + 'b' * 16
+        with tempfile.TemporaryDirectory() as directory:
+            home = Path(directory)
+            (home / '.tehablo').mkdir()
+            (home / '.tehablo' / 'ssh-codigo').write_text(invalid, encoding='ascii')
+            with mock.patch.object(Path, 'home', return_value=home), \
+                 mock.patch.object(notify.urllib.request, 'urlopen') as opened, \
+                 mock.patch.object(notify.urllib.request.OpenerDirector, 'open') as local_opened, \
+                 mock.patch('sys.stderr', new_callable=io.StringIO) as stderr:
+                opened.return_value.__enter__.return_value.status = 202
+                local_opened.return_value.__enter__.return_value.status = 202
+                self.assertFalse(notify.speak('http://127.0.0.1:1', 'p1', 'notice'))
+                opened.assert_not_called()
+                local_opened.assert_not_called()
+                self.assertNotIn('a' * 16, stderr.getvalue())
+
+    def test_health_and_speak_never_follow_redirects(self):
+        original_build = notify.urllib.request.build_opener
+        for operation in ('health', 'speak'):
+            seen = []
+            class Transport(notify.urllib.request.BaseHandler):
+                handler_order = 100
+
+                def http_open(self, request):
+                    seen.append(request.full_url)
+                    local = request.full_url.startswith('http://127.0.0.1:')
+                    headers = {'Location': 'http://forbidden.invalid/'} if local else {}
+                    response = urllib.response.addinfourl(
+                        io.BytesIO(b'{"service":"tehablo"}'), headers, request.full_url,
+                        302 if local else 200)
+                    response.msg = 'Found' if local else 'OK'
+                    return response
+
+            transport = Transport()
+            permissive = original_build(transport)
+            def build(*handlers):
+                return original_build(*handlers, transport)
+            with self.subTest(operation=operation), \
+                 mock.patch.object(notify, 'auth_code', return_value='a' * 32), \
+                 mock.patch.object(notify.urllib.request, 'urlopen', side_effect=permissive.open), \
+                 mock.patch.object(notify.urllib.request, 'build_opener', side_effect=build), \
+                 mock.patch('socket.create_connection', side_effect=AssertionError('network forbidden')), \
+                 mock.patch('sys.stderr', new_callable=io.StringIO):
+                if operation == 'health':
+                    self.assertIsNone(notify.tehablo_base())
+                    self.assertEqual(len(seen), len(notify.PORTS))
+                else:
+                    self.assertFalse(notify.speak('http://127.0.0.1:23765', 'p1', 'notice'))
+                    self.assertEqual(len(seen), 1)
+                self.assertTrue(all(url.startswith('http://127.0.0.1:') for url in seen))
 
 
 if __name__ == '__main__':

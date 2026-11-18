@@ -12,6 +12,8 @@ that window, which is how several simultaneous notices become one sentence.
 from __future__ import annotations
 
 import contextlib
+import errno
+import http.client
 import json
 import os
 import re
@@ -145,18 +147,15 @@ def add_pending(state, item):
     pending.append(item)
 
 
-def pending_items(state, now, window=DEFAULT_WINDOW):
-    """Notices still inside the window, dropping anything stale."""
-    limit = max(window, DEFAULT_WINDOW) * 3
+def pending_items(state):
+    """Read queued notices without expiring work delayed by contention."""
     kept = []
     for item in state.get('pending') or []:
         if not isinstance(item, dict):
             continue
         try:
-            age = now - float(item.get('ts'))
+            float(item.get('ts'))
         except (TypeError, ValueError):
-            continue
-        if age > limit:
             continue
         if item.get('status') not in ('done', 'blocked'):
             continue
@@ -270,23 +269,35 @@ def workspace_label(workspace_id):
 
 def auth_code():
     try:
-        return (Path.home() / '.tehablo' / 'ssh-codigo').read_text(encoding='ascii').strip()
+        code = (Path.home() / '.tehablo' / 'ssh-codigo').read_text(encoding='ascii').strip()
     except (OSError, ValueError):
         return None
+    return code if re.fullmatch(r'[0-9a-fA-F]{32}', code) else None
+
+
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, request, response, code, message, headers, new_url):
+        return None
+
+
+def _local_open(request, timeout):
+    """Keep pairing headers on the selected loopback origin, never a proxy."""
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), _NoRedirect())
+    return opener.open(request, timeout=timeout)
 
 
 def tehablo_base():
     """Base URL of a running teHablo server, identified by its /health.
 
-    /health answers without the pairing code, so this never speaks to another
-    program that happens to hold one of the candidate ports.
+    /health answers without the pairing code. This checks the advertised service
+    identity, not cryptographic proof of who owns the loopback port.
     """
     for port in PORTS:
         base = f'http://127.0.0.1:{port}'
         try:
-            with urllib.request.urlopen(base + '/health', timeout=HEALTH_TIMEOUT) as response:
+            with _local_open(base + '/health', timeout=HEALTH_TIMEOUT) as response:
                 payload = json.loads(response.read().decode('utf-8'))
-        except (urllib.error.URLError, OSError, ValueError):
+        except (urllib.error.URLError, OSError, ValueError, http.client.HTTPException):
             continue
         if isinstance(payload, dict) and payload.get('service') == 'tehablo':
             return base
@@ -297,7 +308,7 @@ def speak(base, identifier, text, lexicon=True):
     """POST /speak with policy ``wait`` so an ongoing reading is never cut."""
     code = auth_code()
     if not code:
-        log('missing ~/.tehablo/ssh-codigo; notice not spoken')
+        log('missing or invalid ~/.tehablo/ssh-codigo; notice not spoken')
         return False
     body = json.dumps({'id': identifier, 'text': text, 'lexicon': lexicon,
                        'policy': 'wait'}).encode('utf-8')
@@ -305,9 +316,9 @@ def speak(base, identifier, text, lexicon=True):
                                      headers={'Content-Type': 'application/json',
                                               'X-Tehablo-Codigo': code})
     try:
-        with urllib.request.urlopen(request, timeout=TIMEOUT) as response:
+        with _local_open(request, timeout=TIMEOUT) as response:
             return 200 <= response.status < 300
-    except (urllib.error.URLError, OSError) as error:
+    except (urllib.error.URLError, OSError, http.client.HTTPException) as error:
         log(f'/speak failed: {error}')
         return False
 
@@ -317,7 +328,7 @@ def speak(base, identifier, text, lexicon=True):
 
 @contextlib.contextmanager
 def locked_state():
-    """Serialize the processes herdr launches, so only one speaks per window."""
+    """Serialize short queue updates, never the wait or HTTP request."""
     directory = state_dir()
     try:
         directory.mkdir(parents=True, exist_ok=True)
@@ -337,7 +348,18 @@ def _lock(handle):
     handle.seek(0)
     if os.name == 'nt':
         import msvcrt
-        msvcrt.locking(handle.fileno(), msvcrt.LK_LOCK, 1)
+        # LK_LOCK retries only once a second, longer than small batch windows.
+        deadline = time.monotonic() + 10
+        while True:
+            try:
+                msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
+                break
+            except OSError as error:
+                if error.errno not in (errno.EACCES, errno.EAGAIN, errno.EDEADLK):
+                    raise
+                if time.monotonic() >= deadline:
+                    raise
+                time.sleep(0.01)
     else:
         import fcntl
         fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
@@ -396,33 +418,42 @@ def handle(dry=False):
     seq = agent.get('completion_seq')
     item = {'pane': pane, 'status': status,
             'project': project_of(agent, workspace_label(agent.get('workspace_id'))),
-            'label': label_of(agent), 'ts': time.time()}
+            'label': label_of(agent)}
     with locked_state() as path:
         state = load_state(path)
         if is_duplicate(state, pane, status, seq):
             return 0
+        item['ts'] = time.time()
         mark_seen(state, pane, status, seq)
-        add_pending(state, item)
-        save_state(path, state)
         if options['window'] > 0:
-            time.sleep(options['window'])
-        state = load_state(path)
-        pending = pending_items(state, time.time(), options['window'])
-        if not pending:
-            return 0
-        text = compose(pending)
-        if not text:
-            return 0
-        if dry:
-            print(text)
+            add_pending(state, item)
         else:
-            base = tehablo_base()
-            if base is None:
-                log('teHablo server is not running; notice not spoken')
-            else:
-                speak(base, pending[0]['pane'], text, options['lexicon'])
-        state['pending'] = []
+            pending = [item]
         save_state(path, state)
+
+    # Other event processes must be able to enqueue during this wait.
+    if options['window'] > 0:
+        time.sleep(options['window'])
+        with locked_state() as path:
+            state = load_state(path)
+            pending = pending_items(state)
+            if not pending:
+                return 0
+            # Claim this batch atomically. Later arrivals belong to the next one.
+            state['pending'] = []
+            save_state(path, state)
+
+    text = compose(pending)
+    if not text:
+        return 0
+    if dry:
+        print(text)
+    else:
+        base = tehablo_base()
+        if base is None:
+            log('teHablo server is not running; notice not spoken')
+        else:
+            speak(base, pending[0]['pane'], text, options['lexicon'])
     return 0
 
 
