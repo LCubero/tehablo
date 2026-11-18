@@ -6,6 +6,7 @@ Este archivo registra los cambios completados en orden cronológico. Las version
 
 ## 2026-11-18
 
+- herdr: descarta pendientes huérfanos de más de 60 s, también al procesar avisos sin agrupación. Las pruebas de concurrencia sincronizan el encolado con barreras e incluyen una llegada durante la espera, sin depender de la velocidad del planificador.
 - herdr: corregida la agrupación real entre procesos; el bloqueo ya no cubre la espera ni el envío HTTP y los avisos pendientes no caducan por contención. Pruebas silenciosas con dos y seis procesos simultáneos, incluido `window: 0`.
 - herdr: el lanzador POSIX respeta `TEHABLO_PYTHON` y `python.txt`. El cliente rechaza códigos de emparejamiento inválidos, tolera respuestas no HTTP y no sigue redirecciones ni usa proxies.
 

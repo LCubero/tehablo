@@ -15,6 +15,7 @@ import contextlib
 import errno
 import http.client
 import json
+import math
 import os
 import re
 import subprocess
@@ -26,6 +27,8 @@ from pathlib import Path
 
 PORTS = (23765, 23766, 23767, 23768, 23769)
 DEFAULT_WINDOW = 2.0
+# Exceeds the 10 s batch window plus both bounded 10 s Windows lock waits.
+PENDING_TTL = 60.0
 MAX_TITLE = 48
 MAX_NAMED = 2
 TIMEOUT = 5.0
@@ -147,18 +150,28 @@ def add_pending(state, item):
     pending.append(item)
 
 
-def pending_items(state):
-    """Read queued notices without expiring work delayed by contention."""
-    kept = []
+def _fresh_pending(state, now):
+    """Keep recent valid entries; never resurrect an old orphaned hook."""
+    fresh = []
     for item in state.get('pending') or []:
         if not isinstance(item, dict):
             continue
         try:
-            float(item.get('ts'))
+            timestamp = float(item.get('ts'))
         except (TypeError, ValueError):
+            continue
+        if not math.isfinite(timestamp) or not 0 <= now - timestamp <= PENDING_TTL:
             continue
         if item.get('status') not in ('done', 'blocked'):
             continue
+        fresh.append(item)
+    return fresh
+
+
+def pending_items(state):
+    """Read recent queued notices, allowing normal contention delays."""
+    kept = []
+    for item in _fresh_pending(state, time.time()):
         kept.append({'pane': item.get('pane'), 'status': item['status'],
                      'project': str(item.get('project') or 'proyecto'),
                      'label': str(item.get('label') or 'agente')})
@@ -424,6 +437,7 @@ def handle(dry=False):
         if is_duplicate(state, pane, status, seq):
             return 0
         item['ts'] = time.time()
+        state['pending'] = _fresh_pending(state, item['ts'])
         mark_seen(state, pane, status, seq)
         if options['window'] > 0:
             add_pending(state, item)
@@ -436,9 +450,9 @@ def handle(dry=False):
         time.sleep(options['window'])
         with locked_state() as path:
             state = load_state(path)
-            pending = pending_items(state)
-            if not pending:
+            if not state['pending']:
                 return 0
+            pending = pending_items(state)
             # Claim this batch atomically. Later arrivals belong to the next one.
             state['pending'] = []
             save_state(path, state)

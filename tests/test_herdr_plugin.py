@@ -144,13 +144,14 @@ class PendingTest(unittest.TestCase):
     def test_keeps_delayed_notices_and_drops_invalid_entries(self):
         state = {'pending': [
             {'pane': 'w1:p1', 'status': 'done', 'project': 'tehablo', 'label': 'A', 'ts': self.now - 1},
-            {'pane': 'w1:p2', 'status': 'done', 'project': 'tehablo', 'label': 'B', 'ts': self.now - 100},
+            {'pane': 'w1:p2', 'status': 'done', 'project': 'tehablo', 'label': 'B', 'ts': self.now - 20},
             {'pane': 'w1:p3', 'status': 'working', 'project': 'tehablo', 'label': 'C', 'ts': self.now},
             {'pane': 'w1:p4', 'status': 'done', 'project': 'tehablo', 'label': 'D', 'ts': 'x'},
         ]}
-        self.assertEqual(notify.pending_items(state),
-                         [{'pane': 'w1:p1', 'status': 'done', 'project': 'tehablo', 'label': 'A'},
-                          {'pane': 'w1:p2', 'status': 'done', 'project': 'tehablo', 'label': 'B'}])
+        with mock.patch.object(notify.time, 'time', return_value=self.now):
+            self.assertEqual(notify.pending_items(state),
+                             [{'pane': 'w1:p1', 'status': 'done', 'project': 'tehablo', 'label': 'A'},
+                              {'pane': 'w1:p2', 'status': 'done', 'project': 'tehablo', 'label': 'B'}])
 
     def test_survives_a_corrupt_state(self):
         self.assertEqual(notify.pending_items({'pending': 'nope'}), [])
@@ -217,6 +218,38 @@ class SettingsTest(unittest.TestCase):
         self.assertEqual(self.read('no json'), {'skip_focused': True, 'window': 2.0, 'lexicon': True})
 
 
+class OrphanNoticeTest(unittest.TestCase):
+    def test_old_orphans_are_removed_without_speaking_in_both_window_modes(self):
+        for window in (0, 2.0):
+            with self.subTest(window=window), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                (root / 'config.json').write_text(json.dumps({'window': window}), encoding='utf-8')
+                orphan = {'pane': 'old', 'status': 'done', 'project': 'old project',
+                          'label': 'orphan task', 'ts': 0}
+                path = root / 'state.json'
+                path.write_text(json.dumps({'seen': {'old': 1}, 'pending': [orphan]}), encoding='utf-8')
+                env = {'HERDR_PLUGIN_STATE_DIR': str(root), 'HERDR_PLUGIN_CONFIG_DIR': str(root),
+                       'HERDR_PLUGIN_EVENT_JSON': '{"data":{"pane_id":"new"}}'}
+                agent = {'pane_id': 'new', 'workspace_id': 'w1', 'agent_status': 'done',
+                         'completion_seq': 2, 'terminal_title_stripped': 'current task'}
+                with mock.patch.dict(os.environ, env), \
+                     mock.patch.object(notify, 'agent_info', return_value=agent), \
+                     mock.patch.object(notify, 'workspace_label', return_value='current project'), \
+                     mock.patch.object(notify.time, 'time', return_value=1000), \
+                     mock.patch.object(notify.time, 'sleep'), \
+                     mock.patch('sys.stdout', new_callable=io.StringIO) as stdout, \
+                     mock.patch('sys.stderr', new_callable=io.StringIO) as stderr, \
+                     mock.patch('socket.create_connection', side_effect=AssertionError('network forbidden')):
+                    self.assertEqual(notify.main(['--dry-run']), 0)
+                self.assertEqual(stdout.getvalue(), 'current project, current task: terminó.\n')
+                self.assertEqual(stderr.getvalue(), '')
+                state = json.loads(path.read_text(encoding='utf-8'))
+                self.assertEqual(state['pending'], [])
+                self.assertEqual(state['seen'], {'old': 1, 'new': 2})
+
+
+PROBE_TIMEOUT = 20
+
 PROCESS_PROBE = r'''
 import importlib.util
 import json
@@ -229,6 +262,26 @@ spec = importlib.util.spec_from_file_location("notify", sys.argv[1])
 notify = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(notify)
 root, pane = Path(sys.argv[2]), sys.argv[3]
+real_sleep = time.sleep
+timeout = float(os.environ["TEST_TIMEOUT"])
+window = float(os.environ["TEST_WINDOW"])
+
+def wait_for(path):
+    deadline = time.monotonic() + timeout
+    while not path.exists():
+        if time.monotonic() > deadline:
+            raise RuntimeError("barrier timed out: " + path.name)
+        real_sleep(0.01)
+
+def controlled_wait(seconds):
+    if window > 0 and seconds == window:
+        # handle() has saved and unlocked the queue before this wait.
+        (root / ("queued-" + pane)).touch()
+        wait_for(root / "claim")
+    else:
+        real_sleep(seconds)
+
+notify.time.sleep = controlled_wait
 notify.agent_info = lambda _: {
     "pane_id": pane, "workspace_id": pane, "agent_status": "done",
     "completion_seq": 1, "terminal_title_stripped": "task " + pane,
@@ -243,17 +296,13 @@ def speak(base, identifier, text, lexicon=True):
     return True
 notify.speak = speak
 (root / ("ready-" + pane)).touch()
-deadline = time.monotonic() + 15
-while not (root / "start").exists():
-    if time.monotonic() > deadline:
-        raise RuntimeError("start barrier timed out")
-    time.sleep(0.01)
+wait_for(root / ("start-" + pane))
 sys.exit(notify.main([]))
 '''
 
 
 class ConcurrentHandleTest(unittest.TestCase):
-    def run_events(self, root, count, window):
+    def run_events(self, root, count, window, late_arrival=False):
         config = root / 'config'
         config.mkdir()
         (config / 'config.json').write_text(json.dumps({'window': window}), encoding='utf-8')
@@ -264,18 +313,28 @@ class ConcurrentHandleTest(unittest.TestCase):
                 env = dict(os.environ, PYTHONDONTWRITEBYTECODE='1',
                            HERDR_PLUGIN_CONFIG_DIR=str(config),
                            HERDR_PLUGIN_STATE_DIR=str(root / 'state'),
+                           TEST_TIMEOUT=str(PROBE_TIMEOUT), TEST_WINDOW=str(window),
                            HERDR_PLUGIN_EVENT_JSON=json.dumps({'data': {'pane_id': pane}}))
                 processes.append(subprocess.Popen(
                     [sys.executable, '-c', PROCESS_PROBE, str(PLUGIN / 'notify.py'), str(root), pane],
                     env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
-            deadline = time.monotonic() + 15
+            deadline = time.monotonic() + PROBE_TIMEOUT
             while len(list(root.glob('ready-*'))) != count:
                 self.assertTrue(all(p.poll() is None for p in processes), 'child failed before barrier')
                 self.assertLess(time.monotonic(), deadline, 'children did not reach start barrier')
                 time.sleep(0.01)
-            (root / 'start').touch()
+            for index in range(count):
+                (root / f'start-p{index}').touch()
+                if late_arrival and window > 0:
+                    self.wait_for_queued(root, index + 1, processes)
+            if window > 0:
+                self.wait_for_queued(root, count, processes)
+                state = json.loads((root / 'state' / 'state.json').read_text(encoding='utf-8'))
+                self.assertEqual({item['pane'] for item in state['pending']},
+                                 {f'p{i}' for i in range(count)})
+                (root / 'claim').touch()
             for process in processes:
-                stdout, stderr = process.communicate(timeout=25)
+                stdout, stderr = process.communicate(timeout=PROBE_TIMEOUT + 5)
                 self.assertEqual(process.returncode, 0, stderr.decode('utf-8', 'replace'))
                 self.assertEqual(stdout, b'')
                 self.assertEqual(stderr, b'')
@@ -287,6 +346,13 @@ class ConcurrentHandleTest(unittest.TestCase):
         calls = [json.loads(p.read_text(encoding='utf-8')) for p in root.glob('spoken-*.json')]
         state = json.loads((root / 'state' / 'state.json').read_text(encoding='utf-8'))
         return calls, state
+
+    def wait_for_queued(self, root, count, processes):
+        deadline = time.monotonic() + PROBE_TIMEOUT
+        while len(list(root.glob('queued-*'))) < count:
+            self.assertTrue(all(p.poll() is None for p in processes), 'child failed before enqueue')
+            self.assertLess(time.monotonic(), deadline, 'children did not enqueue before claim')
+            time.sleep(0.01)
 
     def test_two_concurrent_events_share_one_phrase(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -315,6 +381,15 @@ class ConcurrentHandleTest(unittest.TestCase):
         self.assertEqual(len(calls), 2)
         for call in calls:
             self.assertEqual(call['text'], f"project, task {call['id']}: terminó.")
+        self.assertEqual(state['seen'], {'p0': 1, 'p1': 1})
+        self.assertEqual(state['pending'], [])
+
+    def test_notice_arriving_during_the_first_wait_is_grouped(self):
+        with tempfile.TemporaryDirectory() as directory:
+            calls, state = self.run_events(Path(directory), count=2, window=0.5, late_arrival=True)
+        self.assertEqual(len(calls), 1, calls)
+        self.assertIn('project, task p0', calls[0]['text'])
+        self.assertIn('project, task p1', calls[0]['text'])
         self.assertEqual(state['seen'], {'p0': 1, 'p1': 1})
         self.assertEqual(state['pending'], [])
 

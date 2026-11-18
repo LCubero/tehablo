@@ -66,7 +66,11 @@ herdr lanza un proceso por cada cambio de estado del panel, con el `pane_id` en
 
 No hay demonio: herdr desaconseja procesos largos, así que el primer proceso que despierta
 se lleva el lote. El bloqueo protege solo los cambios de la cola, nunca la espera ni
-la petición HTTP. Los avisos pendientes no caducan por esperar ese bloqueo.
+la petición HTTP. Al aceptar un nuevo aviso o reclamar un lote se descartan los
+pendientes de más de 60 s, para no reproducir avisos huérfanos mucho después. Ese
+margen supera la ventana máxima de 10 s y, en Windows, las dos esperas de bloqueo
+de hasta 10 s. Si el equipo suspende el proceso más de un minuto, el aviso también
+caduca; no se garantiza su entrega.
 Con `window: 0`, cada evento se envía por separado, sin pasar por el lote.
 
 El `id` de `/speak` es el panel, así que `/stop` corta el aviso de un agente sin silenciar
@@ -79,6 +83,11 @@ python tests/test_herdr_plugin.py          # lógica y procesos simultáneos, si
 python herdr-plugin/notify.py --say "prueba de voz"
 HERDR_PLUGIN_EVENT_JSON='{"data":{"pane_id":"w1:p1"}}' python herdr-plugin/notify.py --dry-run
 ```
+
+Las pruebas usan procesos y bloqueos del sistema reales, pero controlan la espera
+de agrupación con barreras después de encolar. Así verifican el lote y una llegada
+durante la espera sin depender de que el planificador ejecute todos los procesos
+dentro de una fracción de segundo.
 
 La prueba de voz real solo la puede hacer la persona responsable, con herdr abierto:
 dos agentes en proyectos distintos, uno termina y se oye la frase con proyecto y tarea;
