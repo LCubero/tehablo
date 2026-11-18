@@ -32,7 +32,7 @@ jobs:
           python -m pip install -r requirements.txt
       - name: Python suites
         run: |
-          for t in tech numbers lexicon speed server startup console_imports quantize measure_tts get_voices listening_skill; do
+          for t in tech numbers lexicon speed server startup console_imports quantize measure_tts get_voices listening_skill herdr_plugin; do
             echo "::group::test_$t"
             python "tests/test_$t.py"
             echo "::endgroup::"
