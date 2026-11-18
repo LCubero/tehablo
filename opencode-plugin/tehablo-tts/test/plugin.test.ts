@@ -783,7 +783,7 @@ test('voice submenu selects exact pairs and cancels on Escape, navigation, or un
   }
 });
 
-test('voice selector keeps the default route and opens the list without diagnostics', async () => {
+test('voice selector routes to the TUI Location and opens the list without diagnostics', async () => {
   let listener: any;
   const calls: any[] = [], dialogs: any[] = [], alerts: any[] = [];
   const dispose = createTehabloTui({
@@ -802,9 +802,46 @@ test('voice selector keeps the default route and opens the list without diagnost
     listener({details: {type: 'rpc.tehablo-tts.notice', data: {sessionID: 'main', kind: 'menu', variant: 'info', message: '', auto: false}}});
     await waitUntil(() => dialogs.length === 2 || alerts.length > 0);
     assert.deepEqual(alerts, []);
-    assert.deepEqual(calls, [{input: {sessionID: 'main'}, options: undefined}]);
+    assert.deepEqual(calls, [{input: {sessionID: 'main'}, options: {location: {directory: 'D:/private-project'}}}]);
     assert.equal(dialogs[1].options[0].title, 'Facundo');
   } finally {dispose();}
+});
+
+test('voice and download menu RPC calls use the TUI Location captured when the menu opens', async () => {
+  for (const directory of ['D:/private-project', undefined, '   ']) {
+    for (const entry of ['voices', 'downloads']) {
+      let listener: any;
+      const location = directory === undefined ? undefined : {directory};
+      const calls: any[] = [], dialogs: any[] = [], toasts: any[] = [];
+      const record = (name: string, result: unknown) => async (input: unknown, options: unknown) => {
+        calls.push({name, options}); return result;
+      };
+      const dispose = createTehabloTui({
+        location,
+        data: {listen(cb) {listener = cb; return () => {};}},
+        client: {rpc: () => ({control: async () => assert.fail('Not a control action'),
+          voices: record('voices', [localVoice]), selectVoice: record('selectVoice', null),
+          downloadVoices: record('downloadVoices', [{...localVoice, downloaded: false}]),
+          downloadVoice: record('downloadVoice', {id: 'job', state: 'downloading'}),
+          downloadStatus: record('downloadStatus', {id: 'job', state: 'ready'})})},
+        ui: {router: {current: () => ({type: 'session', sessionID: 'main'})}, toast: {show(n) {toasts.push(n);}},
+          dialog: {alert: async () => {}, confirm: async () => true, select: async options => {
+            dialogs.push(options);
+            if (location) location.directory = 'D:/changed-project';
+            return dialogs.length === 1 ? entry : options.options[0].value;
+          }}},
+      }, {downloadPollIntervalMs: 0});
+      try {
+        listener({details: {type: 'rpc.tehablo-tts.notice', data: {sessionID: 'main', kind: 'menu', variant: 'info', message: '', auto: false}}});
+        const expected = entry === 'voices' ? ['voices', 'selectVoice']
+          : ['downloadVoices', 'downloadVoice', 'downloadStatus', 'downloadVoices'];
+        await waitUntil(() => calls.length === expected.length || toasts.some(t => t.variant === 'warning'));
+        assert.deepEqual(calls.map(c => c.name), expected);
+        const options = directory?.trim() ? {location: {directory}} : undefined;
+        assert.deepEqual(calls.map(c => c.options), expected.map(() => options));
+      } finally {dispose();}
+    }
+  }
 });
 
 test('menu control routing captures Location for all four actions and preserves missing-location defaults', async () => {

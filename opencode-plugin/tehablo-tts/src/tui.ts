@@ -1,16 +1,18 @@
 import { tehabloRpc, type NoticeKind, type NoticeVariant } from '../rpc.ts';
 import type { VoiceRow } from './settings.ts';
 
+type RouteOptions = {location: {directory: string}};
+
 export interface TuiContext {
   readonly location?: {readonly directory: string};
   readonly client?: {
     readonly rpc: (definition: typeof tehabloRpc) => {
-      readonly control: (input: { sessionID: string; action: string }, options?: {location: {directory: string}}) => Promise<unknown>;
-      readonly voices?: (input: {sessionID: string}) => Promise<unknown>;
-      readonly selectVoice?: (input: {sessionID: string; model: string; voice: string}) => Promise<unknown>;
-      readonly downloadVoices?: (input: {sessionID: string}) => Promise<unknown>;
-      readonly downloadVoice?: (input: {sessionID: string; model: string; voice: string; confirmed: true}) => Promise<unknown>;
-      readonly downloadStatus?: (input: {sessionID: string; id: string}) => Promise<unknown>;
+      readonly control: (input: { sessionID: string; action: string }, options?: RouteOptions) => Promise<unknown>;
+      readonly voices?: (input: {sessionID: string}, options?: RouteOptions) => Promise<unknown>;
+      readonly selectVoice?: (input: {sessionID: string; model: string; voice: string}, options?: RouteOptions) => Promise<unknown>;
+      readonly downloadVoices?: (input: {sessionID: string}, options?: RouteOptions) => Promise<unknown>;
+      readonly downloadVoice?: (input: {sessionID: string; model: string; voice: string; confirmed: true}, options?: RouteOptions) => Promise<unknown>;
+      readonly downloadStatus?: (input: {sessionID: string; id: string}, options?: RouteOptions) => Promise<unknown>;
     };
   };
   readonly data: {
@@ -126,6 +128,7 @@ export function createTehabloTui(ctx: TuiContext, deps: {
     invalidateOnNavigation = () => checkRoute(ctx.ui.router.current());
     try {
       const controlDirectory = ctx.location?.directory;
+      const rpcRoute = controlDirectory?.trim() ? {location: {directory: controlDirectory}} : undefined;
       stopWatching = deps.watchRoute?.(checkRoute);
       const action = await ctx.ui.dialog.select({
         title: `teHablo · lectura automática ${auto ? 'activada' : 'desactivada'}`,
@@ -147,7 +150,7 @@ export function createTehabloTui(ctx: TuiContext, deps: {
         if (!api.downloadVoices || !api.downloadVoice || !api.downloadStatus || !ctx.ui.dialog.confirm) {
           throw new Error('La descarga confirmada no está disponible en este cliente o servidor.');
         }
-        const catalog = await api.downloadVoices({sessionID});
+        const catalog = await api.downloadVoices({sessionID}, rpcRoute);
         if (cancelled()) return;
         if (!Array.isArray(catalog)) throw new Error('Catálogo de voces no válido.');
         const rows: VoiceRow[] = catalog.filter(row => row?.downloaded === false
@@ -168,18 +171,18 @@ export function createTehabloTui(ctx: TuiContext, deps: {
           message: 'Usará red y espacio en disco; puede retrasar lecturas mientras trabaja. No cambiará la voz seleccionada. Cerrar o salir deja de observar, pero no cancela la descarga del servidor.',
         });
         if (cancelled() || confirmed !== true) return;
-        const job = await api.downloadVoice({sessionID, model: row.model, voice: row.voice, confirmed: true}) as {id?: string};
+        const job = await api.downloadVoice({sessionID, model: row.model, voice: row.voice, confirmed: true}, rpcRoute) as {id?: string};
         if (cancelled()) return;
         if (typeof job?.id !== 'string' || !job.id) throw new Error('El servidor no devolvió una descarga válida.');
         ctx.ui.toast.show({title: 'teHablo TTS', message: 'Descarga iniciada; la voz seleccionada no cambia.', variant: 'info'});
         const deadline = Date.now() + 15 * 60_000;
         for (let attempt = 0; attempt < (deps.downloadPollLimit ?? 900) && Date.now() < deadline; attempt++) {
-          const status = await api.downloadStatus({sessionID, id: job.id}) as {id?: string; state?: string; error?: string};
+          const status = await api.downloadStatus({sessionID, id: job.id}, rpcRoute) as {id?: string; state?: string; error?: string};
           if (cancelled()) return;
           if (status?.id !== job.id) throw new Error('Otra descarga reemplazó el trabajo observado.');
           if (status.state === 'error') throw new Error(status.error || 'La descarga falló; puede haber archivos parciales en caché.');
           if (status.state === 'ready') {
-            await api.downloadVoices({sessionID});
+            await api.downloadVoices({sessionID}, rpcRoute);
             if (cancelled()) return;
             ctx.ui.toast.show({title: 'teHablo TTS', message: 'Descarga completada; catálogo actualizado. La voz seleccionada no cambió.', variant: 'success'});
             return;
@@ -198,7 +201,7 @@ export function createTehabloTui(ctx: TuiContext, deps: {
       if (action === 'voices') {
         const api = ctx.client.rpc(tehabloRpc);
         if (!api.voices || !api.selectVoice) throw new Error('El selector de voces no está disponible en este servidor.');
-        const rows = await api.voices({sessionID});
+        const rows = await api.voices({sessionID}, rpcRoute);
         checkRoute(ctx.ui.router.current());
         if (disposed || invalidated) return;
         if (!Array.isArray(rows)) throw new Error('Catálogo de voces no válido.');
@@ -211,13 +214,12 @@ export function createTehabloTui(ctx: TuiContext, deps: {
         checkRoute(ctx.ui.router.current());
         if (disposed || invalidated || selected === undefined) return;
         const row = local.find((_, index) => String(index) === selected);
-        if (row) await api.selectVoice({sessionID, model: row.model, voice: row.voice});
+        if (row) await api.selectVoice({sessionID, model: row.model, voice: row.voice}, rpcRoute);
         return;
       }
       const api = ctx.client.rpc(tehabloRpc);
       const input = {sessionID, action};
-      if (controlDirectory?.trim()) await api.control(input, {location: {directory: controlDirectory}});
-      else await api.control(input);
+      await api.control(input, rpcRoute);
     } catch (error) {
       if (!disposed && !(downloading && invalidated)) ctx.ui.toast.show({title: 'teHablo TTS', message: menuErrorMessage(error), variant: 'warning'});
     } finally {
