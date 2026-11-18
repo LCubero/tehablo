@@ -455,7 +455,8 @@ export class SettingsWindow {
       list.slice(start, start + 10).forEach((v, j) => {
         const i = start + j;
         const sel = i === this.pick, pickIt = () => { this.pick = i; this.choose(v); };
-        const style = !v.downloaded && v.kind === 'account' && v.needsToken !== false && !this.c.state().token ? 'warning' : 'dim';
+        const style = v.downloaded ? 'dim'
+          : v.kind === 'account' && v.needsToken !== false && !this.c.state().token ? 'warning' : undefined;
         line([{text: sel ? ' ▶ ' : '   ', style: 'accent', fn: pickIt},
           {text: fit((this.isActive(v) ? '● ' : '') + v.name + (this.isFavorite(v) ? ' ★' : ''), 14), style: this.isActive(v) ? 'warning' : sel ? 'accent' : undefined, fn: pickIt},
           {text: fit(v.note, 16), fn: pickIt},

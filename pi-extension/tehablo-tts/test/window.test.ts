@@ -904,13 +904,14 @@ test('main footer shows Tab only on a row where Tab moves between buttons', () =
   assert.equal(s.w.col, 1);
 });
 
-test('Descargar is highlighted only when that download really needs a token', () => {
+test('Descargar is white, and highlighted only when that download really needs a token', () => {
   const s = setup({theme: {fg: (st: string, t: string) => `<${st}>${t}</${st}>`}});
   s.w.c.voices = () => [{...ROWS[0], needsToken: false}, {...ROWS[1], needsToken: true}];
   s.state.settings = {...s.state.settings, model: 'phonon', voice: 'Iker'};
   s.key('\r');
   const row = (n: string) => s.w.render(100).find(l => l.includes(n))!;
-  assert.match(row('Regina'), /<dim>↓ descargar\s*<\/dim>/);
+  assert.match(row('Regina'), /↓ descargar/);
+  assert.doesNotMatch(row('Regina'), /<(dim|warning)>↓ descargar/);
   assert.match(row('Iker'), /<warning>↓ descargar\s*<\/warning>/);
 });
 
