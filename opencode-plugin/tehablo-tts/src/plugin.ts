@@ -72,6 +72,7 @@ const HELP_TEXT = [
   'Uso de /tts:',
   '/tts menu   abre el menú de controles',
   'En el menú: Elegir voz local (requiere servidor disponible; sin descargas).',
+  'En el menú: Descargar voz (confirmación; no cambia la voz seleccionada).',
   '/tts play   lee la última respuesta',
   '/tts stop   detiene las lecturas actuales y en espera',
   '/tts auto   activa o desactiva la lectura automática',
@@ -96,6 +97,14 @@ function parseCommandArgs(rawText: string): [string, string] {
   return [sub.toLowerCase(), arg.toLowerCase()];
 }
 
+function downloadJob(value: any): {id: string; state: string; error?: string} {
+  if (!value || typeof value.id !== 'string' || !value.id
+    || !['downloading', 'ready', 'error'].includes(value.state)) {
+    throw new Error('El servidor no devolvió un estado de descarga válido.');
+  }
+  return {id: value.id, state: value.state, ...(typeof value.error === 'string' ? {error: value.error} : {})};
+}
+
 /** Create the Phase 1 OpenCode teHablo TTS plugin and return its unload cleanup handler. */
 export async function createTehabloPlugin(ctx: PluginContext, deps: PluginDeps = {}): Promise<() => Promise<void>> {
   const explicitRoot = typeof ctx.options?.tehabloRoot === 'string' ? ctx.options.tehabloRoot : undefined;
@@ -111,6 +120,7 @@ export async function createTehabloPlugin(ctx: PluginContext, deps: PluginDeps =
   let readingSeq = 0;
   let disposed = false;
   let selectingVoice = false;
+  let submittingDownload = false;
   let pollEpoch = 0;
   let pollFailures = 0;
   let pollTimer: ReturnType<typeof setTimeout> | undefined;
@@ -377,7 +387,53 @@ export async function createTehabloPlugin(ctx: PluginContext, deps: PluginDeps =
       && ['name', 'voice', 'model', 'kind', 'note'].every(key => typeof row[key] === 'string'));
   };
 
+  const downloadCatalog = async (): Promise<VoiceRow[]> => {
+    if (disposed) throw new Error('Descarga cancelada.');
+    let result: any;
+    try { result = await client.request('/voices'); }
+    catch { throw new Error('Se requiere un servidor teHablo disponible para descargar voces. No se ha iniciado el servidor.'); }
+    if (disposed) throw new Error('Descarga cancelada.');
+    if (!Array.isArray(result?.catalog)) throw new Error('El servidor no devolvió un catálogo de voces válido.');
+    return result.catalog.filter((row: any) => typeof row?.downloaded === 'boolean' && MODELS.includes(row.model)
+      && ['name', 'voice', 'model', 'kind', 'note'].every(key => typeof row[key] === 'string'));
+  };
+
   rpc = await ctx.rpc?.register(tehabloRpc, {
+    downloadVoices: async (input: any) => {
+      if (!input || typeof input.sessionID !== 'string') throw new Error('Sesión no válida.');
+      return downloadCatalog();
+    },
+    downloadVoice: async (input: any) => {
+      if (!input || typeof input.sessionID !== 'string' || !MODELS.includes(input.model)
+        || typeof input.voice !== 'string' || !input.voice || input.confirmed !== true) {
+        throw new Error('Se requiere confirmar una voz válida antes de descargar.');
+      }
+      if (submittingDownload) throw new Error('Ya hay una solicitud de descarga en curso.');
+      submittingDownload = true;
+      try {
+        const rows = await downloadCatalog();
+        const row = rows.find(row => row.model === input.model && row.voice === input.voice);
+        if (!row) throw new Error('La voz ya no está en el catálogo.');
+        if (row.downloaded) throw new Error('La voz ya está disponible localmente.');
+        if (row.model === 'phonon' && row.needsToken !== false) {
+          throw new Error('El modelo Phonon debe estar descargado. Este menú no solicita tokens ni reinicia el servidor.');
+        }
+        if (disposed) throw new Error('Descarga cancelada.');
+        // An older server rejects select:false; never retry with legacy selection semantics.
+        return downloadJob(await client.request('/prepare', {model: row.model, voice: row.name, select: false}));
+      } finally { submittingDownload = false; }
+    },
+    downloadStatus: async (input: any) => {
+      if (!input || typeof input.sessionID !== 'string' || typeof input.id !== 'string' || !input.id) {
+        throw new Error('Identificador de descarga no válido.');
+      }
+      if (disposed) throw new Error('Descarga cancelada.');
+      const health = await client.request('/health');
+      if (disposed) throw new Error('Descarga cancelada.');
+      const job = downloadJob(health?.preparation);
+      if (job.id !== input.id) throw new Error('Otra descarga reemplazó el trabajo observado; no se afirma que haya terminado.');
+      return job;
+    },
     voices: async (input: any, context) => {
       if (!input || typeof input.sessionID !== 'string') throw new Error('Sesión no válida.');
       return localVoices(context);

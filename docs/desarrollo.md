@@ -694,8 +694,10 @@ Para usar teHablo desde otro agente (por ejemplo OpenCode) no hace falta tocar e
 | `POST /speak` | `{"id": "...", "text": "...", "policy": "stop", "lexicon": true}` | 202. `stop` corta la lectura actual; `wait` la pone en cola (máximo 10) |
 | `POST /pause`, `/resume`, `/stop` | `{"id": "..."}` (opcional) | `{"state": ...}`. `/stop` sin `id` también vacía la cola |
 | `POST /config` | `voice`, `model`, `audio`, `device`, `speed`, `rhythm`, `volume` | Lo mismo que `/health`, ya con los cambios |
-| `POST /prepare` | `{"model": "...", "voice": "..."}` | 202; descarga una voz del catálogo que aún no está; el avance sale en `preparation` de `/health` |
+| `POST /prepare` | `{"model": "...", "voice": "...", "select": false}` (`select` opcional) | 202; prepara una voz del catálogo; el avance sale en `preparation` de `/health`. Sin `select`, conserva la selección automática histórica; con `false`, solo descarga |
 | `POST /shutdown` | `{}` | Apaga el servidor |
+
+En `/prepare`, `voice` es el `name` del catálogo, no una ruta arbitraria. El modo `select: false` resuelve las voces incluidas a su archivo canónico, conserva la configuración activa y solo admite Phonon si su modelo ya está en caché. No solicita credenciales. `select` debe ser booleano y no se admite en `/config`. Un trabajo en curso devuelve 503; observar otro identificador no demuestra que el original terminara. Una descarga fallida puede dejar caché parcial.
 
 Referencia en la extensión de Pi: [`src/server.ts`](../pi-extension/tehablo-tts/src/server.ts) (arranque, código y peticiones), [`src/text.ts`](../pi-extension/tehablo-tts/src/text.ts) (texto que se envía a leer) y [`src/settings.ts`](../pi-extension/tehablo-tts/src/settings.ts) (ajustes guardados). Para que la CI corra las pruebas del plugin, agrégalas a `.github/workflows/tests.yml` en el mismo PR.
 

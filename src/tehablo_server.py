@@ -642,16 +642,27 @@ class SpeechService:
 
     def prepare(self, body):
         """Queue catalog downloads on the model's existing worker (never speech)."""
-        if set(body) != {'model', 'voice'} or not any(
-                model == body.get('model') and name == body.get('voice')
-                for name, model, kind, _ in VOICE_TABLE):
+        if (set(body) - {'model', 'voice', 'select'} or not {'model', 'voice'} <= set(body)
+                or ('select' in body and not isinstance(body['select'], bool))):
             raise ValueError('expected a catalog download voice')
+        row = next((row for row in VOICE_TABLE
+                    if row[1] == body['model'] and row[0] == body['voice']), None)
+        if row is None:
+            raise ValueError('expected a catalog download voice')
+        download_only = body.get('select') is False
+        pair = {'model': body['model'], 'voice': body['voice']}
+        if download_only:
+            if pair['model'] == 'phonon' and not self.cached('', 'phonon', row[2]):
+                raise ValueError('El modelo Phonon debe estar descargado; este modo no solicita credenciales.')
+            if pair['voice'] in INCLUDED:
+                pair['voice'] += '.safetensors'
         with self.condition:
             if self.preparation and self.preparation['state'] == 'downloading':
                 raise RuntimeError('Ya se está descargando una voz.')
-            self.validate(body)
-            self.preparation = {'id': secrets.token_hex(8), 'voice': body['voice'], 'model': body['model'],
-                                'revision': self.revision, 'state': 'downloading', 'error': None}
+            self.validate(pair)
+            self.preparation = {'id': secrets.token_hex(8), 'voice': pair['voice'], 'model': pair['model'],
+                                'revision': self.revision, 'state': 'downloading', 'error': None,
+                                **({'select': False} if download_only else {})}
             self.condition.notify_all()
             return dict(self.preparation)
 
@@ -811,13 +822,14 @@ class SpeechService:
                             if self.closed or revision != self.revision:
                                 job.update(state='error', error='La voz cambió durante la descarga.')
                                 continue
-                            self.configure({'model': target, 'voice': job['voice']})
-                            synth = candidate
-                            revision, name = self.revision, target
-                            loaded_revision = revision
-                            self.ready = True
-                            if not self.pending:
-                                self.state = 'idle'
+                            if job.get('select', True):
+                                self.configure({'model': target, 'voice': job['voice']})
+                                synth = candidate
+                                revision, name = self.revision, target
+                                loaded_revision = revision
+                                self.ready = True
+                                if not self.pending:
+                                    self.state = 'idle'
                             job.update(state='ready')
                     except Exception as exc:
                         reason = hide_token(exc)
@@ -826,6 +838,8 @@ class SpeechService:
                                 job.update(state='error', error=TOKEN_REFUSED, code='token')
                             else:
                                 job.update(state='error', error=reason)
+                    finally:
+                        candidate = None  # Do not retain a different model after a download-only job.
                 with self.condition:
                     if not self.pending or revision != self.revision:
                         continue

@@ -12,7 +12,8 @@ Este archivo registra los cambios completados en orden cronológico. Las version
 
 ## 2026-11-16
 
-- OpenCode TUI: el menú permite elegir voces y modelos ya descargados, con un servidor disponible y sin iniciarlo ni descargar recursos. Revalida la disponibilidad antes de aplicar y guarda el par modelo/voz conservando los demás ajustes. Pruebas silenciosas: 47 aprobadas. Aceptación real en OpenCode y audio pendiente.
+- OpenCode TUI: descarga de voces con confirmación, sin cambiar la voz activa ni los ajustes guardados; refresca el catálogo al terminar. Requiere servidor disponible y admite Phonon solo con su modelo ya en caché, sin pedir credenciales. El servidor añade `select: false` a `/prepare`, conservando el comportamiento anterior de Pi. La descarga confirmada se aceptó en OpenCode; el aviso final de descarga y el chequeo de tipos no se observaron.
+- OpenCode TUI: el menú permite elegir voces y modelos ya descargados, con un servidor disponible y sin iniciarlo ni descargar recursos. Revalida la disponibilidad antes de aplicar y guarda el par modelo/voz conservando los demás ajustes. Pruebas silenciosas: 51 aprobadas. Aceptación manual en OpenCode confirmada para el aviso de servidor no disponible y la selección de voz; audio pendiente.
 
 ## 2026-11-15
 

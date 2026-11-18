@@ -97,6 +97,121 @@ class VersionTests(unittest.TestCase):
 
 
 class VoicePreparationTests(unittest.TestCase):
+    def test_download_only_preserves_selection_and_newer_configuration(self):
+        for target, voice in (('spanish', 'rafael'), ('phonon', 'Regina')):
+            for failure in (False, True):
+                with self.subTest(target=target, failure=failure):
+                    entered, release = threading.Event(), threading.Event()
+                    active, other = Synth(), Synth()
+                    def prepare(_):
+                        entered.set()
+                        release.wait(2)
+                        if failure:
+                            raise RuntimeError('download failed')
+                    active.prepare = other.prepare = prepare
+                    audio = mock.Mock(side_effect=Sink)
+                    service = tehablo_server.SpeechService(
+                        'spanish', 'lola', 1, lambda name: other if name == 'phonon' else active,
+                        audio, ['lola', 'rafael'])
+                    service.cached = lambda *_: True
+                    try:
+                        job = service.prepare({'model': target, 'voice': voice, 'select': False})
+                        self.assertTrue(entered.wait(2))
+                        with self.assertRaises(RuntimeError):
+                            service.prepare({'model': target, 'voice': voice, 'select': False})
+                        service.configure({'voice': 'rafael', 'speed': 1.25})
+                        before = service.health()
+                        revision = service.revision
+                        release.set()
+                        deadline = time.monotonic() + 2
+                        while service.health()['preparation']['state'] == 'downloading' and time.monotonic() < deadline:
+                            time.sleep(.01)
+                        after = service.health()
+                        self.assertEqual(after['preparation']['id'], job['id'])
+                        self.assertEqual(after['preparation']['state'], 'error' if failure else 'ready')
+                        self.assertEqual(service.revision, revision)
+                        self.assertEqual({k: v for k, v in before.items() if k != 'preparation'},
+                                         {k: v for k, v in after.items() if k != 'preparation'})
+                        self.assertEqual(active.calls + other.calls, [])
+                        audio.assert_not_called()
+                        service.speak({'id': 'active-model-probe', 'text': 'silent fixture'})
+                        deadline = time.monotonic() + 2
+                        while not active.calls and time.monotonic() < deadline:
+                            time.sleep(.01)
+                        self.assertEqual(active.calls, [('silent fixture', 'rafael')])
+                        self.assertEqual(other.calls, [])
+                    finally:
+                        release.set()
+                        service.close()
+
+    def test_download_only_does_not_overwrite_a_newer_model(self):
+        entered, release = threading.Event(), threading.Event()
+        other = Synth()
+        def prepare(_):
+            entered.set()
+            release.wait(2)
+        other.prepare = prepare
+        service = tehablo_server.SpeechService(
+            'spanish', 'lola', 1, lambda name: other if name == 'phonon' else Synth(), Sink, ['lola', 'rafael'])
+        service.cached = lambda *_: True
+        try:
+            service.prepare({'model': 'phonon', 'voice': 'Regina', 'select': False})
+            self.assertTrue(entered.wait(2))
+            service.configure({'model': 'spanish_24l', 'voice': 'rafael'})
+            revision = service.revision
+            release.set()
+            deadline = time.monotonic() + 2
+            while service.health()['preparation']['state'] == 'downloading' and time.monotonic() < deadline:
+                time.sleep(.01)
+            health = service.health()
+            self.assertEqual(health['preparation']['state'], 'error')
+            self.assertEqual((health['model'], health['voice']), ('spanish_24l', 'rafael'))
+            self.assertEqual(service.revision, revision)
+            self.assertEqual(other.calls, [])
+        finally:
+            release.set()
+            service.close()
+
+    def test_download_only_validates_flag_and_gated_model_before_queueing(self):
+        service = tehablo_server.SpeechService('spanish', 'lola', 1, lambda _: Synth(), Sink, ['lola'])
+        service.cached = lambda *_: False
+        try:
+            for value in ('false', 0, None):
+                with self.subTest(value=value), self.assertRaises(ValueError):
+                    service.prepare({'model': 'spanish', 'voice': 'lola', 'select': value})
+                self.assertIsNone(service.preparation)
+            with self.assertRaisesRegex(ValueError, 'Phonon'):
+                service.prepare({'model': 'phonon', 'voice': 'Regina', 'select': False})
+            self.assertIsNone(service.preparation)
+        finally:
+            service.close()
+
+    def test_download_only_http_accepts_included_voice_without_selecting_it(self):
+        synth = Synth()
+        synth.prepare = mock.Mock()
+        server = create_server(port=0, model='spanish', voice='lola', catalog=['lola'], idle_exit=0,
+                               synthesizer_factory=lambda _: synth, audio_factory=Sink)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        try:
+            conn = http.client.HTTPConnection(*server.server_address, timeout=2)
+            conn.request('POST', '/prepare', json.dumps({'model': 'spanish', 'voice': 'Facundo', 'select': False}),
+                         {'Content-Type': 'application/json', 'X-Tehablo-Codigo': CODE})
+            response = conn.getresponse()
+            job = json.loads(response.read())
+            self.assertEqual(response.status, 202)
+            conn.close()
+            deadline = time.monotonic() + 2
+            while server.service.health()['preparation']['state'] == 'downloading' and time.monotonic() < deadline:
+                time.sleep(.01)
+            health = server.service.health()
+            self.assertEqual((health['model'], health['voice']), ('spanish', 'lola'))
+            self.assertEqual((health['preparation']['id'], health['preparation']['state']), (job['id'], 'ready'))
+            synth.prepare.assert_called_once_with(str(tehablo_server.VOICES_DIR / 'Facundo.safetensors'))
+            self.assertEqual(synth.calls, [])
+        finally:
+            server.shutdown(); server.server_close(); thread.join()
+
     def test_pocket_preparation_reuses_the_speech_voice_state(self):
         synth = object.__new__(tehablo_server.PocketSynthesizer)
         synth.model = mock.Mock()
@@ -126,6 +241,7 @@ class VoicePreparationTests(unittest.TestCase):
             self.assertEqual(post('/prepare', {'model': 'spanish', 'voice': 'rafael'}, 'wrong')[0], 403)
             self.assertIsNone(server.service.preparation)
             self.assertEqual(post('/config', {'prepare': True})[0], 400)
+            self.assertEqual(post('/config', {'select': False})[0], 400)
             self.assertEqual(post('/config', {'voice': 'missing'})[0], 400)
             self.assertEqual(post('/prepare', {'model': 'phonon', 'voice': 'unknown'})[0], 400)
             status, job = post('/prepare', {'model': 'spanish', 'voice': 'rafael'})

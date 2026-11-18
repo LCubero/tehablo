@@ -8,6 +8,9 @@ export interface TuiContext {
       readonly control: (input: { sessionID: string; action: string }, options?: {location: {directory: string}}) => Promise<unknown>;
       readonly voices?: (input: {sessionID: string}) => Promise<unknown>;
       readonly selectVoice?: (input: {sessionID: string; model: string; voice: string}) => Promise<unknown>;
+      readonly downloadVoices?: (input: {sessionID: string}) => Promise<unknown>;
+      readonly downloadVoice?: (input: {sessionID: string; model: string; voice: string; confirmed: true}) => Promise<unknown>;
+      readonly downloadStatus?: (input: {sessionID: string; id: string}) => Promise<unknown>;
     };
   };
   readonly data: {
@@ -31,6 +34,10 @@ export interface TuiContext {
       }) => void;
     };
     readonly dialog: {
+      readonly confirm?: (options: {
+        readonly title: string;
+        readonly message: string;
+      }) => Promise<boolean>;
       readonly select?: (options: {
         readonly title: string;
         readonly options: Array<{ title: string; value: string; description?: string }>;
@@ -89,11 +96,14 @@ function isNoticeData(value: unknown): value is {
 /** Subscribe OpenCode TUI to teHablo notice events and render toast or help dialogs. */
 export function createTehabloTui(ctx: TuiContext, deps: {
   watchRoute?: (changed: (route: {type: string; sessionID?: string}) => void) => () => void;
+  downloadPollIntervalMs?: number;
+  downloadPollLimit?: number;
 } = {}): () => void {
   let disposed = false;
   let menuOpen = false;
   let invalidateOnNavigation: (() => void) | undefined;
   let stopWatching: (() => void) | undefined;
+  let stopWaiting: (() => void) | undefined;
   const openMenu = async (sessionID: string, auto: boolean) => {
     if (menuOpen) return;
     if (!ctx.ui.dialog.select || !ctx.client) {
@@ -102,8 +112,16 @@ export function createTehabloTui(ctx: TuiContext, deps: {
     }
     menuOpen = true;
     let invalidated = false;
+    let downloading = false;
     const checkRoute = (route: {type: string; sessionID?: string}) => {
-      if (route.type !== 'session' || route.sessionID !== sessionID) invalidated = true;
+      if (route.type !== 'session' || route.sessionID !== sessionID) {
+        invalidated = true;
+        stopWaiting?.();
+      }
+    };
+    const cancelled = () => {
+      checkRoute(ctx.ui.router.current());
+      return disposed || invalidated;
     };
     invalidateOnNavigation = () => checkRoute(ctx.ui.router.current());
     try {
@@ -117,11 +135,66 @@ export function createTehabloTui(ctx: TuiContext, deps: {
           {title: auto ? 'Desactivar lectura automática' : 'Activar lectura automática', value: 'auto'},
           {title: 'Ayuda y estado', value: 'help'},
           {title: 'Elegir voz local', value: 'voices'},
+          {title: 'Descargar voz', value: 'downloads'},
         ],
       });
       const route = ctx.ui.router.current();
-      if (disposed || invalidated || !action || !['play', 'stop', 'auto', 'help', 'voices'].includes(action)
+      if (disposed || invalidated || !action || !['play', 'stop', 'auto', 'help', 'voices', 'downloads'].includes(action)
         || route.type !== 'session' || route.sessionID !== sessionID) return;
+      if (action === 'downloads') {
+        downloading = true;
+        const api = ctx.client.rpc(tehabloRpc);
+        if (!api.downloadVoices || !api.downloadVoice || !api.downloadStatus || !ctx.ui.dialog.confirm) {
+          throw new Error('La descarga confirmada no está disponible en este cliente o servidor.');
+        }
+        const catalog = await api.downloadVoices({sessionID});
+        if (cancelled()) return;
+        if (!Array.isArray(catalog)) throw new Error('Catálogo de voces no válido.');
+        const rows: VoiceRow[] = catalog.filter(row => row?.downloaded === false
+          && typeof row.name === 'string' && typeof row.voice === 'string' && typeof row.model === 'string');
+        if (!rows.length) throw new Error('No hay voces pendientes de descargar.');
+        const selected = await ctx.ui.dialog.select({title: 'Descargar voz', options: rows.map((row, index) => ({
+          title: row.name, value: String(index),
+          description: `${row.model} · ${row.model === 'phonon' && row.needsToken !== false ? 'requiere modelo ya descargado' : row.note}`,
+        }))});
+        if (cancelled() || selected === undefined) return;
+        const row = rows.find((_, index) => String(index) === selected);
+        if (!row) return;
+        if (row.model === 'phonon' && row.needsToken !== false) {
+          throw new Error('El modelo Phonon debe estar descargado. Este menú no solicita tokens ni reinicia el servidor.');
+        }
+        const confirmed = await ctx.ui.dialog.confirm({
+          title: `Descargar ${row.name} (${row.model})`,
+          message: 'Usará red y espacio en disco; puede retrasar lecturas mientras trabaja. No cambiará la voz seleccionada. Cerrar o salir deja de observar, pero no cancela la descarga del servidor.',
+        });
+        if (cancelled() || confirmed !== true) return;
+        const job = await api.downloadVoice({sessionID, model: row.model, voice: row.voice, confirmed: true}) as {id?: string};
+        if (cancelled()) return;
+        if (typeof job?.id !== 'string' || !job.id) throw new Error('El servidor no devolvió una descarga válida.');
+        ctx.ui.toast.show({title: 'teHablo TTS', message: 'Descarga iniciada; la voz seleccionada no cambia.', variant: 'info'});
+        const deadline = Date.now() + 15 * 60_000;
+        for (let attempt = 0; attempt < (deps.downloadPollLimit ?? 900) && Date.now() < deadline; attempt++) {
+          const status = await api.downloadStatus({sessionID, id: job.id}) as {id?: string; state?: string; error?: string};
+          if (cancelled()) return;
+          if (status?.id !== job.id) throw new Error('Otra descarga reemplazó el trabajo observado.');
+          if (status.state === 'error') throw new Error(status.error || 'La descarga falló; puede haber archivos parciales en caché.');
+          if (status.state === 'ready') {
+            await api.downloadVoices({sessionID});
+            if (cancelled()) return;
+            ctx.ui.toast.show({title: 'teHablo TTS', message: 'Descarga completada; catálogo actualizado. La voz seleccionada no cambió.', variant: 'success'});
+            return;
+          }
+          if (status.state !== 'downloading') throw new Error('Estado de descarga no válido.');
+          if (attempt + 1 < (deps.downloadPollLimit ?? 900)) {
+            await new Promise<void>(resolve => {
+              const timer = setTimeout(() => {stopWaiting = undefined; resolve();}, deps.downloadPollIntervalMs ?? 1000);
+              stopWaiting = () => {clearTimeout(timer); stopWaiting = undefined; resolve();};
+            });
+            if (cancelled()) return;
+          }
+        }
+        throw new Error('Se dejó de observar tras 15 minutos; la descarga puede continuar en el servidor. Abre el menú para actualizar el catálogo.');
+      }
       if (action === 'voices') {
         const api = ctx.client.rpc(tehabloRpc);
         if (!api.voices || !api.selectVoice) throw new Error('El selector de voces no está disponible en este servidor.');
@@ -146,7 +219,7 @@ export function createTehabloTui(ctx: TuiContext, deps: {
       if (controlDirectory?.trim()) await api.control(input, {location: {directory: controlDirectory}});
       else await api.control(input);
     } catch (error) {
-      if (!disposed) ctx.ui.toast.show({title: 'teHablo TTS', message: menuErrorMessage(error), variant: 'warning'});
+      if (!disposed && !(downloading && invalidated)) ctx.ui.toast.show({title: 'teHablo TTS', message: menuErrorMessage(error), variant: 'warning'});
     } finally {
       stopWatching?.();
       stopWatching = undefined;
@@ -177,5 +250,5 @@ export function createTehabloTui(ctx: TuiContext, deps: {
       duration: TOAST_DURATION_MS[details.data.variant],
     });
   });
-  return () => { disposed = true; stopWatching?.(); stopWatching = undefined; unsubscribe(); };
+  return () => { disposed = true; stopWaiting?.(); stopWatching?.(); stopWatching = undefined; unsubscribe(); };
 }
