@@ -176,6 +176,12 @@ class ComposeTest(unittest.TestCase):
         self.assertEqual(notify.compose(self.single()), 'tehablo, PRs para issues 8 y 9: terminó.')
         self.assertEqual(notify.compose(self.single('blocked')), 'tehablo, PRs para issues 8 y 9: te espera.')
 
+    def test_task_named_like_the_project_is_said_once(self):
+        items = [{'status': 'done', 'project': 'tehablo', 'label': 'TeHablo'}]
+        self.assertEqual(notify.compose(items), 'tehablo: terminó.')
+        items.append({'status': 'done', 'project': 'dockhand', 'label': 'B'})
+        self.assertEqual(notify.compose(items), 'Terminaron tehablo; dockhand, B.')
+
     def test_several_notices_become_one_sentence(self):
         items = [{'status': 'done', 'project': 'tehablo', 'label': 'A'},
                  {'status': 'done', 'project': 'dockhand', 'label': 'B'}]

@@ -181,7 +181,9 @@ def pending_items(state):
 def _sentence(items, single, many):
     names = []
     for item in items:
-        name = f"{item['project']}, {item['label']}"
+        # A terminal titled like its project (Pi names it after the folder) is said once.
+        same = item['label'].casefold() == item['project'].casefold()
+        name = item['project'] if same else f"{item['project']}, {item['label']}"
         if name not in names:
             names.append(name)
     if len(items) == 1 and len(names) == 1:
