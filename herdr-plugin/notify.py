@@ -34,8 +34,8 @@ MAX_NAMED = 2
 TIMEOUT = 5.0
 HEALTH_TIMEOUT = 0.4
 PREFIX = re.compile(r'^[A-Z][A-Z0-9]{0,3}\s*\|\s*')
-# Pi titles its terminal "\u03c0 - folder"; herdr on Windows may pass it as UTF-8 read as cp1252.
-PI_PREFIX = re.compile('^(?:\u03c0|\u00cf\u20ac)\\s*-\\s*')
+# Pi titles its terminal "\u03c0 - folder".
+PI_PREFIX = re.compile('^\u03c0\\s*-\\s*')
 DASHES = re.compile(r'[|\u2014\u2013]')
 KEEP = re.compile(r'[^\w\s,.;:!?\u00bf\u00a1\'"()\-/&+]')
 
