@@ -183,13 +183,15 @@ def pending_items(state):
 
 
 def _sentence(items, single, many):
-    names = []
+    names, seen = [], set()
     for item in items:
+        key = (item['project'], item['label'])
+        if key in seen:
+            continue
+        seen.add(key)
         # A terminal titled like its project (Pi names it after the folder) is said once.
         same = item['label'].casefold() == item['project'].casefold()
-        name = item['project'] if same else f"{item['project']}, {item['label']}"
-        if name not in names:
-            names.append(name)
+        names.append(item['project'] if same else f"{item['project']}, {item['label']}")
     if len(items) == 1 and len(names) == 1:
         return f'{names[0]}: {single}.'
     shown = names[:MAX_NAMED]

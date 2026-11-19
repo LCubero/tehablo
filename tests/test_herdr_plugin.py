@@ -189,6 +189,9 @@ class ComposeTest(unittest.TestCase):
         self.assertEqual(notify.compose(items), 'tehablo: terminó.')
         items.append({'status': 'done', 'project': 'dockhand', 'label': 'B'})
         self.assertEqual(notify.compose(items), 'Terminaron tehablo; dockhand, B.')
+        distinct = [{'status': 'done', 'project': 'Design, QA', 'label': 'Design, QA'},
+                    {'status': 'done', 'project': 'Design', 'label': 'QA'}]
+        self.assertEqual(notify.compose(distinct), 'Terminaron Design, QA; Design, QA.')
 
     def test_several_notices_become_one_sentence(self):
         items = [{'status': 'done', 'project': 'tehablo', 'label': 'A'},
