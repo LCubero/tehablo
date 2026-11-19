@@ -4,6 +4,10 @@
 
 Este archivo registra los cambios completados en orden cronológico. Las versiones (`VERSION` y tags `vX.Y.Z`) marcan hasta qué fecha llega cada una.
 
+## 2026-11-18
+
+- OpenCode: `/tts on` enciende el servidor compartido sin reiniciarlo si ya está activo; `/tts off` lo apaga sin arrancarlo si ya estaba apagado. `/tts` sin argumentos y `/tts help` muestran ayuda. Apagar detiene las lecturas de todos los clientes, incluido Pi, y desactiva Auto en este plugin; conserva los ajustes y permite volver a encender. Pi mantiene su `/tts` como interruptor. No cambia el apagado automático, `/tts stop`, `/tts auto off` ni el cierre de sesión. Aceptación manual en Windows de ayuda, encendido, apagado, repetición de ambos y nuevo encendido, sin prueba de audio ([issue #7](https://github.com/LCubero/tehablo/issues/7)).
+
 ## 2026-11-17
 
 - Pi, menú de voces: «↓ descargar» sale en blanco (texto normal) en lugar de gris; «✓ lista» sigue en gris y la descarga que aún necesita el token sigue resaltada.

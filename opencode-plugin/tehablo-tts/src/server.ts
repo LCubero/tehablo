@@ -57,6 +57,8 @@ export class ServerClient {
   private child?: ReturnType<typeof nodeSpawn>;
   private instance?: string;
   private starting?: Promise<void>;
+  private poweringOff?: Promise<void>;
+  private ending = false;
   private closed = false;
   private readings = new Map<string, string | undefined>();
   private inFlight = new Set<string>();
@@ -104,9 +106,22 @@ export class ServerClient {
   }
 
   async ensure(): Promise<void> {
+    await this.poweringOff;
     if (this.closed) throw new Error('Sesión TTS cerrada.');
     if (!this.starting) this.starting = this.start().finally(() => { this.starting = undefined; });
     return this.starting;
+  }
+
+  /** Discover a shared server without starting one or sending credentials to other services. */
+  async isRunning(): Promise<boolean> {
+    if (this.starting || this.child) return true;
+    const explicit = this.options.port ?? process.env.TEHABLO_PORT;
+    const ports = explicit === undefined ? CANDIDATES : [explicit];
+    const states = await Promise.all(ports.map(port => this.probe(port)));
+    const index = states.findIndex(state => typeof state === 'object');
+    if (index < 0) return false;
+    this.base = `http://127.0.0.1:${ports[index]}`;
+    return true;
   }
 
   /** Python candidates: .venv-pocket, then .venv-pocket-<os> so a dual boot can keep one environment per OS. */
@@ -230,7 +245,54 @@ export class ServerClient {
       await this.request('/stop', {id});
   }
 
+  /** Explicit power off is shared; unlike unload, it leaves this client reusable. */
+  powerOff(): Promise<void> {
+    if (!this.poweringOff) {
+      if (this.ending) return Promise.reject(new Error('Sesión TTS cerrada.'));
+      this.closed = true;
+      this.poweringOff = this.stopServer().finally(() => {
+        this.poweringOff = undefined;
+        if (!this.ending) this.closed = false;
+      });
+    }
+    return this.poweringOff;
+  }
+
+  private async stopServer() {
+    await this.starting?.catch(() => {});
+    const child = this.child;
+    const state = await this.probe(new URL(this.base).port);
+    if (state === 'foreign') throw new Error('No se pudo verificar el servidor TTS; no se ha apagado ningún proceso ajeno.');
+    let failure: unknown;
+    if (typeof state === 'object') {
+      try { await this.request('/stop', {}); } catch (error) { failure = error; }
+      try { await this.request('/shutdown', {}); }
+      catch (error) {
+        // Only the process started by this client may be terminated as a fallback.
+        child?.kill();
+        throw error;
+      }
+    } else {
+      // A cancelled startup may not have opened its HTTP listener yet.
+      child?.kill();
+    }
+    // HTTP acknowledges shutdown before the listener and owned process have exited.
+    for (let attempt = 0; attempt < 20; attempt++) {
+      if (await this.probe(new URL(this.base).port) === 'free' && (!child || this.child !== child)) {
+        this.readings.clear();
+        this.spawned = false;
+        this.instance = undefined;
+        if (failure) throw failure;
+        return;
+      }
+      await (this.options.delay ?? (ms => new Promise(resolve => setTimeout(resolve, ms))))(100);
+    }
+    throw new Error('No se pudo confirmar el apagado del servidor TTS.');
+  }
+
   async shutdown() {
+    this.ending = true;
+    await this.poweringOff;
     await this.close();
   }
 

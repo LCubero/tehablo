@@ -9,12 +9,17 @@ Plugin de OpenCode V2 (`@opencode/plugin`) que conecta OpenCode con el servidor 
 - Avisos (`/tts auto`, `/tts stop`, `/tts help` y errores) mediante `./rpc` + `./tui` (toast y modal nativos en el TUI sin inyectar mensajes al historial de la sesión).
 - Deduplicación por `assistantMessageID` persistida en `ctx.storage`.
 - Comando `/tts`:
+  - `/tts` sin argumentos: muestra la ayuda y el estado de la lectura automática.
+  - `/tts on`: enciende el servidor sin reproducir audio ni activar la lectura automática. Si ya está encendido, no lo reinicia ni cambia su configuración o Auto.
+  - `/tts off`: apaga el servidor compartido, detiene todas las lecturas y afecta también a Pi y a otras sesiones conectadas; desactiva Auto en este plugin y conserva los ajustes. Si ya está apagado, lo indica sin arrancarlo.
   - `/tts menu`: abre un menú nativo del TUI para leer, detener, activar/desactivar la lectura automática y consultar ayuda y estado. Cerrar con Escape no ejecuta ninguna acción. Los subcomandos siguen disponibles.
   - `/tts play`: lee la última respuesta final del asistente.
   - `/tts stop`: detiene las lecturas de esta sesión.
   - `/tts auto`: activa o desactiva la lectura automática (inicia desactivada).
   - `/tts help`: muestra el estado actual y los subcomandos.
 - Ajustes compartidos en `~/.tehablo/settings.json` (voz, modelo, volumen, velocidad, ritmo, audio local/SSH y diccionario).
+
+La ayuda también se abre con `/tts help`, `/tts ayuda` y `/tts status`. `/tts on` y `/tts off` no admiten argumentos adicionales; repetirlos no invierte la acción. `/tts stop` solo detiene las lecturas de la sesión; `/tts auto off` solo desactiva la lectura automática. Ninguno apaga el servidor. Tras `/tts off`, puedes usar `/tts on` en la misma sesión; cerrar o recargar el plugin sigue sin apagar el servidor compartido. Se mantiene el apagado automático tras 30 segundos sin peticiones autenticadas: `/tts on` no lo desactiva ni mantiene el servidor vivo indefinidamente.
 
 El menú requiere el TUI de OpenCode con diálogos de selección y el canal RPC del plugin. No añade mensajes al historial ni arranca el servidor al abrirse. Si se cambia de sesión o se descarga el plugin mientras está abierto, la selección pendiente no ejecuta acciones. Esta interfaz no incluye un menú para OpenCode Desktop.
 
