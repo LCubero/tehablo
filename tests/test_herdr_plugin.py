@@ -26,6 +26,14 @@ class StripPrefixTest(unittest.TestCase):
         self.assertEqual(notify.strip_prefix('PI | Arreglo de audio'), 'Arreglo de audio')
         self.assertEqual(notify.strip_prefix('OC|sin espacios'), 'sin espacios')
 
+    def test_drops_the_pi_title_prefix_even_when_misdecoded(self):
+        # Pi titles its terminal "\u03c0 - folder"; herdr on Windows can hand it over as UTF-8 read as cp1252.
+        self.assertEqual(notify.strip_prefix('\u03c0 - code'), 'code')
+        self.assertEqual(notify.strip_prefix('\u00cf\u20ac - code'), 'code')
+        self.assertEqual(notify.compose([{'status': 'done', 'project': 'code',
+                                          'label': notify.label_of({'terminal_title': '\u00cf\u20ac - code'})}]),
+                         'code: termin\u00f3.')
+
     def test_keeps_titles_without_a_tag(self):
         self.assertEqual(notify.strip_prefix('tehablo'), 'tehablo')
         self.assertEqual(notify.strip_prefix('A | B | C'), 'B | C')

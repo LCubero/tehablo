@@ -13,7 +13,7 @@ Sin leer el mensaje del agente: herdr conoce su estado, no su texto.
 | Termina uno y otro espera | «tehablo, A: terminó. dockhand, B: te espera.» |
 
 El proyecto es la etiqueta del espacio de trabajo en herdr; la tarea es el título del
-terminal sin la etiqueta del agente (`OC | …` queda en `…`). Si la tarea se llama igual que
+terminal sin la etiqueta del agente (`OC | …` y `π - …` de Pi quedan en `…`). Si la tarea se llama igual que
 el proyecto, solo se dice una vez: «tehablo: terminó.». Si un agente no tiene título,
 se usa su nombre y, si tampoco, su tipo con el panel (`opencode p6`).
 
