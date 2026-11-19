@@ -544,5 +544,25 @@ class HttpBoundaryTest(unittest.TestCase):
                 self.assertTrue(all(url.startswith('http://127.0.0.1:') for url in seen))
 
 
+@unittest.skipUnless(sys.platform == 'win32', 'Windows launcher')
+class WindowsLauncherTest(unittest.TestCase):
+    def test_override_with_exclamation_mark_is_used_literally(self):
+        launcher = Path(__file__).resolve().parent.parent / 'herdr-plugin' / 'run.cmd'
+        with tempfile.TemporaryDirectory() as directory:
+            # A copy of this interpreter in a folder with "!" and a PATH without any other Python:
+            # success proves the launcher used the override literally instead of a fallback.
+            folder = Path(directory) / 'py!dir'
+            subprocess.run([sys.executable, '-m', 'venv', '--without-pip', str(folder)],
+                           check=True, timeout=120)
+            python = folder / 'Scripts' / 'python.exe'
+            system = os.path.join(os.environ.get('SystemRoot', r'C:\Windows'), 'System32')
+            env = {'SystemRoot': os.environ.get('SystemRoot', r'C:\Windows'), 'PATH': system,
+                   'TEHABLO_PYTHON': str(python),
+                   'HERDR_PLUGIN_STATE_DIR': directory, 'HERDR_PLUGIN_CONFIG_DIR': directory}
+            done = subprocess.run(['cmd', '/c', str(launcher), '--dry-run'], env=env,
+                                  capture_output=True, text=True, timeout=PROBE_TIMEOUT)
+            self.assertEqual((done.returncode, done.stderr), (0, ''))
+
+
 if __name__ == '__main__':
     unittest.main(verbosity=2)

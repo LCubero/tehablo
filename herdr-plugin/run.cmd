@@ -2,15 +2,15 @@
 rem Resolve a Python interpreter and run notify.py. herdr launches this shim
 rem because the bare "python" on Windows may be the Microsoft Store alias,
 rem which opens the Store instead of running anything.
-setlocal enabledelayedexpansion
+rem No delayed expansion: a literal ! in a configured path must survive.
+setlocal
 set "HERE=%~dp0"
 set "PY="
+set "PY_HINT="
 
 if defined TEHABLO_PYTHON call :try "%TEHABLO_PYTHON%"
-if not defined PY if defined HERDR_PLUGIN_CONFIG_DIR if exist "%HERDR_PLUGIN_CONFIG_DIR%\python.txt" (
-  set /p PY_HINT= < "%HERDR_PLUGIN_CONFIG_DIR%\python.txt"
-  if defined PY_HINT call :try "!PY_HINT!"
-)
+if not defined PY if defined HERDR_PLUGIN_CONFIG_DIR if exist "%HERDR_PLUGIN_CONFIG_DIR%\python.txt" set /p PY_HINT= < "%HERDR_PLUGIN_CONFIG_DIR%\python.txt"
+if not defined PY if defined PY_HINT call :try "%PY_HINT%"
 if not defined PY call :try python3
 if not defined PY call :try py
 if not defined PY call :try python
