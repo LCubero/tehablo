@@ -523,7 +523,7 @@ def main(argv=None):
         if not text:
             log('--say needs a text')
             return 1
-        return 0 if speak(base, 'herdr-manual', text) else 1
+        return 0 if speak(base, 'herdr-manual', text, settings()['lexicon']) else 1
     return handle(dry='--dry-run' in args)
 
 
