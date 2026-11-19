@@ -561,7 +561,7 @@ Antecedente aprobado el 2026-10-30: base confiable, medición (`RH-W-0003`), ser
 - **Origen:** aprobado por la persona responsable el 2026-11-19 tras completar `RH-W-0053`, que solo funciona en herdr de terminal.
 - **Prioridad:** P2; los mismos avisos «terminó» y «te espera» para quien usa la aplicación de escritorio.
 - **Dependencias:** `RH-W-0053` (frases, filtros y llamada a `/speak`) y `RH-W-0047` (puertos 23765–23769).
-- **Estado:** `proposed`.
+- **Estado:** `ready`.
 - **Responsable sugerido:** persona responsable o Totopo27 (Luis Araya); investigación primero.
 - **Guía para quien lo investigue:**
   - herdr-app funciona sobre herdr-core (`hc`), que no tiene plugins. Su vía de extensión son los mods (`~/.config/herdr-app/mods/<nombre>/`, JavaScript con gpui-kit), descritos en [defaults/AGENTS.md](https://github.com/herdrdev/herdr-app/blob/master/defaults/AGENTS.md): `agents()` da el estado de cada agente (`working`, `blocked`, `idle`, `done`) y la vista se vuelve a dibujar cuando cambia, sin sondeo; `fetch` y `exec` están disponibles y `fs/promises` lee en la carpeta del usuario.

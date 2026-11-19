@@ -562,7 +562,8 @@ class HttpBoundaryTest(unittest.TestCase):
                     self.assertEqual(notify.auth_code(), expected)
 
     def test_tehablo_port_pins_discovery_to_one_port(self):
-        for value, probed in (('24123', ['http://127.0.0.1:24123/health']), ('not-a-port', [])):
+        for value, probed in (('24123', ['http://127.0.0.1:24123/health']), ('not-a-port', []),
+                              ('²', []), ('70000', [])):
             seen = []
             def health(request, timeout):
                 seen.append(request if isinstance(request, str) else request.full_url)
@@ -572,6 +573,11 @@ class HttpBoundaryTest(unittest.TestCase):
                  mock.patch.object(notify, '_local_open', side_effect=health):
                 self.assertIsNone(notify.tehablo_base())
             self.assertEqual(seen, probed)
+        healthy = mock.MagicMock()
+        healthy.__enter__.return_value.read.return_value = b'{"service": "tehablo"}'
+        with mock.patch.dict(os.environ, {'TEHABLO_PORT': '24123'}), \
+             mock.patch.object(notify, '_local_open', return_value=healthy):
+            self.assertEqual(notify.tehablo_base(), 'http://127.0.0.1:24123')
 
     def test_health_and_speak_never_follow_redirects(self):
         original_build = notify.urllib.request.build_opener

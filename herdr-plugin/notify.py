@@ -311,7 +311,11 @@ def tehablo_base():
         ports = PORTS
     else:
         # Like Pi and OpenCode, a fixed port replaces the automatic range.
-        ports = (int(explicit),) if explicit.isdigit() and 0 < int(explicit) < 65536 else ()
+        try:
+            port = int(explicit, 10) if explicit.isascii() else 0
+        except ValueError:
+            port = 0
+        ports = (port,) if 0 < port < 65536 else ()
     for port in ports:
         base = f'http://127.0.0.1:{port}'
         try:
