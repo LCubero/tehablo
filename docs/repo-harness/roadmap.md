@@ -553,9 +553,9 @@ Antecedente aprobado el 2026-10-30: base confiable, medición (`RH-W-0003`), ser
 - **Estado:** `completed`.
 - **Trabajo restante:** ninguno.
 - **Trabajo completado (2026-11-19):** [PR #11](https://github.com/LCubero/tehablo/pull/11), contribución de Totopo27: plugin `herdr-plugin/` (`tehablo.agent-voice`) con hook `pane.agent_status_changed`, lanzadores `run.sh` y `run.cmd`, frases «{proyecto}, {tarea}: terminó.» y «…: te espera.», silencio en el panel enfocado, deduplicación por `completion_seq` y agrupación de avisos en una ventana de 2 s (`window: 0` la desactiva). Pruebas en `tests/test_herdr_plugin.py`, añadidas a CI.
-- **Adiciones:** correcciones del mantenedor: `--dry-run` imprime la frase sin reclamar ni marcar avisos de la cola compartida; el README aclara que `policy: wait` sustituye una lectura en pausa, comportamiento del servidor ya cubierto en `tests/test_server.py`.
+- **Adiciones:** correcciones del mantenedor: `--dry-run` imprime la frase sin reclamar ni marcar avisos de la cola compartida; el README aclara que `policy: wait` sustituye una lectura en pausa, comportamiento del servidor ya cubierto en `tests/test_server.py`. Tras la revisión nativa: el hook descarta eventos que no sean `done` o `blocked` y calla si el panel ya cambió; cada proceso solo reclama el lote al que se unió; `run.cmd` sin expansión retardada, para conservar un `!` en la ruta de Python.
 - **Decisiones y razones:** activar o desactivar con `herdr plugin enable|disable tehablo.agent-voice`, sin código propio para ello. Sin demonio: un proceso corto por evento, sin dependencias, sin telemetría y solo hacia `127.0.0.1`.
-- **Verificación:** 43 pruebas; prueba manual de la persona responsable en Windows con herdr 0.9.5: terminó, te espera, panel enfocado en silencio y desactivar/activar.
+- **Verificación:** 46 pruebas y revisión nativa aprobada; prueba manual de la persona responsable en Windows con herdr 0.9.5: terminó, te espera, panel enfocado en silencio y desactivar/activar.
 - **Exclusiones:** herdr-app, que funciona sobre herdr-core (`hc`) sin sistema de plugins; leer el mensaje del agente; arrancar el servidor si está apagado; cambios en el servidor, Pi u OpenCode.
 - **Aplazamientos y límites:** prueba manual en Linux y macOS sin verificar; envío de un solo intento, sin reintentos.
 
