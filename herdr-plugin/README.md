@@ -84,7 +84,7 @@ a los demás. La política es `wait`: espera a que termine la lectura en curso, 
 
 ```sh
 python tests/test_herdr_plugin.py          # lógica y procesos simultáneos, sin red ni audio
-python herdr-plugin/notify.py --say "prueba de voz"
+python herdr-plugin/notify.py --say "prueba de voz"   # usa el `lexicon` de config.json
 HERDR_PLUGIN_EVENT_JSON='{"data":{"pane_id":"w1:p1"}}' python herdr-plugin/notify.py --dry-run   # imprime la frase sin tocar la cola ni hablar
 ```
 

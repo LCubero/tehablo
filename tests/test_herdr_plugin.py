@@ -222,6 +222,15 @@ class SettingsTest(unittest.TestCase):
             with mock.patch.dict(os.environ, {'HERDR_PLUGIN_CONFIG_DIR': directory}):
                 return notify.settings()
 
+    def test_manual_say_uses_the_configured_lexicon(self):
+        with tempfile.TemporaryDirectory() as directory:
+            (Path(directory) / 'config.json').write_text('{"lexicon": false}', encoding='utf-8')
+            with mock.patch.dict(os.environ, {'HERDR_PLUGIN_CONFIG_DIR': directory}), \
+                 mock.patch.object(notify, 'tehablo_base', return_value='http://127.0.0.1:23765'), \
+                 mock.patch.object(notify, 'speak', return_value=True) as speak:
+                self.assertEqual(notify.main(['--say', 'prueba']), 0)
+            speak.assert_called_once_with('http://127.0.0.1:23765', 'herdr-manual', 'prueba', False)
+
     def test_defaults_without_a_config_file(self):
         self.assertEqual(self.read(), {'skip_focused': True, 'window': 2.0, 'lexicon': True})
 
