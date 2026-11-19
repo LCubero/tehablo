@@ -111,6 +111,16 @@ sola frase.
   `/health` solo comprueba la identidad declarada: no autentica al dueño del puerto
   frente a otro proceso local malicioso.
 
+## Activar o desactivar
+
+```sh
+herdr plugin disable tehablo.agent-voice   # deja de avisar
+herdr plugin enable tehablo.agent-voice    # vuelve a avisar
+```
+
+El cambio vale al momento para todas las sesiones de herdr. Solo funciona en herdr de
+terminal: herdr-app usa herdr-core (`hc`), que no tiene plugins.
+
 ## Desinstalar
 
 ```sh
