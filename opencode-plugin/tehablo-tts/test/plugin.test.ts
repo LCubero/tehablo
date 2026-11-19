@@ -509,6 +509,29 @@ test('power commands cancel owned startup without making unload reversible', asy
   } finally { release?.(); await h.client.shutdown(); h.cleanupDir(); }
 });
 
+test('power commands /tts off cancels a stalled /tts on through the command', async () => {
+  const h = createPowerHarness(false);
+  let killed = 0;
+  h.client['options'].fetch = (async () => { throw new TypeError('connection refused'); }) as any;
+  h.client['options'].spawn = (() => {
+    const child = new EventEmitter();
+    return Object.assign(child, {unref() {}, kill() { killed++; child.emit('exit', 0); return true; }});
+  }) as any;
+  const cleanup = await createTehabloPlugin(h.ctx, {client: h.client, loadSettings: h.loadSettings});
+  const command = (text: string) => h.commands.get('tts')!({sessionID: 'main', prompt: {text}});
+  try {
+    const on = command('/tts on');
+    await waitUntil(() => !!h.client['child']);
+    await command('/tts off');
+    assert.equal(h.notices.some(n => n.message === 'El servidor TTS está cambiando de estado.'), false);
+    await on;
+    assert.equal(killed, 1);
+    assert.equal(h.notices.some(n => n.variant === 'warning'), false);
+    assert.match(h.notices.at(-1)!.message, /apagado.*Pi/);
+    assert.equal(h.calls.some(c => c.path === '/stop' || c.path === '/shutdown'), false);
+  } finally { await cleanup(); h.cleanupDir(); }
+});
+
 test('power commands unload during an in-flight power off never shuts down twice', async () => {
   const h = createPowerHarness(true);
   const fetcher = h.client['options'].fetch!;

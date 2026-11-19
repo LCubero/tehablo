@@ -4,6 +4,10 @@
 
 Este archivo registra los cambios completados en orden cronológico. Las versiones (`VERSION` y tags `vX.Y.Z`) marcan hasta qué fecha llega cada una.
 
+## 2026-11-19
+
+- OpenCode: `/tts on` y `/tts off` fusionados en [PR #12](https://github.com/LCubero/tehablo/pull/12) ([e271697](https://github.com/LCubero/tehablo/commit/e271697c36ca1424bc43e804a2c852b23a94288d)), contribución de Totopo27. Corrección del mantenedor: `/tts off` cancela también un `/tts on` cuyo arranque no termina, sin tener que cerrar OpenCode. Prueba manual en Windows, incluido apagar desde OpenCode un servidor iniciado por Pi y volver a encender; CI en Windows y Ubuntu aprobadas. Tras actualizar, reinicia OpenCode.
+
 ## 2026-11-18
 
 - OpenCode: `/tts on` enciende el servidor compartido sin reiniciarlo si ya está activo; `/tts off` lo apaga sin arrancarlo si ya estaba apagado. `/tts` sin argumentos y `/tts help` muestran ayuda. Apagar detiene las lecturas de todos los clientes, incluido Pi, y desactiva Auto en este plugin; conserva los ajustes y permite volver a encender. Pi mantiene su `/tts` como interruptor. No cambia el apagado automático, `/tts stop`, `/tts auto off` ni el cierre de sesión. Aceptación manual en Windows de ayuda, encendido, apagado, repetición de ambos y nuevo encendido, sin prueba de audio ([issue #7](https://github.com/LCubero/tehablo/issues/7)).

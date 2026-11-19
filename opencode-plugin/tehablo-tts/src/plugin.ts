@@ -124,7 +124,7 @@ export async function createTehabloPlugin(ctx: PluginContext, deps: PluginDeps =
   let disposed = false;
   let selectingVoice = false;
   let submittingDownload = false;
-  let changingPower = false;
+  let changingPower: 'on' | 'off' | undefined;
   let pollEpoch = 0;
   let pollFailures = 0;
   let pollTimer: ReturnType<typeof setTimeout> | undefined;
@@ -325,11 +325,13 @@ export async function createTehabloPlugin(ctx: PluginContext, deps: PluginDeps =
             await notify(input.sessionID, `El comando /tts ${sub} no admite argumentos.\n${HELP_TEXT}`, {kind: 'help', variant: 'warning'});
             return;
           }
-          if (changingPower) {
+          // Off must stay available so it can cancel a startup that never becomes healthy.
+          if (changingPower && !(sub === 'off' && changingPower === 'on')) {
             await notify(input.sessionID, 'El servidor TTS está cambiando de estado.');
             return;
           }
-          changingPower = true;
+          const ownsGuard = !changingPower;
+          changingPower = sub;
           try {
             const running = await client.isRunning();
             if (disposed) return;
@@ -354,7 +356,7 @@ export async function createTehabloPlugin(ctx: PluginContext, deps: PluginDeps =
             }
           } catch (error) {
             if (!disposed) await notify(input.sessionID, error instanceof Error ? error.message : String(error), {variant: 'warning'});
-          } finally { changingPower = false; }
+          } finally { if (ownsGuard) changingPower = undefined; }
           return;
         }
         if (sub === 'menu') {

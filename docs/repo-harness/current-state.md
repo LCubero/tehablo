@@ -29,6 +29,7 @@ Los trabajos activos y sus condiciones se resumen en Trabajo pendiente.
 
 ## Trabajo reciente completado
 
+- `RH-W-0049` (`completed`, 2026-11-19): `/tts on` y `/tts off` en OpenCode fusionados en PR #12 (`e271697`), contribución de Totopo27, con corrección del mantenedor para que `/tts off` cancele un arranque que no termina; Pi conserva su interruptor `/tts`. Prueba manual en Windows, incluido el apagado compartido con Pi, y CI en Windows/Ubuntu aprobadas; Linux sin verificar. Tras actualizar, reinicia OpenCode. [Evidencia](roadmap.md#rh-w-0049-unificar-el-apagado-por-comando-en-pi-y-opencode).
 - `RH-W-0048` (`completed`, 2026-11-17): menú, selección y descarga de voces de OpenCode fusionados en PR #4, #5 y #6 (`c64512b`, `af60077`, `c743b27`), contribución de Totopo27; aprobación explícita de la persona responsable, prueba manual en Windows y CI en Windows/Ubuntu aprobadas. Tras actualizar, reinicia OpenCode y el servidor TTS; audio manual en Linux sin verificar y menú no disponible en OpenCode Desktop. [Evidencia y migración](roadmap.md#rh-w-0048-menú-de-opencode-controles-selección-y-descarga-de-voces).
 
 - `RH-W-0047` (`completed`, 2026-11-17): puerto automático y mensajes de puerto ocupado fusionados en PR #3 (`4752257`); prueba manual en Windows, servidor compartido entre Pi y OpenCode y CI en Windows/Ubuntu aprobados. Recargar todas las sesiones de Pi con `/reload`. En Linux (2026-11-18) pasaron el puerto ocupado, el cambio a 23766 y el servidor compartido entre Pi y OpenCode, con lectura oída en OpenCode. [Evidencia y migración](roadmap.md#rh-w-0047-puerto-ocupado-mensaje-claro-puerto-por-defecto-menos-común-y-puerto-automático).
@@ -84,7 +85,6 @@ Los trabajos activos y sus condiciones se resumen en Trabajo pendiente.
 <!-- doc-role:pending-work -->
 
 - Registrar todo pendiente no trivial en [roadmap.md](roadmap.md), sin mantener un segundo backlog aquí.
-- `RH-W-0049` (`pending`, P2): en OpenCode, `/tts` sin argumentos alterna encendido/apagado como en Pi (alternativa: `/tts on` y `/tts off` en ambos clientes), con aviso del efecto compartido. Responsable sugerido: Totopo27. [Alcance y pruebas](roadmap.md#rh-w-0049-unificar-el-apagado-por-comando-en-pi-y-opencode).
 - `RH-W-0050` (`pending`, P2): confirmar slots en la API instalada, indicador compacto sin sondeo periódico y comprobación manual de menú, voces, descarga y audio en Linux; Windows ya consta en `RH-W-0048`. Responsable sugerido: Totopo27. [Guía y condición](roadmap.md#rh-w-0050-indicador-de-estado-y-verificación-de-opencode-en-linux).
 - `RH-W-0052` (`pending`, P2): inventario y revisión de CLI/HTTP para futuras integraciones; investigación y guía primero, código solo tras aprobar los hallazgos. Responsable sugerido: persona responsable o Totopo27. [Inventario inicial y límites](roadmap.md#rh-w-0052-revisar-cli-y-http-como-superficie-de-integración).
 - `RH-W-0051` (`deferred`, P3): evaluar barra de controles de OpenCode solo tras completar y evaluar `RH-W-0050`, si `/tts menu` resulta insuficiente; interacción por clic sin verificar. [Condición de reconsideración](roadmap.md#rh-w-0051-evaluar-una-barra-de-controles-para-opencode).
@@ -124,7 +124,7 @@ Los trabajos activos y sus condiciones se resumen en Trabajo pendiente.
 
 <!-- doc-role:next-step -->
 
-- Orden de estos seguimientos aprobados: `RH-W-0049` (P2, apagado y comandos), `RH-W-0050` (P2, indicador y verificación Linux), `RH-W-0052` (P2, investigación CLI/HTTP); después, `RH-W-0051` (P3, aplazado y condicionado a evaluar el menú tras `RH-W-0050`). No se inicia ninguno automáticamente.
+- Orden de estos seguimientos aprobados: `RH-W-0050` (P2, indicador y verificación Linux), `RH-W-0052` (P2, investigación CLI/HTTP); después, `RH-W-0051` (P3, aplazado y condicionado a evaluar el menú tras `RH-W-0050`). No se inicia ninguno automáticamente.
 - Las comprobaciones manuales de puertos en Linux de `RH-W-0047` pasaron el 2026-11-18; las de audio Linux ya registradas no se duplican como trabajos nuevos. El resto del flujo de OpenCode en Linux se verifica dentro de `RH-W-0050`.
 
 Pendientes las decisiones de la persona responsable sobre Piper (`carlfm`, `davefx`, `sharvard`, descarga al seleccionar) y Supertonic 3 (`F2`, `M1`), tras las rondas en VM del 2026-11-14. Planes 3 y 4 propuestos, sin aprobar, solo en el archivo local ignorado por Git; no implementar. `em_santa`/Kokoro y el Plan 2 permanecen en pausa; reconsiderarlos requiere una nueva decisión. No se inicia otro trabajo automáticamente; véase el [registro canónico de RH-W-0005](roadmap.md#rh-w-0005-probar-voces-existentes-y-ampliar-fuentes-gratuitas-compatibles).

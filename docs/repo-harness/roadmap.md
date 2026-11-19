@@ -491,16 +491,14 @@ Antecedente aprobado el 2026-10-30: base confiable, medición (`RH-W-0003`), ser
 - **Origen:** seguimiento aprobado por la persona responsable el 2026-11-17; alcance precisado el mismo día: en OpenCode, `/tts` sin argumentos debe encender y apagar como en Pi.
 - **Prioridad:** P2; coherencia del contrato de comandos y apagado explícito del servidor compartido.
 - **Dependencias:** `RH-W-0047` y `RH-W-0048`, completados.
-- **Estado:** `pending`.
-- **Responsable sugerido:** Totopo27 (Luis Araya).
-- **Guía para quien lo implemente:**
-  - Pi ya cumple: `/tts` sin argumentos alterna encendido y apagado (`pi-extension/tehablo-tts/src/extension.ts`, `boot()` / `turnOff()`), y `src/server.ts` implementa `powerOff()`: `/stop`, `POST /shutdown` autenticado y terminación del hijo propio solo si falla el cierre.
-  - En `opencode-plugin/tehablo-tts/src/plugin.ts` y `src/server.ts`, incorpora ese mismo apagado y cambia `/tts` sin argumentos de ayuda/estado a interruptor como en Pi; conserva la ayuda en `/tts help`. El servidor implementa `/shutdown` en `src/tehablo_server.py` (actualmente líneas 1034–1036).
-  - Alternativa solo si OpenCode no permite el interruptor con `/tts` sin argumentos: añade `/tts on` y `/tts off` en OpenCode y los mismos alias en Pi, para que ambos clientes compartan los comandos.
-  - Aceptación: OpenCode enciende y apaga con `/tts` (o con la alternativa); apagar funciona aunque ese cliente no haya iniciado el servidor y no inicia un servidor ausente. El aviso debe explicar que el apagado afecta también al otro cliente, porque comparten servidor.
-  - Añade pruebas en `test/` del cliente modificado (y de Pi si se usa la alternativa) para encendido, apagado, servidor ausente, fallo de cierre y protección de procesos ajenos; prueba por regresión que los demás subcomandos conservan su comportamiento. Actualiza ayuda, `opencode-plugin/tehablo-tts/README.md`, `docs/desarrollo.md` y `CHANGELOG.md` por el cambio de contrato.
-- **Exclusiones:** sin comandos nuevos en Pi salvo la alternativa; sin cambios al modelo de autenticación.
-- **Condición del siguiente avance:** implementar el alcance aprobado, superar las pruebas y comprobar manualmente el apagado compartido y el reinicio antes de publicar.
+- **Estado:** `completed`.
+- **Trabajo restante:** ninguno.
+- **Trabajo completado (2026-11-19):** [PR #12](https://github.com/LCubero/tehablo/pull/12) ([e271697](https://github.com/LCubero/tehablo/commit/e271697c36ca1424bc43e804a2c852b23a94288d)), contribución de Totopo27: `/tts on` y `/tts off` en OpenCode con el apagado autenticado de Pi (`/stop`, `POST /shutdown` y terminación solo del hijo propio si falla el cierre); `/tts` y `/tts help` muestran ayuda; el aviso indica que el apagado afecta también a Pi.
+- **Adiciones:** corrección del mantenedor tras la revisión: `/tts off` ya no queda bloqueado mientras `/tts on` espera un arranque que no termina; lo cancela, con prueba por el comando registrado.
+- **Decisiones y razones:** la persona responsable eligió `/tts on` y `/tts off` en OpenCode; Pi conserva `/tts` como interruptor sin alias nuevos. Se mantiene el aviso «No se pudo verificar el servidor TTS» cuando el puerto responde sin identificarse como teHablo o no responde, porque puede ser un servidor colgado y no se apaga ningún proceso ajeno.
+- **Verificación:** 65 pruebas del plugin y CI en Windows y Ubuntu; prueba manual de la persona responsable en Windows el 2026-11-19: ayuda, encendido, repetición, apagado, repetición, apagado desde OpenCode de un servidor iniciado por Pi y nuevo encendido.
+- **Exclusiones:** sin cambios al modelo de autenticación ni al servidor Python.
+- **Aplazamientos y límites:** prueba manual en Linux sin verificar; no bloquea este cierre.
 
 ### RH-W-0050: Indicador de estado y verificación de OpenCode en Linux
 
