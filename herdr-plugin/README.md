@@ -20,6 +20,7 @@ se usa su nombre y, si tampoco, su tipo con el panel (`opencode p6`).
 
 - herdr 0.9.5 o posterior.
 - El servidor de teHablo encendido. Si no responde, el plugin se calla: no lo arranca.
+  Busca en los puertos 23765–23769; si defines `TEHABLO_PORT`, solo en ese.
 - `~/.tehablo/ssh-codigo` con el código de emparejamiento, el mismo que usa el resto de
   los clientes.
 
@@ -107,7 +108,7 @@ sola frase.
 - El envío es de un solo intento: si el servidor está apagado o rechaza la petición,
   ese lote se descarta, sin reintentos ni reproducción diferida al encenderlo.
 - Las peticiones locales no usan proxies ni siguen redirecciones. Un código de
-  emparejamiento que no tenga 32 caracteres hexadecimales se rechaza sin enviarlo.
+  emparejamiento que no tenga 32 caracteres hexadecimales en minúsculas se rechaza sin enviarlo.
   `/health` solo comprueba la identidad declarada: no autentica al dueño del puerto
   frente a otro proceso local malicioso.
 

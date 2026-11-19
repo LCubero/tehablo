@@ -285,7 +285,8 @@ def auth_code():
         code = (Path.home() / '.tehablo' / 'ssh-codigo').read_text(encoding='ascii').strip()
     except (OSError, ValueError):
         return None
-    return code if re.fullmatch(r'[0-9a-fA-F]{32}', code) else None
+    # Same rule as the server: 32 lowercase hex characters.
+    return code if re.fullmatch(r'[0-9a-f]{32}', code) else None
 
 
 class _NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -305,7 +306,13 @@ def tehablo_base():
     /health answers without the pairing code. This checks the advertised service
     identity, not cryptographic proof of who owns the loopback port.
     """
-    for port in PORTS:
+    explicit = os.environ.get('TEHABLO_PORT')
+    if explicit is None:
+        ports = PORTS
+    else:
+        # Like Pi and OpenCode, a fixed port replaces the automatic range.
+        ports = (int(explicit),) if explicit.isdigit() and 0 < int(explicit) < 65536 else ()
+    for port in ports:
         base = f'http://127.0.0.1:{port}'
         try:
             with _local_open(base + '/health', timeout=HEALTH_TIMEOUT) as response:

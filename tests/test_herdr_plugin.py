@@ -552,6 +552,27 @@ class HttpBoundaryTest(unittest.TestCase):
                 local_opened.assert_not_called()
                 self.assertNotIn('a' * 16, stderr.getvalue())
 
+    def test_uppercase_pairing_code_is_rejected_like_the_server(self):
+        with tempfile.TemporaryDirectory() as directory:
+            home = Path(directory)
+            (home / '.tehablo').mkdir()
+            for code, expected in (('A' * 32, None), ('a' * 32, 'a' * 32)):
+                (home / '.tehablo' / 'ssh-codigo').write_text(code + '\n', encoding='ascii')
+                with self.subTest(code=code[0]), mock.patch.object(Path, 'home', return_value=home):
+                    self.assertEqual(notify.auth_code(), expected)
+
+    def test_tehablo_port_pins_discovery_to_one_port(self):
+        for value, probed in (('24123', ['http://127.0.0.1:24123/health']), ('not-a-port', [])):
+            seen = []
+            def health(request, timeout):
+                seen.append(request if isinstance(request, str) else request.full_url)
+                raise OSError('refused')
+            with self.subTest(value=value), \
+                 mock.patch.dict(os.environ, {'TEHABLO_PORT': value}), \
+                 mock.patch.object(notify, '_local_open', side_effect=health):
+                self.assertIsNone(notify.tehablo_base())
+            self.assertEqual(seen, probed)
+
     def test_health_and_speak_never_follow_redirects(self):
         original_build = notify.urllib.request.build_opener
         for operation in ('health', 'speak'):
