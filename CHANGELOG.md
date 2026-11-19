@@ -7,6 +7,7 @@ Este archivo registra los cambios completados en orden cronológico. Las version
 ## 2026-11-19
 
 - OpenCode: `/tts on` y `/tts off` fusionados en [PR #12](https://github.com/LCubero/tehablo/pull/12) ([e271697](https://github.com/LCubero/tehablo/commit/e271697c36ca1424bc43e804a2c852b23a94288d)), contribución de Totopo27. Corrección del mantenedor: `/tts off` cancela también un `/tts on` cuyo arranque no termina, sin tener que cerrar OpenCode. Prueba manual en Windows, incluido apagar desde OpenCode un servidor iniciado por Pi y volver a encender; CI en Windows y Ubuntu aprobadas. Tras actualizar, reinicia OpenCode.
+- herdr: plugin `tehablo.agent-voice` fusionado en [PR #11](https://github.com/LCubero/tehablo/pull/11), contribución de Totopo27: avisa por voz cuando un agente termina («…: terminó») o te espera («…: te espera»), calla el panel enfocado y junta los avisos seguidos en una frase. Solo para herdr de terminal; no arranca el servidor de teHablo. Se activa o desactiva con `herdr plugin enable|disable tehablo.agent-voice`. Correcciones del mantenedor: `--dry-run` ya no consume avisos reales y el README aclara que un aviso sustituye una lectura en pausa. Prueba manual en Windows con herdr 0.9.5.
 
 ## 2026-11-18
 
@@ -14,6 +15,7 @@ Este archivo registra los cambios completados en orden cronológico. Las version
 
 ## 2026-11-17
 
+- herdr: avisos por voz cuando un agente termina o queda esperando, sin leer su mensaje; plugin en `herdr-plugin/` con pruebas y sin cambios en el servidor ([issue #10](https://github.com/LCubero/tehablo/issues/10), [evidencia y límites](docs/repo-harness/roadmap.md#rh-w-0053-avisos-por-voz-de-agentes-en-herdr)).
 - Pi, menú de voces: «↓ descargar» sale en blanco (texto normal) en lugar de gris; «✓ lista» sigue en gris y la descarga que aún necesita el token sigue resaltada.
 - OpenCode: menú, selección y descarga de voces fusionados en [PR #4](https://github.com/LCubero/tehablo/pull/4) ([c64512b](https://github.com/LCubero/tehablo/commit/c64512b80f57cf4e5a757d139a67a0dcf1c7ea12)), [PR #5](https://github.com/LCubero/tehablo/pull/5) ([af60077](https://github.com/LCubero/tehablo/commit/af600777ede5b771bd7fc6eef3e96a37284fc0f4)) y [PR #6](https://github.com/LCubero/tehablo/pull/6) ([c743b27](https://github.com/LCubero/tehablo/commit/c743b2716cec69e973832612e8fb9bd0cc66cb51)), contribución de Totopo27; prueba manual en Windows y CI en Windows y Ubuntu aprobadas. Tras actualizar, reinicia OpenCode y el servidor TTS; [evidencia y migración](docs/repo-harness/roadmap.md#rh-w-0048-menú-de-opencode-controles-selección-y-descarga-de-voces).
 - Puerto automático y diagnóstico de colisiones fusionados en [PR #3](https://github.com/LCubero/tehablo/pull/3) ([4752257](https://github.com/LCubero/tehablo/commit/4752257fefd0944778be8385c6d966221e39a120)); prueba manual en Windows y CI en Windows y Ubuntu aprobadas. Tras actualizar, ejecutar `/reload` en cada sesión abierta de Pi para no conservar el código anterior y un servidor adicional en 8765.

@@ -545,6 +545,20 @@ Antecedente aprobado el 2026-10-30: base confiable, medición (`RH-W-0003`), ser
 - **Exclusiones:** no implementar Herdr ni otros clientes; no modificar código hasta que la persona responsable apruebe los hallazgos. Conserva autenticación local/token y enlace local, sin nueva exposición de red.
 - **Condición del siguiente avance:** presentar inventario, brechas y guía; obtener aprobación explícita de los hallazgos antes de corregir código.
 
+### RH-W-0053: Avisos por voz de agentes en herdr
+
+- **Origen:** propuesta de Totopo27 (Luis Araya) en el [issue #10](https://github.com/LCubero/tehablo/issues/10); aprobada por la persona responsable el 2026-11-19 tras revisarla y oírla en herdr, con la condición de poder activarla o desactivarla.
+- **Prioridad:** P2; herdr expone el estado del agente, no su texto, así que avisar es la superficie viable.
+- **Dependencias:** `RH-W-0047` (puertos 23765–23769).
+- **Estado:** `completed`.
+- **Trabajo restante:** ninguno.
+- **Trabajo completado (2026-11-19):** [PR #11](https://github.com/LCubero/tehablo/pull/11), contribución de Totopo27: plugin `herdr-plugin/` (`tehablo.agent-voice`) con hook `pane.agent_status_changed`, lanzadores `run.sh` y `run.cmd`, frases «{proyecto}, {tarea}: terminó.» y «…: te espera.», silencio en el panel enfocado, deduplicación por `completion_seq` y agrupación de avisos en una ventana de 2 s (`window: 0` la desactiva). Pruebas en `tests/test_herdr_plugin.py`, añadidas a CI.
+- **Adiciones:** correcciones del mantenedor: `--dry-run` imprime la frase sin reclamar ni marcar avisos de la cola compartida; el README aclara que `policy: wait` sustituye una lectura en pausa, comportamiento del servidor ya cubierto en `tests/test_server.py`.
+- **Decisiones y razones:** activar o desactivar con `herdr plugin enable|disable tehablo.agent-voice`, sin código propio para ello. Sin demonio: un proceso corto por evento, sin dependencias, sin telemetría y solo hacia `127.0.0.1`.
+- **Verificación:** 43 pruebas; prueba manual de la persona responsable en Windows con herdr 0.9.5: terminó, te espera, panel enfocado en silencio y desactivar/activar.
+- **Exclusiones:** herdr-app, que funciona sobre herdr-core (`hc`) sin sistema de plugins; leer el mensaje del agente; arrancar el servidor si está apagado; cambios en el servidor, Pi u OpenCode.
+- **Aplazamientos y límites:** prueba manual en Linux y macOS sin verificar; envío de un solo intento, sin reintentos.
+
 ## Registros resueltos
 <!-- doc-role:resolved-records -->
 

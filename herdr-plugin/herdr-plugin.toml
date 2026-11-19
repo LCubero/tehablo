@@ -1,0 +1,19 @@
+id = "tehablo.agent-voice"
+name = "teHablo agent voice"
+version = "0.1.0"
+min_herdr_version = "0.9.5"
+description = "Speaks a short notice when an agent finishes or waits for input."
+platforms = ["linux", "macos", "windows"]
+
+# One process per status change. The script fetches the agent detail itself, so
+# the hook only needs the pane id that herdr puts in HERDR_PLUGIN_EVENT_JSON.
+
+[[events]]
+on = "pane.agent_status_changed"
+command = ["sh", "run.sh"]
+platforms = ["linux", "macos"]
+
+[[events]]
+on = "pane.agent_status_changed"
+command = ["cmd", "/c", "run.cmd"]
+platforms = ["windows"]
