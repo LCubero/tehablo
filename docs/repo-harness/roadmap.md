@@ -559,6 +559,22 @@ Antecedente aprobado el 2026-10-30: base confiable, medición (`RH-W-0003`), ser
 - **Exclusiones:** herdr-app, que funciona sobre herdr-core (`hc`) sin sistema de plugins; leer el mensaje del agente; arrancar el servidor si está apagado; cambios en el servidor, Pi u OpenCode.
 - **Aplazamientos y límites:** prueba manual en Linux y macOS sin verificar; envío de un solo intento, sin reintentos.
 
+### RH-W-0054: Investigar avisos por voz en herdr-app
+
+- **Origen:** aprobado por la persona responsable el 2026-11-19 tras completar `RH-W-0053`, que solo funciona en herdr de terminal.
+- **Prioridad:** P2; los mismos avisos «terminó» y «te espera» para quien usa la aplicación de escritorio.
+- **Dependencias:** `RH-W-0053` (frases, filtros y llamada a `/speak`) y `RH-W-0047` (puertos 23765–23769).
+- **Estado:** `proposed`.
+- **Responsable sugerido:** persona responsable o Totopo27 (Luis Araya); investigación primero.
+- **Guía para quien lo investigue:**
+  - herdr-app funciona sobre herdr-core (`hc`), que no tiene plugins. Su vía de extensión son los mods (`~/.config/herdr-app/mods/<nombre>/`, JavaScript con gpui-kit), descritos en [defaults/AGENTS.md](https://github.com/herdrdev/herdr-app/blob/master/defaults/AGENTS.md): `agents()` da el estado de cada agente (`working`, `blocked`, `idle`, `done`) y la vista se vuelve a dibujar cuando cambia, sin sondeo; `fetch` y `exec` están disponibles y `fs/promises` lee en la carpeta del usuario.
+  - Comprobar si `fetch` envía la cabecera `Origin`: `src/tehablo_server.py:991–994` rechaza con 403 cualquier petición que la traiga.
+  - Definir la forma más simple de activarlo y desactivarlo (mostrar u ocultar el mod en el diseño, u otra) y medir que no añade consumo apreciable.
+  - Reutilizar las frases, el silencio del panel enfocado y la deduplicación de `herdr-plugin/notify.py`, sin copiar la agrupación entre procesos si el mod corre en un solo proceso.
+  - Entregar hallazgos y propuesta breve; código solo tras aprobarlos.
+- **Exclusiones:** herdr-core sin la aplicación (`hc events` exigiría un proceso aparte); leer el mensaje del agente; arrancar el servidor; exponer el servidor a la red.
+- **Condición del siguiente avance:** presentar hallazgos y obtener aprobación explícita antes de implementar.
+
 ## Registros resueltos
 <!-- doc-role:resolved-records -->
 
