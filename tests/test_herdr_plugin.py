@@ -30,6 +30,7 @@ class StripPrefixTest(unittest.TestCase):
         # Pi titles its terminal "\u03c0 - folder"; herdr on Windows can hand it over as UTF-8 read as cp1252.
         self.assertEqual(notify.strip_prefix('\u03c0 - code'), 'code')
         self.assertEqual(notify.strip_prefix('\u00cf\u20ac - code'), 'code')
+        self.assertEqual(notify.strip_prefix('OC | \u03c0 - notas'), '\u03c0 - notas')
         self.assertEqual(notify.compose([{'status': 'done', 'project': 'code',
                                           'label': notify.label_of({'terminal_title': '\u00cf\u20ac - code'})}]),
                          'code: termin\u00f3.')

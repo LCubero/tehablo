@@ -51,7 +51,9 @@ def strip_prefix(title):
     """
     if not isinstance(title, str):
         return None
-    text = PI_PREFIX.sub('', PREFIX.sub('', title.strip())).strip()
+    # Strip one agent label only: text after it belongs to the task.
+    text = title.strip()
+    text = (PREFIX.sub('', text, count=1) if PREFIX.match(text) else PI_PREFIX.sub('', text, count=1)).strip()
     return text or None
 
 
