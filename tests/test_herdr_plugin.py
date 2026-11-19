@@ -249,6 +249,50 @@ class OrphanNoticeTest(unittest.TestCase):
                 self.assertEqual(state['seen'], {'old': 1, 'new': 2})
 
 
+class BatchingTest(unittest.TestCase):
+    def run_hook(self, root, event_status, agent_status, window, during_sleep=None):
+        (root / 'config.json').write_text(json.dumps({'window': window}), encoding='utf-8')
+        event = {'data': {'pane_id': 'b', 'agent_status': event_status}}
+        env = {'HERDR_PLUGIN_STATE_DIR': str(root), 'HERDR_PLUGIN_CONFIG_DIR': str(root),
+               'HERDR_PLUGIN_EVENT_JSON': json.dumps(event)}
+        agent = {'pane_id': 'b', 'workspace_id': 'w1', 'agent_status': agent_status,
+                 'completion_seq': 1, 'terminal_title_stripped': 'task b'}
+        with mock.patch.dict(os.environ, env), \
+             mock.patch.object(notify, 'agent_info', return_value=agent) as lookup, \
+             mock.patch.object(notify, 'workspace_label', return_value='p'), \
+             mock.patch.object(notify.time, 'sleep', side_effect=during_sleep), \
+             mock.patch.object(notify, 'tehablo_base', return_value='http://127.0.0.1:23765'), \
+             mock.patch.object(notify, 'speak', return_value=True) as speak:
+            self.assertEqual(notify.main([]), 0)
+        return lookup, speak
+
+    def test_event_status_decides_the_transition_spoken(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            lookup, speak = self.run_hook(root, 'working', 'blocked', 0)
+            lookup.assert_not_called()
+            speak.assert_not_called()
+            _, speak = self.run_hook(root, 'blocked', 'blocked', 0)
+            speak.assert_called_once_with('http://127.0.0.1:23765', 'b', 'p, task b: te espera.', True)
+
+    def test_sleeper_from_a_spoken_batch_leaves_the_next_batch_alone(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            path = root / 'state.json'
+            newer = {'pane': 'c', 'status': 'done', 'project': 'p', 'label': 'task c', 'ts': time.time()}
+
+            def other_hooks_meanwhile(_seconds):
+                # Another hook speaks this batch, then a new notice starts the next one.
+                state = json.loads(path.read_text(encoding='utf-8'))
+                state['batch'] = notify.batch_of(state) + 1
+                state['pending'] = [newer]
+                path.write_text(json.dumps(state), encoding='utf-8')
+
+            _, speak = self.run_hook(root, 'done', 'done', 2.0, other_hooks_meanwhile)
+            speak.assert_not_called()
+            self.assertEqual(json.loads(path.read_text(encoding='utf-8'))['pending'], [newer])
+
+
 class DryRunTest(unittest.TestCase):
     def test_dry_run_prints_without_touching_the_shared_queue(self):
         with tempfile.TemporaryDirectory() as directory:

@@ -415,18 +415,41 @@ def save_state(path, state):
 # --- Entry points ------------------------------------------------------------
 
 
+def batch_of(state):
+    batch = state.get('batch')
+    return batch if isinstance(batch, int) and not isinstance(batch, bool) else 0
+
+
+def claim_batch(joined):
+    """Take the queued batch only if it is still the one this hook joined."""
+    with locked_state() as path:
+        state = load_state(path)
+        # A sleeper from an earlier, already spoken batch must not cut the next one short.
+        if batch_of(state) != joined or not state['pending']:
+            return None
+        pending = pending_items(state)
+        state['pending'] = []
+        state['batch'] = joined + 1
+        save_state(path, state)
+        return pending
+
+
 def handle(dry=False):
     """Announce one status change, grouping whatever else arrived meanwhile."""
     event = parse_event(os.environ.get('HERDR_PLUGIN_EVENT_JSON'))
     pane = event.get('pane_id')
     if not pane:
         return 0
+    # The event names the transition; the lookup may already show a later one.
+    reported = event.get('agent_status')
+    if reported is not None and reported not in ('done', 'blocked'):
+        return 0
     agent = agent_info(pane)
     if not agent:
         return 0
     options = settings()
     status = announceable(agent, options['skip_focused'])
-    if status is None:
+    if status is None or (reported is not None and status != reported):
         return 0
     seq = agent.get('completion_seq')
     item = {'pane': pane, 'status': status,
@@ -447,6 +470,7 @@ def handle(dry=False):
         mark_seen(state, pane, status, seq)
         if options['window'] > 0:
             add_pending(state, item)
+            joined = batch_of(state)
         else:
             pending = [item]
         save_state(path, state)
@@ -454,14 +478,9 @@ def handle(dry=False):
     # Other event processes must be able to enqueue during this wait.
     if options['window'] > 0:
         time.sleep(options['window'])
-        with locked_state() as path:
-            state = load_state(path)
-            if not state['pending']:
-                return 0
-            pending = pending_items(state)
-            # Claim this batch atomically. Later arrivals belong to the next one.
-            state['pending'] = []
-            save_state(path, state)
+        pending = claim_batch(joined)
+        if not pending:
+            return 0
 
     text = compose(pending)
     if not text:

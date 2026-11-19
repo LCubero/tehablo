@@ -56,13 +56,15 @@ respetan ese orden antes de buscar alternativas: `run.sh` prueba `python3` y `py
 herdr lanza un proceso por cada cambio de estado del panel, con el `pane_id` en
 `HERDR_PLUGIN_EVENT_JSON`. El proceso:
 
-1. Pide el detalle con `herdr agent get <panel>` y descarta `working`, `idle` y `unknown`.
+1. Descarta el evento si su estado no es `done` ni `blocked`; después pide el detalle con
+   `herdr agent get <panel>` y calla si el panel ya cambió a otro estado.
 2. Ignora el panel enfocado, si `skip_focused` está activo.
 3. Compara `completion_seq` con el último aviso de ese panel: sin eso, volver a mirar el
    panel repetiría el mismo aviso.
 4. Añade el aviso a la cola, libera el bloqueo y espera la ventana.
 5. Reclama el lote bajo un bloqueo breve, vacía esa cola y libera el bloqueo antes
-   de hacer **una** llamada a `/speak`. Los demás procesos no vuelven a enviar ese lote.
+   de hacer **una** llamada a `/speak`. Los demás procesos no vuelven a enviar ese lote
+   ni reclaman el siguiente antes de tiempo: cada proceso solo reclama el lote al que se unió.
 
 No hay demonio: herdr desaconseja procesos largos, así que el primer proceso que despierta
 se lleva el lote. El bloqueo protege solo los cambios de la cola, nunca la espera ni
