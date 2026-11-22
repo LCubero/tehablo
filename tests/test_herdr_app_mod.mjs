@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { runInNewContext } from "node:vm";
 
 import {
   composeNotices,
@@ -21,6 +22,35 @@ const baseAgent = {
 };
 
 const mainSource = readFileSync(new URL("../herdr-app-mod/main.js", import.meta.url), "utf8");
+
+function loadMainView(overrides = {}) {
+  const source = mainSource
+    .replace(/^import[\s\S]*?;\r?\n/gm, "")
+    .replace("export default class TehabloVoice", "class TehabloVoice")
+    .concat("\nglobalThis.TehabloVoice = TehabloVoice;\n");
+  const context = {
+    View: class {},
+    div() {},
+    svg() {},
+    h_flex() {},
+    agents: () => [],
+    checking: () => false,
+    home: () => "/home/test",
+    readTextFile: async () => "0123456789abcdef0123456789abcdef",
+    theme: () => ({}),
+    composeNotices() {},
+    createNoticeBatch() {},
+    createVoiceState() {},
+    deriveNotices() {},
+    enqueueNotices() {},
+    speakRequest: (_code, _identifier, text) => ({ method: "POST", body: text }),
+    takeDueNotices() {},
+    fetch: async () => ({ ok: true }),
+    ...overrides,
+  };
+  runInNewContext(source, context);
+  return context.TehabloVoice;
+}
 
 {
   const state = createVoiceState([baseAgent]);
@@ -108,6 +138,33 @@ const mainSource = readFileSync(new URL("../herdr-app-mod/main.js", import.meta.
     composeNotices(deriveNotices(createVoiceState(previous), current, { muted: false })),
     "Terminaron tehablo, PRs para issues 8 y 9; herdr, docs.",
   );
+}
+
+{
+  let networkRequests = 0;
+  let spawned;
+  const TehabloVoice = loadMainView({
+    readTextFile: async () => {
+      throw new Error("pairing file unavailable");
+    },
+    fetch: async () => {
+      networkRequests += 1;
+      return { ok: true };
+    },
+  });
+  const view = new TehabloVoice();
+  view.base = "http://127.0.0.1:23765";
+  view.sending = false;
+  view.speak("t1", "Aviso", {
+    spawn(task) {
+      spawned = task({ notify() {} });
+    },
+  });
+
+  await assert.doesNotReject(spawned);
+  assert.equal(view.sending, false, "Alert dispatch must unlock after a pairing file read failure");
+  assert.equal(view.last, "Notice skipped: Pairing code unavailable");
+  assert.equal(networkRequests, 0);
 }
 
 console.log("herdr-app voice seam: ok");

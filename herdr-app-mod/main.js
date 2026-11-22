@@ -44,7 +44,12 @@ async function findServer() {
 }
 
 async function sendNotice(base, identifier, text) {
-  const code = await pairingCode();
+  let code;
+  try {
+    code = await pairingCode();
+  } catch {
+    return { ok: false, reason: "Pairing code unavailable" };
+  }
   if (!code) return { ok: false, reason: "Pairing code unavailable" };
   try {
     const response = await fetch(`${base}/speak`, speakRequest(code, identifier, text));
@@ -100,25 +105,28 @@ export default class TehabloVoice extends View {
   speak(identifier, text, cx) {
     this.sending = true;
     cx.spawn(async (cx) => {
-      let base = this.base;
-      if (!base) {
-        base = await findServer();
-        this.base = base;
-        this.connection = base ? "connected" : "unavailable";
-      }
-
-      if (!base) {
-        this.last = "Notice skipped: teHablo is unavailable";
-      } else {
-        const result = await sendNotice(base, identifier, text);
-        this.last = result.ok ? text : `Notice skipped: ${result.reason}`;
-        if (!result.ok && result.reason === "teHablo became unavailable") {
-          this.base = null;
-          this.connection = "unavailable";
+      try {
+        let base = this.base;
+        if (!base) {
+          base = await findServer();
+          this.base = base;
+          this.connection = base ? "connected" : "unavailable";
         }
+
+        if (!base) {
+          this.last = "Notice skipped: teHablo is unavailable";
+        } else {
+          const result = await sendNotice(base, identifier, text);
+          this.last = result.ok ? text : `Notice skipped: ${result.reason}`;
+          if (!result.ok && result.reason === "teHablo became unavailable") {
+            this.base = null;
+            this.connection = "unavailable";
+          }
+        }
+      } finally {
+        this.sending = false;
+        cx.notify();
       }
-      this.sending = false;
-      cx.notify();
     });
   }
 
