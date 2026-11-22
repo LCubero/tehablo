@@ -28,7 +28,12 @@ function loadMainView(overrides = {}) {
     .replace(/^import[\s\S]*?;\r?\n/gm, "")
     .replace("export default class TehabloVoice", "class TehabloVoice")
     .concat("\nglobalThis.TehabloVoice = TehabloVoice;\n");
+  const storage = new Map();
   const context = {
+    localStorage: {
+      getItem: (key) => storage.get(key) ?? null,
+      setItem: (key, value) => storage.set(key, value),
+    },
     View: class {},
     div() {},
     svg() {},
@@ -199,6 +204,66 @@ function loadMainView(overrides = {}) {
   assert.equal(view.sending, false, "Alert dispatch must unlock after a pairing file read failure");
   assert.equal(view.last, "Notice skipped: Pairing code unavailable");
   assert.equal(networkRequests, 0);
+}
+
+for (const initiallyMuted of [true, false]) {
+  let agentReads = 0;
+  let current = [baseAgent];
+  const requests = [];
+  const tickers = [];
+  const notices = [];
+  const spawned = [];
+  const view = new (loadMainView({
+    agents: () => { agentReads += 1; return current; },
+    localStorage: { getItem: () => String(initiallyMuted), setItem() {} },
+    createVoiceState,
+    createNoticeBatch,
+    deriveNotices,
+    enqueueNotices(batch, next, ...args) {
+      notices.push(...next);
+      enqueueNotices(batch, next, ...args);
+    },
+    takeDueNotices,
+    composeNotices,
+    fetch: async (url) => {
+      requests.push(url);
+      return { ok: true, json: async () => ({ service: "tehablo" }) };
+    },
+  }))();
+  const cx = {
+    notify() {},
+    spawn(task) { spawned.push(task(this)); },
+    timer: {
+      every(_ms, tick) {
+        const ticker = { tick, cancelled: false, cancel() { this.cancelled = true; } };
+        tickers.push(ticker);
+        return ticker;
+      },
+    },
+  };
+  view.init({}, cx);
+  await Promise.all(spawned);
+  const starts = initiallyMuted ? 0 : 1;
+  assert.equal(tickers.length, starts, "Only an unmuted start creates a ticker");
+  assert.equal(requests.length, starts, "Only an unmuted start checks the connection");
+  assert.equal(agentReads, starts, "Only an unmuted start reads agents");
+  if (!initiallyMuted) {
+    view.toggleMute(cx);
+    assert.ok(tickers[0].cancelled, "Muting cancels the running ticker");
+    assert.equal(requests.length, starts, "Muting does not fetch");
+    assert.equal(agentReads, starts, "Muting does not read agents");
+  }
+  current = [{ ...baseAgent, status: "done" }];
+  view.toggleMute(cx);
+  await Promise.all(spawned);
+  assert.equal(tickers.length, starts + 1, "Unmuting starts a fresh ticker");
+  assert.equal(agentReads, starts + 1, "Unmuting reads current agent statuses");
+  assert.deepEqual(requests, Array(starts + 1).fill("http://127.0.0.1:23765/health"));
+  tickers.at(-1).tick(cx);
+  assert.deepEqual(notices, [], "Transitions while muted do not enqueue notices");
+  current = [{ ...baseAgent, status: "blocked" }];
+  tickers.at(-1).tick(cx);
+  assert.deepEqual(notices.map(({ status }) => status), ["blocked"], "Live transitions still enqueue notices");
 }
 
 console.log("herdr-app voice seam: ok");

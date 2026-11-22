@@ -11,7 +11,8 @@ The bar shows whether the local teHablo server is available, the last alert outc
 - Stays silent for the focused agent.
 - Groups status changes that happen within two seconds.
 - Never starts teHablo and never retries or replays a skipped alert.
-- Keeps the mute choice in Herdr App's local mod storage.
+- Keeps the mute choice in Herdr App's local mod storage. Muting stops the mod's timer, agent reads, and connection checks until you unmute; it does not stop teHablo.
+- A hidden block keeps running. To turn off the integration, mute it, remove its block from the layout, or remove the mod folder.
 - Always applies teHablo's pronunciation lexicon; unlike the terminal plugin, it has no `lexicon` setting.
 
 ## Requirements
