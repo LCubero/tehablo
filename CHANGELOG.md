@@ -4,6 +4,10 @@
 
 Este archivo registra los cambios completados en orden cronológico. Las versiones (`VERSION` y tags `vX.Y.Z`) marcan hasta qué fecha llega cada una.
 
+## 2026-11-22
+
+- herdr: añadido un mod candidato para Herdr App 0.1.16 con avisos `done`/`blocked`, barra de conexión, último aviso y silencio persistente; incluye instalación mediante layout personal y pruebas silenciosas, pendiente de aceptación visual y escucha real.
+
 ## 2026-11-18
 
 - herdr: descarta pendientes huérfanos de más de 60 s, también al procesar avisos sin agrupación. Las pruebas de concurrencia sincronizan el encolado con barreras e incluyen una llegada durante la espera, sin depender de la velocidad del planificador.

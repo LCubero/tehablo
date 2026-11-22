@@ -76,6 +76,13 @@ Empieza apagado y en modo manual, con `lola` o la voz que hayas guardado.
 
 [Controles, comandos y ajustes completos](docs/desarrollo.md#uso-en-pi).
 
+## Avisos en Herdr
+
+- La TUI de Herdr usa [`herdr-plugin/`](herdr-plugin/README.md).
+- Herdr App usa [`herdr-app-mod/`](herdr-app-mod/README.md), una barra con estado de conexión, último aviso y control para silenciar la voz.
+
+Ambas integraciones anuncian cuándo un agente termina o espera una respuesta, sin leer el contenido de su mensaje.
+
 ## Audio por SSH
 
 Si Pi corre en un servidor, el cliente teHablo puede reproducir la voz en tu computadora mediante SSH cifrado. Por defecto suena donde corre Pi. [Instalar y vincular el cliente](docs/desarrollo.md#audio-por-ssh).
