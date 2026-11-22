@@ -41,3 +41,5 @@ jobs:
         run: node --test pi-extension/tehablo-tts/test/*.test.ts
       - name: OpenCode plugin
         run: node --test opencode-plugin/tehablo-tts/test/*.test.ts
+      - name: Herdr App mod
+        run: node tests/test_herdr_app_mod.mjs

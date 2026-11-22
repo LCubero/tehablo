@@ -4,6 +4,10 @@
 
 Este archivo registra los cambios completados en orden cronológico. Las versiones (`VERSION` y tags `vX.Y.Z`) marcan hasta qué fecha llega cada una.
 
+## 2026-11-22
+
+- herdr-app: nuevo mod (`herdr-app-mod/`) para Herdr App 0.1.16 con avisos por voz `done`/`blocked`, barra de conexión, último aviso y silencio persistente (PR #15, contribución de Totopo27). Dice el proyecto una sola vez y sin el prefijo `π - ` de Pi; su prueba corre en CI.
+
 ## 2026-11-19
 
 - herdr: la prueba de voz manual (`notify.py --say`) respeta `lexicon: false` de la configuración, igual que los avisos.

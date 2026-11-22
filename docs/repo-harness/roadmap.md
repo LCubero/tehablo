@@ -561,16 +561,16 @@ Antecedente aprobado el 2026-10-30: base confiable, medición (`RH-W-0003`), ser
 - **Origen:** aprobado por la persona responsable el 2026-11-19 tras completar `RH-W-0053`, que solo funciona en herdr de terminal.
 - **Prioridad:** P2; los mismos avisos «terminó» y «te espera» para quien usa la aplicación de escritorio.
 - **Dependencias:** `RH-W-0053` (frases, filtros y llamada a `/speak`) y `RH-W-0047` (puertos 23765–23769).
-- **Estado:** `ready`.
-- **Responsable sugerido:** persona responsable o Totopo27 (Luis Araya); investigación primero.
-- **Guía para quien lo investigue:**
-  - herdr-app funciona sobre herdr-core (`hc`), que no tiene plugins. Su vía de extensión son los mods (`~/.config/herdr-app/mods/<nombre>/`, JavaScript con gpui-kit), descritos en [defaults/AGENTS.md](https://github.com/herdrdev/herdr-app/blob/master/defaults/AGENTS.md): `agents()` da el estado de cada agente (`working`, `blocked`, `idle`, `done`) y la vista se vuelve a dibujar cuando cambia, sin sondeo; `fetch` y `exec` están disponibles y `fs/promises` lee en la carpeta del usuario.
-  - Comprobar si `fetch` envía la cabecera `Origin`: `src/tehablo_server.py:991–994` rechaza con 403 cualquier petición que la traiga.
-  - Definir la forma más simple de activarlo y desactivarlo (mostrar u ocultar el mod en el diseño, u otra) y medir que no añade consumo apreciable.
-  - Reutilizar las frases, el silencio del panel enfocado y la deduplicación de `herdr-plugin/notify.py`, sin copiar la agrupación entre procesos si el mod corre en un solo proceso.
-  - Entregar hallazgos y propuesta breve; código solo tras aprobarlos.
-- **Exclusiones:** herdr-core sin la aplicación (`hc events` exigiría un proceso aparte); leer el mensaje del agente; arrancar el servidor; exponer el servidor a la red.
-- **Condición del siguiente avance:** presentar hallazgos y obtener aprobación explícita antes de implementar.
+- **Estado:** `completed` (2026-11-22), fusionado en [PR #15](https://github.com/LCubero/tehablo/pull/15), contribución de Totopo27 (Luis Araya) con correcciones del mantenedor.
+- **Responsable:** Totopo27 (Luis Araya), con revisión de la persona responsable.
+- **Hallazgos:** herdr-app funciona sobre herdr-core (`hc`) y su vía de extensión son mods JavaScript con gpui-kit. `agents()` expone `working`, `blocked`, `idle` y `done`; el `fetch` nativo no añade `Origin`; mostrar u ocultar el bloque en un layout personal activa o desactiva la integración.
+- **Implementación (2026-11-22, [PR #15](https://github.com/LCubero/tehablo/pull/15)):** mod nativo para Herdr App 0.1.16 en `herdr-app-mod/`, independiente del agente detectado por `agents()`. Añade barra inferior con conexión, último aviso y silencio persistente; conserva proyecto+tarea, omite el agente enfocado y agrupa durante 2 s desde el primer evento. `fetch` nativo no añade `Origin`; la instalación usa un layout personal porque los distribuidos descubren el mod pero no lo acoplan.
+- **Correcciones del mantenedor:** quitar el prefijo `π - ` del título de Pi y decir una sola vez la tarea que se llama como su espacio, igual que `herdr-plugin/notify.py` (antes sonaba «tehablo, pi tehablo»); código de emparejamiento solo en minúsculas, como el servidor; la prueba del mod corre en CI.
+- **Verificación:** prueba del mod, `herdr-app check` y `git diff --check` correctos; revisión nativa aprobada. Prueba manual de la persona responsable en Windows con Herdr App 0.1.16, en una ventana aislada con `HERDR_APP_HOME` temporal: barra «teHablo connected» (el `fetch` no envía `Origin`) y aviso «tehablo: terminó.». Sin confirmar por escucha: `blocked`, silencio y agente enfocado; Linux y macOS sin verificar.
+- **Límites:** siempre aplica el léxico (sin ajuste `lexicon`); con dos ventanas de Herdr App abiertas, cada una hace su propio sonido de aviso.
+- **Decisiones y razones:** el mod no inicia teHablo ni reintenta avisos descartados; el mute se guarda por copia con `localStorage`; mostrar u ocultar el bloque en el layout activa o desactiva la integración.
+- **Exclusiones:** herdr-core sin la aplicación; leer el mensaje del agente; arrancar el servidor; exponer el servidor a la red.
+- **Condición del siguiente avance:** ninguna; un fallo observado se registra como trabajo nuevo.
 
 ## Registros resueltos
 <!-- doc-role:resolved-records -->
