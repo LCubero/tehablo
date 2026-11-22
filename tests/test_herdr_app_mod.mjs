@@ -153,6 +153,7 @@ function loadMainView(overrides = {}) {
   // Only one agent label is removed; the rest belongs to the task.
   assert.equal(say({ ...baseAgent, title: "PI | \u03c0 - docs" }), "tehablo, π - docs: terminó.");
   assert.equal(say({ ...baseAgent, title: "pi - docs" }), "tehablo, pi - docs: terminó.");
+  assert.equal(say({ ...baseAgent, title: "\u03c0-calculus" }), "tehablo, π-calculus: terminó.");
 }
 
 {

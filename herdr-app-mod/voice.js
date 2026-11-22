@@ -1,6 +1,6 @@
 const PREFIX = /^[A-Z][A-Z0-9]{0,3}\s*\|\s*/;
 // Pi titles its terminal "π - folder".
-const PI_PREFIX = /^\u03c0\s*-\s*/;
+const PI_PREFIX = /^\u03c0\s+-\s+/;
 const MAX_TITLE = 48;
 const MAX_NAMED = 2;
 
