@@ -577,10 +577,10 @@ Antecedente aprobado el 2026-10-30: base confiable, medición (`RH-W-0003`), ser
 - **Origen:** aprobado por la persona responsable el 2026-11-22.
 - **Prioridad:** P2.
 - **Dependencias:** `RH-W-0054`.
-- **Estado:** `in-progress` (pendiente prueba manual y merge).
+- **Estado:** `completed` (2026-11-22).
 - **Responsable:** persona responsable.
 - **Descripción:** al silenciar, cancelar el temporizador y dejar de leer agentes y comprobar la conexión. Al reactivar, tomar los estados actuales sin emitir avisos atrasados y comprobar la conexión una vez antes de retomar el ciclo normal.
-- **Verificación:** prueba automatizada del arranque silenciado, cancelación del temporizador y reactivación sin avisos atrasados; `herdr-app check herdr-app-mod`. Pendiente confirmar el flujo en Herdr App.
+- **Verificación:** prueba automatizada del arranque silenciado, cancelación del temporizador y reactivación sin avisos atrasados; `herdr-app check herdr-app-mod`. Prueba manual de la persona responsable en Herdr App 0.1.16 (Windows): silencio sin avisos, reactivación sin avisos atrasados y avisos nuevos después.
 - **Exclusiones:** no apagar ni arrancar el servidor teHablo.
 
 ### RH-W-0056: Mod completo de teHablo para Herdr App
