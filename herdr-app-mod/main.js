@@ -159,6 +159,11 @@ export default class TehabloVoice extends View {
     cx.notify();
   }
 
+  detail() {
+    // The mod never starts teHablo; it only says how to hear alerts again.
+    return !this.muted && this.connection === "unavailable" ? "Turn on teHablo to hear alerts" : this.last;
+  }
+
   render() {
     const t = theme();
     const state = this.muted ? "muted" : this.connection;
@@ -192,7 +197,7 @@ export default class TehabloVoice extends View {
           .child(div().size(7).rounded(4).bg(stateColor))
           .child(div().text_color(t.foreground).child(stateText)),
       )
-      .child(div().flex_1().truncate().text_color(t.dim).child(this.last))
+      .child(div().flex_1().truncate().text_color(t.dim).child(this.detail()))
       .child(
         h_flex()
           .id("toggle-mute")

@@ -266,4 +266,16 @@ for (const initiallyMuted of [true, false]) {
   assert.deepEqual(notices.map(({ status }) => status), ["blocked"], "Live transitions still enqueue notices");
 }
 
+{
+  // With teHablo off, the bar asks to turn it on instead of showing a stale notice.
+  const TehabloVoice = loadMainView();
+  const view = new TehabloVoice();
+  Object.assign(view, { muted: false, connection: "unavailable", last: "tehablo: terminó." });
+  assert.equal(view.detail(), "Turn on teHablo to hear alerts");
+  Object.assign(view, { connection: "connected" });
+  assert.equal(view.detail(), "tehablo: terminó.");
+  Object.assign(view, { muted: true, connection: "unavailable", last: "Voice alerts muted" });
+  assert.equal(view.detail(), "Voice alerts muted");
+}
+
 console.log("herdr-app voice seam: ok");
