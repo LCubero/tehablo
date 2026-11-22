@@ -141,6 +141,39 @@ function loadMainView(overrides = {}) {
 }
 
 {
+  // Pi titles its terminal "π - <folder>": say the project once, never "pi".
+  const say = (agent) => composeNotices(deriveNotices(
+    createVoiceState([{ ...agent, status: "working" }]),
+    [{ ...agent, status: "done" }],
+    { muted: false },
+  ));
+  assert.equal(say({ ...baseAgent, title: "\u03c0 - tehablo" }), "tehablo: terminó.");
+  assert.equal(say({ ...baseAgent, space_name: "code", title: "\u03c0 - Code" }), "code: terminó.");
+  assert.equal(say({ ...baseAgent, title: "\u03c0 - docs" }), "tehablo, docs: terminó.");
+  // Only one agent label is removed; the rest belongs to the task.
+  assert.equal(say({ ...baseAgent, title: "PI | \u03c0 - docs" }), "tehablo, π - docs: terminó.");
+  assert.equal(say({ ...baseAgent, title: "pi - docs" }), "tehablo, pi - docs: terminó.");
+}
+
+{
+  let networkRequests = 0;
+  const TehabloVoice = loadMainView({
+    readTextFile: async () => "0123456789ABCDEF0123456789ABCDEF",
+    fetch: async () => {
+      networkRequests += 1;
+      return { ok: true };
+    },
+  });
+  const view = new TehabloVoice();
+  view.base = "http://127.0.0.1:23765";
+  let spawned;
+  view.speak("t1", "Aviso", { spawn(task) { spawned = task({ notify() {} }); } });
+  await spawned;
+  assert.equal(view.last, "Notice skipped: Pairing code unavailable", "The server accepts lowercase codes only");
+  assert.equal(networkRequests, 0);
+}
+
+{
   let networkRequests = 0;
   let spawned;
   const TehabloVoice = loadMainView({

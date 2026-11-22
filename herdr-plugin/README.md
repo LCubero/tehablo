@@ -121,7 +121,8 @@ herdr plugin enable tehablo.agent-voice    # vuelve a avisar
 ```
 
 El cambio vale al momento para todas las sesiones de herdr. Solo funciona en herdr de
-terminal: herdr-app usa herdr-core (`hc`), que no tiene plugins.
+terminal: herdr-app usa herdr-core (`hc`), que no tiene plugins; para Herdr App está
+[`herdr-app-mod/`](../herdr-app-mod/README.md).
 
 ## Desinstalar
 

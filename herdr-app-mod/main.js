@@ -25,7 +25,8 @@ const TICK_MS = 500;
 
 async function pairingCode() {
   const value = (await readTextFile(`${home()}/.tehablo/ssh-codigo`))?.trim();
-  return /^[0-9a-f]{32}$/i.test(value ?? "") ? value : null;
+  // Same rule as the server: 32 lowercase hex characters.
+  return /^[0-9a-f]{32}$/.test(value ?? "") ? value : null;
 }
 
 async function findServer() {

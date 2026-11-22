@@ -1,4 +1,6 @@
 const PREFIX = /^[A-Z][A-Z0-9]{0,3}\s*\|\s*/;
+// Pi titles its terminal "π - folder".
+const PI_PREFIX = /^\u03c0\s*-\s*/;
 const MAX_TITLE = 48;
 const MAX_NAMED = 2;
 
@@ -16,7 +18,9 @@ function clean(value) {
 }
 
 function taskLabel(agent) {
-  const title = typeof agent.title === "string" ? agent.title.trim().replace(PREFIX, "") : null;
+  // Strip one agent label only: text after it belongs to the task.
+  const raw = typeof agent.title === "string" ? agent.title.trim() : "";
+  const title = PREFIX.test(raw) ? raw.replace(PREFIX, "") : raw.replace(PI_PREFIX, "");
   return clean(title) || clean(agent.tab_name) || clean(agent.program?.name) || "agente";
 }
 
@@ -70,7 +74,10 @@ export function deriveNotices(state, agents, { muted = false } = {}) {
 }
 
 function sentence(items, single, many) {
-  const names = [...new Set(items.map((item) => `${item.project}, ${item.label}`))];
+  // A terminal titled like its project (Pi names it after the folder) is said once.
+  const names = [...new Set(items.map((item) => (
+    item.label.toLowerCase() === item.project.toLowerCase() ? item.project : `${item.project}, ${item.label}`
+  )))];
   if (items.length === 1 && names.length === 1) return `${names[0]}: ${single}.`;
   const shown = names.slice(0, MAX_NAMED);
   const remaining = names.length - shown.length;
