@@ -563,14 +563,36 @@ Antecedente aprobado el 2026-10-30: base confiable, medición (`RH-W-0003`), ser
 - **Dependencias:** `RH-W-0053` (frases, filtros y llamada a `/speak`) y `RH-W-0047` (puertos 23765–23769).
 - **Estado:** `completed` (2026-11-22), fusionado en [PR #15](https://github.com/LCubero/tehablo/pull/15), contribución de Totopo27 (Luis Araya) con correcciones del mantenedor.
 - **Responsable:** Totopo27 (Luis Araya), con revisión de la persona responsable.
-- **Hallazgos:** herdr-app funciona sobre herdr-core (`hc`) y su vía de extensión son mods JavaScript con gpui-kit. `agents()` expone `working`, `blocked`, `idle` y `done`; el `fetch` nativo no añade `Origin`; mostrar u ocultar el bloque en un layout personal activa o desactiva la integración.
+- **Hallazgos:** herdr-app funciona sobre herdr-core (`hc`) y su vía de extensión son mods JavaScript con gpui-kit. `agents()` expone `working`, `blocked`, `idle` y `done`; el `fetch` nativo no añade `Origin`; un bloque oculto en el layout sigue ejecutándose.
 - **Implementación (2026-11-22, [PR #15](https://github.com/LCubero/tehablo/pull/15)):** mod nativo para Herdr App 0.1.16 en `herdr-app-mod/`, independiente del agente detectado por `agents()`. Añade barra inferior con conexión, último aviso y silencio persistente; conserva proyecto+tarea, omite el agente enfocado y agrupa durante 2 s desde el primer evento. `fetch` nativo no añade `Origin`; la instalación usa un layout personal porque los distribuidos descubren el mod pero no lo acoplan.
 - **Correcciones del mantenedor:** quitar el prefijo `π - ` del título de Pi y decir una sola vez la tarea que se llama como su espacio, igual que `herdr-plugin/notify.py` (antes sonaba «tehablo, pi tehablo»); código de emparejamiento solo en minúsculas, como el servidor; la prueba del mod corre en CI.
 - **Verificación:** prueba del mod, `herdr-app check` y `git diff --check` correctos; revisión nativa aprobada. Prueba manual de la persona responsable en Windows con Herdr App 0.1.16, en una ventana aislada con `HERDR_APP_HOME` temporal: barra «teHablo connected» (el `fetch` no envía `Origin`) y aviso «tehablo: terminó.». Sin confirmar por escucha: `blocked`, silencio y agente enfocado; Linux y macOS sin verificar.
 - **Límites:** siempre aplica el léxico (sin ajuste `lexicon`); con dos ventanas de Herdr App abiertas, cada una hace su propio sonido de aviso.
-- **Decisiones y razones:** el mod no inicia teHablo ni reintenta avisos descartados; el mute se guarda por copia con `localStorage`; mostrar u ocultar el bloque en el layout activa o desactiva la integración.
+- **Decisiones y razones:** el mod no inicia teHablo ni reintenta avisos descartados; el mute se guarda por copia con `localStorage`; para desactivar la integración, usar el silencio de `RH-W-0055` o retirar el bloque del layout o la carpeta del mod; ocultar el bloque no basta.
 - **Exclusiones:** herdr-core sin la aplicación; leer el mensaje del agente; arrancar el servidor; exponer el servidor a la red.
 - **Condición del siguiente avance:** ninguna; un fallo observado se registra como trabajo nuevo.
+
+### RH-W-0055: Silencio sin consumo en el mod de Herdr App
+
+- **Origen:** aprobado por la persona responsable el 2026-11-22.
+- **Prioridad:** P2.
+- **Dependencias:** `RH-W-0054`.
+- **Estado:** `completed` (2026-11-22).
+- **Responsable:** persona responsable.
+- **Descripción:** al silenciar, cancelar el temporizador y dejar de leer agentes y comprobar la conexión. Al reactivar, tomar los estados actuales sin emitir avisos atrasados y comprobar la conexión una vez antes de retomar el ciclo normal.
+- **Verificación:** prueba automatizada del arranque silenciado, cancelación del temporizador y reactivación sin avisos atrasados; `herdr-app check herdr-app-mod`. Prueba manual de la persona responsable en Herdr App 0.1.16 (Windows): silencio sin avisos, reactivación sin avisos atrasados y avisos nuevos después.
+- **Exclusiones:** no apagar ni arrancar el servidor teHablo.
+
+### RH-W-0056: Mod completo de teHablo para Herdr App
+
+- **Origen:** aprobado como mejora futura por la persona responsable el 2026-11-22.
+- **Prioridad:** P3.
+- **Dependencias:** `RH-W-0055`.
+- **Estado:** `deferred`.
+- **Responsable:** persona responsable.
+- **Descripción:** evaluar una barra o menú para encender teHablo, elegir voz y velocidad, pausar, reanudar y detener la reproducción, aprovechando la API HTTP existente (`/status`, `/voices`, `/config`, `/pause`, `/resume`, `/stop`).
+- **Condición de reconsideración:** tras `RH-W-0055`, aplicar un criterio similar a `RH-W-0051`: justificar la necesidad del control y evitar el sondeo constante. Arrancar el servidor desde el mod requeriría `exec` y un estudio aparte.
+- **Exclusiones:** no implementar ahora.
 
 ## Registros resueltos
 <!-- doc-role:resolved-records -->

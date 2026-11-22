@@ -29,8 +29,9 @@ async function pairingCode() {
   return /^[0-9a-f]{32}$/.test(value ?? "") ? value : null;
 }
 
-async function findServer() {
+async function findServer(isActive = () => true) {
   for (const port of PORTS) {
+    if (!isActive()) return null;
     const base = `http://127.0.0.1:${port}`;
     try {
       const response = await fetch(`${base}/health`);
@@ -64,24 +65,38 @@ async function sendNotice(base, identifier, text) {
 
 export default class TehabloVoice extends View {
   init(_props, cx) {
-    this.voice = createVoiceState(agents());
     this.muted = localStorage.getItem("muted") === "true";
     this.base = null;
     this.connection = "checking";
     this.last = this.muted ? "Voice alerts muted" : "Waiting for agent activity";
-    this.batch = createNoticeBatch();
+    this.ticker = null;
     this.sending = false;
     this.nextHealthAt = 0;
 
     if (checking()) return;
+    if (!this.muted) this.start(cx);
+  }
+
+  start(cx) {
+    this.voice = createVoiceState(agents());
+    this.batch = createNoticeBatch();
     this.refreshConnection(cx);
-    cx.timer.every(TICK_MS, (cx) => this.tick(cx));
+    this.ticker = cx.timer.every(TICK_MS, (cx) => this.tick(cx));
+  }
+
+  stop() {
+    this.ticker?.cancel();
+    this.ticker = null;
+    this.batch = createNoticeBatch();
   }
 
   refreshConnection(cx) {
     this.nextHealthAt = Date.now() + HEALTH_INTERVAL_MS;
+    const batch = this.batch;
+    const isActive = () => this.batch === batch;
     cx.spawn(async (cx) => {
-      const base = await findServer();
+      const base = await findServer(isActive);
+      if (!isActive()) return;
       const connection = base ? "connected" : "unavailable";
       const changed = base !== this.base || connection !== this.connection;
       this.base = base;
@@ -135,12 +150,18 @@ export default class TehabloVoice extends View {
     this.muted = !this.muted;
     localStorage.setItem("muted", String(this.muted));
     if (this.muted) {
-      this.batch = createNoticeBatch();
+      this.stop();
       this.last = "Voice alerts muted";
     } else {
+      this.start(cx);
       this.last = "Voice alerts enabled";
     }
     cx.notify();
+  }
+
+  detail() {
+    // The mod never starts teHablo; it only says how to hear alerts again.
+    return !this.muted && this.connection === "unavailable" ? "Turn on teHablo to hear alerts" : this.last;
   }
 
   render() {
@@ -176,7 +197,7 @@ export default class TehabloVoice extends View {
           .child(div().size(7).rounded(4).bg(stateColor))
           .child(div().text_color(t.foreground).child(stateText)),
       )
-      .child(div().flex_1().truncate().text_color(t.dim).child(this.last))
+      .child(div().flex_1().truncate().text_color(t.dim).child(this.detail()))
       .child(
         h_flex()
           .id("toggle-mute")
