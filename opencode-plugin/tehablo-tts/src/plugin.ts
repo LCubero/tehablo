@@ -70,6 +70,9 @@ export interface PluginDeps {
 
 const HELP_TEXT = [
   'Uso de /tts:',
+  '/tts   muestra esta ayuda y el estado actual',
+  '/tts on   enciende el servidor sin activar la lectura automática',
+  '/tts off   apaga el servidor compartido (también afecta a Pi)',
   '/tts menu   abre el menú de controles',
   'En el menú: Elegir voz local (requiere servidor disponible; sin descargas).',
   'En el menú: Descargar voz (confirmación; no cambia la voz seleccionada).',
@@ -121,6 +124,7 @@ export async function createTehabloPlugin(ctx: PluginContext, deps: PluginDeps =
   let disposed = false;
   let selectingVoice = false;
   let submittingDownload = false;
+  let changingPower: 'on' | 'off' | undefined;
   let pollEpoch = 0;
   let pollFailures = 0;
   let pollTimer: ReturnType<typeof setTimeout> | undefined;
@@ -316,6 +320,45 @@ export async function createTehabloPlugin(ctx: PluginContext, deps: PluginDeps =
   const executeCommand = async (input: { sessionID: string; prompt: { text: string } }) => {
         if (disposed) return;
         const [sub, arg] = parseCommandArgs(input.prompt.text);
+        if (sub === 'on' || sub === 'off') {
+          if (arg) {
+            await notify(input.sessionID, `El comando /tts ${sub} no admite argumentos.\n${HELP_TEXT}`, {kind: 'help', variant: 'warning'});
+            return;
+          }
+          // Off must stay available so it can cancel a startup that never becomes healthy.
+          if (changingPower && !(sub === 'off' && changingPower === 'on')) {
+            await notify(input.sessionID, 'El servidor TTS está cambiando de estado.');
+            return;
+          }
+          const ownsGuard = !changingPower;
+          changingPower = sub;
+          try {
+            const running = await client.isRunning();
+            if (disposed) return;
+            const generation = sub === 'off' || !running ? ++epoch : epoch;
+            if (sub === 'off') {
+              auto = false;
+              cancelPoll();
+              applied = false;
+              await client.powerOff();
+              if (!disposed) await notify(input.sessionID, running
+                ? 'Servidor TTS apagado para todas las sesiones, también Pi.'
+                : 'Servidor TTS ya estaba apagado.', {variant: running ? 'success' : 'info'});
+            } else {
+              if (running) await client.ensure();
+              else {
+                applied = false;
+                await boot(generation);
+              }
+              if (!disposed && generation === epoch) await notify(input.sessionID, running
+                ? 'Servidor TTS ya estaba encendido.'
+                : 'Servidor TTS encendido.', {variant: running ? 'info' : 'success'});
+            }
+          } catch (error) {
+            if (!disposed) await notify(input.sessionID, error instanceof Error ? error.message : String(error), {variant: 'warning'});
+          } finally { if (ownsGuard) changingPower = undefined; }
+          return;
+        }
         if (sub === 'menu') {
           if (arg) {
             await notify(input.sessionID, 'El comando /tts menu no admite argumentos.\n' + HELP_TEXT, {kind: 'help', variant: 'warning'});
@@ -474,7 +517,7 @@ export async function createTehabloPlugin(ctx: PluginContext, deps: PluginDeps =
   await ctx.command.transform(editor => {
     editor.add({
       name: 'tts',
-      description: 'Controla la lectura en voz alta con teHablo (menu, play, stop, auto, help).',
+      description: 'Controla el servidor compartido de teHablo (on, off); /tts muestra la ayuda.',
       execute: executeCommand,
     });
   });

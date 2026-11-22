@@ -1,4 +1,5 @@
 import { test } from 'node:test';
+import { EventEmitter } from 'node:events';
 
 test('instance ownership waits for loser exit and rejects unchecked live-child health', async () => {
   for (const own of [false, true]) {
@@ -305,6 +306,319 @@ function createHarness(options: {
     cleanupDir: () => rmSync(dir, { recursive: true, force: true }),
   };
 }
+
+function createPowerHarness(initiallyRunning = false, settings: Partial<Settings> = {}) {
+  let running = initiallyRunning, spawned = 0;
+  let nonce = '';
+  let child: any;
+  const h = createHarness({
+    settings,
+    contexts: {main: [{id: 'power-message', type: 'assistant', finish: 'stop', content: [{type: 'text', text: 'Power cycle.'}]}]},
+    respond: async (path) => {
+      if (path === '/health' && !running) throw new TypeError('connection refused');
+      if (path === '/shutdown') {
+        running = false;
+        child?.emit('exit', 0);
+      }
+      return undefined;
+    },
+  });
+  h.client['options'].port = '24123';
+  h.client['options'].openLog = () => 1;
+  h.client['options'].closeLog = () => {};
+  h.client['options'].delay = () => new Promise(resolve => setImmediate(resolve));
+  h.client['options'].spawn = ((_python: string, args: string[]) => {
+    spawned++;
+    nonce = args[args.indexOf('--instance') + 1];
+    running = true;
+    child = new EventEmitter();
+    child.unref = () => {};
+    child.kill = () => { running = false; child.emit('exit', 0); return true; };
+    return child;
+  }) as any;
+  const fetcher = h.client['options'].fetch!;
+  h.client['options'].fetch = (async (url: any, init: any) => {
+    if (['/stop', '/shutdown'].includes(new URL(url).pathname)) {
+      assert.equal(init.headers['X-Tehablo-Codigo'], '0123456789abcdef0123456789abcdef');
+    }
+    const response = await fetcher(url, init);
+    return nonce && new URL(url).pathname === '/health'
+      ? Response.json({...await response.json(), instance: nonce}) : response;
+  }) as any;
+  return {...h, spawned: () => spawned};
+}
+
+test('power commands start silently, are idempotent, and reapply saved settings after restart', async () => {
+  const h = createPowerHarness(false, {volume: 0.4, speed: 1.25, device: 'Headphones'});
+  const settingsPath = join(h.dir, 'settings.json');
+  writeFileSync(settingsPath, '{"unknown":"preserve","volume":0.4}');
+  const before = readFileSync(settingsPath);
+  const cleanup = await createTehabloPlugin(h.ctx, {client: h.client, loadSettings: h.loadSettings});
+  const command = (text: string) => h.commands.get('tts')!({sessionID: 'main', prompt: {text}});
+  try {
+    await command('/tts on');
+    assert.equal(h.spawned(), 1);
+    assert.equal(h.notices.at(-1)?.message, 'Servidor TTS encendido.');
+    assert.equal(h.calls.some(c => c.path === '/speak'), false);
+    const configs = h.calls.filter(c => c.path === '/config').length;
+    await command('/tts on');
+    assert.equal(h.notices.at(-1)?.message, 'Servidor TTS ya estaba encendido.');
+    assert.equal(h.spawned(), 1);
+    assert.equal(h.calls.filter(c => c.path === '/config').length, configs);
+    await command('help');
+    assert.match(h.notices.at(-1)!.message, /automática desactivada/);
+    await command('/tts off');
+    assert.deepEqual(h.calls.filter(c => c.path === '/stop' || c.path === '/shutdown'), [
+      {path: '/stop', body: {}}, {path: '/shutdown', body: {}},
+    ]);
+    assert.match(h.notices.at(-1)!.message, /apagado.*Pi/);
+    await command('/tts off');
+    assert.equal(h.notices.at(-1)?.message, 'Servidor TTS ya estaba apagado.');
+    assert.equal(h.calls.filter(c => c.path === '/shutdown').length, 1);
+    assert.equal(h.spawned(), 1);
+    await command('  /tts ON  ');
+    assert.equal(h.spawned(), 2);
+    assert.equal(h.calls.filter(c => c.path === '/config').length, 2);
+    assert.equal(h.calls.some(c => c.path === '/speak'), false);
+    assert.deepEqual(readFileSync(settingsPath), before);
+    await command('help');
+    assert.match(h.notices.at(-1)!.message, /automática desactivada/);
+  } finally { await cleanup(); h.cleanupDir(); }
+});
+
+test('power commands stop an external server, disable auto, and never start an absent server to power off', async () => {
+  const h = createPowerHarness(true);
+  const cleanup = await createTehabloPlugin(h.ctx, {client: h.client, loadSettings: h.loadSettings});
+  const command = (text: string) => h.commands.get('tts')!({sessionID: 'main', prompt: {text}});
+  let resolveSession: ((info: {id: string}) => void) | undefined;
+  try {
+    await command('auto on');
+    h.ctx.session.get = () => new Promise(resolve => { resolveSession = resolve; });
+    const idle = h.pushEvent({type: 'session.idle', data: {sessionID: 'main'}});
+    await waitUntil(() => !!resolveSession);
+    await command('/tts off');
+    resolveSession!({id: 'main'});
+    await idle;
+    assert.equal(h.spawned(), 0);
+    assert.equal(h.calls.some(c => c.path === '/speak'), false);
+    assert.deepEqual(h.calls.filter(c => c.path === '/stop').map(c => c.body), [{}]);
+    assert.equal(h.calls.filter(c => c.path === '/shutdown').length, 1);
+    const mutations = h.calls.filter(c => c.body !== undefined).length;
+    await command('/tts off');
+    assert.equal(h.spawned(), 0);
+    assert.equal(h.calls.filter(c => c.body !== undefined).length, mutations);
+    await command('status');
+    assert.match(h.notices.at(-1)!.message, /automática desactivada/);
+  } finally { resolveSession?.({id: 'main'}); await cleanup(); h.cleanupDir(); }
+});
+
+test('power commands report a failed shared shutdown without false success or killing a foreign process', async () => {
+  const h = createPowerHarness(true);
+  const fetcher = h.client['options'].fetch!;
+  h.client['options'].fetch = (async (url: any, init: any) => new URL(url).pathname === '/shutdown'
+    ? Response.json({error: 'Shutdown rejected'}, {status: 503}) : fetcher(url, init)) as any;
+  const cleanup = await createTehabloPlugin(h.ctx, {client: h.client, loadSettings: h.loadSettings});
+  try {
+    await h.commands.get('tts')!({sessionID: 'main', prompt: {text: '/tts off'}});
+    assert.equal(h.spawned(), 0);
+    assert.equal(h.notices.at(-1)?.variant, 'warning');
+    assert.match(h.notices.at(-1)!.message, /Shutdown rejected/);
+    assert.equal(h.notices.some(n => n.variant === 'success'), false);
+  } finally { await cleanup(); h.cleanupDir(); }
+});
+
+test('power commands leave foreign and unresponsive services untouched', async () => {
+  for (const timeout of [false, true]) {
+    const h = createPowerHarness(false);
+    h.client['options'].fetch = (async () => {
+      if (timeout) throw new DOMException('timed out', 'TimeoutError');
+      return Response.json({service: 'another-program'});
+    }) as any;
+    const cleanup = await createTehabloPlugin(h.ctx, {client: h.client, loadSettings: h.loadSettings});
+    try {
+      await h.commands.get('tts')!({sessionID: 'main', prompt: {text: '/tts on'}});
+      assert.equal(h.spawned(), 0);
+      assert.equal(h.notices.at(-1)?.variant, 'warning');
+      assert.match(h.notices.at(-1)!.message, /ocupado/);
+      await h.commands.get('tts')!({sessionID: 'main', prompt: {text: '/tts off'}});
+      assert.equal(h.notices.at(-1)?.variant, 'warning');
+      assert.equal(h.spawned(), 0);
+      assert.equal(h.calls.some(c => c.path === '/shutdown' || c.path === '/stop'), false);
+    } finally { await cleanup(); h.cleanupDir(); }
+  }
+});
+
+test('power commands coalesce overlapping invocations and wait for shutdown before a new play', async () => {
+  const h = createPowerHarness(true);
+  const fetcher = h.client['options'].fetch!;
+  let release: (() => void) | undefined;
+  h.client['options'].fetch = (async (url: any, init: any) => {
+    if (new URL(url).pathname === '/shutdown') await new Promise<void>(resolve => { release = resolve; });
+    return fetcher(url, init);
+  }) as any;
+  const cleanup = await createTehabloPlugin(h.ctx, {client: h.client, loadSettings: h.loadSettings});
+  const command = (text: string) => h.commands.get('tts')!({sessionID: 'main', prompt: {text}});
+  try {
+    const off = command('/tts off');
+    await waitUntil(() => !!release);
+    await command('/tts off');
+    const play = command('play');
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(h.spawned(), 0);
+    release!();
+    await Promise.all([off, play]);
+    assert.equal(h.calls.filter(c => c.path === '/shutdown').length, 1);
+    assert.equal(h.spawned(), 1);
+    assert.equal(h.calls.filter(c => c.path === '/speak').length, 1);
+  } finally { release?.(); await cleanup(); h.cleanupDir(); }
+});
+
+test('power commands do not announce off when shutdown acknowledges but the server stays alive', async () => {
+  const h = createPowerHarness(true);
+  const fetcher = h.client['options'].fetch!;
+  h.client['options'].fetch = (async (url: any, init: any) => new URL(url).pathname === '/shutdown'
+    ? Response.json({ok: true}) : fetcher(url, init)) as any;
+  const cleanup = await createTehabloPlugin(h.ctx, {client: h.client, loadSettings: h.loadSettings});
+  try {
+    await h.commands.get('tts')!({sessionID: 'main', prompt: {text: 'off'}});
+    assert.equal(h.notices.at(-1)?.variant, 'warning');
+    assert.match(h.notices.at(-1)!.message, /No se pudo confirmar el apagado/);
+    assert.equal(h.spawned(), 0);
+  } finally { await cleanup(); h.cleanupDir(); }
+});
+
+test('power commands cancel owned startup without making unload reversible', async () => {
+  const h = createPowerHarness(false);
+  let release: (() => void) | undefined, killed = 0;
+  const child = new EventEmitter();
+  h.client['options'].fetch = (async () => { throw new TypeError('connection refused'); }) as any;
+  h.client['options'].spawn = (() => Object.assign(child, {
+    unref() {}, kill() { killed++; child.emit('exit', 0); return true; },
+  })) as any;
+  h.client['options'].delay = () => new Promise(resolve => { release = resolve; });
+  try {
+    const boot = h.client.ensure();
+    await waitUntil(() => !!release);
+    const off = h.client.powerOff();
+    release!();
+    await Promise.all([boot, off]);
+    assert.equal(killed, 1);
+    assert.equal(h.calls.some(c => c.path === '/stop' || c.path === '/shutdown'), false);
+    await h.client.shutdown();
+    await assert.rejects(h.client.ensure(), /Sesión TTS cerrada/);
+  } finally { release?.(); await h.client.shutdown(); h.cleanupDir(); }
+});
+
+test('power commands /tts off cancels a stalled /tts on through the command', async () => {
+  const h = createPowerHarness(false);
+  let killed = 0;
+  h.client['options'].fetch = (async () => { throw new TypeError('connection refused'); }) as any;
+  h.client['options'].spawn = (() => {
+    const child = new EventEmitter();
+    return Object.assign(child, {unref() {}, kill() { killed++; child.emit('exit', 0); return true; }});
+  }) as any;
+  const cleanup = await createTehabloPlugin(h.ctx, {client: h.client, loadSettings: h.loadSettings});
+  const command = (text: string) => h.commands.get('tts')!({sessionID: 'main', prompt: {text}});
+  try {
+    const on = command('/tts on');
+    await waitUntil(() => !!h.client['child']);
+    await command('/tts off');
+    assert.equal(h.notices.some(n => n.message === 'El servidor TTS está cambiando de estado.'), false);
+    await on;
+    assert.equal(killed, 1);
+    assert.equal(h.notices.some(n => n.variant === 'warning'), false);
+    assert.match(h.notices.at(-1)!.message, /apagado.*Pi/);
+    assert.equal(h.calls.some(c => c.path === '/stop' || c.path === '/shutdown'), false);
+  } finally { await cleanup(); h.cleanupDir(); }
+});
+
+test('power commands unload during an in-flight power off never shuts down twice', async () => {
+  const h = createPowerHarness(true);
+  const fetcher = h.client['options'].fetch!;
+  let release: (() => void) | undefined;
+  h.client['options'].fetch = (async (url: any, init: any) => {
+    if (new URL(url).pathname === '/shutdown') await new Promise<void>(resolve => { release = resolve; });
+    return fetcher(url, init);
+  }) as any;
+  const cleanup = await createTehabloPlugin(h.ctx, {client: h.client, loadSettings: h.loadSettings});
+  try {
+    const off = h.commands.get('tts')!({sessionID: 'main', prompt: {text: '/tts off'}});
+    await waitUntil(() => !!release);
+    const unloading = cleanup();
+    release!();
+    await Promise.all([off, unloading]);
+    assert.equal(h.calls.filter(c => c.path === '/shutdown').length, 1);
+    await assert.rejects(h.client.ensure(), /Sesión TTS cerrada/);
+  } finally { release?.(); await cleanup(); h.cleanupDir(); }
+});
+
+test('power commands discovery probes carry no pairing credentials', async () => {
+  const h = createPowerHarness(true);
+  const fetcher = h.client['options'].fetch!;
+  const healthHeaders: any[] = [];
+  h.client['options'].fetch = (async (url: any, init: any) => {
+    if (new URL(url).pathname === '/health') healthHeaders.push(init?.headers);
+    return fetcher(url, init);
+  }) as any;
+  const cleanup = await createTehabloPlugin(h.ctx, {client: h.client, loadSettings: h.loadSettings});
+  try {
+    await h.commands.get('tts')!({sessionID: 'main', prompt: {text: 'off'}});
+    assert.ok(healthHeaders.length >= 1);
+    for (const headers of healthHeaders) assert.equal(headers?.['X-Tehablo-Codigo'], undefined);
+  } finally { await cleanup(); h.cleanupDir(); }
+});
+
+test('power commands preserve bare help and aliases without touching the server', async () => {
+  for (const running of [false, true]) {
+    const h = createPowerHarness(running);
+    const cleanup = await createTehabloPlugin(h.ctx, {client: h.client, loadSettings: h.loadSettings});
+    try {
+      for (const text of ['', '/tts', '/tts help', '/tts ayuda', '/tts status']) {
+        await h.commands.get('tts')!({sessionID: 'main', prompt: {text}});
+        assert.equal(h.notices.at(-1)?.kind, 'help');
+        assert.match(h.notices.at(-1)!.message, /\/tts on/);
+        assert.match(h.notices.at(-1)!.message, /\/tts off/);
+      }
+      assert.equal(h.calls.length, 0);
+      assert.equal(h.spawned(), 0);
+    } finally { await cleanup(); h.cleanupDir(); }
+  }
+});
+
+test('power commands on preserves an already running server and active auto mode', async () => {
+  const h = createPowerHarness(true, {volume: 0.4});
+  const cleanup = await createTehabloPlugin(h.ctx, {client: h.client, loadSettings: h.loadSettings});
+  const command = (text: string) => h.commands.get('tts')!({sessionID: 'main', prompt: {text}});
+  try {
+    await command('auto on');
+    const before = h.calls.filter(c => c.body !== undefined);
+    await command('on');
+    assert.equal(h.notices.at(-1)?.message, 'Servidor TTS ya estaba encendido.');
+    assert.deepEqual(h.calls.filter(c => c.body !== undefined), before);
+    assert.equal(h.spawned(), 0);
+    await command('status');
+    assert.match(h.notices.at(-1)!.message, /automática activada/);
+  } finally { await cleanup(); h.cleanupDir(); }
+});
+
+test('power commands reject extra arguments without server or saved-state changes', async () => {
+  const h = createPowerHarness(false);
+  const settingsPath = join(h.dir, 'settings.json');
+  writeFileSync(settingsPath, '{"unknown":"preserve"}');
+  const before = readFileSync(settingsPath);
+  const cleanup = await createTehabloPlugin(h.ctx, {client: h.client, loadSettings: h.loadSettings});
+  try {
+    for (const text of ['on extra', 'off extra', 'on off extra']) {
+      await h.commands.get('tts')!({sessionID: 'main', prompt: {text}});
+      assert.equal(h.notices.at(-1)?.variant, 'warning');
+      assert.match(h.notices.at(-1)!.message, /no admite argumentos/);
+    }
+    assert.equal(h.calls.length, 0);
+    assert.equal(h.spawned(), 0);
+    assert.deepEqual(readFileSync(settingsPath), before);
+    assert.deepEqual([...h.storage], []);
+  } finally { await cleanup(); h.cleanupDir(); }
+});
 
 test('cleanText and finalAssistantText skip tool-call messages and strip markdown', () => {
   assert.equal(cleanText('## Hola\n\n```ts\nconst x = 1;\n```\n\nMira **esto**.'), 'Hola. Mira esto.');

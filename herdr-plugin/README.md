@@ -13,13 +13,15 @@ Sin leer el mensaje del agente: herdr conoce su estado, no su texto.
 | Termina uno y otro espera | «tehablo, A: terminó. dockhand, B: te espera.» |
 
 El proyecto es la etiqueta del espacio de trabajo en herdr; la tarea es el título del
-terminal sin la etiqueta del agente (`OC | …` queda en `…`). Si un agente no tiene título,
+terminal sin la etiqueta del agente (`OC | …` y `π - …` de Pi quedan en `…`). Si la tarea se llama igual que
+el proyecto, solo se dice una vez: «tehablo: terminó.». Si un agente no tiene título,
 se usa su nombre y, si tampoco, su tipo con el panel (`opencode p6`).
 
 ## Requisitos
 
 - herdr 0.9.5 o posterior.
 - El servidor de teHablo encendido. Si no responde, el plugin se calla: no lo arranca.
+  Busca en los puertos 23765–23769; si defines `TEHABLO_PORT`, solo en ese.
 - `~/.tehablo/ssh-codigo` con el código de emparejamiento, el mismo que usa el resto de
   los clientes.
 
@@ -56,13 +58,15 @@ respetan ese orden antes de buscar alternativas: `run.sh` prueba `python3` y `py
 herdr lanza un proceso por cada cambio de estado del panel, con el `pane_id` en
 `HERDR_PLUGIN_EVENT_JSON`. El proceso:
 
-1. Pide el detalle con `herdr agent get <panel>` y descarta `working`, `idle` y `unknown`.
+1. Descarta el evento si su estado no es `done` ni `blocked`; después pide el detalle con
+   `herdr agent get <panel>` y calla si el panel ya cambió a otro estado.
 2. Ignora el panel enfocado, si `skip_focused` está activo.
 3. Compara `completion_seq` con el último aviso de ese panel: sin eso, volver a mirar el
    panel repetiría el mismo aviso.
 4. Añade el aviso a la cola, libera el bloqueo y espera la ventana.
 5. Reclama el lote bajo un bloqueo breve, vacía esa cola y libera el bloqueo antes
-   de hacer **una** llamada a `/speak`. Los demás procesos no vuelven a enviar ese lote.
+   de hacer **una** llamada a `/speak`. Los demás procesos no vuelven a enviar ese lote
+   ni reclaman el siguiente antes de tiempo: cada proceso solo reclama el lote al que se unió.
 
 No hay demonio: herdr desaconseja procesos largos, así que el primer proceso que despierta
 se lleva el lote. El bloqueo protege solo los cambios de la cola, nunca la espera ni
@@ -74,14 +78,14 @@ caduca; no se garantiza su entrega.
 Con `window: 0`, cada evento se envía por separado, sin pasar por el lote.
 
 El `id` de `/speak` es el panel, así que `/stop` corta el aviso de un agente sin silenciar
-a los demás. La política es `wait`: nunca interrumpe una lectura en curso.
+a los demás. La política es `wait`: espera a que termine la lectura en curso, pero si esa lectura está en pausa, el servidor la sustituye por el aviso.
 
 ## Pruebas
 
 ```sh
 python tests/test_herdr_plugin.py          # lógica y procesos simultáneos, sin red ni audio
-python herdr-plugin/notify.py --say "prueba de voz"
-HERDR_PLUGIN_EVENT_JSON='{"data":{"pane_id":"w1:p1"}}' python herdr-plugin/notify.py --dry-run
+python herdr-plugin/notify.py --say "prueba de voz"   # usa el `lexicon` de config.json
+HERDR_PLUGIN_EVENT_JSON='{"data":{"pane_id":"w1:p1"}}' python herdr-plugin/notify.py --dry-run   # imprime la frase sin tocar la cola ni hablar
 ```
 
 Las pruebas usan procesos y bloqueos del sistema reales, pero controlan la espera
@@ -105,9 +109,19 @@ sola frase.
 - El envío es de un solo intento: si el servidor está apagado o rechaza la petición,
   ese lote se descarta, sin reintentos ni reproducción diferida al encenderlo.
 - Las peticiones locales no usan proxies ni siguen redirecciones. Un código de
-  emparejamiento que no tenga 32 caracteres hexadecimales se rechaza sin enviarlo.
+  emparejamiento que no tenga 32 caracteres hexadecimales en minúsculas se rechaza sin enviarlo.
   `/health` solo comprueba la identidad declarada: no autentica al dueño del puerto
   frente a otro proceso local malicioso.
+
+## Activar o desactivar
+
+```sh
+herdr plugin disable tehablo.agent-voice   # deja de avisar
+herdr plugin enable tehablo.agent-voice    # vuelve a avisar
+```
+
+El cambio vale al momento para todas las sesiones de herdr. Solo funciona en herdr de
+terminal: herdr-app usa herdr-core (`hc`), que no tiene plugins.
 
 ## Desinstalar
 

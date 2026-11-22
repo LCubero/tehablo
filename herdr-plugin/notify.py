@@ -34,6 +34,8 @@ MAX_NAMED = 2
 TIMEOUT = 5.0
 HEALTH_TIMEOUT = 0.4
 PREFIX = re.compile(r'^[A-Z][A-Z0-9]{0,3}\s*\|\s*')
+# Pi titles its terminal "\u03c0 - folder".
+PI_PREFIX = re.compile('^\u03c0\\s*-\\s*')
 DASHES = re.compile(r'[|\u2014\u2013]')
 KEEP = re.compile(r'[^\w\s,.;:!?\u00bf\u00a1\'"()\-/&+]')
 
@@ -49,7 +51,9 @@ def strip_prefix(title):
     """
     if not isinstance(title, str):
         return None
-    text = PREFIX.sub('', title.strip()).strip()
+    # Strip one agent label only: text after it belongs to the task.
+    text = title.strip()
+    text = (PREFIX.sub('', text, count=1) if PREFIX.match(text) else PI_PREFIX.sub('', text, count=1)).strip()
     return text or None
 
 
@@ -179,11 +183,15 @@ def pending_items(state):
 
 
 def _sentence(items, single, many):
-    names = []
+    names, seen = [], set()
     for item in items:
-        name = f"{item['project']}, {item['label']}"
-        if name not in names:
-            names.append(name)
+        key = (item['project'], item['label'])
+        if key in seen:
+            continue
+        seen.add(key)
+        # A terminal titled like its project (Pi names it after the folder) is said once.
+        same = item['label'].casefold() == item['project'].casefold()
+        names.append(item['project'] if same else f"{item['project']}, {item['label']}")
     if len(items) == 1 and len(names) == 1:
         return f'{names[0]}: {single}.'
     shown = names[:MAX_NAMED]
@@ -285,7 +293,8 @@ def auth_code():
         code = (Path.home() / '.tehablo' / 'ssh-codigo').read_text(encoding='ascii').strip()
     except (OSError, ValueError):
         return None
-    return code if re.fullmatch(r'[0-9a-fA-F]{32}', code) else None
+    # Same rule as the server: 32 lowercase hex characters.
+    return code if re.fullmatch(r'[0-9a-f]{32}', code) else None
 
 
 class _NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -305,7 +314,17 @@ def tehablo_base():
     /health answers without the pairing code. This checks the advertised service
     identity, not cryptographic proof of who owns the loopback port.
     """
-    for port in PORTS:
+    explicit = os.environ.get('TEHABLO_PORT')
+    if explicit is None:
+        ports = PORTS
+    else:
+        # Like Pi and OpenCode, a fixed port replaces the automatic range.
+        try:
+            port = int(explicit, 10) if explicit.isascii() else 0
+        except ValueError:
+            port = 0
+        ports = (port,) if 0 < port < 65536 else ()
+    for port in ports:
         base = f'http://127.0.0.1:{port}'
         try:
             with _local_open(base + '/health', timeout=HEALTH_TIMEOUT) as response:
@@ -415,23 +434,52 @@ def save_state(path, state):
 # --- Entry points ------------------------------------------------------------
 
 
+def batch_of(state):
+    batch = state.get('batch')
+    return batch if isinstance(batch, int) and not isinstance(batch, bool) else 0
+
+
+def claim_batch(joined):
+    """Take the queued batch only if it is still the one this hook joined."""
+    with locked_state() as path:
+        state = load_state(path)
+        # A sleeper from an earlier, already spoken batch must not cut the next one short.
+        if batch_of(state) != joined or not state['pending']:
+            return None
+        pending = pending_items(state)
+        state['pending'] = []
+        state['batch'] = joined + 1
+        save_state(path, state)
+        return pending
+
+
 def handle(dry=False):
     """Announce one status change, grouping whatever else arrived meanwhile."""
     event = parse_event(os.environ.get('HERDR_PLUGIN_EVENT_JSON'))
     pane = event.get('pane_id')
     if not pane:
         return 0
+    # The event names the transition; the lookup may already show a later one.
+    reported = event.get('agent_status')
+    if reported is not None and reported not in ('done', 'blocked'):
+        return 0
     agent = agent_info(pane)
     if not agent:
         return 0
     options = settings()
     status = announceable(agent, options['skip_focused'])
-    if status is None:
+    if status is None or (reported is not None and status != reported):
         return 0
     seq = agent.get('completion_seq')
     item = {'pane': pane, 'status': status,
             'project': project_of(agent, workspace_label(agent.get('workspace_id'))),
             'label': label_of(agent)}
+    if dry:
+        # A manual preview must not claim or mark notices that live hooks still own.
+        text = compose([item])
+        if text:
+            print(text)
+        return 0
     with locked_state() as path:
         state = load_state(path)
         if is_duplicate(state, pane, status, seq):
@@ -441,6 +489,7 @@ def handle(dry=False):
         mark_seen(state, pane, status, seq)
         if options['window'] > 0:
             add_pending(state, item)
+            joined = batch_of(state)
         else:
             pending = [item]
         save_state(path, state)
@@ -448,26 +497,18 @@ def handle(dry=False):
     # Other event processes must be able to enqueue during this wait.
     if options['window'] > 0:
         time.sleep(options['window'])
-        with locked_state() as path:
-            state = load_state(path)
-            if not state['pending']:
-                return 0
-            pending = pending_items(state)
-            # Claim this batch atomically. Later arrivals belong to the next one.
-            state['pending'] = []
-            save_state(path, state)
+        pending = claim_batch(joined)
+        if not pending:
+            return 0
 
     text = compose(pending)
     if not text:
         return 0
-    if dry:
-        print(text)
+    base = tehablo_base()
+    if base is None:
+        log('teHablo server is not running; notice not spoken')
     else:
-        base = tehablo_base()
-        if base is None:
-            log('teHablo server is not running; notice not spoken')
-        else:
-            speak(base, pending[0]['pane'], text, options['lexicon'])
+        speak(base, pending[0]['pane'], text, options['lexicon'])
     return 0
 
 
@@ -482,7 +523,7 @@ def main(argv=None):
         if not text:
             log('--say needs a text')
             return 1
-        return 0 if speak(base, 'herdr-manual', text) else 1
+        return 0 if speak(base, 'herdr-manual', text, settings()['lexicon']) else 1
     return handle(dry='--dry-run' in args)
 
 

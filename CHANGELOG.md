@@ -6,13 +6,18 @@ Este archivo registra los cambios completados en orden cronológico. Las version
 
 ## 2026-11-22
 
-- herdr: añadido un mod candidato para Herdr App 0.1.16 con avisos `done`/`blocked`, barra de conexión, último aviso y silencio persistente; incluye instalación mediante layout personal y pruebas silenciosas, pendiente de aceptación visual y escucha real.
+- herdr-app: añadido un mod candidato para Herdr App 0.1.16 con avisos `done`/`blocked`, barra de conexión, último aviso y silencio persistente; incluye instalación mediante layout personal, pruebas silenciosas y validación visual, pendiente de escucha real.
+
+## 2026-11-19
+
+- herdr: la prueba de voz manual (`notify.py --say`) respeta `lexicon: false` de la configuración, igual que los avisos.
+- Revisión de la línea de comandos y la API HTTP para integraciones: la guía «Llevar teHablo a otro agente» de `docs/desarrollo.md` documenta identidad de `/health`, código en minúsculas, regla de `Origin`, error 501, respuestas de `/speak` y `/shutdown`, y quién elige el puerto. El plugin de herdr usa solo `TEHABLO_PORT` si está definido y rechaza códigos en mayúsculas, igual que el servidor.
+- OpenCode: `/tts on` y `/tts off` fusionados en [PR #12](https://github.com/LCubero/tehablo/pull/12) ([e271697](https://github.com/LCubero/tehablo/commit/e271697c36ca1424bc43e804a2c852b23a94288d)), contribución de Totopo27. Corrección del mantenedor: `/tts off` cancela también un `/tts on` cuyo arranque no termina, sin tener que cerrar OpenCode. Prueba manual en Windows, incluido apagar desde OpenCode un servidor iniciado por Pi y volver a encender; CI en Windows y Ubuntu aprobadas. Tras actualizar, reinicia OpenCode.
+- herdr: plugin `tehablo.agent-voice` fusionado en [PR #11](https://github.com/LCubero/tehablo/pull/11), contribución de Totopo27: avisa por voz cuando un agente termina («…: terminó») o te espera («…: te espera»), calla el panel enfocado y junta los avisos seguidos en una frase. Solo para herdr de terminal; no arranca el servidor de teHablo. Se activa o desactiva con `herdr plugin enable|disable tehablo.agent-voice`. Correcciones del mantenedor: `--dry-run` ya no consume avisos reales; cada aviso usa el estado de su propio evento, así un cambio no se anuncia dos veces; un grupo de avisos ya no acorta la espera del siguiente; el lanzador de Windows respeta rutas de Python con `!`; el README aclara que un aviso sustituye una lectura en pausa; el prefijo `π - ` que Pi pone al título se descarta, y si el título coincide con el proyecto, el aviso lo dice una sola vez («tehablo: terminó.»). Prueba manual en Windows con herdr 0.9.5.
 
 ## 2026-11-18
 
-- herdr: descarta pendientes huérfanos de más de 60 s, también al procesar avisos sin agrupación. Las pruebas de concurrencia sincronizan el encolado con barreras e incluyen una llegada durante la espera, sin depender de la velocidad del planificador.
-- herdr: corregida la agrupación real entre procesos; el bloqueo ya no cubre la espera ni el envío HTTP y los avisos pendientes no caducan por contención. Pruebas silenciosas con dos y seis procesos simultáneos, incluido `window: 0`.
-- herdr: el lanzador POSIX respeta `TEHABLO_PYTHON` y `python.txt`. El cliente rechaza códigos de emparejamiento inválidos, tolera respuestas no HTTP y no sigue redirecciones ni usa proxies.
+- OpenCode: `/tts on` enciende el servidor compartido sin reiniciarlo si ya está activo; `/tts off` lo apaga sin arrancarlo si ya estaba apagado. `/tts` sin argumentos y `/tts help` muestran ayuda. Apagar detiene las lecturas de todos los clientes, incluido Pi, y desactiva Auto en este plugin; conserva los ajustes y permite volver a encender. Pi mantiene su `/tts` como interruptor. No cambia el apagado automático, `/tts stop`, `/tts auto off` ni el cierre de sesión. Aceptación manual en Windows de ayuda, encendido, apagado, repetición de ambos y nuevo encendido, sin prueba de audio ([issue #7](https://github.com/LCubero/tehablo/issues/7)).
 
 ## 2026-11-17
 

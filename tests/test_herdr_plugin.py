@@ -26,6 +26,14 @@ class StripPrefixTest(unittest.TestCase):
         self.assertEqual(notify.strip_prefix('PI | Arreglo de audio'), 'Arreglo de audio')
         self.assertEqual(notify.strip_prefix('OC|sin espacios'), 'sin espacios')
 
+    def test_drops_the_pi_title_prefix(self):
+        # Pi titles its terminal "\u03c0 - folder".
+        self.assertEqual(notify.strip_prefix('\u03c0 - code'), 'code')
+        self.assertEqual(notify.strip_prefix('OC | \u03c0 - notas'), '\u03c0 - notas')
+        self.assertEqual(notify.compose([{'status': 'done', 'project': 'code',
+                                          'label': notify.label_of({'terminal_title': '\u03c0 - code'})}]),
+                         'code: termin\u00f3.')
+
     def test_keeps_titles_without_a_tag(self):
         self.assertEqual(notify.strip_prefix('tehablo'), 'tehablo')
         self.assertEqual(notify.strip_prefix('A | B | C'), 'B | C')
@@ -176,6 +184,15 @@ class ComposeTest(unittest.TestCase):
         self.assertEqual(notify.compose(self.single()), 'tehablo, PRs para issues 8 y 9: terminó.')
         self.assertEqual(notify.compose(self.single('blocked')), 'tehablo, PRs para issues 8 y 9: te espera.')
 
+    def test_task_named_like_the_project_is_said_once(self):
+        items = [{'status': 'done', 'project': 'tehablo', 'label': 'TeHablo'}]
+        self.assertEqual(notify.compose(items), 'tehablo: terminó.')
+        items.append({'status': 'done', 'project': 'dockhand', 'label': 'B'})
+        self.assertEqual(notify.compose(items), 'Terminaron tehablo; dockhand, B.')
+        distinct = [{'status': 'done', 'project': 'Design, QA', 'label': 'Design, QA'},
+                    {'status': 'done', 'project': 'Design', 'label': 'QA'}]
+        self.assertEqual(notify.compose(distinct), 'Terminaron Design, QA; Design, QA.')
+
     def test_several_notices_become_one_sentence(self):
         items = [{'status': 'done', 'project': 'tehablo', 'label': 'A'},
                  {'status': 'done', 'project': 'dockhand', 'label': 'B'}]
@@ -204,6 +221,15 @@ class SettingsTest(unittest.TestCase):
                 (Path(directory) / 'config.json').write_text(payload, encoding='utf-8')
             with mock.patch.dict(os.environ, {'HERDR_PLUGIN_CONFIG_DIR': directory}):
                 return notify.settings()
+
+    def test_manual_say_uses_the_configured_lexicon(self):
+        with tempfile.TemporaryDirectory() as directory:
+            (Path(directory) / 'config.json').write_text('{"lexicon": false}', encoding='utf-8')
+            with mock.patch.dict(os.environ, {'HERDR_PLUGIN_CONFIG_DIR': directory}), \
+                 mock.patch.object(notify, 'tehablo_base', return_value='http://127.0.0.1:23765'), \
+                 mock.patch.object(notify, 'speak', return_value=True) as speak:
+                self.assertEqual(notify.main(['--say', 'prueba']), 0)
+            speak.assert_called_once_with('http://127.0.0.1:23765', 'herdr-manual', 'prueba', False)
 
     def test_defaults_without_a_config_file(self):
         self.assertEqual(self.read(), {'skip_focused': True, 'window': 2.0, 'lexicon': True})
@@ -237,15 +263,87 @@ class OrphanNoticeTest(unittest.TestCase):
                      mock.patch.object(notify, 'workspace_label', return_value='current project'), \
                      mock.patch.object(notify.time, 'time', return_value=1000), \
                      mock.patch.object(notify.time, 'sleep'), \
-                     mock.patch('sys.stdout', new_callable=io.StringIO) as stdout, \
-                     mock.patch('sys.stderr', new_callable=io.StringIO) as stderr, \
-                     mock.patch('socket.create_connection', side_effect=AssertionError('network forbidden')):
-                    self.assertEqual(notify.main(['--dry-run']), 0)
-                self.assertEqual(stdout.getvalue(), 'current project, current task: terminó.\n')
+                     mock.patch.object(notify, 'tehablo_base', return_value='http://127.0.0.1:23765'), \
+                     mock.patch.object(notify, 'speak', return_value=True) as speak, \
+                     mock.patch('sys.stderr', new_callable=io.StringIO) as stderr:
+                    self.assertEqual(notify.main([]), 0)
+                speak.assert_called_once_with('http://127.0.0.1:23765', 'new',
+                                              'current project, current task: terminó.', True)
                 self.assertEqual(stderr.getvalue(), '')
                 state = json.loads(path.read_text(encoding='utf-8'))
                 self.assertEqual(state['pending'], [])
                 self.assertEqual(state['seen'], {'old': 1, 'new': 2})
+
+
+class BatchingTest(unittest.TestCase):
+    def run_hook(self, root, event_status, agent_status, window, during_sleep=None):
+        (root / 'config.json').write_text(json.dumps({'window': window}), encoding='utf-8')
+        event = {'data': {'pane_id': 'b', 'agent_status': event_status}}
+        env = {'HERDR_PLUGIN_STATE_DIR': str(root), 'HERDR_PLUGIN_CONFIG_DIR': str(root),
+               'HERDR_PLUGIN_EVENT_JSON': json.dumps(event)}
+        agent = {'pane_id': 'b', 'workspace_id': 'w1', 'agent_status': agent_status,
+                 'completion_seq': 1, 'terminal_title_stripped': 'task b'}
+        with mock.patch.dict(os.environ, env), \
+             mock.patch.object(notify, 'agent_info', return_value=agent) as lookup, \
+             mock.patch.object(notify, 'workspace_label', return_value='p'), \
+             mock.patch.object(notify.time, 'sleep', side_effect=during_sleep), \
+             mock.patch.object(notify, 'tehablo_base', return_value='http://127.0.0.1:23765'), \
+             mock.patch.object(notify, 'speak', return_value=True) as speak:
+            self.assertEqual(notify.main([]), 0)
+        return lookup, speak
+
+    def test_event_status_decides_the_transition_spoken(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            lookup, speak = self.run_hook(root, 'working', 'blocked', 0)
+            lookup.assert_not_called()
+            speak.assert_not_called()
+            _, speak = self.run_hook(root, 'blocked', 'blocked', 0)
+            speak.assert_called_once_with('http://127.0.0.1:23765', 'b', 'p, task b: te espera.', True)
+
+    def test_sleeper_from_a_spoken_batch_leaves_the_next_batch_alone(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            path = root / 'state.json'
+            newer = {'pane': 'c', 'status': 'done', 'project': 'p', 'label': 'task c', 'ts': time.time()}
+
+            def other_hooks_meanwhile(_seconds):
+                # Another hook speaks this batch, then a new notice starts the next one.
+                state = json.loads(path.read_text(encoding='utf-8'))
+                state['batch'] = notify.batch_of(state) + 1
+                state['pending'] = [newer]
+                path.write_text(json.dumps(state), encoding='utf-8')
+
+            _, speak = self.run_hook(root, 'done', 'done', 2.0, other_hooks_meanwhile)
+            speak.assert_not_called()
+            self.assertEqual(json.loads(path.read_text(encoding='utf-8'))['pending'], [newer])
+
+
+class DryRunTest(unittest.TestCase):
+    def test_dry_run_prints_without_touching_the_shared_queue(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            real = {'pane': 'live', 'status': 'done', 'project': 'p', 'label': 'real task', 'ts': 1000}
+            path = root / 'state.json'
+            path.write_text(json.dumps({'seen': {'live': 1}, 'pending': [real]}), encoding='utf-8')
+            before = path.read_bytes()
+            env = {'HERDR_PLUGIN_STATE_DIR': str(root), 'HERDR_PLUGIN_CONFIG_DIR': str(root),
+                   'HERDR_PLUGIN_EVENT_JSON': '{"data":{"pane_id":"new"}}'}
+            agent = {'pane_id': 'new', 'workspace_id': 'w1', 'agent_status': 'done',
+                     'completion_seq': 2, 'terminal_title_stripped': 'current task'}
+            with mock.patch.dict(os.environ, env), \
+                 mock.patch.object(notify, 'agent_info', return_value=agent), \
+                 mock.patch.object(notify, 'workspace_label', return_value='current project'), \
+                 mock.patch.object(notify.time, 'time', return_value=1000), \
+                 mock.patch.object(notify.time, 'sleep') as sleep, \
+                 mock.patch('sys.stdout', new_callable=io.StringIO) as stdout, \
+                 mock.patch('sys.stderr', new_callable=io.StringIO) as stderr, \
+                 mock.patch('socket.create_connection', side_effect=AssertionError('network forbidden')):
+                self.assertEqual(notify.main(['--dry-run']), 0)
+            self.assertEqual(stdout.getvalue(), 'current project, current task: terminó.\n')
+            self.assertEqual(stderr.getvalue(), '')
+            sleep.assert_not_called()
+            self.assertEqual(path.read_bytes(), before)
 
 
 PROBE_TIMEOUT = 20
@@ -480,6 +578,33 @@ class HttpBoundaryTest(unittest.TestCase):
                 local_opened.assert_not_called()
                 self.assertNotIn('a' * 16, stderr.getvalue())
 
+    def test_uppercase_pairing_code_is_rejected_like_the_server(self):
+        with tempfile.TemporaryDirectory() as directory:
+            home = Path(directory)
+            (home / '.tehablo').mkdir()
+            for code, expected in (('A' * 32, None), ('a' * 32, 'a' * 32)):
+                (home / '.tehablo' / 'ssh-codigo').write_text(code + '\n', encoding='ascii')
+                with self.subTest(code=code[0]), mock.patch.object(Path, 'home', return_value=home):
+                    self.assertEqual(notify.auth_code(), expected)
+
+    def test_tehablo_port_pins_discovery_to_one_port(self):
+        for value, probed in (('24123', ['http://127.0.0.1:24123/health']), ('not-a-port', []),
+                              ('²', []), ('70000', [])):
+            seen = []
+            def health(request, timeout):
+                seen.append(request if isinstance(request, str) else request.full_url)
+                raise OSError('refused')
+            with self.subTest(value=value), \
+                 mock.patch.dict(os.environ, {'TEHABLO_PORT': value}), \
+                 mock.patch.object(notify, '_local_open', side_effect=health):
+                self.assertIsNone(notify.tehablo_base())
+            self.assertEqual(seen, probed)
+        healthy = mock.MagicMock()
+        healthy.__enter__.return_value.read.return_value = b'{"service": "tehablo"}'
+        with mock.patch.dict(os.environ, {'TEHABLO_PORT': '24123'}), \
+             mock.patch.object(notify, '_local_open', return_value=healthy):
+            self.assertEqual(notify.tehablo_base(), 'http://127.0.0.1:24123')
+
     def test_health_and_speak_never_follow_redirects(self):
         original_build = notify.urllib.request.build_opener
         for operation in ('health', 'speak'):
@@ -514,6 +639,26 @@ class HttpBoundaryTest(unittest.TestCase):
                     self.assertFalse(notify.speak('http://127.0.0.1:23765', 'p1', 'notice'))
                     self.assertEqual(len(seen), 1)
                 self.assertTrue(all(url.startswith('http://127.0.0.1:') for url in seen))
+
+
+@unittest.skipUnless(sys.platform == 'win32', 'Windows launcher')
+class WindowsLauncherTest(unittest.TestCase):
+    def test_override_with_exclamation_mark_is_used_literally(self):
+        launcher = Path(__file__).resolve().parent.parent / 'herdr-plugin' / 'run.cmd'
+        with tempfile.TemporaryDirectory() as directory:
+            # A copy of this interpreter in a folder with "!" and a PATH without any other Python:
+            # success proves the launcher used the override literally instead of a fallback.
+            folder = Path(directory) / 'py!dir'
+            subprocess.run([sys.executable, '-m', 'venv', '--without-pip', str(folder)],
+                           check=True, timeout=120)
+            python = folder / 'Scripts' / 'python.exe'
+            system = os.path.join(os.environ.get('SystemRoot', r'C:\Windows'), 'System32')
+            env = {'SystemRoot': os.environ.get('SystemRoot', r'C:\Windows'), 'PATH': system,
+                   'TEHABLO_PYTHON': str(python),
+                   'HERDR_PLUGIN_STATE_DIR': directory, 'HERDR_PLUGIN_CONFIG_DIR': directory}
+            done = subprocess.run(['cmd', '/c', str(launcher), '--dry-run'], env=env,
+                                  capture_output=True, text=True, timeout=PROBE_TIMEOUT)
+            self.assertEqual((done.returncode, done.stderr), (0, ''))
 
 
 if __name__ == '__main__':
